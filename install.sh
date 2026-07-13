@@ -3,9 +3,10 @@
 #
 #   curl -fsSL https://raw.githubusercontent.com/alfafamily/ele/main/install.sh | bash
 #
-# Скрипт: проверит Docker → склонирует/обновит репозиторий → если нет .env,
-# интерактивно спросит параметры и создаст .env сам (секреты не проходят через
-# приложение — только в .env, ТЗ §8.6) → соберёт и поднимет прод-стек.
+# Скрипт: проверит Docker (при отсутствии предложит установить сам) →
+# склонирует/обновит репозиторий → если нет .env, интерактивно спросит параметры
+# и создаст .env сам (секреты не проходят через приложение — только в .env,
+# ТЗ §8.6) → соберёт и поднимет прод-стек.
 set -euo pipefail
 
 REPO_URL="${ELE_REPO_URL:-https://github.com/alfafamily/ele.git}"
@@ -14,14 +15,38 @@ TARGET_DIR="${ELE_DIR:-/opt/ele}"
 info() { printf '\033[1;34m[ELE]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[ELE]\033[0m %s\n' "$*"; }
 err()  { printf '\033[1;31m[ELE]\033[0m %s\n' "$*" >&2; }
+# Подтверждение [y/N] с чтением из /dev/tty — работает и при 'curl | bash'.
+confirm() { printf '%s [y/N]: ' "$1" >/dev/tty; IFS= read -r __a </dev/tty || true; case "${__a:-}" in [yYдД]*) return 0;; *) return 1;; esac; }
 
 # --- 1. Проверки окружения -------------------------------------------------
 command -v git >/dev/null 2>&1 || { err "Нужен git."; exit 1; }
-command -v docker >/dev/null 2>&1 || { err "Docker не установлен. Установите Docker Engine: https://docs.docker.com/engine/install/"; exit 1; }
-docker compose version >/dev/null 2>&1 || { err "Нужен Docker Compose v2 (команда 'docker compose')."; exit 1; }
 
 # Интерактивный ввод работает и при запуске через 'curl | bash' — читаем с /dev/tty.
 if [ ! -e /dev/tty ]; then err "Нет доступа к терминалу (/dev/tty) для ввода параметров. Запустите скрипт из интерактивной оболочки."; exit 1; fi
+
+# Часть шагов (установка Docker, открытие портов файрвола) требует root. Под
+# обычным пользователем выполняем их через sudo, если он есть.
+SUDO=""
+if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then SUDO="sudo"; fi
+have_root() { [ "$(id -u)" -eq 0 ] || [ -n "$SUDO" ]; }
+
+# Docker Engine + Compose v2. Если чего-то нет — предлагаем поставить официальным
+# скриптом get.docker.com (ставит движок, compose- и buildx-плагины сразу).
+if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+  warn "Docker Engine / Compose v2 не найдены на сервере."
+  if confirm "Установить Docker автоматически (официальный скрипт https://get.docker.com)?"; then
+    have_root || { err "Нужны права root для установки Docker: запустите под root или установите sudo."; exit 1; }
+    info "Устанавливаю Docker Engine через get.docker.com…"
+    curl -fsSL https://get.docker.com | $SUDO sh || { err "Установка Docker не удалась."; exit 1; }
+    $SUDO systemctl enable --now docker >/dev/null 2>&1 || true
+    command -v docker >/dev/null 2>&1 || { err "Docker не появился после установки."; exit 1; }
+    docker compose version >/dev/null 2>&1 || { err "Docker Compose v2 недоступен после установки Docker."; exit 1; }
+    info "Docker установлен: $(docker --version)"
+  else
+    err "Docker обязателен. Установите вручную (https://docs.docker.com/engine/install/) и повторите."
+    exit 1
+  fi
+fi
 
 # --- 2. Клонирование / обновление -----------------------------------------
 if [ -d "$TARGET_DIR/.git" ]; then
@@ -54,10 +79,6 @@ else
     IFS= read -rs __val </dev/tty || true
     printf '\n' >/dev/tty
     printf -v "$__var" '%s' "$__val"
-  }
-  yesno() { # yesno "Вопрос" -> 0=да
-    local __ans; printf '%s [y/N]: ' "$1" >/dev/tty; IFS= read -r __ans </dev/tty || true
-    case "${__ans:-}" in [yYдД]*) return 0;; *) return 1;; esac
   }
 
   DJANGO_SECRET_KEY="$(rand 64 50)"
@@ -95,7 +116,7 @@ else
 
   YANDEX_SMARTCAPTCHA_SITE_KEY=""; YANDEX_SMARTCAPTCHA_SECRET_KEY=""
   YANDEX_ID_CLIENT_ID=""; YANDEX_ID_CLIENT_SECRET=""
-  if yesno "Настроить Яндекс SmartCaptcha и/или Яндекс ID сейчас?"; then
+  if confirm "Настроить Яндекс SmartCaptcha и/или Яндекс ID сейчас?"; then
     ask YANDEX_SMARTCAPTCHA_SITE_KEY "Яндекс SmartCaptcha Site key" ""
     ask_secret YANDEX_SMARTCAPTCHA_SECRET_KEY "Яндекс SmartCaptcha Secret key"
     ask YANDEX_ID_CLIENT_ID "Яндекс ID Client ID" ""
@@ -142,12 +163,38 @@ EOF
   info ".env создан в ${TARGET_DIR}/.env (права 600). Изменить значения позже: отредактируйте файл и выполните 'docker compose -f docker-compose.prod.yml up -d'."
 fi
 
-# --- 4. Сборка и запуск ----------------------------------------------------
+# --- 4. Файрвол ------------------------------------------------------------
+# ELE слушает 80 (ACME-проверка Let's Encrypt + редирект на HTTPS) и 443
+# (HTTPS). Если 443 закрыт, Caddy не получит сертификат и сайт останется без
+# TLS. Открываем порты в локальном файрволе ОС (ufw/firewalld).
+open_firewall_ports() {
+  if command -v ufw >/dev/null 2>&1 && $SUDO ufw status 2>/dev/null | grep -qi "Status: active"; then
+    info "Открываю порты 80/443 в ufw…"
+    $SUDO ufw allow 80/tcp >/dev/null 2>&1 && $SUDO ufw allow 443/tcp >/dev/null 2>&1 \
+      && info "Порты 80/443 открыты в ufw." || warn "Не удалось изменить правила ufw — откройте 80/443 вручную."
+  elif command -v firewall-cmd >/dev/null 2>&1 && $SUDO firewall-cmd --state >/dev/null 2>&1; then
+    info "Открываю порты 80/443 в firewalld…"
+    $SUDO firewall-cmd --permanent --add-service=http --add-service=https >/dev/null 2>&1 \
+      && $SUDO firewall-cmd --reload >/dev/null 2>&1 \
+      && info "Порты 80/443 открыты в firewalld." || warn "Не удалось изменить правила firewalld — откройте 80/443 вручную."
+  else
+    info "Активный локальный файрвол (ufw/firewalld) не обнаружен — открывать порты не требуется."
+  fi
+}
+if have_root; then
+  open_firewall_ports
+else
+  warn "Без root не могу открыть порты файрвола — при необходимости откройте 80 и 443 вручную."
+fi
+# ВАЖНО: если сервер за облачным файрволом/security group (панель провайдера),
+# порты 80 и 443 надо открыть ещё и там — это вне сервера, скрипт до них не достанет.
+warn "Если провайдер использует внешний файрвол/security group — откройте 80 и 443 в его панели, иначе HTTPS не поднимется."
+
+# --- 5. Сборка и запуск ----------------------------------------------------
 # Docker Hub ограничивает анонимные пулы (~100 за 6 ч на IP; на IP хостера за
 # NAT лимит легко исчерпан не вами) и отвечает 429 Too Many Requests. Вход в
 # аккаунт поднимает лимит и привязывает его к учётке, а не к общему IP.
-yesno_login() { printf '%s [y/N]: ' "$1" >/dev/tty; IFS= read -r __a </dev/tty || true; case "${__a:-}" in [yYдД]*) return 0;; *) return 1;; esac; }
-if yesno_login "Войти в Docker Hub перед сборкой? (снимает ошибку 429 при скачивании образов)"; then
+if confirm "Войти в Docker Hub перед сборкой? (снимает ошибку 429 при скачивании образов)"; then
   docker login </dev/tty || warn "Вход не выполнен — продолжаю анонимно."
 fi
 
