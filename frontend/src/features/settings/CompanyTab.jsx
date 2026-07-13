@@ -5,9 +5,11 @@ import {
   deleteCompanyLogo,
   getCompanySettings,
   getStorageMode,
+  sendSmtpTestCode,
   updateCompanySettings,
   updateStorageMode,
   uploadCompanyLogo,
+  verifySmtpTestCode,
 } from './settingsApi.js'
 
 // Читает натуральные размеры выбранного изображения в браузере (без загрузки
@@ -41,6 +43,13 @@ export function CompanyTab() {
   const [error, setError] = useState(null)
   const [saved, setSaved] = useState(false)
   const fileInputRef = useRef(null)
+
+  // Проверка SMTP: письмо с кодом на почту текущего администратора → ввод кода
+  // подтверждает, что письма реально доходят (аналог Setup Wizard).
+  const [smtpStatus, setSmtpStatus] = useState('idle') // idle|sending|sent|checking|ok
+  const [smtpCode, setSmtpCode] = useState('')
+  const [smtpEmail, setSmtpEmail] = useState('')
+  const [smtpError, setSmtpError] = useState(null)
 
   const load = () => {
     getCompanySettings().then((data) => {
@@ -114,6 +123,32 @@ export function CompanyTab() {
       setError(err.detail || 'Не удалось сменить режим хранилища.')
     } finally {
       setSavingStorage(false)
+    }
+  }
+
+  const sendSmtp = async () => {
+    setSmtpStatus('sending')
+    setSmtpError(null)
+    try {
+      const data = await sendSmtpTestCode()
+      setSmtpEmail(data.email)
+      setSmtpCode('')
+      setSmtpStatus('sent')
+    } catch (err) {
+      setSmtpStatus('idle')
+      setSmtpError(err.detail || 'Не удалось отправить письмо. Проверьте настройки SMTP в .env.')
+    }
+  }
+
+  const verifySmtp = async () => {
+    setSmtpStatus('checking')
+    setSmtpError(null)
+    try {
+      await verifySmtpTestCode(smtpCode)
+      setSmtpStatus('ok')
+    } catch (err) {
+      setSmtpStatus('sent')
+      setSmtpError(err.detail || 'Неверный код.')
     }
   }
 
@@ -236,6 +271,46 @@ export function CompanyTab() {
           </div>
         </Card>
       </form>
+
+      <Card style={{ marginTop: 16 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Проверка отправки почты (SMTP)</div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
+          {smtpStatus === 'sent' || smtpStatus === 'checking'
+            ? `Код отправлен на ${smtpEmail} — введите его, чтобы подтвердить доставку.`
+            : 'Отправим письмо с кодом на вашу почту и попросим ввести код — так проверяется, что письма реально доходят.'}
+        </div>
+
+        {smtpError ? (
+          <div style={{ marginBottom: 12 }}>
+            <Banner variant="error">{smtpError}</Banner>
+          </div>
+        ) : null}
+
+        {smtpStatus === 'ok' ? (
+          <Banner variant="success">SMTP работает — письмо доставлено.</Banner>
+        ) : smtpStatus === 'sent' || smtpStatus === 'checking' ? (
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+            <div style={{ width: 160 }}>
+              <Input
+                label="Код из письма"
+                value={smtpCode}
+                onChange={(e) => setSmtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+              />
+            </div>
+            <Button type="button" loading={smtpStatus === 'checking'} disabled={smtpCode.length !== 6} onClick={verifySmtp}>
+              Подтвердить
+            </Button>
+            <Button type="button" variant="secondary" onClick={sendSmtp}>
+              Отправить ещё раз
+            </Button>
+          </div>
+        ) : (
+          <Button type="button" variant="secondary" loading={smtpStatus === 'sending'} onClick={sendSmtp}>
+            Отправить проверочное письмо
+          </Button>
+        )}
+      </Card>
     </div>
   )
 }

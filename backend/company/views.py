@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from smtplib import SMTPException
 
 from django.conf import settings
 from django.contrib.auth import get_user_model, login
@@ -36,6 +37,7 @@ User = get_user_model()
 _SESSION_STORAGE_VERIFIED = "setup_storage_verified"
 _SESSION_EMAIL_VERIFIED = "setup_email_verified"  # подтверждённый email (строка) или отсутствует
 _SESSION_EMAIL_PENDING = "setup_email_pending"  # {"email", "code", "sent_at"}
+_SESSION_SMTP_TEST_PENDING = "company_smtp_test_pending"  # проверка SMTP из Настроек → Компания
 _SESSION_CAPTCHA_VERIFIED = "setup_captcha_verified"
 _SESSION_YANDEX_VERIFIED = "setup_yandex_verified"
 
@@ -197,6 +199,53 @@ class VerifyEmailCodeView(APIView):
         request.session[_SESSION_EMAIL_VERIFIED] = pending["email"]
         request.session.pop(_SESSION_EMAIL_PENDING, None)
         return Response({"detail": "Почта подтверждена."})
+
+
+class CompanyTestEmailView(APIView):
+    """Настройки → Компания → «Проверить SMTP» (аналог мастера §4.1, шаг 3, но
+    для уже работающей системы). Шлёт код на почту текущего администратора;
+    подтверждение кода в CompanyVerifyEmailView доказывает, что письма реально
+    доходят, а не только что send() не упал. Только Администратор."""
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request):
+        if not settings.EMAIL_CONFIGURED:
+            return Response({"detail": "SMTP не настроен в .env."}, status=400)
+        email = request.user.email
+        code = generate_code()
+        try:
+            send_test_code_email(email, code)
+        except (SMTPException, OSError):
+            return Response(
+                {"detail": "Не удалось отправить письмо — проверьте настройки SMTP в .env."}, status=400
+            )
+        request.session[_SESSION_SMTP_TEST_PENDING] = {
+            "email": email,
+            "code": code,
+            "sent_at": timezone.now().isoformat(),
+        }
+        return Response({"detail": f"Письмо с кодом отправлено на {email}.", "email": email})
+
+
+class CompanyVerifyEmailView(APIView):
+    """Подтверждение кода из письма проверки SMTP (см. CompanyTestEmailView)."""
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request):
+        serializer = VerifyEmailCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        pending = request.session.get(_SESSION_SMTP_TEST_PENDING)
+        if not pending:
+            return Response({"detail": "Сначала отправьте проверочное письмо."}, status=400)
+        sent_at = datetime.fromisoformat(pending["sent_at"])
+        if timezone.now() - sent_at > timedelta(seconds=CODE_TTL_SECONDS):
+            return Response({"detail": "Код устарел, отправьте письмо заново."}, status=400)
+        if serializer.validated_data["code"] != pending["code"]:
+            return Response({"detail": "Неверный код."}, status=400)
+        request.session.pop(_SESSION_SMTP_TEST_PENDING, None)
+        return Response({"detail": "SMTP работает — письмо доставлено."})
 
 
 class TestCaptchaView(APIView):

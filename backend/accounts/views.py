@@ -1,4 +1,5 @@
 from datetime import timedelta
+from smtplib import SMTPException
 
 from django.conf import settings
 from django.contrib.auth import get_user_model, login, logout, update_session_auth_hash
@@ -307,7 +308,16 @@ class InviteView(APIView):
                 status=409,
             )
 
-        serializer.save()
+        # SMTPException — ошибки протокола/аутентификации; OSError — недоступный
+        # порт/таймаут сокета. Пользователь при этом не создаётся (см. save() —
+        # транзакция откатывается), фронт получает быстрый понятный отказ.
+        try:
+            serializer.save()
+        except (SMTPException, OSError):
+            return Response(
+                {"detail": "Не удалось отправить приглашение — проверьте настройки SMTP на сервере."},
+                status=502,
+            )
         return Response({"detail": "Приглашение отправлено."}, status=201)
 
 

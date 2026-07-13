@@ -140,6 +140,8 @@ class InviteSerializer(serializers.Serializer):
         return attrs
 
     def save(self):
+        from django.db import transaction
+
         from company.models import Company
 
         from .emails import send_invite
@@ -156,17 +158,22 @@ class InviteSerializer(serializers.Serializer):
             "is_observer": self.validated_data.get("is_observer", False),
             "employee": self.validated_data.get("employee"),
         }
-        user = User.objects.filter(email__iexact=email).first()
-        if user:
-            for key, value in fields.items():
-                setattr(user, key, value)
-            user.save()
-        else:
-            user = User(email=email, is_email_confirmed=False, **fields)
-            user.set_unusable_password()
-            user.save()
+        # Создание/обновление пользователя и отправка письма — в одной транзакции:
+        # если SMTP недоступен, send_invite бросит исключение, транзакция
+        # откатится и «осиротевшего» пользователя без приглашения не останется
+        # (нового не создаём, существующему не меняем роль). Ошибку ловит вью.
+        with transaction.atomic():
+            user = User.objects.filter(email__iexact=email).first()
+            if user:
+                for key, value in fields.items():
+                    setattr(user, key, value)
+                user.save()
+            else:
+                user = User(email=email, is_email_confirmed=False, **fields)
+                user.set_unusable_password()
+                user.save()
 
-        send_invite(user)
+            send_invite(user)
         return user, domain_warning
 
 

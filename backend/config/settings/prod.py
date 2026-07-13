@@ -29,6 +29,15 @@ if EMAIL_CONFIGURED:
     EMAIL_PORT = env.int("EMAIL_PORT", default=587)
     EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
     EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
-    EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+    # Порт 465 — implicit SSL, 587 — STARTTLS. EMAIL_USE_SSL по умолчанию выводим
+    # из порта (465 → SSL): инстансы со старым .env (без этой переменной)
+    # заработают на 465 после обычного обновления, без ручной правки. Явный
+    # EMAIL_USE_SSL в .env перекрывает автоопределение. Django запрещает оба
+    # флага сразу, поэтому SSL принудительно выключает TLS (иначе старт упал бы).
+    EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=(EMAIL_PORT == 465))
+    EMAIL_USE_TLS = False if EMAIL_USE_SSL else env.bool("EMAIL_USE_TLS", default=True)
+    # Без таймаута сокет к недоступному SMTP висит минутами и вешает весь
+    # запрос (напр. отправку приглашения) — 10 с дают быстрый понятный отказ.
+    EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

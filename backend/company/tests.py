@@ -235,3 +235,36 @@ class SetupWizardCaptchaCheckTests(APITestCase):
         }
         resp = self.client.post("/api/setup/complete/", payload, format="json")
         self.assertEqual(resp.status_code, 201, resp.data)
+
+
+@override_settings(EMAIL_CONFIGURED=True, EMAIL_HOST="smtp.internal")
+class CompanySmtpCheckTests(APITestCase):
+    """Настройки → Компания → «Проверить SMTP»: код уходит на почту самого
+    администратора, подтверждение кода доказывает доставку. Только Администратор."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+
+    def test_requires_admin(self):
+        worker = User.objects.create_user(email="worker@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=worker)
+        self.assertEqual(self.client.post("/api/company/test-email/").status_code, 403)
+
+    def test_sends_code_to_current_admin_and_verifies(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/company/test-email/")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["email"], self.admin.email)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [self.admin.email])
+
+        code = mail.outbox[0].subject.split(": ")[-1]
+        self.assertEqual(self.client.post("/api/company/verify-email/", {"code": "000000"}, format="json").status_code, 400)
+        resp = self.client.post("/api/company/verify-email/", {"code": code}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+
+    def test_blocked_when_smtp_not_configured(self):
+        self.client.force_authenticate(user=self.admin)
+        with override_settings(EMAIL_CONFIGURED=False):
+            resp = self.client.post("/api/company/test-email/")
+        self.assertEqual(resp.status_code, 400)

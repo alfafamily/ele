@@ -18,6 +18,9 @@ export const deactivateUser = (id, terminateEmployee) =>
   apiPost(`/api/users/${id}/deactivate/`, terminateEmployee ? { terminate_employee: true } : {})
 export const inviteUser = (payload) => apiPost('/api/users/invite/', payload)
 
+export const sendSmtpTestCode = () => apiPost('/api/company/test-email/')
+export const verifySmtpTestCode = (code) => apiPost('/api/company/verify-email/', { code })
+
 export const getBackupSettings = () => apiGet('/api/company/backup-settings/')
 export const updateBackupSettings = (payload) => apiPatch('/api/company/backup-settings/', payload)
 export const createBackup = () => apiPost('/api/backup/create/')

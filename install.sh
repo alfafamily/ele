@@ -95,12 +95,19 @@ else
 
   info "— Почта (SMTP) — Enter, чтобы пропустить (письма отправляться не будут) —"
   ask EMAIL_HOST "SMTP-хост" ""
-  EMAIL_PORT=""; EMAIL_HOST_USER=""; EMAIL_HOST_PASSWORD=""; EMAIL_USE_TLS="true"
+  EMAIL_PORT=""; EMAIL_HOST_USER=""; EMAIL_HOST_PASSWORD=""; EMAIL_USE_TLS="true"; EMAIL_USE_SSL="false"
   if [ -n "$EMAIL_HOST" ]; then
-    ask EMAIL_PORT "SMTP-порт" "587"
+    ask EMAIL_PORT "SMTP-порт (587 — STARTTLS, 465 — SSL)" "587"
     ask EMAIL_HOST_USER "SMTP-логин" ""
     ask_secret EMAIL_HOST_PASSWORD "SMTP-пароль"
-    ask EMAIL_USE_TLS "Использовать TLS (true/false)" "true"
+    # Порт 465 — implicit SSL, 587 — STARTTLS. По умолчанию выводим из порта.
+    __enc_def="tls"; [ "$EMAIL_PORT" = "465" ] && __enc_def="ssl"
+    ask EMAIL_SECURITY "Шифрование: tls / ssl / none" "$__enc_def"
+    case "$EMAIL_SECURITY" in
+      ssl)  EMAIL_USE_SSL="true";  EMAIL_USE_TLS="false" ;;
+      none) EMAIL_USE_SSL="false"; EMAIL_USE_TLS="false" ;;
+      *)    EMAIL_USE_SSL="false"; EMAIL_USE_TLS="true" ;;
+    esac
   fi
 
   info "— Хранилище файлов —"
@@ -143,6 +150,7 @@ EMAIL_PORT=${EMAIL_PORT}
 EMAIL_HOST_USER=${EMAIL_HOST_USER}
 EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
 EMAIL_USE_TLS=${EMAIL_USE_TLS}
+EMAIL_USE_SSL=${EMAIL_USE_SSL}
 
 ELE_ADMIN_EMAIL=${ELE_ADMIN_EMAIL}
 ELE_ADMIN_PASSWORD=${ELE_ADMIN_PASSWORD}

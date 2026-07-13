@@ -1,3 +1,6 @@
+from smtplib import SMTPException
+from unittest import mock
+
 from django.core import mail
 from django.test import override_settings
 from rest_framework.test import APITestCase
@@ -129,6 +132,18 @@ class InviteAcceptTests(APITestCase):
             "/api/users/invite/", {"email": "taken@example.com", "role": "employee"}, format="json"
         )
         self.assertEqual(resp.status_code, 400)
+
+    def test_invite_smtp_failure_does_not_create_user(self):
+        # SMTP недоступен → 502 и «осиротевшего» пользователя не остаётся
+        # (транзакция в InviteSerializer.save() откатывается).
+        admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=admin)
+        with mock.patch("accounts.emails.send_invite", side_effect=SMTPException("boom")):
+            resp = self.client.post(
+                "/api/users/invite/", {"email": "new@example.com", "role": "employee"}, format="json"
+            )
+        self.assertEqual(resp.status_code, 502)
+        self.assertFalse(User.objects.filter(email="new@example.com").exists())
 
 
 class ChangeEmailTests(APITestCase):

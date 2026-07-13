@@ -25,4 +25,6 @@ urlpatterns = [
     ),
     path("company/logo/", views.CompanyLogoUploadView.as_view(), name="company-logo"),
     path("company/backup-settings/", views.BackupSettingsView.as_view(), name="company-backup-settings"),
+    path("company/test-email/", views.CompanyTestEmailView.as_view(), name="company-test-email"),
+    path("company/verify-email/", views.CompanyVerifyEmailView.as_view(), name="company-verify-email"),
 ]
