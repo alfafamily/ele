@@ -33,6 +33,7 @@ export function ChangePasswordModal({ onClose, onDone }) {
   return (
     <Modal open onClose={onClose} title="Смена пароля">
       {error ? <Banner variant="error">{error}</Banner> : null}
+      {fieldErrors.non_field_errors ? <Banner variant="error">{fieldErrors.non_field_errors.join(' ')}</Banner> : null}
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <Input
           label="Текущий пароль"

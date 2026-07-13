@@ -405,6 +405,49 @@ class SessionInvalidationTests(APITestCase):
         self.assertIsNotNone(user.password_changed_at)  # §5.6 «Пароль» блок в Профиле
 
 
+class WeakPasswordErrorSurfacingTests(APITestCase):
+    """Слабый пароль → 400 с ошибкой у поля пароля (а не в non_field_errors,
+    где форма её не показывала бы). Покрывает все три формы задания пароля."""
+
+    def test_register_weak_password_error_on_field(self):
+        resp = self.client.post(
+            "/api/auth/register/",
+            {
+                "email": "u@example.com",
+                "password": "12345678",
+                "password_repeat": "12345678",
+                "last_name": "Петров",
+                "first_name": "Пётр",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("password", resp.data["errors"])
+        self.assertNotIn("non_field_errors", resp.data["errors"])
+
+    def test_reset_confirm_weak_password_error_on_field(self):
+        user = User.objects.create_user(email="real@example.com", password="Old!Pass123")
+        uid, token = make_set_password_link(user)
+        resp = self.client.post(
+            "/api/auth/password-reset/confirm/",
+            {"uid": uid, "token": token, "new_password": "12345678", "new_password_repeat": "12345678"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("new_password", resp.data["errors"])
+
+    def test_change_password_weak_password_error_on_field(self):
+        user = User.objects.create_user(email="worker@example.com", password="Old!Pass123")
+        self.client.force_authenticate(user=user)
+        resp = self.client.post(
+            "/api/auth/change-password/",
+            {"current_password": "Old!Pass123", "new_password": "12345678", "new_password_repeat": "12345678"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("new_password", resp.data["errors"])
+
+
 class UserListTests(APITestCase):
     """§5.5.2 — список Пользователей курсорно пагинирован; User не имеет
     created_at (только date_joined), поэтому пагинатор должен сортировать

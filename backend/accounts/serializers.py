@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from employees.models import Employee
@@ -8,6 +9,19 @@ from employees.serializers import EmployeeListSerializer
 from .tokens import get_user_from_uid, set_password_token_generator
 
 User = get_user_model()
+
+
+def validate_password_field(password, field, user=None):
+    """Проверка сложности пароля с привязкой ошибки к нужному полю формы.
+
+    Django `validate_password` кидает django-ValidationError (список сообщений
+    без имени поля) → DRF складывает его в `non_field_errors`, а формы паролей
+    показывают ошибку только у конкретного поля, поэтому текст «пароль слишком
+    простой» становился невидимым. Пере-выбрасываем как ошибку поля `field`."""
+    try:
+        validate_password(password, user=user)
+    except DjangoValidationError as exc:
+        raise serializers.ValidationError({field: list(exc.messages)})
 
 
 class MeSerializer(serializers.ModelSerializer):
@@ -99,7 +113,7 @@ class RegisterSerializer(serializers.Serializer):
     def validate(self, attrs):
         if attrs["password"] != attrs["password_repeat"]:
             raise serializers.ValidationError({"password_repeat": ["Пароли не совпадают."]})
-        validate_password(attrs["password"])
+        validate_password_field(attrs["password"], "password")
         return attrs
 
     def save(self):
@@ -250,7 +264,7 @@ class SetPasswordConfirmSerializer(serializers.Serializer):
             raise serializers.ValidationError({"token": ["Ссылка недействительна или устарела."]})
         if attrs["new_password"] != attrs["new_password_repeat"]:
             raise serializers.ValidationError({"new_password_repeat": ["Пароли не совпадают."]})
-        validate_password(attrs["new_password"], user=user)
+        validate_password_field(attrs["new_password"], "new_password", user=user)
         attrs["user"] = user
         return attrs
 
@@ -266,7 +280,7 @@ class ChangePasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError({"current_password": ["Неверный текущий пароль."]})
         if attrs["new_password"] != attrs["new_password_repeat"]:
             raise serializers.ValidationError({"new_password_repeat": ["Пароли не совпадают."]})
-        validate_password(attrs["new_password"], user=user)
+        validate_password_field(attrs["new_password"], "new_password", user=user)
         return attrs
 
 
