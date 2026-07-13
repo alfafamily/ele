@@ -20,7 +20,6 @@ _SUBJECTS = {
     "confirm_email": "Подтвердите почту — ELE",
     "invite": "Вас пригласили в ELE — {company_name}",
     "password_reset": "Восстановление пароля — ELE",
-    "admin_new_unlinked_user": "Новый пользователь без привязки к сотруднику — ELE",
     "email_change_confirm": "Подтвердите новый email — ELE",
 }
 
@@ -61,22 +60,6 @@ def send_password_reset(user):
     uid, token = make_set_password_link(user)
     cta_url = f"{settings.SITE_URL}/reset-password/{uid}/{token}/"
     _send("password_reset", "password_reset.html", [user.email], {"cta_url": cta_url, "user_email": user.email})
-
-
-def send_admin_new_unlinked_user(new_user, admin_emails: list[str]):
-    if not admin_emails:
-        return
-    users_url = f"{settings.SITE_URL}/settings/users"
-    _send(
-        "admin_new_unlinked_user",
-        "admin_new_unlinked_user.html",
-        admin_emails,
-        {
-            "cta_url": users_url,
-            "new_user_email": new_user.email,
-            "registered_at": timezone.localtime(new_user.date_joined).strftime("%d.%m.%Y %H:%M"),
-        },
-    )
 
 
 def send_email_change_confirm(user, new_email: str):

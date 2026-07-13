@@ -4,12 +4,14 @@ import { apiPost } from '../../shared/api/client'
 import { Banner, Button, Input } from '../../shared/ui'
 import { AuthShell } from './AuthShell.jsx'
 
-// Самостоятельная регистрация (§4.2). Поле «ФИО» присутствует в макете, но
-// сознательно не отправляется на сервер — не входит в модель Пользователя
-// (ТЗ §3.2, примечание).
+// Самостоятельная регистрация (§4.2). Фамилия/Имя обязательны — при регистрации
+// на сервере заводится связанный Сотрудник; Отдел/Должность — по желанию.
 export function RegisterPage() {
   const navigate = useNavigate()
-  const [fullName, setFullName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [department, setDepartment] = useState('')
+  const [position, setPosition] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordRepeat, setPasswordRepeat] = useState('')
@@ -24,7 +26,15 @@ export function RegisterPage() {
       setFormError(null)
       setSubmitting(true)
       try {
-        await apiPost('/api/auth/register/', { email, password, password_repeat: passwordRepeat })
+        await apiPost('/api/auth/register/', {
+          email,
+          password,
+          password_repeat: passwordRepeat,
+          last_name: lastName,
+          first_name: firstName,
+          department,
+          position,
+        })
         navigate('/confirm-email', { state: { email } })
       } catch (err) {
         if (err.errors) setErrors(err.errors)
@@ -33,14 +43,43 @@ export function RegisterPage() {
         setSubmitting(false)
       }
     },
-    [email, password, passwordRepeat, navigate]
+    [email, password, passwordRepeat, lastName, firstName, department, position, navigate]
   )
 
   return (
     <AuthShell title="Регистрация">
       {formError ? <Banner variant="error">{formError}</Banner> : null}
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <Input label="ФИО" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
+        <Input
+          label="Фамилия"
+          required
+          autoComplete="family-name"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+          error={errors.last_name}
+        />
+        <Input
+          label="Имя"
+          required
+          autoComplete="given-name"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          error={errors.first_name}
+        />
+        <Input
+          label="Отдел"
+          autoComplete="off"
+          value={department}
+          onChange={(e) => setDepartment(e.target.value)}
+          error={errors.department}
+        />
+        <Input
+          label="Должность"
+          autoComplete="organization-title"
+          value={position}
+          onChange={(e) => setPosition(e.target.value)}
+          error={errors.position}
+        />
         <Input
           label="Email"
           type="email"

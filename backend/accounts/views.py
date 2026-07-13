@@ -17,7 +17,7 @@ from core.permissions import IsAdmin
 from core.utils.client_ip import get_client_ip
 
 from .captcha import is_captcha_enabled, verify_captcha
-from .emails import send_admin_new_unlinked_user, send_confirm_email, send_email_change_confirm, send_password_reset
+from .emails import send_confirm_email, send_email_change_confirm, send_password_reset
 from .serializers import (
     ChangeEmailConfirmSerializer,
     ChangeEmailRequestSerializer,
@@ -89,10 +89,6 @@ class RegisterView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         send_confirm_email(user)
-        admin_emails = list(
-            User.objects.filter(role=User.Role.ADMIN, is_active=True).values_list("email", flat=True)
-        )
-        send_admin_new_unlinked_user(user, admin_emails)
         return Response({"detail": "Письмо с подтверждением отправлено."}, status=201)
 
 
@@ -375,6 +371,16 @@ class UserViewSet(viewsets.ModelViewSet):
         data = UserSerializer(user).data
         data["terminated_employee"] = terminated_employee
         return Response(data)
+
+    @action(detail=True, methods=["post"])
+    def activate(self, request, pk=None):
+        """Обратно включить деактивированного пользователя (§5.5.2) — только
+        восстанавливает вход (is_active=True). Занятость сотрудника и связь при
+        необходимости управляются отдельно в разделе Сотрудники."""
+        user = self.get_object()
+        user.is_active = True
+        user.save(update_fields=["is_active"])
+        return Response(UserSerializer(user).data)
 
 
 class YandexIDAuthorizeView(APIView):

@@ -16,6 +16,7 @@ export const retryStorageMigration = () => apiPost('/api/company/storage-migrati
 export const updateUser = (id, payload) => apiPatch(`/api/users/${id}/`, payload)
 export const deactivateUser = (id, terminateEmployee) =>
   apiPost(`/api/users/${id}/deactivate/`, terminateEmployee ? { terminate_employee: true } : {})
+export const activateUser = (id) => apiPost(`/api/users/${id}/activate/`)
 export const inviteUser = (payload) => apiPost('/api/users/invite/', payload)
 
 export const sendSmtpTestCode = () => apiPost('/api/company/test-email/')

@@ -61,12 +61,18 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class RegisterSerializer(serializers.Serializer):
-    """Самостоятельная регистрация (ТЗ §4.2) — роль «Сотрудник» по умолчанию,
-    без привязки к Сотруднику."""
+    """Самостоятельная регистрация (ТЗ §4.2) — роль «Сотрудник» по умолчанию.
+    При регистрации автоматически заводится связанный Сотрудник по введённым
+    ФИО/отделу/должности (Фамилия и Имя обязательны — без них не создать
+    Сотрудника; Отдел и Должность — по желанию)."""
 
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
     password_repeat = serializers.CharField(write_only=True)
+    last_name = serializers.CharField(max_length=150)
+    first_name = serializers.CharField(max_length=150)
+    position = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    department = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
 
     def validate_email(self, value):
         value = User.objects.normalize_email(value)
@@ -97,14 +103,28 @@ class RegisterSerializer(serializers.Serializer):
         return attrs
 
     def save(self):
+        from django.db import transaction
+
+        from employees.models import Employee
+
         email = self.validated_data["email"]
-        # Незавершённая предыдущая самостоятельная регистрация тем же email —
-        # переиспользуем запись, не плодим дубликаты (см. validate_email).
-        user = User.objects.filter(email__iexact=email, is_email_confirmed=False).first()
-        if user is None:
-            user = User(email=email, role=User.Role.EMPLOYEE)
-        user.set_password(self.validated_data["password"])
-        user.save()
+        with transaction.atomic():
+            # Незавершённая предыдущая самостоятельная регистрация тем же email —
+            # переиспользуем запись, не плодим дубликаты (см. validate_email).
+            user = User.objects.filter(email__iexact=email, is_email_confirmed=False).first()
+            if user is None:
+                user = User(email=email, role=User.Role.EMPLOYEE)
+            user.set_password(self.validated_data["password"])
+            # Сотрудник для новой учётки; при повторной незавершённой регистрации
+            # тем же email — обновляем ранее созданного, не плодим дубликаты.
+            employee = user.employee if user.employee_id else Employee()
+            employee.last_name = self.validated_data["last_name"]
+            employee.first_name = self.validated_data["first_name"]
+            employee.position = self.validated_data.get("position", "")
+            employee.department = self.validated_data.get("department", "")
+            employee.save()
+            user.employee = employee
+            user.save()
         return user
 
 
@@ -117,6 +137,13 @@ class InviteSerializer(serializers.Serializer):
         source="employee", queryset=Employee.objects.all(), required=False, allow_null=True
     )
     is_observer = serializers.BooleanField(required=False, default=False)
+    # Создать нового Сотрудника прямо из приглашения (свитч «Добавить сотрудника»
+    # в модалке). Взаимоисключающе с выбором существующего employee_id.
+    create_employee = serializers.BooleanField(required=False, default=False)
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
+    position = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    department = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
     # Явное подтверждение отправки при несовпадении домена (§4.4) — без него
     # при несовпадении домена приглашение не отправляется, а запрашивается
     # подтверждение у администратора.
@@ -134,6 +161,18 @@ class InviteSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"is_observer": ["Признак «Наблюдатель» применим только к роли «Сотрудник»."]}
             )
+        if attrs.get("create_employee"):
+            if attrs.get("employee"):
+                raise serializers.ValidationError(
+                    {"create_employee": ["Нельзя одновременно выбрать существующего сотрудника и создать нового."]}
+                )
+            errors = {}
+            if not attrs.get("last_name"):
+                errors["last_name"] = ["Укажите фамилию."]
+            if not attrs.get("first_name"):
+                errors["first_name"] = ["Укажите имя."]
+            if errors:
+                raise serializers.ValidationError(errors)
         existing = User.objects.filter(email__iexact=attrs["email"]).first()
         if existing and existing.is_email_confirmed:
             raise serializers.ValidationError({"email": ["Пользователь уже зарегистрирован."]})
@@ -143,6 +182,7 @@ class InviteSerializer(serializers.Serializer):
         from django.db import transaction
 
         from company.models import Company
+        from employees.models import Employee
 
         from .emails import send_invite
 
@@ -153,16 +193,24 @@ class InviteSerializer(serializers.Serializer):
             # Жёсткой блокировки нет — только предупреждение (§4.4).
             domain_warning = "Домен email отличается от домена компании."
 
-        fields = {
-            "role": self.validated_data["role"],
-            "is_observer": self.validated_data.get("is_observer", False),
-            "employee": self.validated_data.get("employee"),
-        }
-        # Создание/обновление пользователя и отправка письма — в одной транзакции:
-        # если SMTP недоступен, send_invite бросит исключение, транзакция
-        # откатится и «осиротевшего» пользователя без приглашения не останется
-        # (нового не создаём, существующему не меняем роль). Ошибку ловит вью.
+        # Создание/обновление пользователя, нового Сотрудника (если попросили) и
+        # отправка письма — в одной транзакции: если SMTP недоступен, send_invite
+        # бросит исключение, транзакция откатится и не останется ни «осиротевшего»
+        # пользователя, ни созданного впустую Сотрудника. Ошибку ловит вью.
         with transaction.atomic():
+            employee = self.validated_data.get("employee")
+            if self.validated_data.get("create_employee"):
+                employee = Employee.objects.create(
+                    last_name=self.validated_data["last_name"],
+                    first_name=self.validated_data["first_name"],
+                    position=self.validated_data.get("position", ""),
+                    department=self.validated_data.get("department", ""),
+                )
+            fields = {
+                "role": self.validated_data["role"],
+                "is_observer": self.validated_data.get("is_observer", False),
+                "employee": employee,
+            }
             user = User.objects.filter(email__iexact=email).first()
             if user:
                 for key, value in fields.items():

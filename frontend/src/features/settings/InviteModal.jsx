@@ -18,6 +18,13 @@ export function InviteModal({ onClose, onInvited }) {
   const [employee, setEmployee] = useState(null)
   const [showEmployeePicker, setShowEmployeePicker] = useState(false)
   const [isObserver, setIsObserver] = useState(false)
+  // Свитч «Добавить сотрудника»: создаём нового Сотрудника вместе с приглашением
+  // (взаимоисключающе с выбором существующего).
+  const [createEmployee, setCreateEmployee] = useState(false)
+  const [empLastName, setEmpLastName] = useState('')
+  const [empFirstName, setEmpFirstName] = useState('')
+  const [empDepartment, setEmpDepartment] = useState('')
+  const [empPosition, setEmpPosition] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [warning, setWarning] = useState(null)
@@ -38,9 +45,17 @@ export function InviteModal({ onClose, onInvited }) {
       await inviteUser({
         email,
         role,
-        employee_id: employee?.id,
         is_observer: role === 'employee' ? isObserver : false,
         confirm_domain: needsDomainConfirm,
+        ...(createEmployee
+          ? {
+              create_employee: true,
+              last_name: empLastName,
+              first_name: empFirstName,
+              department: empDepartment,
+              position: empPosition,
+            }
+          : { employee_id: employee?.id }),
       })
       onInvited()
     } catch (err) {
@@ -64,51 +79,63 @@ export function InviteModal({ onClose, onInvited }) {
       {warning ? <Banner variant="warning">{warning}</Banner> : null}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <Input label="Email" type="email" required value={email} onChange={onEmailChange} />
-        {/* align-items: start — раскрытие подбора Сотрудника (список снизу) не
-            должно растягивать соседнее поле «Роль». */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'start' }}>
-          <Select label="Роль" required value={role} onChange={setRole}>
-            {ROLE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
-          <div>
-            {showEmployeePicker ? (
-              // Высота поля ввода подбора = высоте поля «Роль» (52px), чтобы при
-              // активации поле не «схлопывалось» по высоте — меняется только
-              // добавление списка снизу.
-              <EmployeePicker
-                autoFocus
-                inputHeight={52}
-                onSelect={(emp) => {
-                  setEmployee(emp)
-                  setShowEmployeePicker(false)
-                }}
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowEmployeePicker(true)}
-                style={{
-                  width: '100%',
-                  minHeight: 52,
-                  background: 'var(--color-fill-input)',
-                  border: 'none',
-                  borderRadius: 10,
-                  padding: '8px 14px',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>Сотрудник</div>
-                <div style={{ fontSize: 15, color: employee ? 'var(--color-text-primary)' : 'var(--color-text-placeholder)' }}>{employee?.full_name || 'Не выбран'}</div>
-              </button>
-            )}
-          </div>
-        </div>
+        <Select label="Роль" required value={role} onChange={setRole}>
+          {ROLE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+
+        <Checkbox
+          label="Добавить сотрудника"
+          checked={createEmployee}
+          onChange={(v) => {
+            setCreateEmployee(v)
+            if (v) setEmployee(null) // взаимоисключаем с выбором существующего
+          }}
+        />
+
+        {createEmployee ? (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Input label="Фамилия" required value={empLastName} onChange={(e) => setEmpLastName(e.target.value)} />
+              <Input label="Имя" required value={empFirstName} onChange={(e) => setEmpFirstName(e.target.value)} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Input label="Отдел" value={empDepartment} onChange={(e) => setEmpDepartment(e.target.value)} />
+              <Input label="Должность" value={empPosition} onChange={(e) => setEmpPosition(e.target.value)} />
+            </div>
+          </>
+        ) : showEmployeePicker ? (
+          <EmployeePicker
+            autoFocus
+            onSelect={(emp) => {
+              setEmployee(emp)
+              setShowEmployeePicker(false)
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowEmployeePicker(true)}
+            style={{
+              width: '100%',
+              minHeight: 52,
+              background: 'var(--color-fill-input)',
+              border: 'none',
+              borderRadius: 10,
+              padding: '8px 14px',
+              textAlign: 'left',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>Существующий сотрудник</div>
+            <div style={{ fontSize: 15, color: employee ? 'var(--color-text-primary)' : 'var(--color-text-placeholder)' }}>{employee?.full_name || 'Не выбран'}</div>
+          </button>
+        )}
+
         {role === 'employee' ? (
           <Checkbox label="Признак «Наблюдатель» (только для роли «Сотрудник»)" checked={isObserver} onChange={setIsObserver} />
         ) : null}
@@ -117,7 +144,11 @@ export function InviteModal({ onClose, onInvited }) {
         <Button variant="secondary" onClick={onClose}>
           Отмена
         </Button>
-        <Button loading={submitting} disabled={!email.trim()} onClick={submit}>
+        <Button
+          loading={submitting}
+          disabled={!email.trim() || (createEmployee && (!empLastName.trim() || !empFirstName.trim()))}
+          onClick={submit}
+        >
           {needsDomainConfirm ? 'Всё равно пригласить' : 'Отправить приглашение'}
         </Button>
       </div>

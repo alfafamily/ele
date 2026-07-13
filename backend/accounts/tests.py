@@ -35,32 +35,68 @@ class RegistrationTests(APITestCase):
     def test_register_wrong_domain_rejected(self):
         resp = self.client.post(
             "/api/auth/register/",
-            {"email": "user@other.com", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
+            {
+                "email": "user@other.com",
+                "password": "Str0ng!Pass1",
+                "password_repeat": "Str0ng!Pass1",
+                "last_name": "Петров",
+                "first_name": "Пётр",
+            },
             format="json",
         )
         self.assertEqual(resp.status_code, 400)
         self.assertIn("errors", resp.data)
 
-    def test_register_correct_domain_sends_confirmation_and_admin_notice(self):
-        admin = User.objects.create_superuser(email="admin@alpha.family", password="Str0ng!Pass1")
+    def test_register_requires_name(self):
+        # Фамилия/Имя обязательны — без них не создать Сотрудника.
         resp = self.client.post(
             "/api/auth/register/",
             {"email": "user@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("last_name", resp.data["errors"])
+        self.assertIn("first_name", resp.data["errors"])
+
+    def test_register_creates_and_links_employee_no_admin_notice(self):
+        User.objects.create_superuser(email="admin@alpha.family", password="Str0ng!Pass1")
+        resp = self.client.post(
+            "/api/auth/register/",
+            {
+                "email": "user@alpha.family",
+                "password": "Str0ng!Pass1",
+                "password_repeat": "Str0ng!Pass1",
+                "last_name": "Петров",
+                "first_name": "Пётр",
+                "department": "ИТ",
+                "position": "Инженер",
+            },
             format="json",
         )
         self.assertEqual(resp.status_code, 201, resp.data)
         user = User.objects.get(email="user@alpha.family")
         self.assertEqual(user.role, User.Role.EMPLOYEE)
         self.assertFalse(user.is_email_confirmed)
-        self.assertIsNone(user.employee)
-        self.assertEqual(len(mail.outbox), 2)  # подтверждение + уведомление админу
-        self.assertIn(user.email, mail.outbox[0].to + mail.outbox[1].to)
-        self.assertIn(admin.email, mail.outbox[0].to + mail.outbox[1].to)
+        # Сотрудник создан и связан.
+        self.assertIsNotNone(user.employee)
+        self.assertEqual(user.employee.last_name, "Петров")
+        self.assertEqual(user.employee.first_name, "Пётр")
+        self.assertEqual(user.employee.department, "ИТ")
+        self.assertEqual(user.employee.position, "Инженер")
+        # Только письмо-подтверждение пользователю, уведомления админам больше нет.
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [user.email])
 
     def test_confirm_email_with_valid_token(self):
         self.client.post(
             "/api/auth/register/",
-            {"email": "user@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
+            {
+                "email": "user@alpha.family",
+                "password": "Str0ng!Pass1",
+                "password_repeat": "Str0ng!Pass1",
+                "last_name": "Петров",
+                "first_name": "Пётр",
+            },
             format="json",
         )
         from .tokens import make_email_confirmation_token
@@ -130,6 +166,61 @@ class InviteAcceptTests(APITestCase):
         self.client.force_authenticate(user=admin)
         resp = self.client.post(
             "/api/users/invite/", {"email": "taken@example.com", "role": "employee"}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_invite_create_employee_links_new_employee(self):
+        from employees.models import Employee
+
+        admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=admin)
+        resp = self.client.post(
+            "/api/users/invite/",
+            {
+                "email": "new@example.com",
+                "role": "employee",
+                "create_employee": True,
+                "last_name": "Сидоров",
+                "first_name": "Семён",
+                "department": "Бухгалтерия",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        user = User.objects.get(email="new@example.com")
+        self.assertIsNotNone(user.employee)
+        self.assertEqual(user.employee.last_name, "Сидоров")
+        self.assertEqual(user.employee.department, "Бухгалтерия")
+        self.assertEqual(Employee.objects.count(), 1)
+
+    def test_invite_create_employee_requires_name(self):
+        admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=admin)
+        resp = self.client.post(
+            "/api/users/invite/",
+            {"email": "new@example.com", "role": "employee", "create_employee": True},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("last_name", resp.data["errors"])
+
+    def test_invite_create_employee_conflicts_with_existing(self):
+        from employees.models import Employee
+
+        admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        existing = Employee.objects.create(first_name="Иван", last_name="Иванов")
+        self.client.force_authenticate(user=admin)
+        resp = self.client.post(
+            "/api/users/invite/",
+            {
+                "email": "new@example.com",
+                "role": "employee",
+                "create_employee": True,
+                "last_name": "Сидоров",
+                "first_name": "Семён",
+                "employee_id": existing.id,
+            },
+            format="json",
         )
         self.assertEqual(resp.status_code, 400)
 
@@ -369,4 +460,19 @@ class UserDeactivateTests(APITestCase):
         worker = User.objects.create_user(email="worker@example.com", password="Str0ng!Pass1")
         self.client.force_authenticate(user=worker)
         resp = self.client.post(f"/api/users/{self.admin.id}/deactivate/", format="json")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_activate_reenables_login(self):
+        worker = User.objects.create_user(
+            email="worker@example.com", password="Str0ng!Pass1", is_active=False
+        )
+        resp = self.client.post(f"/api/users/{worker.id}/activate/", format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        worker.refresh_from_db()
+        self.assertTrue(worker.is_active)
+
+    def test_activate_forbidden_for_non_admin(self):
+        worker = User.objects.create_user(email="worker@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=worker)
+        resp = self.client.post(f"/api/users/{self.admin.id}/activate/", format="json")
         self.assertEqual(resp.status_code, 403)

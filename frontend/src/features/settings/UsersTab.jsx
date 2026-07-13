@@ -6,6 +6,7 @@ import { Banner, Button, Skeleton, StatusPill, Table, TableRow } from '../../sha
 import { DeactivateUserModal } from './DeactivateUserModal.jsx'
 import { EditUserModal } from './EditUserModal.jsx'
 import { InviteModal } from './InviteModal.jsx'
+import { activateUser } from './settingsApi.js'
 
 const COLUMNS = [
   { key: 'email', label: 'Пользователь', width: '1fr' },
@@ -22,6 +23,18 @@ export function UsersTab() {
   const [showInvite, setShowInvite] = useState(false)
   const [deactivateTarget, setDeactivateTarget] = useState(null)
   const [editTarget, setEditTarget] = useState(null)
+  const [activatingId, setActivatingId] = useState(null)
+
+  const onActivate = async (e, user) => {
+    e.stopPropagation()
+    setActivatingId(user.id)
+    try {
+      await activateUser(user.id)
+      refetch()
+    } finally {
+      setActivatingId(null)
+    }
+  }
 
   return (
     <div>
@@ -115,7 +128,29 @@ export function UsersTab() {
                       <path d="M7.5 7a7 7 0 1 0 9 0" />
                     </svg>
                   </button>
-                ) : null}
+                ) : (
+                  <button
+                    type="button"
+                    disabled={activatingId === u.id}
+                    onClick={(e) => onActivate(e, u)}
+                    style={{
+                      border: 'none',
+                      background: 'none',
+                      color: 'var(--color-success)',
+                      cursor: activatingId === u.id ? 'default' : 'pointer',
+                      display: 'inline-flex',
+                      padding: 4,
+                    }}
+                    title="Активировать пользователя"
+                    aria-label="Активировать пользователя"
+                  >
+                    {/* Та же «power»-иконка, но в success-цвете — обратное действие: включить */}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 4v8" />
+                      <path d="M7.5 7a7 7 0 1 0 9 0" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </TableRow>
           ))}
