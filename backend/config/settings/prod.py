@@ -2,7 +2,13 @@ from .base import *  # noqa: F401,F403
 from .base import env
 
 DEBUG = False
-ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
+# Внутренний healthcheck контейнера (docker-compose.prod.yml) и LB-пробы ходят
+# на http://localhost:8000/ с Host: localhost — его нет в DJANGO_ALLOWED_HOSTS
+# (там только домен инстанса), поэтому без этих двух имён Django отвечал бы
+# 400 DisallowedHost и backend навсегда оставался бы unhealthy. Это loopback-
+# адреса внутри контейнера, не публичная поверхность, — на безопасность не
+# влияют (снаружи Host подставляет Caddy).
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS") + ["localhost", "127.0.0.1"]
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS")
 
 SECURE_SSL_REDIRECT = False  # TLS terminates at Caddy, not Django

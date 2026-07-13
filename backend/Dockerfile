@@ -13,4 +13,4 @@ COPY . .
 
 # Непривилегированный пользователь и прочее хардening контейнера — Фаза 9.
 ENTRYPOINT ["./entrypoint.sh"]
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn", "config.wsgi:application", "-c", "gunicorn.conf.py"]

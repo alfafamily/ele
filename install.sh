@@ -143,8 +143,29 @@ EOF
 fi
 
 # --- 4. Сборка и запуск ----------------------------------------------------
+# Docker Hub ограничивает анонимные пулы (~100 за 6 ч на IP; на IP хостера за
+# NAT лимит легко исчерпан не вами) и отвечает 429 Too Many Requests. Вход в
+# аккаунт поднимает лимит и привязывает его к учётке, а не к общему IP.
+yesno_login() { printf '%s [y/N]: ' "$1" >/dev/tty; IFS= read -r __a </dev/tty || true; case "${__a:-}" in [yYдД]*) return 0;; *) return 1;; esac; }
+if yesno_login "Войти в Docker Hub перед сборкой? (снимает ошибку 429 при скачивании образов)"; then
+  docker login </dev/tty || warn "Вход не выполнен — продолжаю анонимно."
+fi
+
 info "Сборка и запуск прод-стека (backend, frontend, PostgreSQL, Caddy)…"
-docker compose -f docker-compose.prod.yml up -d --build
+# Retry с нарастающей паузой: 429 от Docker Hub обычно транзиентный, поэтому
+# не роняем установку с первого раза, а ждём и повторяем.
+attempt=1; max_attempts=5
+until docker compose -f docker-compose.prod.yml up -d --build; do
+  if [ "$attempt" -ge "$max_attempts" ]; then
+    err "Не удалось собрать/запустить стек за ${max_attempts} попыток."
+    err "Частая причина — лимит Docker Hub (429). Выполните 'docker login' и повторите, либо подождите ~6 ч."
+    exit 1
+  fi
+  wait_s=$((attempt * 30))
+  warn "Сборка не удалась (возможно, лимит Docker Hub 429). Повтор через ${wait_s} с… (попытка ${attempt}/${max_attempts})"
+  sleep "$wait_s"
+  attempt=$((attempt + 1))
+done
 
 info "Готово. После получения TLS-сертификата приложение будет доступно по адресу:"
 info "  https://$(grep -E '^SITE_ADDRESS=' .env | cut -d= -f2-)"
