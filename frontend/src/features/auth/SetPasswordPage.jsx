@@ -25,7 +25,6 @@ export function SetPasswordPage({ mode }) {
   const navigate = useNavigate()
   const config = MODE_CONFIG[mode]
 
-  const [fullName, setFullName] = useState('')
   const [password, setPassword] = useState('')
   const [passwordRepeat, setPasswordRepeat] = useState('')
   const [errors, setErrors] = useState({})
@@ -60,9 +59,6 @@ export function SetPasswordPage({ mode }) {
     <AuthShell title={config.title}>
       {formError ? <Banner variant="error">{formError}</Banner> : null}
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {mode === 'invite' ? (
-          <Input label="ФИО" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
-        ) : null}
         <Input
           label="Новый пароль"
           required
