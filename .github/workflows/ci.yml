@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  frontend:
+    name: Frontend (lint + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Lint (oxlint)
+        run: npm run lint
+      - name: Build
+        run: npm run build
+
+  backend:
+    name: Backend (check + tests)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ele
+          POSTGRES_PASSWORD: ele
+          POSTGRES_DB: ele
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ele"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DATABASE_URL: postgres://ele:ele@localhost:5432/ele
+      DJANGO_SECRET_KEY: ci-not-a-secret
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements/dev.txt
+      - run: pip install -r requirements/dev.txt
+      - name: Django system checks
+        run: python manage.py check
+      - name: Missing migrations guard
+        run: python manage.py makemigrations --check --dry-run
+      - name: Tests
+        run: python manage.py test -v2

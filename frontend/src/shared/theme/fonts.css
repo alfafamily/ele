@@ -1,0 +1,7 @@
+/*
+  Golos Text (UI) + JetBrains Mono (учётные номера/ключи/даты) — см. README
+  §Design Tokens → Типографика. Подключены через Google Fonts как самый
+  низкопороговый вариант для Фазы 1; self-hosting — открытый вопрос из
+  плана (лицензии обоих шрифтов позволяют, но не критично для каркаса).
+*/
+@import url("https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");

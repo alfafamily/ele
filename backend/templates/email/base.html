@@ -1,0 +1,68 @@
+{% comment %}
+  ELE — базовый шаблон транзакционных писем (ТЗ §4.8).
+  Перенесён почти дословно из design/ELE_base_email.html — стили/токены
+  зафиксированы дизайном, не менять без обновления макета.
+  Переопределяемые блоки: subject, preheader, heading, body, cta, cta_text, footer_note.
+{% endcomment %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block subject %}ELE{% endblock %}</title>
+<style>
+  body, table, td { font-family: 'Golos Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; }
+  body { margin: 0; padding: 0; background-color: #E6E9F2; }
+  .preheader { display: none !important; visibility: hidden; opacity: 0; height: 0; width: 0; overflow: hidden; mso-hide: all; }
+  .wrapper { width: 100%; background-color: #E6E9F2; padding: 32px 16px; }
+  .card { max-width: 480px; margin: 0 auto; background-color: #FFFFFF; border-radius: 16px; padding: 36px 32px; }
+  .logo { text-align: center; margin-bottom: 24px; }
+  .logo img { height: 28px; }
+  .heading { font-size: 20px; font-weight: 600; color: #1C1C21; text-align: center; margin: 0 0 12px; }
+  .body-text { font-size: 14px; line-height: 1.6; color: #757784; text-align: center; margin: 0 0 26px; }
+  .body-text b { color: #1C1C21; }
+  .cta-wrap { text-align: center; margin-bottom: 8px; }
+  .cta-button {
+    display: inline-block; background-color: #1C1C21; color: #FFFFFF !important;
+    font-size: 14px; font-weight: 600; text-decoration: none;
+    padding: 13px 28px; border-radius: 10px;
+  }
+  .fallback-link { font-size: 12px; color: #9FA2B2; text-align: center; margin-top: 18px; word-break: break-all; }
+  .divider { border: none; border-top: 1px solid #E6E9F2; margin: 28px 0 20px; }
+  .footer-note { font-size: 12px; color: #9FA2B2; text-align: center; line-height: 1.6; }
+  .accent { color: #FF6A00; }
+</style>
+</head>
+<body>
+  <span class="preheader">{% block preheader %}{% endblock %}</span>
+  <div class="wrapper">
+    <div class="card">
+      <div class="logo">
+        <img src="{{ ele_logo_url }}" alt="ELE">
+      </div>
+
+      <div class="heading">{% block heading %}{% endblock %}</div>
+
+      <div class="body-text">
+        {% block body %}{% endblock %}
+      </div>
+
+      {% block cta %}
+      <div class="cta-wrap">
+        <a href="{{ cta_url }}" class="cta-button">{% block cta_text %}{% endblock %}</a>
+      </div>
+      <div class="fallback-link">
+        Если кнопка не работает, скопируйте ссылку в браузер:<br>
+        {{ cta_url }}
+      </div>
+      {% endblock %}
+
+      <hr class="divider">
+
+      <div class="footer-note">
+        {% block footer_note %}Это автоматическое письмо от системы учёта ELE ({{ company_name }}). Отвечать на него не нужно.{% endblock %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

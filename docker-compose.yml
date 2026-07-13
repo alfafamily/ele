@@ -1,0 +1,104 @@
+# Локальная разработка: hot reload backend (runserver) и frontend (Vite dev
+# server), код смонтирован bind-volume'ами. Прод — docker-compose.prod.yml.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ele}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ele}
+      POSTGRES_DB: ${POSTGRES_DB:-ele}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ele}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        REQUIREMENTS_FILE: requirements/dev.txt
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DATABASE_URL: postgres://${POSTGRES_USER:-ele}:${POSTGRES_PASSWORD:-ele}@postgres:5432/${POSTGRES_DB:-ele}
+      # Прод-плейсхолдеры EMAIL_* из общего .env (см. .env.example) намеренно
+      # игнорируются в dev — письма всегда идут через mailpit, независимо от
+      # того, что записано в .env для будущего прод-деплоя.
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: "1025"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: python manage.py runserver 0.0.0.0:8000
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # Фоновые задачи по расписанию (миграция файлов между хранилищами §8.3,
+  # автокопирование §5.5.3) — простой цикл с sleep, без Celery/очередей
+  # (CLAUDE.md: масштаб проекта их не требует). Тот же образ, что backend, но
+  # entrypoint.sh (миграции/bootstrap_admin) НЕ запускается здесь — иначе два
+  # процесса гоняют `migrate` одновременно и гоняются за одними таблицами
+  # (реальная гонка, ловилась на этом стенде). backend — единственный, кто
+  # мигрирует; cron просто ждёт его готовности.
+  cron:
+    build:
+      context: ./backend
+      args:
+        REQUIREMENTS_FILE: requirements/dev.txt
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DATABASE_URL: postgres://${POSTGRES_USER:-ele}:${POSTGRES_PASSWORD:-ele}@postgres:5432/${POSTGRES_DB:-ele}
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: "1025"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      backend:
+        condition: service_healthy
+    entrypoint: []
+    command: sh -c "while true; do python manage.py migrate_storage_files; python manage.py run_scheduled_backup; sleep 60; done"
+
+  frontend:
+    image: node:22-slim
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    command: sh -c "npm install && npm run dev -- --host"
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8000
+    expose:
+      - "5173"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    expose:
+      - "1025"
+    ports:
+      - "8025:8025" # веб-интерфейс писем — см. ТЗ §4.8
+
+  caddy:
+    image: caddy:2-alpine
+    volumes:
+      - ./infra/Caddyfile.dev:/etc/caddy/Caddyfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  postgres_data:
+  frontend_node_modules:

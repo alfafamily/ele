@@ -1,0 +1,47 @@
+.ele-error-shell {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background: var(--color-bg-workspace);
+}
+
+.ele-error-card {
+  text-align: center;
+  max-width: 380px;
+}
+
+.ele-error-card__code {
+  font-size: 84px;
+  font-weight: 600;
+  letter-spacing: -2px;
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.ele-error-card__bar {
+  width: 60px;
+  height: 4px;
+  border-radius: 2px;
+  margin: 18px auto 20px;
+}
+
+.ele-error-card__title {
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.ele-error-card__description {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.ele-error-card__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 24px;
+}

@@ -1,0 +1,94 @@
+/*
+  Design tokens — перенесены из docs/README_ELE_design.md (раздел Design
+  Tokens), значения зафиксированы дизайном 1:1, не подбирались на глаз.
+*/
+:root {
+  /* Цвета — текст */
+  --color-text-primary: #1C1C21;
+  --color-text-secondary: #363642;
+  --color-text-muted: #757784;
+  --color-text-placeholder: #9FA2B2;
+
+  /* Цвета — фон/поверхности */
+  --color-bg-app: #E6E9F2;
+  --color-bg-workspace: #F2F4FA;
+  --color-surface: #FFFFFF;
+  --color-fill-input: #F1F2F7;
+  --color-fill-active-tint: #EDEFF7;
+
+  /* Границы */
+  --color-border: #E6E9F2;
+  --color-border-strong: #D8DAE3;
+  --color-border-hairline: #F2F4FA;
+
+  /* Primary / бренд */
+  --color-primary: #1C1C21;
+  --color-primary-text: #FFFFFF;
+  --color-brand-accent: #FF6A00;
+
+  /* Статусы */
+  --color-error: #E53E3E;
+  --color-error-bg: #FFEFEB;
+  --color-error-border: #F3D2CE;
+  --color-success: #1E9E57;
+  --color-success-bg: #EAF7EF;
+  --color-info: #2F6BE6;
+  --color-info-bg: #E8F1FF;
+  --color-warning: #B7791F;
+  --color-warning-bg: #FFF7ED;
+  --color-warning-bg-alt: #FBF1DF;
+
+  /* Роль «Администратор» — бейдж */
+  --color-role-admin-text: #6B46C1;
+  --color-role-admin-bg: #F0EBFF;
+
+  /* Статус-пилюли (см. README §Design Tokens) */
+  --color-pill-assigned-text: var(--color-success);
+  --color-pill-assigned-bg: var(--color-success-bg);
+  --color-pill-free-text: var(--color-info);
+  --color-pill-free-bg: var(--color-info-bg);
+  --color-pill-archived-text: var(--color-text-muted);
+  --color-pill-archived-bg: var(--color-fill-active-tint);
+
+  /* Типографика */
+  --font-ui: "Golos Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --font-size-h1: 28px;
+  --font-h1-letter-spacing: -0.4px;
+  --font-size-section-title: 24px;
+  --font-size-block-title: 16px;
+  --font-size-block-title-mobile: 14px;
+  --font-size-body: 14px;
+  --font-size-field-value: 15px;
+  --font-size-field-label: 12px;
+  --font-size-micro: 12px;
+  --font-size-min-desktop: 11px;
+
+  /* Радиусы */
+  --radius-control: 10px;
+  --radius-card: 16px;
+  --radius-card-mobile: 14px;
+  --radius-frame: 20px;
+  --radius-frame-mobile: 34px;
+  --radius-chip: 8px;
+  --radius-pill: 20px;
+  --radius-avatar: 50%;
+
+  /* Тени */
+  --shadow-screen-card: 0 20px 50px -22px rgba(28, 28, 33, .32);
+  --shadow-block: 0 16px 40px -20px rgba(28, 28, 33, .26);
+  --shadow-modal: 0 24px 60px -12px rgba(0, 0, 0, .4);
+  --color-modal-overlay: rgba(28, 28, 33, .4);
+
+  /* Отступы */
+  --spacing-card-padding: 20px;
+  --spacing-card-padding-mobile: 16px;
+  --spacing-block-gap: 16px;
+  --control-height: 44px;
+  --control-height-mobile: 48px;
+
+  /* Навигация */
+  --rail-width-collapsed: 76px;
+  --rail-width-expanded: 236px;
+}

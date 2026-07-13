@@ -1,0 +1,8 @@
+{% extends "email/base.html" %}
+{% block subject %}Подтвердите почту — ELE{% endblock %}
+{% block preheader %}Осталось подтвердить email, чтобы начать работу в ELE{% endblock %}
+{% block heading %}Подтвердите почту{% endblock %}
+{% block body %}
+Вы зарегистрировались в системе учёта ELE компании {{ company_name }}. Чтобы активировать аккаунт, подтвердите email — ссылка действует 24 часа.
+{% endblock %}
+{% block cta_text %}Подтвердить почту{% endblock %}

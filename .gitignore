@@ -1,0 +1,34 @@
+# Python / Django
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+staticfiles/
+media/
+*.sqlite3
+.pytest_cache/
+.coverage
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.vite/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Backups (local dev artifacts, never committed)
+backups/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Claude Code
+.claude/

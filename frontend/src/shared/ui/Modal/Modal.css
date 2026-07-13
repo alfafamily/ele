@@ -1,0 +1,71 @@
+.ele-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--color-modal-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 1000;
+}
+
+.ele-modal {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-modal);
+  padding: 26px;
+}
+
+.ele-modal__grabber {
+  display: none;
+}
+
+.ele-modal__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-chip);
+  background: var(--color-fill-input);
+  border: none;
+  color: var(--color-text-muted);
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ele-modal__title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  padding-right: 30px;
+}
+
+/* Bottom-sheet ниже брейкпоинта ~768px (§8.5). */
+@media (max-width: 768px) {
+  .ele-modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .ele-modal {
+    max-width: 100%;
+    border-radius: var(--radius-frame-mobile) var(--radius-frame-mobile) 0 0;
+    padding: 10px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ele-modal__grabber {
+    display: block;
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-border-strong);
+    margin: 6px auto 14px;
+  }
+}

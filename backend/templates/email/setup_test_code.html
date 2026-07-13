@@ -1,0 +1,12 @@
+{% extends "email/base.html" %}
+{% block subject %}Код подтверждения почты — ELE{% endblock %}
+{% block preheader %}Введите этот код в мастере первичной настройки ELE{% endblock %}
+{% block heading %}Проверка почты{% endblock %}
+{% block body %}
+Чтобы убедиться, что письма ELE успешно доставляются, введите этот код в мастере первичной настройки. Код действует 10 минут.
+{% endblock %}
+{% block cta %}
+<div style="text-align:center;font-size:28px;font-weight:700;letter-spacing:6px;color:#1C1C21;margin-bottom:8px;">
+  {{ code }}
+</div>
+{% endblock %}

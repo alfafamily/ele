@@ -1,0 +1,31 @@
+:80
+
+encode gzip
+
+# Ограничение доступа по IP (ТЗ §3.1, §7.2) — см. подробный комментарий в
+# infra/Caddyfile (прод). Здесь то же самое, чтобы фичу можно было проверить
+# в dev через docker compose, не только в проде.
+forward_auth backend:8000 {
+	uri /api/internal/ip-check/
+}
+
+handle /api/* {
+	reverse_proxy backend:8000
+}
+
+# Резервные копии содержат хэши паролей и все бизнес-данные (§5.5.3) —
+# отдаются только через авторизованный /api/backup/<id>/download/,
+# не статикой. Блок должен идти раньше общего /media/*.
+handle /media/backups/* {
+	respond 403
+}
+
+# В dev Django сам раздаёт media при DEBUG=True (config/urls.py) — нужно
+# только доводить запрос до backend, а не отдавать SPA fallback.
+handle /media/* {
+	reverse_proxy backend:8000
+}
+
+handle {
+	reverse_proxy frontend:5173
+}

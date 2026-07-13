@@ -1,0 +1,16 @@
+/* Shimmer/spin — перенесены 1:1 из design/ELE_design_dc.html (<style> в
+   начале документа), используются Skeleton/Spinner из shared/ui. */
+@keyframes ele-shimmer {
+  0% {
+    background-position: -500px 0;
+  }
+  100% {
+    background-position: 500px 0;
+  }
+}
+
+@keyframes ele-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

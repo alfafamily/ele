@@ -1,0 +1,223 @@
+import { useCallback, useEffect, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Can, usePermissions } from '../../app/usePermissions.js'
+import { FieldValueDisplay } from '../../shared/eav'
+import { HistoryList } from '../../shared/HistoryList.jsx'
+import { ActionMenu, Button, Card, Spinner } from '../../shared/ui'
+import { AttachEquipmentModal } from './AttachEquipmentModal.jsx'
+import { detachLicenseFromEquipment, getLicense, getLicenseHistoryPath } from './licensesApi.js'
+import { MaskedKeyField } from './MaskedKeyField.jsx'
+import { LICENSE_STATUS_LABEL } from './statusLabels.js'
+import { UtilizeModal } from './UtilizeModal.jsx'
+
+export function LicenseCardPage() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const perms = usePermissions()
+  const [license, setLicense] = useState(null)
+  const [loadError, setLoadError] = useState(false)
+  const [showUtilize, setShowUtilize] = useState(false)
+  const [showAttach, setShowAttach] = useState(false)
+
+  const load = useCallback(() => {
+    setLoadError(false)
+    getLicense(id)
+      .then(setLicense)
+      .catch(() => setLoadError(true))
+  }, [id])
+
+  useEffect(load, [load])
+
+  if (loadError) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 60, textAlign: 'center' }}>
+        <div style={{ fontSize: 16, fontWeight: 600 }}>Не удалось открыть лицензию</div>
+        <div style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>Объект не найден или недоступен.</div>
+        <Link to="/licenses">
+          <Button variant="secondary">К списку лицензий</Button>
+        </Link>
+      </div>
+    )
+  }
+
+  if (!license) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
+        <Spinner />
+      </div>
+    )
+  }
+
+  const onDetach = async () => {
+    await detachLicenseFromEquipment(license.id)
+    load()
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 10 }}>
+        <Link to="/licenses" style={{ color: 'var(--color-text-muted)' }}>
+          Лицензии
+        </Link>{' '}
+        / {license.name}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
+        <h1 className="ele-card-title">{license.name}</h1>
+        {!license.is_retired && perms.canManageLicenses ? (
+          <>
+            <div className="ele-card-actions-desktop">
+              <Button variant="danger" onClick={() => setShowUtilize(true)}>
+                Утилизировать
+              </Button>
+              <Link to={`/licenses/${license.id}/edit`}>
+                <Button>Редактировать</Button>
+              </Link>
+            </div>
+            <div className="ele-card-actions-mobile">
+              <ActionMenu
+                items={[
+                  { label: 'Редактировать', onClick: () => navigate(`/licenses/${license.id}/edit`) },
+                  { label: 'Утилизировать', danger: true, onClick: () => setShowUtilize(true) },
+                ]}
+              />
+            </div>
+          </>
+        ) : null}
+      </div>
+
+      <div className={'ele-obj-layout' + (license.is_retired ? ' ele-obj-layout--no-side' : '')}>
+        <div className="ele-obj-layout__main">
+          <Card>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
+          <div className="ele-field-grid">
+            <Field label="Тип лицензии" value={license.license_type_name} />
+            <Field label="Статус" value={license.is_retired ? 'Утилизирована' : LICENSE_STATUS_LABEL[license.status]} />
+          </div>
+        </Card>
+
+        <Card>
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Параметры лицензии</div>
+          {license.field_values.length === 0 ? (
+            <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>У этого Типа нет реквизитов.</div>
+          ) : (
+            <div className="ele-field-grid">
+              {license.field_values.map((fv) =>
+                fv.name === 'Номер/ключ' ? <MaskedKeyField key={fv.field} fv={fv} /> : <FieldValueDisplay key={fv.field} fv={fv} />
+              )}
+            </div>
+          )}
+        </Card>
+
+        <Card>
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Дополнительные поля</div>
+          {license.custom_fields.length === 0 ? (
+            <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>Дополнительных полей нет.</div>
+          ) : (
+            <div className="ele-field-grid">
+              {license.custom_fields.map((cf) => (
+                <Field key={cf.id} label={cf.name} value={cf.value} />
+              ))}
+            </div>
+          )}
+        </Card>
+        </div>
+
+        {/* Боковой блок «Лицензия установлена на» — справа и липкий (desktop),
+            перед Историей (mobile); у утилизированной всегда пуст — скрыт. */}
+        {!license.is_retired ? (
+        <Card className="ele-obj-layout__side ele-card-sticky">
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Лицензия установлена на</div>
+          {license.equipment_detail ? (
+            <>
+              <Link
+                to={`/equipment/${license.equipment_detail.id}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  justifyContent: 'space-between',
+                  padding: '12px 14px',
+                  background: 'var(--color-fill-input)',
+                  borderRadius: 10,
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="ele-clamp-2" style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>{license.equipment_detail.type_and_model}</div>
+                  <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', overflowWrap: 'anywhere' }}>{license.equipment_detail.inventory_number}</div>
+                </div>
+                <svg style={{ flex: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C7C9D4" strokeWidth="2">
+                  <path d="M9 6l6 6-6 6" />
+                </svg>
+              </Link>
+              {!license.is_retired ? (
+                <Can perm="canManageLicenses">
+                  <Button variant="secondary" fullWidth style={{ marginTop: 10 }} onClick={onDetach}>
+                    Отвязать
+                  </Button>
+                </Can>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <div
+                style={{
+                  border: '1.5px dashed var(--color-border-strong)',
+                  borderRadius: 10,
+                  padding: 14,
+                  textAlign: 'center',
+                  fontSize: 13,
+                  color: 'var(--color-text-placeholder)',
+                }}
+              >
+                Не привязана к оборудованию
+              </div>
+              {!license.is_retired ? (
+                <Can perm="canManageLicenses">
+                  <Button fullWidth style={{ marginTop: 12 }} onClick={() => setShowAttach(true)}>
+                    Привязать к оборудованию
+                  </Button>
+                </Can>
+              ) : null}
+            </>
+          )}
+        </Card>
+        ) : null}
+
+        <Card className="ele-obj-layout__history">
+          <HistoryList path={getLicenseHistoryPath(license.id)} />
+        </Card>
+      </div>
+
+      {showUtilize ? (
+        <UtilizeModal
+          license={license}
+          onClose={() => setShowUtilize(false)}
+          onDone={() => {
+            setShowUtilize(false)
+            load()
+          }}
+        />
+      ) : null}
+      {showAttach ? (
+        <AttachEquipmentModal
+          license={license}
+          onClose={() => setShowAttach(false)}
+          onAttached={() => {
+            setShowAttach(false)
+            load()
+          }}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function Field({ label, value, muted }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+      <div style={{ fontSize: 14, fontWeight: 500, color: muted ? 'var(--color-text-muted)' : 'inherit', overflowWrap: 'break-word' }}>{value || '—'}</div>
+    </div>
+  )
+}

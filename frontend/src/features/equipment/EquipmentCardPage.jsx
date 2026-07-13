@@ -1,0 +1,267 @@
+import { useCallback, useEffect, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { apiPatch } from '../../shared/api/client'
+import { Can, usePermissions } from '../../app/usePermissions.js'
+import { FieldValueDisplay } from '../../shared/eav'
+import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
+import { HistoryList } from '../../shared/HistoryList.jsx'
+import { ActionMenu, Button, Card, Spinner } from '../../shared/ui'
+import { AttachLicenseModal } from './AttachLicenseModal.jsx'
+import { assignEmployee, getEquipment, getEquipmentHistoryPath, unassignEmployee } from './equipmentApi.js'
+import { EQUIPMENT_STATUS_LABEL } from './statusLabels.js'
+import { WriteOffModal } from './WriteOffModal.jsx'
+
+export function EquipmentCardPage() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const perms = usePermissions()
+  const [equipment, setEquipment] = useState(null)
+  const [loadError, setLoadError] = useState(false)
+  const [showWriteOff, setShowWriteOff] = useState(false)
+  const [showAssignPicker, setShowAssignPicker] = useState(false)
+  const [showAttachLicense, setShowAttachLicense] = useState(false)
+
+  const load = useCallback(() => {
+    setLoadError(false)
+    getEquipment(id)
+      .then(setEquipment)
+      .catch(() => setLoadError(true))
+  }, [id])
+
+  useEffect(load, [load])
+
+  if (loadError) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 60, textAlign: 'center' }}>
+        <div style={{ fontSize: 16, fontWeight: 600 }}>Не удалось открыть оборудование</div>
+        <div style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>Объект не найден или недоступен.</div>
+        <Link to="/">
+          <Button variant="secondary">К списку оборудования</Button>
+        </Link>
+      </div>
+    )
+  }
+
+  if (!equipment) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
+        <Spinner />
+      </div>
+    )
+  }
+
+  const onAssign = async (employee) => {
+    await assignEmployee(equipment.id, employee.id)
+    setShowAssignPicker(false)
+    load()
+  }
+  const onUnassign = async () => {
+    await unassignEmployee(equipment.id)
+    load()
+  }
+  const onDetachLicense = async (licenseId) => {
+    await apiPatch(`/api/licenses/${licenseId}/`, { equipment: null })
+    load()
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 10 }}>
+        <Link to="/" style={{ color: 'var(--color-text-muted)' }}>
+          Оборудование
+        </Link>{' '}
+        / {equipment.type_and_model}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
+        <h1 className="ele-card-title">{equipment.type_and_model}</h1>
+        {!equipment.is_written_off && perms.canManageEquipment ? (
+          <>
+            <div className="ele-card-actions-desktop">
+              <Button variant="danger" onClick={() => setShowWriteOff(true)}>
+                Списать
+              </Button>
+              <Link to={`/equipment/${equipment.id}/edit`}>
+                <Button>Редактировать</Button>
+              </Link>
+            </div>
+            <div className="ele-card-actions-mobile">
+              <ActionMenu
+                items={[
+                  { label: 'Редактировать', onClick: () => navigate(`/equipment/${equipment.id}/edit`) },
+                  { label: 'Списать', danger: true, onClick: () => setShowWriteOff(true) },
+                ]}
+              />
+            </div>
+          </>
+        ) : null}
+      </div>
+
+      <div className={'ele-obj-layout' + (equipment.is_written_off ? ' ele-obj-layout--no-side' : '')}>
+        <div className="ele-obj-layout__main">
+          <Card>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
+            <div className="ele-field-grid">
+              <Field label="Учётный номер" value={equipment.inventory_number} mono />
+              <Field label="Тип оборудования" value={equipment.equipment_type_name} />
+              <Field label="Статус" value={equipment.is_written_off ? 'Списано' : EQUIPMENT_STATUS_LABEL[equipment.status]} />
+            </div>
+          </Card>
+
+          <Card>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Параметры оборудования</div>
+            {equipment.field_values.length === 0 ? (
+              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>У этого Типа нет реквизитов.</div>
+            ) : (
+              <div className="ele-field-grid">
+                {equipment.field_values.map((fv) => (
+                  <FieldValueDisplay key={fv.field} fv={fv} />
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Дополнительные поля</div>
+            {equipment.custom_fields.length === 0 ? (
+              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>Дополнительных полей нет.</div>
+            ) : (
+              <div className="ele-field-grid">
+                {equipment.custom_fields.map((cf) => (
+                  <Field key={cf.id} label={cf.name} value={cf.value} />
+                ))}
+              </div>
+            )}
+          </Card>
+
+        </div>
+
+        {/* Боковой блок: «Закреплено за» + «Установленные лицензии». У списанного
+            оборудования всегда пуст — не показываем (одна колонка). */}
+        {!equipment.is_written_off ? (
+        <Card className="ele-obj-layout__side ele-card-sticky">
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Закреплено за</div>
+          {equipment.employee ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
+                  {equipment.employee_avatar ? (
+                    <img src={equipment.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    equipment.employee_name?.slice(0, 2).toUpperCase()
+                  )}
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <Link className="ele-clamp-2" to={`/employees/${equipment.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                    {equipment.employee_name}
+                  </Link>
+                  <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>{equipment.department || '—'}</div>
+                </div>
+              </div>
+              {!equipment.is_written_off ? (
+                <Can perm="canManageEquipment">
+                  <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={onUnassign}>
+                    Открепить
+                  </Button>
+                </Can>
+              ) : null}
+            </>
+          ) : showAssignPicker && !equipment.is_written_off ? (
+            <EmployeePicker autoFocus onSelect={onAssign} />
+          ) : (
+            <>
+              <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не закреплено</div>
+              {!equipment.is_written_off ? (
+                <Can perm="canManageEquipment">
+                  <Button fullWidth style={{ marginTop: 14 }} onClick={() => setShowAssignPicker(true)}>
+                    + Закрепить сотрудника
+                  </Button>
+                </Can>
+              ) : null}
+            </>
+          )}
+
+          <div style={{ borderTop: '1px solid var(--color-border-hairline)', margin: '20px 0 16px' }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>Установленные лицензии</div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
+              {equipment.licenses?.length ?? 0}
+            </span>
+          </div>
+          {(equipment.licenses || []).map((lic) => (
+            <div key={lic.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+              {perms.canManageLicenses ? (
+                <Link to={`/licenses/${lic.id}`} style={{ flex: 1, minWidth: 0 }}>
+                  <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{lic.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{lic.license_type_name}</div>
+                </Link>
+              ) : (
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600 }}>{lic.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{lic.license_type_name}</div>
+                </div>
+              )}
+              {!equipment.is_written_off ? (
+                <Can perm="canManageLicenses">
+                  <button
+                    type="button"
+                    title="Отвязать"
+                    onClick={() => onDetachLicense(lic.id)}
+                    style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                  >
+                    ✕
+                  </button>
+                </Can>
+              ) : null}
+            </div>
+          ))}
+          {!equipment.is_written_off ? (
+            <Can perm="canManageLicenses">
+              <Button variant="secondary" fullWidth onClick={() => setShowAttachLicense(true)}>
+                + Привязать лицензию
+              </Button>
+            </Can>
+          ) : null}
+        </Card>
+        ) : null}
+
+        <Card className="ele-obj-layout__history">
+          <HistoryList path={getEquipmentHistoryPath(equipment.id)} />
+        </Card>
+      </div>
+
+      {showWriteOff ? (
+        <WriteOffModal
+          equipment={equipment}
+          onClose={() => setShowWriteOff(false)}
+          onDone={() => {
+            setShowWriteOff(false)
+            load()
+          }}
+        />
+      ) : null}
+      {showAttachLicense ? (
+        <AttachLicenseModal
+          equipment={equipment}
+          onClose={() => setShowAttachLicense(false)}
+          onAttached={() => {
+            setShowAttachLicense(false)
+            load()
+          }}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function Field({ label, value, mono, muted }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+      <div style={{ fontSize: 14, fontWeight: 500, fontFamily: mono ? 'var(--font-mono)' : 'inherit', color: muted ? 'var(--color-text-muted)' : 'inherit', overflowWrap: 'break-word' }}>
+        {value || '—'}
+      </div>
+    </div>
+  )
+}

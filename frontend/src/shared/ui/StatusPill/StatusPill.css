@@ -1,0 +1,30 @@
+.ele-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.ele-pill--assigned {
+  background: var(--color-pill-assigned-bg);
+  color: var(--color-pill-assigned-text);
+}
+.ele-pill--free {
+  background: var(--color-pill-free-bg);
+  color: var(--color-pill-free-text);
+}
+.ele-pill--archived {
+  background: var(--color-pill-archived-bg);
+  color: var(--color-pill-archived-text);
+}
+.ele-pill--role-admin {
+  background: var(--color-role-admin-bg);
+  color: var(--color-role-admin-text);
+}
+.ele-pill--danger {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}

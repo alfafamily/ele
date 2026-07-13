@@ -1,0 +1,8 @@
+{% extends "email/base.html" %}
+{% block subject %}Подтвердите новый email — ELE{% endblock %}
+{% block preheader %}Подтвердите смену email для входа в ELE{% endblock %}
+{% block heading %}Подтвердите новый email{% endblock %}
+{% block body %}
+Для аккаунта {{ old_email }} в системе ELE компании {{ company_name }} запрошена смена email на {{ new_email }}. Подтвердите новый адрес — ссылка действует 24 часа. До подтверждения вход по-прежнему выполняется через {{ old_email }}.
+{% endblock %}
+{% block cta_text %}Подтвердить email{% endblock %}

@@ -1,0 +1,99 @@
+# Прод: `docker compose -f docker-compose.prod.yml up -d --build`.
+# Образы собираются из исходников (без bind-mount), TLS — автоматически
+# через Caddy/Let's Encrypt по домену в SITE_ADDRESS (ТЗ §8.2).
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        REQUIREMENTS_FILE: requirements/prod.txt
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DJANGO_COLLECTSTATIC: "1"
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    volumes:
+      - static_data:/app/staticfiles
+      - media_data:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # Фоновые задачи по расписанию (миграция файлов между хранилищами §8.3,
+  # автокопирование §5.5.3) — простой цикл с sleep, без Celery/очередей
+  # (CLAUDE.md). media_data общий с backend — LocalStorageBackend читает/
+  # пишет те же файлы по тем же путям. entrypoint.sh (миграции/
+  # bootstrap_admin) здесь не запускается — backend единственный, кто
+  # мигрирует, иначе гонка при одновременном старте (см. docker-compose.yml).
+  cron:
+    build:
+      context: ./backend
+      args:
+        REQUIREMENTS_FILE: requirements/prod.txt
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    volumes:
+      - media_data:/app/media
+    depends_on:
+      backend:
+        condition: service_healthy
+    entrypoint: []
+    command: sh -c "while true; do python manage.py migrate_storage_files; python manage.py run_scheduled_backup; sleep 60; done"
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    expose:
+      - "80"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile
+      - static_data:/srv/static:ro
+      - media_data:/srv/media:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  postgres_data:
+  static_data:
+  media_data:
+  caddy_data:
+  caddy_config:

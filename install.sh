@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# ELE — установка/развёртывание инстанса «одной строкой»:
+#
+#   curl -fsSL https://raw.githubusercontent.com/alfafamily/ele/main/install.sh | bash
+#
+# Скрипт: проверит Docker → склонирует/обновит репозиторий → если нет .env,
+# интерактивно спросит параметры и создаст .env сам (секреты не проходят через
+# приложение — только в .env, ТЗ §8.6) → соберёт и поднимет прод-стек.
+set -euo pipefail
+
+REPO_URL="${ELE_REPO_URL:-https://github.com/alfafamily/ele.git}"
+TARGET_DIR="${ELE_DIR:-/opt/ele}"
+
+info() { printf '\033[1;34m[ELE]\033[0m %s\n' "$*"; }
+warn() { printf '\033[1;33m[ELE]\033[0m %s\n' "$*"; }
+err()  { printf '\033[1;31m[ELE]\033[0m %s\n' "$*" >&2; }
+
+# --- 1. Проверки окружения -------------------------------------------------
+command -v git >/dev/null 2>&1 || { err "Нужен git."; exit 1; }
+command -v docker >/dev/null 2>&1 || { err "Docker не установлен. Установите Docker Engine: https://docs.docker.com/engine/install/"; exit 1; }
+docker compose version >/dev/null 2>&1 || { err "Нужен Docker Compose v2 (команда 'docker compose')."; exit 1; }
+
+# Интерактивный ввод работает и при запуске через 'curl | bash' — читаем с /dev/tty.
+if [ ! -e /dev/tty ]; then err "Нет доступа к терминалу (/dev/tty) для ввода параметров. Запустите скрипт из интерактивной оболочки."; exit 1; fi
+
+# --- 2. Клонирование / обновление -----------------------------------------
+if [ -d "$TARGET_DIR/.git" ]; then
+  info "Репозиторий уже есть в $TARGET_DIR — обновляю."
+  git -C "$TARGET_DIR" pull --ff-only
+else
+  info "Клонирую $REPO_URL → $TARGET_DIR"
+  mkdir -p "$TARGET_DIR"
+  git clone --depth 1 "$REPO_URL" "$TARGET_DIR"
+fi
+cd "$TARGET_DIR"
+
+# --- 3. .env ---------------------------------------------------------------
+if [ -f .env ]; then
+  info ".env уже существует — использую его без изменений."
+else
+  info "Файл .env не найден. Заполним параметры (Enter — принять значение по умолчанию/пропустить)."
+
+  rand() { openssl rand -base64 "$1" 2>/dev/null | tr -dc 'A-Za-z0-9' | cut -c1-"$2"; }
+  ask() { # ask VAR "Вопрос" "по умолчанию"
+    local __var="$1" __prompt="$2" __def="${3:-}" __val
+    if [ -n "$__def" ]; then printf '%s [%s]: ' "$__prompt" "$__def" >/dev/tty
+    else printf '%s: ' "$__prompt" >/dev/tty; fi
+    IFS= read -r __val </dev/tty || true
+    printf -v "$__var" '%s' "${__val:-$__def}"
+  }
+  ask_secret() { # ask_secret VAR "Вопрос"
+    local __var="$1" __prompt="$2" __val
+    printf '%s: ' "$__prompt" >/dev/tty
+    IFS= read -rs __val </dev/tty || true
+    printf '\n' >/dev/tty
+    printf -v "$__var" '%s' "$__val"
+  }
+  yesno() { # yesno "Вопрос" -> 0=да
+    local __ans; printf '%s [y/N]: ' "$1" >/dev/tty; IFS= read -r __ans </dev/tty || true
+    case "${__ans:-}" in [yYдД]*) return 0;; *) return 1;; esac
+  }
+
+  DJANGO_SECRET_KEY="$(rand 64 50)"
+
+  info "— Основное —"
+  ask SITE_ADDRESS "Домен инстанса (A-запись должна указывать на этот сервер)" "ele.example.com"
+  ask ELE_ADMIN_EMAIL "Email первого администратора" "admin@${SITE_ADDRESS}"
+  while :; do
+    ask_secret ELE_ADMIN_PASSWORD "Пароль первого администратора (мин. 8 симв., буквы разных регистров, цифра, спецсимвол)"
+    [ -n "$ELE_ADMIN_PASSWORD" ] && break || warn "Пароль обязателен."
+  done
+  ask DEFAULT_FROM_EMAIL "Адрес отправителя писем" "ELE <no-reply@${SITE_ADDRESS}>"
+  POSTGRES_PASSWORD="$(rand 32 24)"
+
+  info "— Почта (SMTP) — Enter, чтобы пропустить (письма отправляться не будут) —"
+  ask EMAIL_HOST "SMTP-хост" ""
+  EMAIL_PORT=""; EMAIL_HOST_USER=""; EMAIL_HOST_PASSWORD=""; EMAIL_USE_TLS="true"
+  if [ -n "$EMAIL_HOST" ]; then
+    ask EMAIL_PORT "SMTP-порт" "587"
+    ask EMAIL_HOST_USER "SMTP-логин" ""
+    ask_secret EMAIL_HOST_PASSWORD "SMTP-пароль"
+    ask EMAIL_USE_TLS "Использовать TLS (true/false)" "true"
+  fi
+
+  info "— Хранилище файлов —"
+  ask ELE_STORAGE_MODE "Режим хранилища (local/s3)" "local"
+  S3_ENDPOINT=""; S3_BUCKET=""; S3_REGION=""; S3_ACCESS_KEY=""; S3_SECRET_KEY=""
+  if [ "$ELE_STORAGE_MODE" = "s3" ]; then
+    ask S3_ENDPOINT "S3 endpoint" ""
+    ask S3_BUCKET "S3 bucket" ""
+    ask S3_REGION "S3 region" ""
+    ask S3_ACCESS_KEY "S3 access key" ""
+    ask_secret S3_SECRET_KEY "S3 secret key"
+  fi
+
+  YANDEX_SMARTCAPTCHA_SITE_KEY=""; YANDEX_SMARTCAPTCHA_SECRET_KEY=""
+  YANDEX_ID_CLIENT_ID=""; YANDEX_ID_CLIENT_SECRET=""
+  if yesno "Настроить Яндекс SmartCaptcha и/или Яндекс ID сейчас?"; then
+    ask YANDEX_SMARTCAPTCHA_SITE_KEY "Яндекс SmartCaptcha Site key" ""
+    ask_secret YANDEX_SMARTCAPTCHA_SECRET_KEY "Яндекс SmartCaptcha Secret key"
+    ask YANDEX_ID_CLIENT_ID "Яндекс ID Client ID" ""
+    ask_secret YANDEX_ID_CLIENT_SECRET "Яндекс ID Client Secret"
+  fi
+
+  umask 077
+  cat > .env <<EOF
+# Сгенерировано install.sh. Секреты хранятся только здесь (ТЗ §8.6).
+DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+DJANGO_ALLOWED_HOSTS=${SITE_ADDRESS}
+CSRF_TRUSTED_ORIGINS=https://${SITE_ADDRESS}
+SITE_URL=https://${SITE_ADDRESS}
+DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+
+POSTGRES_USER=ele
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+POSTGRES_DB=ele
+
+SITE_ADDRESS=${SITE_ADDRESS}
+
+EMAIL_HOST=${EMAIL_HOST}
+EMAIL_PORT=${EMAIL_PORT}
+EMAIL_HOST_USER=${EMAIL_HOST_USER}
+EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+EMAIL_USE_TLS=${EMAIL_USE_TLS}
+
+ELE_ADMIN_EMAIL=${ELE_ADMIN_EMAIL}
+ELE_ADMIN_PASSWORD=${ELE_ADMIN_PASSWORD}
+
+ELE_STORAGE_MODE=${ELE_STORAGE_MODE}
+S3_ENDPOINT=${S3_ENDPOINT}
+S3_BUCKET=${S3_BUCKET}
+S3_REGION=${S3_REGION}
+S3_ACCESS_KEY=${S3_ACCESS_KEY}
+S3_SECRET_KEY=${S3_SECRET_KEY}
+
+YANDEX_SMARTCAPTCHA_SITE_KEY=${YANDEX_SMARTCAPTCHA_SITE_KEY}
+YANDEX_SMARTCAPTCHA_SECRET_KEY=${YANDEX_SMARTCAPTCHA_SECRET_KEY}
+YANDEX_ID_CLIENT_ID=${YANDEX_ID_CLIENT_ID}
+YANDEX_ID_CLIENT_SECRET=${YANDEX_ID_CLIENT_SECRET}
+EOF
+  chmod 600 .env
+  info ".env создан в ${TARGET_DIR}/.env (права 600). Изменить значения позже: отредактируйте файл и выполните 'docker compose -f docker-compose.prod.yml up -d'."
+fi
+
+# --- 4. Сборка и запуск ----------------------------------------------------
+info "Сборка и запуск прод-стека (backend, frontend, PostgreSQL, Caddy)…"
+docker compose -f docker-compose.prod.yml up -d --build
+
+info "Готово. После получения TLS-сертификата приложение будет доступно по адресу:"
+info "  https://$(grep -E '^SITE_ADDRESS=' .env | cut -d= -f2-)"
+info "Первый вход — учётной записью администратора из .env (или через Setup Wizard, ТЗ §4.1)."

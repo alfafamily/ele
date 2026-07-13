@@ -1,0 +1,163 @@
+/* Двухколоночная раскладка карточки объекта (Оборудование/Лицензия/
+   Сотрудник) — 1fr + 330px, схлопывается в одну колонку ниже ~900px
+   (совпадает с шириной, где боковая колонка перестаёт помещаться разумно;
+   основной брейкпоинт rail/bottom-nav — 768px, отдельно в AppLayout.css). */
+.ele-card-grid {
+  display: grid;
+  /* minmax(0,1fr): колонка не расширяется под длинный неразрывный текст —
+     иначе он растягивал грид шире экрана и блоки «уезжали» за правый край. */
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .ele-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Раскладка карточки объекта (Оборудование/Лицензия): основные блоки слева,
+   боковой блок (Закреплено за/Установленные лицензии / Лицензия установлена на)
+   — справа и липкий; История изменений — во всю ширину снизу. На мобильных всё
+   в один столбец, причём боковой блок идёт ПЕРЕД Историей. */
+.ele-obj-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  grid-template-areas:
+    'main side'
+    'history side';
+  gap: 16px 20px;
+  align-items: start;
+}
+
+.ele-obj-layout__main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.ele-obj-layout__side {
+  grid-area: side;
+  min-width: 0;
+}
+
+.ele-obj-layout__history {
+  grid-area: history;
+}
+
+/* Архивный объект — бокового блока нет (он всегда пустой): одна колонка. */
+.ele-obj-layout--no-side {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'main'
+    'history';
+}
+
+@media (max-width: 900px) {
+  .ele-obj-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'main'
+      'side'
+      'history';
+  }
+}
+
+/* Липкий боковой блок карточки (следует за скроллом на desktop). На мобильных
+   (одна колонка) — обычный поток. */
+.ele-card-sticky {
+  position: sticky;
+  top: 24px;
+}
+
+@media (max-width: 900px) {
+  .ele-card-sticky {
+    position: static;
+  }
+}
+
+/* Обрезка текста до 2 строк с многоточием (ФИО/наименования в блоках). */
+.ele-clamp-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* Заголовок карточки объекта (Тип+Наименование): максимум 2 строки, остальное
+   — многоточием; занимает доступную ширину, кнопки действий остаются в той же
+   строке справа. */
+.ele-card-title {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+/* Кнопки действий в шапке карточки: на desktop — обычные кнопки, на мобильных
+   — одно меню «…» вместо них. */
+.ele-card-actions-desktop {
+  display: flex;
+  gap: 9px;
+  flex: none;
+}
+
+.ele-card-actions-mobile {
+  display: none;
+  flex: none;
+}
+
+@media (max-width: 768px) {
+  .ele-card-actions-desktop {
+    display: none;
+  }
+
+  .ele-card-actions-mobile {
+    display: flex;
+  }
+}
+
+/* Сетка полей/реквизитов внутри карточки: две колонки на desktop, одна колонка
+   на мобильных (§8.5). minmax(0,1fr) даёт колонкам сжиматься уже содержимого,
+   чтобы длинные названия обрезались многоточием, а значения переносились, а не
+   вылезали за край блока. */
+.ele-field-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px 28px;
+}
+
+@media (max-width: 768px) {
+  .ele-field-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Раскладка «боковой список/меню + контент» (Настройки, редактор Типов) —
+   на мобильных боковая часть переезжает наверх, во всю ширину. */
+.ele-sidebar-layout {
+  display: grid;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .ele-sidebar-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .ele-sidebar-layout > :first-child {
+    width: 100% !important;
+  }
+}

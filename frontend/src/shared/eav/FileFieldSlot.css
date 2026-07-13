@@ -1,0 +1,46 @@
+.ele-file-slot__label {
+  font-size: 12px;
+  color: var(--color-text-placeholder);
+  margin-bottom: 6px;
+}
+
+.ele-file-slot__dropzone {
+  border: 1.5px dashed var(--color-border-strong);
+  border-radius: 12px;
+  background: var(--color-surface);
+  padding: 18px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+}
+
+.ele-file-slot__dropzone input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ele-file-slot__hint {
+  font-size: 12px;
+  color: var(--color-text-placeholder);
+  margin-top: 4px;
+}
+
+.ele-file-slot__current {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-fill-input);
+  border-radius: 10px;
+  padding: 9px 13px;
+}
+
+.ele-file-slot__disabled {
+  border: 1.5px dashed var(--color-border);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-placeholder);
+}

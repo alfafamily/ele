@@ -1,0 +1,12 @@
+.ele-skel {
+  background: var(--color-fill-active-tint);
+  background-image: linear-gradient(
+    90deg,
+    var(--color-fill-active-tint) 0px,
+    var(--color-bg-workspace) 200px,
+    var(--color-fill-active-tint) 400px
+  );
+  background-size: 900px 100%;
+  animation: ele-shimmer 1.4s linear infinite;
+  border-radius: 8px;
+}

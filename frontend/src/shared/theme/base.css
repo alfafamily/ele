@@ -1,0 +1,51 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-app);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* Ссылки без подчёркивания (как в дизайне): иначе кнопки внутри <Link>,
+   становясь flex-элементами на мобильных, наследовали подчёркивание ссылки. */
+a {
+  text-decoration: none;
+}
+
+/* На мобильных Safari/Chrome зумят страницу при фокусе в поле, если у него
+   размер шрифта < 16px — что даёт горизонтальный скролл. Приводим все поля
+   ввода к 16px ниже брейкпоинта (перебивая инлайновые размеры). */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

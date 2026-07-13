@@ -1,0 +1,22 @@
+name: Release
+
+# Релиз выпускается пушем git-тега вида v1.2.3:
+#   git tag v1.0.0 && git push origin v1.0.0
+# Workflow создаёт GitHub Release с авто-сгенерированными заметками.
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true

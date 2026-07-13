@@ -1,0 +1,129 @@
+.ele-auth-shell {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background: var(--color-bg-workspace);
+}
+
+.ele-auth-card {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* На экранах аутентификации карточка лежит на светлом фоне (--color-bg-workspace),
+   почти совпадающем с серой заливкой полей форм, — поля сливались бы с фоном.
+   Делаем заливку белой (макет A1). Ошибочное состояние сохраняет свой фон. */
+.ele-auth-card .ele-field__box:not(.ele-field__box--error) {
+  background: var(--color-surface);
+}
+
+.ele-auth-card__logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.ele-auth-card__logo img {
+  height: 32px;
+  width: auto;
+}
+
+.ele-auth-card__title {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.ele-auth-card__subtitle {
+  font-size: 13.5px;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-top: -8px;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.ele-auth-card__footer {
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin-top: 12px;
+}
+
+.ele-auth-card__footer a {
+  font-weight: 600;
+}
+
+.ele-auth-card__link-row {
+  text-align: right;
+  margin-top: -6px;
+}
+
+.ele-auth-card__link-row a {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.ele-auth-card__divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-text-placeholder);
+  font-size: 13px;
+  margin: 4px 0;
+}
+
+.ele-auth-card__divider::before,
+.ele-auth-card__divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border-strong);
+}
+
+.ele-auth-card__yandex {
+  height: var(--control-height);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.ele-auth-card__yandex img {
+  height: 22px;
+  width: auto;
+}
+
+.ele-auth-icon-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 18px;
+}
+
+.ele-auth-centered-text {
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}

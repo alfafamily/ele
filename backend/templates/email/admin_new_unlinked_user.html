@@ -1,0 +1,8 @@
+{% extends "email/base.html" %}
+{% block subject %}Новый пользователь без привязки к сотруднику — ELE{% endblock %}
+{% block preheader %}{{ new_user_email }} зарегистрировался и ждёт привязки к сотруднику{% endblock %}
+{% block heading %}Новый пользователь{% endblock %}
+{% block body %}
+В системе ELE компании {{ company_name }} зарегистрировался новый пользователь {{ new_user_email }} ({{ registered_at }}). Ему присвоена роль «Сотрудник» без прав на просмотр объектов — доступ появится после привязки к карточке Сотрудника.
+{% endblock %}
+{% block cta_text %}Открыть раздел «Пользователи»{% endblock %}

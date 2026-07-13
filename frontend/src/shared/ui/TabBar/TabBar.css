@@ -1,0 +1,56 @@
+.ele-tabbar {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--color-fill-active-tint);
+  padding: 3px;
+  border-radius: 10px;
+  /* Подложка по ширине содержимого, а не на всю строку: в колоночных
+     контейнерах списков flex-stretch иначе растягивал бы её на всю ширину
+     (замечание по десктопу). fit-content (не auto) отменяет stretch, не влияя
+     на вертикальное выравнивание в строке фильтров. */
+  width: fit-content;
+}
+
+/* size="control" — фильтры-кнопки в одной строке с полем Поиска: подложка той
+   же высоты, что и поле ввода (--control-height), плашки отцентрованы. */
+.ele-tabbar--control {
+  min-height: var(--control-height);
+  align-items: center;
+}
+
+.ele-tabbar__item {
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.ele-tabbar__item--active {
+  background: var(--color-surface);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  box-shadow: 0 1px 3px rgba(28, 28, 33, 0.1);
+}
+
+/* На мобильных подложка занимает всю ширину строки, а плашки делят её
+   поровну (замечание по мобильной версии: «Активные/Архив» — по половине,
+   фильтры «Все/…» заполняют всю ширину). */
+@media (max-width: 768px) {
+  .ele-tabbar {
+    display: flex;
+    width: 100%;
+    align-self: stretch;
+  }
+
+  .ele-tabbar__item {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+  }
+}

@@ -1,0 +1,12 @@
+.ele-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: var(--spacing-card-padding);
+}
+
+@media (max-width: 768px) {
+  .ele-card {
+    border-radius: var(--radius-card-mobile);
+    padding: var(--spacing-card-padding-mobile);
+  }
+}

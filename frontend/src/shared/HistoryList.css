@@ -1,0 +1,115 @@
+.ele-history__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+}
+
+.ele-history__toggle-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ele-history__chevron {
+  flex: none;
+  color: var(--color-text-muted);
+  transition: transform 0.15s ease;
+}
+
+.ele-history__chevron--open {
+  transform: rotate(90deg);
+}
+
+.ele-history {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+}
+
+.ele-history__row {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--color-border-hairline);
+  align-items: start;
+}
+
+.ele-history__row:first-child {
+  border-top: none;
+}
+
+.ele-history__date {
+  font: 500 12px var(--font-mono);
+  color: var(--color-text-placeholder);
+  white-space: nowrap;
+}
+
+.ele-history__author {
+  font-size: 12px;
+  color: var(--color-text-placeholder);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ele-history__what {
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+
+.ele-history__value {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.ele-history__value-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.ele-history__eye {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--color-fill-input);
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+}
+
+.ele-history__old {
+  color: var(--color-text-placeholder);
+}
+
+.ele-history__new {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+/* На мобильных строка истории раскладывается вертикально (дата/что/значение). */
+@media (max-width: 768px) {
+  .ele-history__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .ele-history__author {
+    white-space: normal;
+  }
+}

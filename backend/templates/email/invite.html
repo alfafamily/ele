@@ -1,0 +1,8 @@
+{% extends "email/base.html" %}
+{% block subject %}Вас пригласили в ELE — {{ company_name }}{% endblock %}
+{% block preheader %}Установите пароль, чтобы получить доступ к системе учёта{% endblock %}
+{% block heading %}Приглашение в ELE{% endblock %}
+{% block body %}
+Вас пригласили в систему учёта ELE компании {{ company_name }} с ролью «{{ role_name }}». Чтобы начать работу, установите пароль — ссылка действует 24 часа.
+{% endblock %}
+{% block cta_text %}Установить пароль{% endblock %}
