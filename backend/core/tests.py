@@ -61,6 +61,35 @@ class IPCheckViewTests(APITestCase):
         )
         self.assertEqual(resp.status_code, 403)
 
+    def test_blocked_browser_gets_styled_html(self):
+        # Браузер (Accept: text/html) при блокировке должен получить
+        # стилизованную HTML-страницу, а не сырой DRF browsable-API.
+        company = Company.load()
+        company.ip_allowlist = ["203.0.113.0/24"]
+        company.save()
+        resp = self.client.get(
+            "/api/internal/ip-check/",
+            HTTP_X_FORWARDED_FOR="198.51.100.7",
+            HTTP_ACCEPT="text/html",
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertIn("text/html", resp["Content-Type"])
+        self.assertIn("Доступ ограничен", resp.content.decode())
+
+    def test_blocked_api_client_gets_json(self):
+        # API-клиент (Accept: application/json) при блокировке — прежний JSON.
+        company = Company.load()
+        company.ip_allowlist = ["203.0.113.0/24"]
+        company.save()
+        resp = self.client.get(
+            "/api/internal/ip-check/",
+            HTTP_X_FORWARDED_FOR="198.51.100.7",
+            HTTP_ACCEPT="application/json",
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertIn("application/json", resp["Content-Type"])
+        self.assertIn("IP-адреса", resp.json()["detail"])
+
 
 class ResetIPAllowlistCommandTests(APITestCase):
     def test_clears_allowlist(self):

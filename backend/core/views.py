@@ -1,4 +1,5 @@
 from django.db import connection
+from django.shortcuts import render
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -29,6 +30,11 @@ def ip_check(request):
     company = Company.load()
     if is_ip_allowed(get_client_ip(request), company.ip_allowlist):
         return Response({"detail": "ok"})
+    # Отказ. Caddy forward_auth отдаёт тело этого 403 клиенту как есть (§3.1),
+    # поэтому браузеру возвращаем стилизованную под дизайн-систему страницу
+    # (иначе виден сырой DRF browsable-API), а API-клиенту — прежний JSON.
+    if "text/html" in request.headers.get("Accept", ""):
+        return render(request, "errors/403_ip.html", status=403)
     return Response(
         {"detail": "Доступ с этого IP-адреса ограничен администратором компании."}, status=403
     )

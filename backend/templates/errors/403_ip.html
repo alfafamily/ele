@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Доступ ограничен — ELE</title>
+  {# Автономная страница: при IP-блокировке Caddy режет весь сайт на уровне #}
+  {# forward_auth (§3.1) и SPA-бандл со стилями не загружается, поэтому токены #}
+  {# дизайн-системы и стиль кнопки инлайнятся здесь 1:1 с shared/theme/tokens.css #}
+  {# и shared/ui/Button (визуально идентично ServerErrorPage/ErrorPage.css). #}
+  <style>
+    :root {
+      --color-text-primary: #1C1C21;
+      --color-text-muted: #757784;
+      --color-bg-workspace: #F2F4FA;
+      --color-error: #E53E3E;
+      --color-primary: #1C1C21;
+      --color-primary-text: #FFFFFF;
+      --font-ui: "Golos Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      --radius-control: 10px;
+      --control-height: 44px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: var(--font-ui);
+      color: var(--color-text-primary);
+      background: var(--color-bg-workspace);
+      -webkit-font-smoothing: antialiased;
+    }
+    .ele-error-shell {
+      min-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .ele-error-card { text-align: center; max-width: 380px; }
+    .ele-error-card__code {
+      font-size: 84px;
+      font-weight: 600;
+      letter-spacing: -2px;
+      color: var(--color-text-primary);
+      line-height: 1;
+    }
+    .ele-error-card__bar {
+      width: 60px;
+      height: 4px;
+      border-radius: 2px;
+      margin: 18px auto 20px;
+      background: var(--color-error);
+    }
+    .ele-error-card__title { font-size: 19px; font-weight: 600; }
+    .ele-error-card__description {
+      font-size: 14px;
+      color: var(--color-text-muted);
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    .ele-error-card__actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 24px;
+    }
+    .ele-btn {
+      height: var(--control-height);
+      padding: 0 20px;
+      border-radius: var(--radius-control);
+      border: none;
+      font-weight: 600;
+      font-size: 14px;
+      font-family: inherit;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.15s ease;
+    }
+    .ele-btn:hover { opacity: 0.9; }
+    .ele-btn--primary { background: var(--color-primary); color: var(--color-primary-text); }
+  </style>
+</head>
+<body>
+  <div class="ele-error-shell">
+    <div class="ele-error-card">
+      <div class="ele-error-card__code">403</div>
+      <div class="ele-error-card__bar"></div>
+      <div class="ele-error-card__title">Доступ ограничен</div>
+      <div class="ele-error-card__description">
+        Вход в систему с вашего IP-адреса ограничен администратором компании.
+        Обратитесь к администратору или попробуйте позже.
+      </div>
+      <div class="ele-error-card__actions">
+        <button class="ele-btn ele-btn--primary" onclick="window.location.reload()">Обновить</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
