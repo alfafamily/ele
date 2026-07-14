@@ -66,10 +66,10 @@ export function BackupTab() {
 
       {error ? <Banner variant="error">{error}</Banner> : null}
 
-      {/* Создать копию и Автокопирование — в ряд на десктопе, стопкой на мобиле
-          (первым — «Создать резервную копию»). */}
-      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, alignItems: 'stretch' }}>
-        <Card style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+      {/* Создать копию и Автокопирование — друг под другом (первым — «Создать
+          резервную копию»). */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 600 }}>Создать резервную копию сейчас</div>
             <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Разовый экспорт в файл, скачивается сразу.</div>
@@ -80,7 +80,7 @@ export function BackupTab() {
         </Card>
 
         {settings ? (
-          <Card style={{ flex: 1, minWidth: 0 }}>
+          <Card>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 15, fontWeight: 600 }}>Автоматическое копирование</div>
@@ -96,7 +96,7 @@ export function BackupTab() {
               />
             </div>
             {settings.auto_backup_enabled ? (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginTop: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 16 }}>
                 <Input
                   label="Время автокопирования"
                   type="time"
