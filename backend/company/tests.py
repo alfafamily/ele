@@ -374,6 +374,7 @@ class UpdateInfoTests(APITestCase):
         self.assertTrue(resp.data["update_available"])
         self.assertTrue(resp.data["check_ok"])
         self.assertEqual(resp.data["release_url"], "https://gh/r")
+        self.assertEqual(resp.data["install_dir"], "/opt/ele")  # дефолт без ELE_DIR
 
     @patch("company.views.get_current_version", return_value="1.0.30")
     @patch("company.views.get_latest_release", return_value={"version": "1.0.30", "url": "https://gh/r", "notes": ""})

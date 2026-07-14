@@ -32,3 +32,6 @@ backups/
 
 # Claude Code
 .claude/
+
+# Артефакт bind-mount VERSION в контейнер (docker создаёт пустышку)
+/backend/VERSION

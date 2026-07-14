@@ -272,6 +272,8 @@ class UpdateInfoView(APIView):
                 "release_notes": latest_release["notes"] if latest_release else None,
                 # false — не удалось достучаться до GitHub (нет сети / локальный режим)
                 "check_ok": latest_release is not None,
+                # каталог установки на хосте — для точной команды обновления
+                "install_dir": settings.ELE_INSTALL_DIR,
             }
         )
 

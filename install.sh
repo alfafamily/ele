@@ -179,6 +179,9 @@ else
   cat > .env <<EOF
 # Сгенерировано install.sh. Секреты хранятся только здесь.
 DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+
+# Каталог установки на хосте — для подсказки команды обновления в интерфейсе.
+ELE_DIR=${TARGET_DIR}
 DJANGO_ALLOWED_HOSTS=${ALLOWED_HOSTS_VAL}
 CSRF_TRUSTED_ORIGINS=${CSRF_VAL}
 SITE_URL=${SITE_URL_VAL}

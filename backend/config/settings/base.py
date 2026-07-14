@@ -151,6 +151,11 @@ PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
 ELE_ADMIN_EMAIL = env("ELE_ADMIN_EMAIL", default="")
 ELE_ADMIN_PASSWORD = env("ELE_ADMIN_PASSWORD", default="")
 
+# Каталог установки на хосте — install.sh пишет его в .env. Нужен только чтобы
+# показать точный путь в команде обновления (Настройки → Обновление). Для
+# инстансов, поставленных до появления этой записи, — дефолт /opt/ele.
+ELE_INSTALL_DIR = env("ELE_DIR", default="/opt/ele")
+
 # --- Яндекс SmartCaptcha — пусто = капча выключена без ошибок ---
 YANDEX_SMARTCAPTCHA_SITE_KEY = env("YANDEX_SMARTCAPTCHA_SITE_KEY", default="")
 YANDEX_SMARTCAPTCHA_SECRET_KEY = env("YANDEX_SMARTCAPTCHA_SECRET_KEY", default="")
