@@ -519,3 +519,40 @@ class UserDeactivateTests(APITestCase):
         self.client.force_authenticate(user=worker)
         resp = self.client.post(f"/api/users/{self.admin.id}/activate/", format="json")
         self.assertEqual(resp.status_code, 403)
+
+
+@override_settings(YANDEX_ID_CLIENT_ID="cid", YANDEX_ID_CLIENT_SECRET="secret")
+class YandexIDCallbackTests(APITestCase):
+    """§4.3 — при первом входе через Яндекс ID создаётся и связанный Сотрудник
+    из имени/фамилии Яндекса (или логина до @, если их нет)."""
+
+    def _callback(self, info):
+        session = self.client.session
+        session["yandex_oauth_state"] = "st"
+        session.save()
+        with mock.patch("accounts.views.exchange_code_for_token", return_value="tok"), mock.patch(
+            "accounts.views.fetch_user_info", return_value=info
+        ):
+            return self.client.get("/api/auth/yandex-id/callback/?state=st&code=code")
+
+    def test_first_login_creates_user_and_employee_from_name(self):
+        resp = self._callback({"email": "ivan@example.com", "first_name": "Иван", "last_name": "Петров"})
+        self.assertEqual(resp.status_code, 302)
+        user = User.objects.get(email="ivan@example.com")
+        self.assertIsNotNone(user.employee)
+        self.assertEqual(user.employee.first_name, "Иван")
+        self.assertEqual(user.employee.last_name, "Петров")
+
+    def test_first_login_without_name_falls_back_to_login_part(self):
+        self._callback({"email": "ivan@example.com", "first_name": "", "last_name": ""})
+        user = User.objects.get(email="ivan@example.com")
+        self.assertEqual(user.employee.first_name, "ivan")
+        self.assertEqual(user.employee.last_name, "ivan")
+
+    def test_second_login_does_not_duplicate_employee(self):
+        from employees.models import Employee
+
+        emp = Employee.objects.create(first_name="Иван", last_name="Петров")
+        User.objects.create_user(email="ivan@example.com", employee=emp, is_email_confirmed=True)
+        self._callback({"email": "ivan@example.com", "first_name": "X", "last_name": "Y"})
+        self.assertEqual(Employee.objects.count(), 1)

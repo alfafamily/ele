@@ -48,7 +48,10 @@ def exchange_code_for_token(code: str) -> str | None:
     return response.json().get("access_token")
 
 
-def fetch_user_email(access_token: str) -> str | None:
+def fetch_user_info(access_token: str) -> dict | None:
+    """Профиль пользователя Яндекса: email (обязателен) + имя/фамилия для
+    создания связанного Сотрудника при первом входе (§3.3). Возвращает None,
+    если email получить не удалось."""
     response = requests.get(
         _USERINFO_URL,
         params={"format": "json"},
@@ -58,4 +61,11 @@ def fetch_user_email(access_token: str) -> str | None:
     if not response.ok:
         return None
     data = response.json()
-    return data.get("default_email") or next(iter(data.get("emails", [])), None)
+    email = data.get("default_email") or next(iter(data.get("emails", [])), None)
+    if not email:
+        return None
+    return {
+        "email": email,
+        "first_name": (data.get("first_name") or "").strip(),
+        "last_name": (data.get("last_name") or "").strip(),
+    }

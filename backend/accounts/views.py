@@ -3,6 +3,7 @@ from smtplib import SMTPException
 
 from django.conf import settings
 from django.contrib.auth import get_user_model, login, logout, update_session_auth_hash
+from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.middleware.csrf import get_token
 from django.utils import timezone
@@ -35,7 +36,7 @@ from .tokens import read_email_confirmation_token
 from .yandex_oauth import (
     build_authorize_url,
     exchange_code_for_token,
-    fetch_user_email,
+    fetch_user_info,
     is_yandex_id_enabled,
     make_state,
 )
@@ -418,11 +419,13 @@ class YandexIDCallbackView(APIView):
         if not access_token:
             return fail("token")
 
-        email = fetch_user_email(access_token)
-        if not email:
+        info = fetch_user_info(access_token)
+        if not info:
             return fail("email")
+        email = info["email"]
 
         from company.models import Company
+        from employees.models import Employee
 
         company = Company.load()
         if company.domain and email.rsplit("@", 1)[-1].lower() != company.domain.lower():
@@ -431,9 +434,19 @@ class YandexIDCallbackView(APIView):
 
         user = User.objects.filter(email__iexact=email).first()
         if user is None:
-            user = User(email=email, role=User.Role.EMPLOYEE, is_email_confirmed=True)
-            user.set_unusable_password()
-            user.save()
+            # Первый вход — заводим учётку и связанного Сотрудника (§3.3) из
+            # имени/фамилии Яндекса; если их нет — в оба поля логин (до @).
+            login_part = email.split("@", 1)[0]
+            with transaction.atomic():
+                employee = Employee.objects.create(
+                    first_name=info["first_name"] or login_part,
+                    last_name=info["last_name"] or login_part,
+                )
+                user = User(
+                    email=email, role=User.Role.EMPLOYEE, is_email_confirmed=True, employee=employee
+                )
+                user.set_unusable_password()
+                user.save()
         elif not user.is_active:
             return fail("inactive")
         elif not user.is_email_confirmed:
