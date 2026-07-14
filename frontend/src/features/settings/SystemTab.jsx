@@ -17,11 +17,29 @@ import {
 
 const sectionTitle = { fontSize: 15, fontWeight: 600, marginBottom: 4 }
 const sectionHint = { fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 14 }
-const notConfigured = (
-  <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Настройки для сервиса не заданы в .env.</div>
-)
+const checkRow = { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }
 
 const normalizeIps = (list) => (list || []).map((e) => ({ ip: e.ip || '', note: e.note || '' }))
+
+// Индикатор результата проверки рядом с кнопкой: зелёный кружок с галочкой при
+// успехе; красный кружок с крестиком и текстом ошибки при неудаче.
+function StatusDot({ ok }) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" style={{ flex: 'none' }} aria-hidden>
+      <circle cx="12" cy="12" r="10" fill={ok ? 'var(--color-success)' : 'var(--color-error)'} />
+      <path d={ok ? 'M7 12.5l3 3 7-7' : 'M8.5 8.5l7 7M15.5 8.5l-7 7'} fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+function CheckResult({ result }) {
+  if (!result) return null
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+      <StatusDot ok={result.ok} />
+      {!result.ok && result.msg ? <span style={{ color: 'var(--color-error)', fontSize: 13 }}>{result.msg}</span> : null}
+    </span>
+  )
+}
 
 export function SystemTab() {
   const isMobile = useMediaQuery('(max-width: 768px)')
@@ -79,6 +97,12 @@ export function SystemTab() {
   }
 
   const onStorageMode = async (mode) => {
+    // S3 без параметров в .env — переключение не выполняется, радио остаётся на
+    // локальном (storageMode не меняем), показываем ошибку.
+    if (mode === 's3' && !status.s3_configured) {
+      setStorageResult({ ok: false, msg: 'Параметры S3 не заданы в .env, использование S3 невозможно.' })
+      return
+    }
     setSavingStorage(true)
     setStorageResult(null)
     try {
@@ -198,8 +222,6 @@ export function SystemTab() {
     }
   }
 
-  const resultBanner = (r) => (r ? <Banner variant={r.ok ? 'success' : 'error'}>{r.msg}</Banner> : null)
-
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
@@ -213,7 +235,7 @@ export function SystemTab() {
         {/* Хранилище файлов */}
         <Card>
           <div style={sectionTitle}>Хранилище файлов</div>
-          <div style={sectionHint}>Где хранятся загруженные файлы. Параметры S3 задаются в .env сервера.</div>
+          <div style={sectionHint}>Выберите где будут хранятся загруженные файлы.</div>
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 10 : 24 }}>
             {[
               { value: 'local', label: 'Локальное хранилище' },
@@ -225,22 +247,17 @@ export function SystemTab() {
               </label>
             ))}
           </div>
-          <div style={{ marginTop: 14 }}>
-            {storageMode === 's3' && !status.s3_configured ? (
-              notConfigured
-            ) : (
-              <Button type="button" variant="secondary" loading={storageTesting} onClick={runStorageTest}>
-                Выполнить проверку
-              </Button>
-            )}
+          <div style={{ ...checkRow, marginTop: 14 }}>
+            <Button type="button" variant="secondary" loading={storageTesting} onClick={runStorageTest}>
+              Выполнить проверку
+            </Button>
+            <CheckResult result={storageResult} />
           </div>
-          {storageResult ? <div style={{ marginTop: 12 }}>{resultBanner(storageResult)}</div> : null}
         </Card>
 
         {/* Домен и ограничения входа */}
         <Card>
-          <div style={sectionTitle}>Домен и ограничения входа</div>
-          <div style={sectionHint}>Каждое поле редактируется отдельно и сохраняется сразу.</div>
+          <div style={{ ...sectionTitle, marginBottom: 14 }}>Домен и ограничения входа</div>
 
           <InlineField label="Домен аккаунтов в системе" value={domain} onSave={saveDomain} onClear={() => saveDomain('')} />
 
@@ -290,22 +307,14 @@ export function SystemTab() {
         <Card>
           <div style={sectionTitle}>Проверка почты (SMTP)</div>
           <div style={sectionHint}>
-            {smtpStatus === 'sent' || smtpStatus === 'checking'
-              ? `Код отправлен на ${smtpEmail} — введите его, чтобы подтвердить доставку.`
-              : 'Отправим письмо с кодом на вашу почту и попросим ввести код — так проверяется реальная доставка.'}
+            {status.email_configured
+              ? 'Отправим письмо с кодом на вашу почту и попросим ввести код'
+              : 'Параметры SMTP не заданы в .env, отправка писем невозможна'}
           </div>
-          {!status.email_configured ? (
-            notConfigured
-          ) : smtpStatus === 'ok' ? (
-            <Banner variant="success">SMTP работает — письмо доставлено.</Banner>
-          ) : (
-            <>
-              {smtpError ? (
-                <div style={{ marginBottom: 12 }}>
-                  <Banner variant="error">{smtpError}</Banner>
-                </div>
-              ) : null}
-              {smtpStatus === 'sent' || smtpStatus === 'checking' ? (
+          {status.email_configured ? (
+            smtpStatus === 'sent' || smtpStatus === 'checking' ? (
+              <>
+                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 10 }}>Код отправлен на {smtpEmail}</div>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
                   <div style={{ width: 160 }}>
                     <Input label="Код из письма" value={smtpCode} onChange={(e) => setSmtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" />
@@ -317,52 +326,66 @@ export function SystemTab() {
                     Отправить ещё раз
                   </Button>
                 </div>
-              ) : (
-                <Button type="button" variant="secondary" loading={smtpStatus === 'sending'} onClick={sendSmtp}>
-                  Выполнить проверку
-                </Button>
-              )}
-            </>
-          )}
+                {smtpError ? <div style={{ marginTop: 10 }}><CheckResult result={{ ok: false, msg: smtpError }} /></div> : null}
+              </>
+            ) : (
+              <div style={checkRow}>
+                {smtpStatus === 'ok' ? (
+                  <CheckResult result={{ ok: true }} />
+                ) : (
+                  <>
+                    <Button type="button" variant="secondary" loading={smtpStatus === 'sending'} onClick={sendSmtp}>
+                      Выполнить проверку
+                    </Button>
+                    {smtpError ? <CheckResult result={{ ok: false, msg: smtpError }} /> : null}
+                  </>
+                )}
+              </div>
+            )
+          ) : null}
         </Card>
 
         {/* Проверка Яндекс ID */}
         <Card>
           <div style={sectionTitle}>Проверка входа через Яндекс ID</div>
-          <div style={sectionHint}>Доступность Яндекс ID по реквизитам, заданным в .env.</div>
-          {!status.yandex_id_configured ? (
-            notConfigured
-          ) : (
-            <>
+          <div style={sectionHint}>
+            {status.yandex_id_configured
+              ? 'Проверяется связь с приложением ЯндексOAuth.'
+              : 'Параметры ЯндексOAuth не заданы в .env, использование ЯндексID невозможно'}
+          </div>
+          {status.yandex_id_configured ? (
+            <div style={checkRow}>
               <Button type="button" variant="secondary" loading={yandexChecking} onClick={runYandexCheck}>
                 Выполнить проверку
               </Button>
-              {yandexResult ? <div style={{ marginTop: 12 }}>{resultBanner(yandexResult)}</div> : null}
-            </>
-          )}
+              <CheckResult result={yandexResult} />
+            </div>
+          ) : null}
         </Card>
 
         {/* Проверка Яндекс Captcha */}
         <Card>
           <div style={sectionTitle}>Проверка Яндекс SmartCaptcha</div>
-          <div style={sectionHint}>Решите капчу — сервер проверит её вашим серверным ключом из .env.</div>
-          {!status.captcha_configured ? (
-            notConfigured
-          ) : (
-            <>
-              {captchaOpen ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <SmartCaptcha siteKey={status.captcha_site_key} onToken={onCaptchaToken} />
-                  {captchaChecking ? <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Проверяем…</div> : null}
-                </div>
-              ) : (
+          <div style={sectionHint}>
+            {status.captcha_configured
+              ? 'Решите капчу — сервер проверит корректность её работы и подключения.'
+              : 'Параметры Яндекс SmartCaptcha не заданы в .env, использование Яндекс SmartCaptcha невозможно'}
+          </div>
+          {status.captcha_configured ? (
+            captchaOpen ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <SmartCaptcha siteKey={status.captcha_site_key} onToken={onCaptchaToken} />
+                {captchaChecking ? <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Проверяем…</div> : null}
+              </div>
+            ) : (
+              <div style={checkRow}>
                 <Button type="button" variant="secondary" onClick={() => { setCaptchaResult(null); setCaptchaOpen(true) }}>
                   Выполнить проверку
                 </Button>
-              )}
-              {captchaResult ? <div style={{ marginTop: 12 }}>{resultBanner(captchaResult)}</div> : null}
-            </>
-          )}
+                <CheckResult result={captchaResult} />
+              </div>
+            )
+          ) : null}
         </Card>
       </div>
     </div>
