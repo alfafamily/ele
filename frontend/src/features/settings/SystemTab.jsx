@@ -395,48 +395,53 @@ export function SystemTab() {
           ) : null}
         </Card>
 
-        {/* Проверка Яндекс ID */}
-        <Card>
-          <div style={sectionTitle}>Проверка входа через Яндекс ID</div>
-          <div style={sectionHint}>
-            {status.yandex_id_configured
-              ? 'Проверяется связь с приложением ЯндексOAuth.'
-              : 'Параметры ЯндексOAuth не заданы в .env, использование ЯндексID невозможно'}
-          </div>
-          {status.yandex_id_configured ? (
-            <div style={checkRow}>
-              <Button type="button" variant="secondary" loading={yandexChecking} onClick={runYandexCheck}>
-                Выполнить проверку
-              </Button>
-              <CheckResult result={yandexResult} />
+        {/* Проверки Яндекс ID и SmartCaptcha — в ряд на десктопе (align-items:
+            stretch по умолчанию → обе карточки равной высоты по большей),
+            друг под другом на мобиле. */}
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16 }}>
+          {/* Проверка Яндекс ID */}
+          <Card style={{ flex: 1, minWidth: 0 }}>
+            <div style={sectionTitle}>Проверка входа через Яндекс ID</div>
+            <div style={sectionHint}>
+              {status.yandex_id_configured
+                ? 'Проверяется связь с приложением ЯндексOAuth.'
+                : 'Параметры ЯндексOAuth не заданы в .env, использование ЯндексID невозможно'}
             </div>
-          ) : null}
-        </Card>
-
-        {/* Проверка Яндекс Captcha */}
-        <Card>
-          <div style={sectionTitle}>Проверка Яндекс SmartCaptcha</div>
-          <div style={sectionHint}>
-            {status.captcha_configured
-              ? 'Решите капчу — сервер проверит корректность её работы и подключения.'
-              : 'Параметры Яндекс SmartCaptcha не заданы в .env, использование Яндекс SmartCaptcha невозможно'}
-          </div>
-          {status.captcha_configured ? (
-            captchaOpen ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <SmartCaptcha siteKey={status.captcha_site_key} onToken={onCaptchaToken} />
-                {captchaChecking ? <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Проверяем…</div> : null}
-              </div>
-            ) : (
+            {status.yandex_id_configured ? (
               <div style={checkRow}>
-                <Button type="button" variant="secondary" onClick={() => { setCaptchaResult(null); setCaptchaOpen(true) }}>
+                <Button type="button" variant="secondary" loading={yandexChecking} onClick={runYandexCheck}>
                   Выполнить проверку
                 </Button>
-                <CheckResult result={captchaResult} />
+                <CheckResult result={yandexResult} />
               </div>
-            )
-          ) : null}
-        </Card>
+            ) : null}
+          </Card>
+
+          {/* Проверка Яндекс Captcha */}
+          <Card style={{ flex: 1, minWidth: 0 }}>
+            <div style={sectionTitle}>Проверка Яндекс SmartCaptcha</div>
+            <div style={sectionHint}>
+              {status.captcha_configured
+                ? 'Решите капчу — сервер проверит корректность её работы и подключения.'
+                : 'Параметры Яндекс SmartCaptcha не заданы в .env, использование Яндекс SmartCaptcha невозможно'}
+            </div>
+            {status.captcha_configured ? (
+              captchaOpen ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <SmartCaptcha siteKey={status.captcha_site_key} onToken={onCaptchaToken} />
+                  {captchaChecking ? <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Проверяем…</div> : null}
+                </div>
+              ) : (
+                <div style={checkRow}>
+                  <Button type="button" variant="secondary" onClick={() => { setCaptchaResult(null); setCaptchaOpen(true) }}>
+                    Выполнить проверку
+                  </Button>
+                  <CheckResult result={captchaResult} />
+                </div>
+              )
+            ) : null}
+          </Card>
+        </div>
       </div>
     </div>
   )
