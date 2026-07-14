@@ -180,12 +180,22 @@ export function EmployeeCardPage() {
                 <SimCardInfo sim={sim} />
                 {employee.is_employed && !sim.is_deactivated ? (
                   <Can perm="canManageEmployees">
-                    <Button variant="secondary" onClick={() => setSimModal(sim)}>
-                      Изменить
-                    </Button>
-                    <Button variant="secondary" onClick={() => onDeactivateSim(sim.id)}>
-                      Деактивировать
-                    </Button>
+                    <div className="ele-card-actions-desktop">
+                      <Button variant="secondary" onClick={() => setSimModal(sim)}>
+                        Изменить
+                      </Button>
+                      <Button variant="secondary" onClick={() => onDeactivateSim(sim.id)}>
+                        Деактивировать
+                      </Button>
+                    </div>
+                    <div className="ele-card-actions-mobile">
+                      <ActionMenu
+                        items={[
+                          { label: 'Изменить', onClick: () => setSimModal(sim) },
+                          { label: 'Деактивировать', onClick: () => onDeactivateSim(sim.id) },
+                        ]}
+                      />
+                    </div>
                   </Can>
                 ) : null}
               </div>
