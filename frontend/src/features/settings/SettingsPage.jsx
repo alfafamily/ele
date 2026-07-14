@@ -26,7 +26,7 @@ export function SettingsPage() {
       {/* Горизонтальный скролл — чтобы 4 таба (вкл. длинный «Резервное
           копирование») не ломали ширину на узких экранах. */}
       <div style={{ overflowX: 'auto', marginBottom: 20 }}>
-        <TabBar options={TABS} value={tab} onChange={setTab} />
+        <TabBar options={TABS} value={tab} onChange={setTab} scroll />
       </div>
       <div style={{ minWidth: 0 }}>
         {tab === 'company' ? (
