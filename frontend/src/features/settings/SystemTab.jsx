@@ -272,8 +272,8 @@ export function SystemTab() {
           ) : null}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {ipList.map((row, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
-                <div style={{ width: FIELD_W }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                <div style={{ maxWidth: FIELD_W, minWidth: 0 }}>
                   <FieldView label={row.note || 'IP-адрес'} value={row.ip} mono />
                 </div>
                 <IconBtn kind="delete" title="Удалить" onClick={() => deleteIp(i)} disabled={ipBusy} />
@@ -288,9 +288,9 @@ export function SystemTab() {
                 <div style={{ width: FIELD_W }}>
                   <Input label="Примечание" placeholder="Офис, VPN…" value={ipDraft.note} onChange={(e) => setIpDraft({ ...ipDraft, note: e.target.value })} />
                 </div>
-                <div style={{ display: 'flex', flex: 'none', alignSelf: isMobile ? 'flex-end' : 'auto' }}>
-                  <IconBtn kind="apply" title="Применить" onClick={applyAddIp} disabled={ipBusy} />
-                  <IconBtn kind="cancel" title="Отменить" onClick={() => { setAddingIp(false); setIpError(null) }} disabled={ipBusy} />
+                <div style={{ display: 'flex', gap: 6, flex: 'none', alignSelf: isMobile ? 'flex-end' : 'auto' }}>
+                  <IconBtn outlined kind="apply" title="Применить" onClick={applyAddIp} disabled={ipBusy} />
+                  <IconBtn outlined kind="cancel" title="Отменить" onClick={() => { setAddingIp(false); setIpError(null) }} disabled={ipBusy} />
                 </div>
               </div>
             ) : (

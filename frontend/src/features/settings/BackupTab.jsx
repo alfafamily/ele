@@ -52,10 +52,7 @@ export function BackupTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div>
-        <div style={{ fontSize: 19, fontWeight: 600 }}>Резервное копирование</div>
-        <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginTop: 2 }}>Полный экспорт всех объектов системы, включая файлы</div>
-      </div>
+      <div style={{ fontSize: 19, fontWeight: 600 }}>Резервное копирование</div>
 
       {error ? <Banner variant="error">{error}</Banner> : null}
 
@@ -63,8 +60,12 @@ export function BackupTab() {
         <div style={{ maxWidth: 520 }}>
           <div style={{ fontSize: 15, fontWeight: 600 }}>Создать резервную копию сейчас</div>
           <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.5 }}>
-            Единый архив: оборудование, лицензии, сотрудники, пользователи (с хэшами паролей), типы, файлы. Файл содержит
-            чувствительные данные — храните и передавайте его только по защищённым каналам.
+            Система создаст файл, который можно скачать с объектами в системе: оборудование, лицензии, сотрудники,
+            пользователи (с хэшами паролей), типы, ссылки на файлы. Файлы необходимо выгрузить из хранилища самостоятельно,
+            по ссылкам указанным в объектах файла экспорта.
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 8, lineHeight: 1.5 }}>
+            Файл содержит чувствительные данные — храните и передавайте его только по защищённым каналам.
           </div>
         </div>
         <Button loading={creating} onClick={doCreateBackup}>

@@ -31,18 +31,17 @@ function iconPaths(kind) {
   }
 }
 
-// Иконочная кнопка действия (редактировать/удалить/применить/отменить).
-export function IconBtn({ kind, title, onClick, disabled }) {
+// Иконочная кнопка действия. Плоская (в режиме просмотра — рядом с полем) или
+// outlined — полноценная кнопка в высоту инпута с контуром (как «…» в списках),
+// для действий Применить/Отменить при редактировании/добавлении.
+export function IconBtn({ kind, title, onClick, disabled, outlined }) {
   const color = kind === 'delete' ? 'var(--color-error)' : kind === 'apply' ? 'var(--color-success)' : 'var(--color-text-muted)'
+  const base = { border: 'none', cursor: disabled ? 'default' : 'pointer', color, opacity: disabled ? 0.4 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }
+  const style = outlined
+    ? { ...base, width: 'var(--control-height)', height: 'var(--control-height)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)' }
+    : { ...base, background: 'none', padding: 6 }
   return (
-    <button
-      type="button"
-      title={title}
-      aria-label={title}
-      onClick={onClick}
-      disabled={disabled}
-      style={{ border: 'none', background: 'none', cursor: disabled ? 'default' : 'pointer', color, padding: 6, opacity: disabled ? 0.4 : 1, display: 'inline-flex' }}
-    >
+    <button type="button" title={title} aria-label={title} onClick={onClick} disabled={disabled} style={style}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         {iconPaths(kind)}
       </svg>
@@ -102,20 +101,22 @@ export function InlineField({ label, value, mono, placeholder, onSave, onClear }
 
   if (editing) {
     return (
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
         <div style={{ width: FIELD_W }}>
           <Input label={label} value={draft} placeholder={placeholder} onChange={(e) => setDraft(e.target.value)} error={error} autoFocus style={mono ? { fontFamily: 'var(--font-mono)' } : undefined} />
         </div>
-        <IconBtn kind="apply" title="Применить" onClick={apply} disabled={busy} />
-        <IconBtn kind="cancel" title="Отменить" onClick={() => { setEditing(false); setError(null) }} disabled={busy} />
+        <IconBtn outlined kind="apply" title="Применить" onClick={apply} disabled={busy} />
+        <IconBtn outlined kind="cancel" title="Отменить" onClick={() => { setEditing(false); setError(null) }} disabled={busy} />
       </div>
     )
   }
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
-        <div style={{ width: FIELD_W }}>
+      {/* maxWidth (не width) — поле сжимается по контенту, иконки действий стоят
+          вплотную к нему, а не у правого края блока. */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+        <div style={{ maxWidth: FIELD_W, minWidth: 0 }}>
           <FieldView label={label} value={value} mono={mono} />
         </div>
         <IconBtn kind="edit" title="Редактировать" onClick={() => { setDraft(value || ''); setError(null); setEditing(true) }} disabled={busy} />
