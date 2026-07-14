@@ -85,11 +85,20 @@ else
 
   info "— Основное —"
   ask SITE_ADDRESS "Домен инстанса (A-запись должна указывать на этот сервер)" "ele.example.com"
-  ask ELE_ADMIN_EMAIL "Email первого администратора" "admin@${SITE_ADDRESS}"
-  while :; do
-    ask_secret ELE_ADMIN_PASSWORD "Пароль первого администратора (мин. 8 симв., буквы разных регистров, цифра, спецсимвол)"
-    [ -n "$ELE_ADMIN_PASSWORD" ] && break || warn "Пароль обязателен."
-  done
+
+  # Первый администратор — по желанию: если оставить пустым, учётку админа и
+  # компанию можно создать в браузере через Setup Wizard при первом заходе.
+  # Если задать — админ создаётся автоматически, а пароль после старта стирается
+  # из .env (см. секцию 5), чтобы не хранился в файле.
+  info "— Первый администратор (Enter — пропустить, создать через Setup Wizard в браузере) —"
+  ask ELE_ADMIN_EMAIL "Email первого администратора" ""
+  ELE_ADMIN_PASSWORD=""
+  if [ -n "$ELE_ADMIN_EMAIL" ]; then
+    while :; do
+      ask_secret ELE_ADMIN_PASSWORD "Пароль первого администратора (мин. 8 симв., буквы разных регистров, цифра, спецсимвол)"
+      [ -n "$ELE_ADMIN_PASSWORD" ] && break || warn "Пароль обязателен, если задан email админа."
+    done
+  fi
   ask DEFAULT_FROM_EMAIL "Адрес отправителя писем" "ELE <no-reply@${SITE_ADDRESS}>"
   POSTGRES_PASSWORD="$(rand 32 24)"
 
@@ -222,6 +231,22 @@ until docker compose -f docker-compose.prod.yml up -d --build; do
   attempt=$((attempt + 1))
 done
 
+# Пароль первого администратора нужен только для его создания при первом старте
+# (bootstrap_admin). Стек уже поднялся (up ждёт healthy backend), админ создан —
+# стираем пароль из .env, чтобы секрет не оставался в файле. Приложение к .env
+# не прикасается: файл правит здесь сам install.sh на хосте. На повторных
+# запусках блок ввода .env пропущен, переменная пуста — ничего не трогаем.
+if [ -n "${ELE_ADMIN_PASSWORD:-}" ]; then
+  sed -i 's/^ELE_ADMIN_PASSWORD=.*/ELE_ADMIN_PASSWORD=/' .env
+  info "Администратор ${ELE_ADMIN_EMAIL} создан; пароль удалён из .env."
+fi
+
+SITE="$(grep -E '^SITE_ADDRESS=' .env | cut -d= -f2-)"
+ADMIN_IN_ENV="$(grep -E '^ELE_ADMIN_EMAIL=' .env | cut -d= -f2-)"
 info "Готово. После получения TLS-сертификата приложение будет доступно по адресу:"
-info "  https://$(grep -E '^SITE_ADDRESS=' .env | cut -d= -f2-)"
-info "Первый вход — учётной записью администратора из .env (или через Setup Wizard, ТЗ §4.1)."
+info "  https://${SITE}"
+if [ -n "$ADMIN_IN_ENV" ]; then
+  info "Первый вход — учётной записью администратора (${ADMIN_IN_ENV})."
+else
+  info "Первый вход — откройте адрес в браузере: запустится Setup Wizard для создания администратора и компании (ТЗ §4.1)."
+fi
