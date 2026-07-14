@@ -84,7 +84,43 @@ else
   DJANGO_SECRET_KEY="$(rand 64 50)"
 
   info "— Основное —"
-  ask SITE_ADDRESS "Домен инстанса (A-запись должна указывать на этот сервер)" "ele.example.com"
+  ask SITE_ADDRESS "Домен инстанса (Enter — без домена: локальный доступ по IP, HTTP без TLS)" ""
+
+  # Домен → HTTPS (Caddy сам берёт TLS у Let's Encrypt). Пусто → локальный режим:
+  # определяем IP-адреса сервера и отдаём по HTTP без TLS (§8.2). Значения для
+  # Caddy (SITE_ADDRESS) и Django (ALLOWED_HOSTS/CSRF/SITE_URL) в этих режимах
+  # разные, поэтому считаем их раздельно.
+  if [ -n "$SITE_ADDRESS" ]; then
+    CADDY_SITE="$SITE_ADDRESS"
+    ALLOWED_HOSTS_VAL="$SITE_ADDRESS"
+    CSRF_VAL="https://$SITE_ADDRESS"
+    SITE_URL_VAL="https://$SITE_ADDRESS"
+    EMAIL_HOST_DEFAULT="$SITE_ADDRESS"
+  else
+    info "Домен не указан — локальный режим (HTTP без TLS)."
+    LOCAL_IPS="$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | grep -v '^127\.' | tr '\n' ' ')"
+    [ -n "$LOCAL_IPS" ] || LOCAL_IPS="127.0.0.1"
+    info "Локальные IP сервера: ${LOCAL_IPS}"
+    IPS="$LOCAL_IPS"
+    # Внешний IP — только по подтверждению: добавление выставляет сервис в
+    # интернет по HTTP без шифрования.
+    EXT_IP="$(curl -fsS --max-time 4 https://api.ipify.org 2>/dev/null || true)"
+    if printf '%s' "$EXT_IP" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+      case " $IPS " in
+        *" $EXT_IP "*) : ;; # уже среди локальных
+        *) confirm "Обнаружен внешний IP ${EXT_IP}. Добавить его? (сервис станет доступен из интернета по HTTP БЕЗ шифрования)" && IPS="$IPS $EXT_IP" ;;
+      esac
+    fi
+    CADDY_SITE=""; ALLOWED_HOSTS_VAL=""; CSRF_VAL=""
+    for ip in $IPS; do
+      CADDY_SITE="${CADDY_SITE:+$CADDY_SITE }http://$ip"
+      ALLOWED_HOSTS_VAL="${ALLOWED_HOSTS_VAL:+$ALLOWED_HOSTS_VAL,}$ip"
+      CSRF_VAL="${CSRF_VAL:+$CSRF_VAL,}http://$ip"
+    done
+    SITE_URL_VAL="http://$(printf '%s' "$IPS" | awk '{print $1}')"
+    EMAIL_HOST_DEFAULT="ele.local"
+    warn "Локальный режим: TLS не выпускается, вход и данные идут по HTTP — используйте только в доверенной сети."
+  fi
 
   # Первый администратор — по желанию: если оставить пустым, учётку админа и
   # компанию можно создать в браузере через Setup Wizard при первом заходе.
@@ -99,7 +135,7 @@ else
       [ -n "$ELE_ADMIN_PASSWORD" ] && break || warn "Пароль обязателен, если задан email админа."
     done
   fi
-  ask DEFAULT_FROM_EMAIL "Адрес отправителя писем" "ELE <no-reply@${SITE_ADDRESS}>"
+  ask DEFAULT_FROM_EMAIL "Адрес отправителя писем" "ELE <no-reply@${EMAIL_HOST_DEFAULT}>"
   POSTGRES_PASSWORD="$(rand 32 24)"
 
   info "— Почта (SMTP) — Enter, чтобы пропустить (письма отправляться не будут) —"
@@ -143,16 +179,17 @@ else
   cat > .env <<EOF
 # Сгенерировано install.sh. Секреты хранятся только здесь (ТЗ §8.6).
 DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-DJANGO_ALLOWED_HOSTS=${SITE_ADDRESS}
-CSRF_TRUSTED_ORIGINS=https://${SITE_ADDRESS}
-SITE_URL=https://${SITE_ADDRESS}
+DJANGO_ALLOWED_HOSTS=${ALLOWED_HOSTS_VAL}
+CSRF_TRUSTED_ORIGINS=${CSRF_VAL}
+SITE_URL=${SITE_URL_VAL}
 DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
 
 POSTGRES_USER=ele
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 POSTGRES_DB=ele
 
-SITE_ADDRESS=${SITE_ADDRESS}
+# Адрес(а) для Caddy: домен (TLS автоматически) или «http://IP …» (HTTP без TLS).
+SITE_ADDRESS=${CADDY_SITE}
 
 EMAIL_HOST=${EMAIL_HOST}
 EMAIL_PORT=${EMAIL_PORT}
@@ -241,10 +278,14 @@ if [ -n "${ELE_ADMIN_PASSWORD:-}" ]; then
   info "Администратор ${ELE_ADMIN_EMAIL} создан; пароль удалён из .env."
 fi
 
-SITE="$(grep -E '^SITE_ADDRESS=' .env | cut -d= -f2-)"
+# SITE_URL уже содержит схему (https://домен или http://IP) — используем его,
+# чтобы сообщение было корректным в обоих режимах.
+APP_URL="$(grep -E '^SITE_URL=' .env | cut -d= -f2-)"
 ADMIN_IN_ENV="$(grep -E '^ELE_ADMIN_EMAIL=' .env | cut -d= -f2-)"
-info "Готово. После получения TLS-сертификата приложение будет доступно по адресу:"
-info "  https://${SITE}"
+case "$APP_URL" in
+  https://*) info "Готово. После получения TLS-сертификата приложение будет доступно по адресу:"; info "  ${APP_URL}" ;;
+  *)         info "Готово. Локальный режим (HTTP без TLS). Приложение доступно по адресу:"; info "  ${APP_URL}" ;;
+esac
 if [ -n "$ADMIN_IN_ENV" ]; then
   info "Первый вход — учётной записью администратора (${ADMIN_IN_ENV})."
 else

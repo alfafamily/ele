@@ -12,12 +12,18 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS") + ["localhost", "127.0.0.1"]
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS")
 
 SECURE_SSL_REDIRECT = False  # TLS terminates at Caddy, not Django
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-# Caddy — единственный reverse-proxy перед Django (backend не публикует порт
-# напрямую, docker-compose.prod.yml) и сам проставляет X-Forwarded-Proto —
-# без этой настройки request.is_secure() всегда считал бы соединение http.
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Режим определяем по схеме SITE_URL: HTTPS (домен + TLS через Caddy) или HTTP
+# (локальный инстанс по IP без TLS, §8.2). В HTTP-режиме secure-куки отправлять
+# нельзя — иначе браузер не пошлёт их по http и вход не сработает; proxy-ssl-
+# header тоже не ставим (соединение реально http).
+_https = SITE_URL.startswith("https://")  # noqa: F405 — SITE_URL из base
+SESSION_COOKIE_SECURE = _https
+CSRF_COOKIE_SECURE = _https
+if _https:
+    # Caddy — единственный reverse-proxy перед Django (backend не публикует порт
+    # напрямую, docker-compose.prod.yml) и сам проставляет X-Forwarded-Proto —
+    # без этой настройки request.is_secure() всегда считал бы соединение http.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # SMTP — опционален, как капча/Яндекс ID (§4.6, §4.3): пусто = приложение не
 # падает при старте, письма просто некуда слать (Setup Wizard пропустит
