@@ -52,9 +52,10 @@ class EquipmentAccessPermission(BasePermission):
 
 
 class SimCardAccessPermission(BasePermission):
-    """SIM-карты — как Оборудование: Сотрудник видит свои (Наблюдатель — все),
-    всегда только на просмотр; управление — admin/accountant. Фильтрация
-    списка под «только своё» — в SimCardViewSet.get_queryset()."""
+    """SIM-карты: Сотрудник видит только свои номера (в Профиле, read-only);
+    управление — admin/accountant. В отличие от Оборудования, признак
+    «Наблюдатель» доступ к SIM НЕ расширяет (у SIM нет страницы-списка).
+    Фильтрация под «только своё» — в SimCardViewSet.get_queryset()."""
 
     def has_permission(self, request, view):
         role = _role(request)
@@ -68,5 +69,4 @@ class SimCardAccessPermission(BasePermission):
             return True
         if role != "employee" or request.method not in _SAFE_METHODS:
             return False
-        user = request.user
-        return user.is_observer or obj.employee_id == user.employee_id
+        return obj.employee_id == request.user.employee_id

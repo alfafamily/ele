@@ -209,13 +209,22 @@ class SimCardAccessTests(APITestCase):
         self.assertEqual(self.client.get("/api/sim-cards/operators/").status_code, 403)
         self.assertEqual(self.client.get("/api/sim-cards/providers/").status_code, 403)
 
-    def test_observer_sees_all(self):
+    def test_observer_sees_only_own_not_all(self):
+        # У SIM нет страницы-списка, поэтому «Наблюдатель» доступ не расширяет —
+        # видит только свои номера, как обычный Сотрудник.
         self.emp_user.is_observer = True
         self.emp_user.save(update_fields=["is_observer"])
         self.client.force_authenticate(user=self.emp_user)
         resp = self.client.get("/api/sim-cards/")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(len(resp.data), 2)
+        self.assertEqual([s["phone_number"] for s in resp.data], ["+79001112233"])
+
+    def test_observer_cannot_retrieve_foreign_sim(self):
+        self.emp_user.is_observer = True
+        self.emp_user.save(update_fields=["is_observer"])
+        self.client.force_authenticate(user=self.emp_user)
+        resp = self.client.get(f"/api/sim-cards/{self.other_sim.id}/")
+        self.assertEqual(resp.status_code, 404)
 
     def test_unlinked_employee_sees_nothing(self):
         orphan = User.objects.create_user(email="orphan@example.com", password="Str0ng!Pass1")

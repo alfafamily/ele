@@ -92,8 +92,9 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
 class SimCardViewSet(viewsets.ModelViewSet):
     """Корпоративные SIM/E-SIM сотрудников. Управление — из карточки Сотрудника
-    (admin/accountant); Сотрудник видит свои номера в Профиле (read-only,
-    Наблюдатель — все) — как Оборудование, см. SimCardAccessPermission."""
+    (admin/accountant); Сотрудник (в т.ч. Наблюдатель) видит только свои номера
+    в Профиле (read-only). В отличие от Оборудования, у SIM нет страницы-списка,
+    поэтому «Наблюдатель видит всё» здесь не действует. См. SimCardAccessPermission."""
 
     permission_classes = [SimCardAccessPermission]
     serializer_class = SimCardSerializer
@@ -102,8 +103,9 @@ class SimCardViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = SimCard.objects.all()
         user = self.request.user
-        if user.role == "employee" and not user.is_observer:
-            # Только свои номера; не привязан к Сотруднику — не видит ничего.
+        if user.role == "employee":
+            # Только свои номера (Наблюдатель не расширяет доступ к SIM);
+            # не привязан к Сотруднику — не видит ничего.
             return qs.filter(employee_id=user.employee_id) if user.employee_id else qs.none()
         employee = self.request.query_params.get("employee")
         if employee:
