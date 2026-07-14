@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
-import { Banner, Button, Card, Select, Spinner } from '../../shared/ui'
+import { Banner, Button, Card, Input, Select, Spinner } from '../../shared/ui'
 import {
   createEquipment,
   getEquipment,
@@ -143,28 +143,17 @@ export function EquipmentFormPage() {
                   ))}
               </Select>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 5 }}>
-                    Учётный номер <span style={{ color: 'var(--color-error)' }}>*</span>
-                  </label>
-                  <input
-                    required
-                    value={inventoryNumber}
-                    onChange={(e) => setInventoryNumber(e.target.value)}
-                    style={{
-                      width: '100%',
-                      height: 44,
-                      background: 'var(--color-fill-input)',
-                      border: 'none',
-                      borderRadius: 10,
-                      padding: '0 14px',
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 15,
-                    }}
-                  />
-                </div>
-                <div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 5 }}>Сотрудник</div>
+                <Input
+                  label="Учётный номер"
+                  required
+                  value={inventoryNumber}
+                  onChange={(e) => setInventoryNumber(e.target.value)}
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                />
+                {/* Тот же паттерн поля, что и Input (label внутри box), но
+                    комбобокс подбора Сотрудника. Значение — в одну строку с «…»
+                    (иначе на мобильных длинное ФИО переносилось на вторую). */}
+                <div className="ele-field">
                   {showEmployeePicker ? (
                     <EmployeePicker
                       autoFocus
@@ -176,22 +165,24 @@ export function EquipmentFormPage() {
                   ) : (
                     <button
                       type="button"
+                      className="ele-field__box"
                       onClick={() => setShowEmployeePicker(true)}
-                      style={{
-                        width: '100%',
-                        height: 44,
-                        background: 'var(--color-fill-input)',
-                        border: 'none',
-                        borderRadius: 10,
-                        padding: '0 14px',
-                        textAlign: 'left',
-                        fontSize: 15,
-                        color: employee ? 'var(--color-text-primary)' : 'var(--color-text-placeholder)',
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                      }}
+                      style={{ width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                     >
-                      {employee?.full_name || 'Не закреплено'}
+                      <div className="ele-field__inner">
+                        <span className="ele-field__label">Сотрудник</span>
+                        <div
+                          className="ele-field__input"
+                          style={{
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            color: employee ? 'var(--color-text-primary)' : 'var(--color-text-placeholder)',
+                          }}
+                        >
+                          {employee?.full_name || 'Не закреплено'}
+                        </div>
+                      </div>
                     </button>
                   )}
                 </div>

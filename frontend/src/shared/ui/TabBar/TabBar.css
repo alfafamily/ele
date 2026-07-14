@@ -1,7 +1,11 @@
 .ele-tabbar {
   display: inline-flex;
   gap: 2px;
-  background: var(--color-fill-active-tint);
+  /* Подложка заметно темнее фона страницы (--color-bg-workspace): раньше была
+     --color-fill-active-tint и почти сливалась с фоном, из-за чего невыбранные
+     плашки терялись. --color-border-strong даёт чёткий контраст, белая активная
+     плашка на нём выделяется ещё сильнее. */
+  background: var(--color-border-strong);
   padding: 3px;
   border-radius: 10px;
   /* Подложка по ширине содержимого, а не на всю строку: в колоночных
