@@ -313,7 +313,7 @@ export function SystemTab() {
 
           <div style={{ ...sectionTitle, marginTop: 20, marginBottom: 6, fontSize: 13 }}>Разрешённые IP-адреса</div>
           <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 12 }}>
-            Пока список пуст — вход не ограничивается. Примечание к адресу показывается его подписью.
+            Пока список пуст — вход по IP не ограничивается.
           </div>
           {ipError ? (
             <div style={{ marginBottom: 12 }}>
