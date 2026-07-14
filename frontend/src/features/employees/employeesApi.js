@@ -6,6 +6,14 @@ export const updateEmployee = (id, payload) => apiPatch(`/api/employees/${id}/`,
 export const terminateEmployee = (id, deactivateUser) =>
   apiPost(`/api/employees/${id}/terminate/`, deactivateUser ? { deactivate_user: true } : {})
 export const getDepartments = () => apiGet('/api/employees/departments/')
+
+// Корпоративные SIM/E-SIM — работа только из карточки Сотрудника.
+export const createSimCard = (payload) => apiPost('/api/sim-cards/', payload)
+export const updateSimCard = (id, payload) => apiPatch(`/api/sim-cards/${id}/`, payload)
+export const deleteSimCard = (id) => apiRequest(`/api/sim-cards/${id}/`, { method: 'DELETE' })
+export const deactivateSimCard = (id) => apiPost(`/api/sim-cards/${id}/deactivate/`, {})
+export const getSimOperators = () => apiGet('/api/sim-cards/operators/')
+export const getSimProviders = () => apiGet('/api/sim-cards/providers/')
 export const uploadEmployeeAvatar = (id, file) => {
   const formData = new FormData()
   formData.append('file', file)

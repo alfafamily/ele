@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { apiPatch } from '../../shared/api/client'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { ActionMenu, Button, Card, Spinner, StatusPill } from '../../shared/ui'
-import { getEmployee, uploadEmployeeAvatar } from './employeesApi.js'
+import { deactivateSimCard, getEmployee, uploadEmployeeAvatar } from './employeesApi.js'
+import { SimCardModal } from './SimCardModal.jsx'
 import { TerminateModal } from './TerminateModal.jsx'
 
 function initials(name) {
@@ -16,6 +17,8 @@ export function EmployeeCardPage() {
   const perms = usePermissions()
   const [employee, setEmployee] = useState(null)
   const [showTerminate, setShowTerminate] = useState(false)
+  // null — модалка закрыта; 'new' — добавление; объект SIM — редактирование.
+  const [simModal, setSimModal] = useState(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const fileInputRef = useRef(null)
 
@@ -48,6 +51,11 @@ export function EmployeeCardPage() {
 
   const onDetachEquipment = async (equipmentId) => {
     await apiPatch(`/api/equipment/${equipmentId}/`, { employee: null })
+    load()
+  }
+
+  const onDeactivateSim = async (simId) => {
+    await deactivateSimCard(simId)
     load()
   }
 
@@ -155,7 +163,70 @@ export function EmployeeCardPage() {
             ))
           )}
         </Card>
+
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>Корпоративная связь</div>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
+                {employee.sim_cards.length}
+              </span>
+            </div>
+            {employee.is_employed ? (
+              <Can perm="canManageEmployees">
+                <Button variant="secondary" onClick={() => setSimModal('new')}>
+                  Добавить
+                </Button>
+              </Can>
+            ) : null}
+          </div>
+          {employee.sim_cards.length === 0 ? (
+            <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено SIM-карт.</div>
+          ) : (
+            employee.sim_cards.map((sim) => {
+              const meta = [sim.network_operator, sim.provider].filter(Boolean).join(' · ')
+              return (
+                <div key={sim.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '1px 7px', borderRadius: 5 }}>
+                        {sim.sim_type_display}
+                      </span>
+                      <span style={{ font: '600 13.5px var(--font-mono)', color: 'var(--color-text-primary)' }}>{sim.phone_number}</span>
+                      <StatusPill variant={sim.is_deactivated ? 'archived' : 'assigned'}>
+                        {sim.is_deactivated ? (employee.is_employed ? 'Деактивирована' : 'Архив') : 'Активна'}
+                      </StatusPill>
+                    </div>
+                    {meta ? <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 3 }}>{meta}</div> : null}
+                  </div>
+                  {employee.is_employed && !sim.is_deactivated ? (
+                    <Can perm="canManageEmployees">
+                      <Button variant="secondary" onClick={() => setSimModal(sim)}>
+                        Изменить
+                      </Button>
+                      <Button variant="secondary" onClick={() => onDeactivateSim(sim.id)}>
+                        Деактивировать
+                      </Button>
+                    </Can>
+                  ) : null}
+                </div>
+              )
+            })
+          )}
+        </Card>
       </div>
+
+      {simModal ? (
+        <SimCardModal
+          employeeId={employee.id}
+          sim={simModal === 'new' ? null : simModal}
+          onClose={() => setSimModal(null)}
+          onDone={() => {
+            setSimModal(null)
+            load()
+          }}
+        />
+      ) : null}
 
       {showTerminate ? (
         <TerminateModal

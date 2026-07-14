@@ -10,7 +10,7 @@ from rest_framework.test import APITestCase
 
 from storage import backends as storage_backends
 
-from .models import Employee
+from .models import Employee, SimCard
 
 _TEST_MEDIA_ROOT = tempfile.mkdtemp(prefix="ele-employee-tests-")
 
@@ -84,6 +84,88 @@ class EmployeeTerminateTests(APITestCase):
         self.assertFalse(resp.data["deactivated_user"])
         user.refresh_from_db()
         self.assertTrue(user.is_active)
+
+    def test_terminate_deactivates_sim_cards_but_keeps_them(self):
+        sim1 = SimCard.objects.create(employee=self.employee, phone_number="+79001112233")
+        sim2 = SimCard.objects.create(employee=self.employee, phone_number="+79004445566")
+        resp = self.client.post(f"/api/employees/{self.employee.id}/terminate/", format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["deactivated_sim_count"], 2)
+        for sim in (sim1, sim2):
+            sim.refresh_from_db()
+            self.assertTrue(sim.is_deactivated)
+            self.assertIsNotNone(sim.deactivated_at)
+            # Номер остаётся закреплён за сотрудником — для истории.
+            self.assertEqual(sim.employee_id, self.employee.id)
+
+
+class SimCardTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.employee = Employee.objects.create(first_name="Иван", last_name="Прозоров")
+
+    def test_create_sim_card(self):
+        resp = self.client.post(
+            "/api/sim-cards/",
+            {
+                "employee": self.employee.id,
+                "sim_type": "esim",
+                "phone_number": "+79001112233",
+                "network_operator": "МТС",
+                "provider": "Тинькофф Мобайл",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(resp.data["sim_type_display"], "E-SIM")
+        self.assertFalse(resp.data["is_deactivated"])
+
+    def test_blank_phone_number_rejected(self):
+        resp = self.client.post(
+            "/api/sim-cards/",
+            {"employee": self.employee.id, "phone_number": "   "},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_deactivate_action_keeps_record(self):
+        sim = SimCard.objects.create(employee=self.employee, phone_number="+79001112233")
+        resp = self.client.post(f"/api/sim-cards/{sim.id}/deactivate/", format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        sim.refresh_from_db()
+        self.assertTrue(sim.is_deactivated)
+        self.assertIsNotNone(sim.deactivated_at)
+
+    def test_filter_by_employee(self):
+        other = Employee.objects.create(first_name="Пётр", last_name="Сидоров")
+        SimCard.objects.create(employee=self.employee, phone_number="+79001112233")
+        SimCard.objects.create(employee=other, phone_number="+79004445566")
+        resp = self.client.get(f"/api/sim-cards/?employee={self.employee.id}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["phone_number"], "+79001112233")
+
+    def test_embedded_in_employee_card_active_and_archived(self):
+        SimCard.objects.create(employee=self.employee, phone_number="+79001112233")
+        SimCard.objects.create(
+            employee=self.employee, phone_number="+79004445566", is_deactivated=True
+        )
+        resp = self.client.get(f"/api/employees/{self.employee.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data["sim_cards"]), 2)
+
+    def test_operators_and_providers_autocomplete(self):
+        SimCard.objects.create(
+            employee=self.employee, phone_number="+79001112233", network_operator="МТС", provider="Тинькофф Мобайл"
+        )
+        SimCard.objects.create(
+            employee=self.employee, phone_number="+79004445566", network_operator="МТС", provider="Йота"
+        )
+        resp_op = self.client.get("/api/sim-cards/operators/")
+        self.assertEqual(resp_op.data, ["МТС"])
+        resp_pr = self.client.get("/api/sim-cards/providers/")
+        self.assertEqual(sorted(resp_pr.data), ["Йота", "Тинькофф Мобайл"])
 
 
 @override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)

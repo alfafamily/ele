@@ -1,4 +1,5 @@
 from django.db import models
+from simple_history.models import HistoricalRecords
 
 
 class Employee(models.Model):
@@ -24,3 +25,47 @@ class Employee(models.Model):
 
     def __str__(self):
         return f"{self.last_name} {self.first_name}".strip()
+
+
+class SimCard(models.Model):
+    """Корпоративная SIM/E-SIM, закреплённая за Сотрудником.
+
+    Отдельного справочника номеров нет: номер деактивируется при увольнении и
+    не передаётся другому сотруднику, поэтому список ведётся прямо в карточке
+    Сотрудника (FK). Деактивированные (архивные) симки не открепляются, а
+    остаются для истории «кому какой номер выдавали» — в отличие от
+    Оборудования, которое при увольнении открепляется (см. terminate).
+    """
+
+    class SimType(models.TextChoices):
+        SIM = "sim", "SIM"
+        ESIM = "esim", "E-SIM"
+
+    employee = models.ForeignKey(
+        Employee, verbose_name="Сотрудник", on_delete=models.CASCADE, related_name="sim_cards",
+    )
+    sim_type = models.CharField("Тип", max_length=8, choices=SimType.choices, default=SimType.SIM)
+    phone_number = models.CharField("Номер телефона", max_length=32)
+    # Оператор сети, в которой физически работает SIM. Free-text с
+    # автоподсказкой по встречавшимся значениям (эндпоинт operators), без
+    # отдельного справочника — как «Отдел» у Сотрудника.
+    network_operator = models.CharField("Оператор", max_length=255, blank=True)
+    # Поставщик услуг связи — через кого управление номером (пополнение, смена
+    # тарифа, договор). Не всегда совпадает с Оператором (MVNO/дилер).
+    provider = models.CharField("Поставщик услуг связи", max_length=255, blank=True)
+    # Признак деактивации (архивная симка). Проставляется вручную или
+    # автоматически при увольнении Сотрудника. По образцу is_written_off у
+    # Оборудования / is_retired у Лицензий.
+    is_deactivated = models.BooleanField("Деактивирована", default=False)
+    deactivated_at = models.DateTimeField("Дата деактивации", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    history = HistoricalRecords()
+
+    class Meta:
+        verbose_name = "SIM-карта"
+        verbose_name_plural = "SIM-карты"
+        # Активные выше архивных, внутри группы — новые выше.
+        ordering = ["is_deactivated", "-created_at"]
+
+    def __str__(self):
+        return self.phone_number

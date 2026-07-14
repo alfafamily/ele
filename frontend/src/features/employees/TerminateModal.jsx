@@ -9,6 +9,7 @@ export function TerminateModal({ employee, onClose, onDone }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const equipmentCount = employee.equipment?.length ?? 0
+  const activeSims = (employee.sim_cards ?? []).filter((s) => !s.is_deactivated)
 
   const submit = async () => {
     setSubmitting(true)
@@ -35,6 +36,15 @@ export function TerminateModal({ employee, onClose, onDone }) {
           </>
         ) : null}
       </p>
+      {activeSims.length > 0 ? (
+        <Banner variant="warning">
+          Не забудьте деактивировать выданные номера у поставщика связи. В системе они будут
+          помечены деактивированными, но останутся в карточке для истории:
+          <span style={{ display: 'block', marginTop: 6, font: '600 13px var(--font-mono)', color: 'var(--color-text-primary)' }}>
+            {activeSims.map((s) => s.phone_number).join(', ')}
+          </span>
+        </Banner>
+      ) : null}
       {employee.user_email ? (
         <>
           <Banner variant="warning">

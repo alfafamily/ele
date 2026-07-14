@@ -1,5 +1,6 @@
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import BasePermission
@@ -11,8 +12,8 @@ from core.permissions import IsAdminOrAccountant
 from storage.service import delete_stored_file, store_uploaded_file
 from storage.validators import validate_image_max_dimensions
 
-from .models import Employee
-from .serializers import EmployeeListSerializer, EmployeeSerializer
+from .models import Employee, SimCard
+from .serializers import EmployeeListSerializer, EmployeeSerializer, SimCardSerializer
 
 
 class EmployeeViewSet(viewsets.ModelViewSet):
@@ -26,7 +27,9 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         return EmployeeListSerializer if self.action == "list" else EmployeeSerializer
 
     def get_queryset(self):
-        qs = Employee.objects.all().prefetch_related("equipment__equipment_type", "equipment__field_values__field")
+        qs = Employee.objects.all().prefetch_related(
+            "equipment__equipment_type", "equipment__field_values__field", "sim_cards"
+        )
         search = self.request.query_params.get("search")
         if search:
             qs = qs.filter(Q(first_name__icontains=search) | Q(last_name__icontains=search))
@@ -40,7 +43,8 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def terminate(self, request, pk=None):
-        """Увольнение (E3): отвязывает всё оборудование, опционально
+        """Увольнение (E3): отвязывает всё оборудование, деактивирует
+        выданные SIM-карты (для истории остаются в карточке), опционально
         деактивирует связанного Пользователя."""
         employee = self.get_object()
         equipment_list = list(employee.equipment.all())
@@ -48,6 +52,15 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             # По одной, не bulk .update() — иначе не сработает история.
             eq.employee = None
             eq.save(update_fields=["employee"])
+
+        # SIM-карты не открепляем (номер не передаётся другому) — помечаем
+        # деактивированными, чтобы напомнить оператору погасить их у поставщика.
+        active_sims = list(employee.sim_cards.filter(is_deactivated=False))
+        now = timezone.now()
+        for sim in active_sims:
+            sim.is_deactivated = True
+            sim.deactivated_at = now
+            sim.save(update_fields=["is_deactivated", "deactivated_at"])
 
         employee.is_employed = False
         employee.save(update_fields=["is_employed"])
@@ -61,6 +74,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
         data = EmployeeSerializer(employee).data
         data["detached_equipment_count"] = len(equipment_list)
+        data["deactivated_sim_count"] = len(active_sims)
         data["deactivated_user"] = deactivated_user
         return Response(data)
 
@@ -72,6 +86,54 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             .values_list("department", flat=True)
             .distinct()
             .order_by("department")
+        )
+        return Response(list(values))
+
+
+class SimCardViewSet(viewsets.ModelViewSet):
+    """Корпоративные SIM/E-SIM сотрудников. Списка-страницы нет — работа только
+    из карточки Сотрудника (фильтр по ?employee=)."""
+
+    permission_classes = [IsAdminOrAccountant]
+    serializer_class = SimCardSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        qs = SimCard.objects.all()
+        employee = self.request.query_params.get("employee")
+        if employee:
+            qs = qs.filter(employee_id=employee)
+        return qs
+
+    @action(detail=True, methods=["post"])
+    def deactivate(self, request, pk=None):
+        """Деактивация номера (архив). Симка остаётся в карточке для истории."""
+        sim = self.get_object()
+        if not sim.is_deactivated:
+            sim.is_deactivated = True
+            sim.deactivated_at = timezone.now()
+            sim.save(update_fields=["is_deactivated", "deactivated_at"])
+        return Response(SimCardSerializer(sim).data)
+
+    @action(detail=False, methods=["get"])
+    def operators(self, request):
+        # Автоподсказка «Оператор» — без отдельного справочника, как departments.
+        values = (
+            SimCard.objects.exclude(network_operator="")
+            .values_list("network_operator", flat=True)
+            .distinct()
+            .order_by("network_operator")
+        )
+        return Response(list(values))
+
+    @action(detail=False, methods=["get"])
+    def providers(self, request):
+        # Автоподсказка «Поставщик услуг связи».
+        values = (
+            SimCard.objects.exclude(provider="")
+            .values_list("provider", flat=True)
+            .distinct()
+            .order_by("provider")
         )
         return Response(list(values))
 
