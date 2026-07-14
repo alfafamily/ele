@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SmartCaptcha } from '../auth/SmartCaptcha.jsx'
 import { Banner, Button, Card, Checkbox, Input, Spinner } from '../../shared/ui'
 import {
@@ -162,7 +162,10 @@ export function SystemTab() {
     }
   }
 
-  const onCaptchaToken = useCallback(async (token) => {
+  // Обычная функция, не useCallback: все хуки должны стоять выше ранних return
+  // (спиннер при !status), иначе на первом рендере хуков меньше, чем на втором,
+  // и React падает «Rendered more hooks than previous render».
+  const onCaptchaToken = async (token) => {
     setCaptchaChecking(true)
     setCaptchaResult(null)
     try {
@@ -174,7 +177,7 @@ export function SystemTab() {
       setCaptchaChecking(false)
       setCaptchaOpen(false)
     }
-  }, [])
+  }
 
   const resultBanner = (r) => (r ? <Banner variant={r.ok ? 'success' : 'error'}>{r.msg}</Banner> : null)
 
