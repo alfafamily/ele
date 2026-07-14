@@ -1,6 +1,6 @@
 import './AuthShell.css'
 
-// Общий каркас экранов A1-A3/R1-R3 (§4.1-4.5): по центру, лого ELE сверху,
+// Общий каркас экранов A1-A3/R1-R3 (-4.5): по центру, лого ELE сверху,
 // заголовок, дальше — содержимое конкретного экрана.
 export function AuthShell({ title, subtitle, width, children }) {
   return (

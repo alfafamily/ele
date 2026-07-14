@@ -5,7 +5,7 @@ const AuthContext = createContext(null)
 
 // Состояние, нужное guard'у роутера ДО того, как решать, что рендерить:
 // какой первый экран (Setup Wizard/логин/приложение) и какие способы входа
-// сейчас активны (§4.3, §4.6 — Яндекс ID/капча условны по .env).
+// сейчас активны (Яндекс ID/капча условны по .env).
 export function AuthProvider({ children }) {
   const [bootstrap, setBootstrap] = useState(null)
   const [user, setUser] = useState(null)

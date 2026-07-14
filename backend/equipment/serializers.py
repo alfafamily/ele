@@ -20,7 +20,7 @@ class EquipmentTypeFieldSerializer(serializers.ModelSerializer):
         read_only_fields = ["equipment_type", "is_locked"]
 
     def validate(self, attrs):
-        # «Модель» — нельзя переименовать/сделать обязательным (§3.5).
+        # «Модель» — нельзя переименовать/сделать обязательным.
         if self.instance and self.instance.is_locked:
             if "name" in attrs and attrs["name"] != self.instance.name:
                 raise serializers.ValidationError({"name": ["Базовый реквизит «Модель» нельзя переименовать."]})
@@ -61,7 +61,7 @@ class EquipmentFieldValueOutSerializer(serializers.ModelSerializer):
 
 class EquipmentCustomFieldSerializer(serializers.ModelSerializer):
     # id — записываемый, чтобы обновлять существующие доп.поля по идентичности
-    # (upsert), а не пересоздавать — иначе история изменений (§5.8) шумит.
+    # (upsert), а не пересоздавать — иначе история изменений шумит.
     id = serializers.IntegerField(required=False)
 
     class Meta:
@@ -108,7 +108,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
         read_only_fields = ["is_written_off", "written_off_at", "created_at"]
 
     def get_type_and_model(self, obj):
-        # «{Тип} {Модель}», без Модели — просто «{Тип}» (§5.1).
+        # «{Тип} {Модель}», без Модели — просто «{Тип}».
         model_value = next(
             (fv.value_text for fv in obj.field_values.all() if fv.field.is_locked and fv.field.name == "Модель"),
             None,
@@ -176,7 +176,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
 
     def _raise_if_missing_required(self, instance):
         # Списание — отдельное действие (write_off), сюда не заходит, поэтому
-        # исключение "кроме операций списания" (§5.4) выполняется автоматически.
+        # исключение "кроме операций списания" выполняется автоматически.
         missing = missing_required_fields(instance, "field_values", instance.equipment_type.fields)
         if missing:
             names = ", ".join(f.name for f in missing)

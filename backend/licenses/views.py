@@ -28,7 +28,7 @@ class LicenseTypeViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         # ProtectedError покрывает и is_locked (модельный delete()), и
-        # привязанные объекты (PROTECT на License.license_type) — §3.7, §5.4.
+        # привязанные объекты (PROTECT на License.license_type).
         # Сообщение всегда своё, не техническое из исключения Django.
         try:
             return super().destroy(request, *args, **kwargs)
@@ -76,7 +76,7 @@ class LicenseTypeFieldImpactView(APIView):
 
 
 class LicenseViewSet(viewsets.ModelViewSet):
-    """Раздел целиком недоступен роли «Сотрудник» (§2.3) — свои лицензии видны
+    """Раздел целиком недоступен роли «Сотрудник» — свои лицензии видны
     только в карточке привязанного Оборудования. Удаления нет — только
     утилизация (utilize)."""
 
@@ -84,7 +84,7 @@ class LicenseViewSet(viewsets.ModelViewSet):
     pagination_class = ELECursorPagination
     # DELETE разрешён только ради экшена удаления файла реквизита (ниже);
     # удаление самой Лицензии запрещено — destroy() отдаёт 405 (только
-    # утилизация, §5.2).
+    # утилизация).
     http_method_names = ["get", "post", "put", "patch", "delete", "head", "options"]
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["created_at", "name", "equipment__inventory_number"]

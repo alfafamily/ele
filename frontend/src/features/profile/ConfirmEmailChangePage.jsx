@@ -4,7 +4,7 @@ import { AuthShell } from '../auth/AuthShell.jsx'
 import { Spinner } from '../../shared/ui'
 import { confirmEmailChange } from './profileApi.js'
 
-// Переход по ссылке из письма «Подтверждение смены email» (§4.8, ELE_05).
+// Переход по ссылке из письма «Подтверждение смены email».
 export function ConfirmEmailChangePage() {
   const { token } = useParams()
   const [state, setState] = useState('pending')

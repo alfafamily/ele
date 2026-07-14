@@ -22,12 +22,12 @@ class LicenseTypeAdmin(admin.ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         if obj and obj.is_locked:
-            # Имя базового Типа не редактируется (§3.7).
+            # Имя базового Типа не редактируется.
             return ("name", "is_locked")
         return ("is_locked",)
 
     def has_delete_permission(self, request, obj=None):
-        # Кнопка удаления для базовых Типов не отображается (§3.7).
+        # Кнопка удаления для базовых Типов не отображается.
         if obj is not None and obj.is_locked:
             return False
         return super().has_delete_permission(request, obj)

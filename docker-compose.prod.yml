@@ -1,6 +1,6 @@
 # Прод: `docker compose -f docker-compose.prod.yml up -d --build`.
 # Образы собираются из исходников (без bind-mount), TLS — автоматически
-# через Caddy/Let's Encrypt по домену в SITE_ADDRESS (ТЗ §8.2).
+# через Caddy/Let's Encrypt по домену в SITE_ADDRESS.
 services:
   postgres:
     image: postgres:17-alpine
@@ -43,9 +43,9 @@ services:
       retries: 10
       start_period: 10s
 
-  # Фоновые задачи по расписанию (миграция файлов между хранилищами §8.3,
-  # автокопирование §5.5.3) — простой цикл с sleep, без Celery/очередей
-  # (CLAUDE.md). media_data общий с backend — LocalStorageBackend читает/
+  # Фоновые задачи по расписанию (миграция файлов между хранилищами,
+  # автокопирование) — простой цикл с sleep, без Celery/очередей.
+  # media_data общий с backend — LocalStorageBackend читает/
   # пишет те же файлы по тем же путям. entrypoint.sh (миграции/
   # bootstrap_admin) здесь не запускается — backend единственный, кто
   # мигрирует, иначе гонка при одновременном старте (см. docker-compose.yml).

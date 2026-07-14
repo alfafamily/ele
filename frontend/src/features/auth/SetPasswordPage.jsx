@@ -17,8 +17,8 @@ const MODE_CONFIG = {
   },
 }
 
-// Общая форма для ссылки восстановления (§4.5) и завершения приглашения
-// (§4.4) — обе строятся на одном uid+token механизме (SetPasswordConfirmSerializer
+// Общая форма для ссылки восстановления и завершения приглашения
+// — обе строятся на одном uid+token механизме (SetPasswordConfirmSerializer
 // на бэкенде), ни один из двух эндпоинтов сам не логинит пользователя.
 export function SetPasswordPage({ mode }) {
   const { uid, token } = useParams()

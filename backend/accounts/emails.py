@@ -1,4 +1,4 @@
-"""Отправка транзакционных писем (ТЗ §4.8) — базовый шаблон + 5 конкретных.
+"""Отправка транзакционных писем — базовый шаблон + 5 конкретных.
 
 Ссылки в письмах ведут на роуты SPA (Фаза 7 их реализует), backend только
 формирует токены и URL. Домены/пути ниже — контракт с фронтендом.
@@ -14,8 +14,8 @@ from .tokens import make_email_change_token, make_email_confirmation_token, make
 
 _LOGO_URL = f"{settings.SITE_URL}{settings.STATIC_URL}email/ele-logo.svg"
 
-# Тема письма задаётся явно (не парсится из HTML <title>) — тексты см.
-# docs/ELE_0N_email_*.md, шаблоны — backend/templates/email/*.html.
+# Тема письма задаётся явно (не парсится из HTML <title>);
+# шаблоны писем — backend/templates/email/*.html.
 _SUBJECTS = {
     "confirm_email": "Подтвердите почту — ELE",
     "invite": "Вас пригласили в ELE — {company_name}",

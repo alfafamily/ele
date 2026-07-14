@@ -1,7 +1,7 @@
 import { Button } from '../shared/ui'
 import './ErrorPage.css'
 
-// 500 (§5.9) — код, пояснение, «На главную»/«Обновить». Рендерится
+// 500 — код, пояснение, «На главную»/«Обновить». Рендерится
 // ErrorBoundary'ем при непойманной ошибке рендера (см. app/ErrorBoundary.jsx).
 export function ServerErrorPage() {
   return (

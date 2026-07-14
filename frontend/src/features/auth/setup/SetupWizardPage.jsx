@@ -6,10 +6,10 @@ import { StepIndicator } from './StepIndicator.jsx'
 import { StepIntegrations } from './StepIntegrations.jsx'
 import './setup.css'
 
-const EMPTY_ADMIN = { email: '', password: '', password_repeat: '' }
-const EMPTY_COMPANY = { name: '', inn: '', kpp: '' }
+const EMPTY_ADMIN = { last_name: '', first_name: '', email: '', password: '', password_repeat: '' }
+const EMPTY_COMPANY = { name: '', inn: '' }
 
-// Setup Wizard (ТЗ §4.1, уточнено v1.3) — первичное создание Администратора
+// Setup Wizard (уточнено v1.3) — первичное создание Администратора
 // и Компании при первом заходе в браузере, если ни CLI/.env, ни мастер ранее
 // администратора не создали (BootstrapView.setup_required).
 export function SetupWizardPage() {

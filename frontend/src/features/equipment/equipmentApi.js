@@ -1,7 +1,7 @@
 import { apiGet, apiPatch, apiPost } from '../../shared/api/client'
 
 // EquipmentTypeViewSet без pagination_class — отдаёт обычный массив, не
-// курсорную страницу (Типов на порядки меньше, чем объектов, см. §7.1).
+// курсорную страницу (Типов на порядки меньше, чем объектов).
 export const getEquipmentTypes = () => apiGet('/api/equipment-types/')
 export const getEquipment = (id) => apiGet(`/api/equipment/${id}/`)
 export const createEquipment = (payload) => apiPost('/api/equipment/', payload)

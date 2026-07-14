@@ -3,7 +3,7 @@ import { Banner, Button, Modal } from '../../shared/ui'
 import { utilizeLicense } from './licensesApi.js'
 
 // L4 — утилизация: отвязывает от оборудования и переводит в архив,
-// без варианта отмены из интерфейса (§3.6, §9).
+// без варианта отмены из интерфейса .
 export function UtilizeModal({ license, onClose, onDone }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)

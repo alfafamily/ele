@@ -4,7 +4,7 @@ from simple_history.models import HistoricalRecords
 
 
 class LicenseType(models.Model):
-    """Тип лицензии — классификатор реквизитов, не используется как имя объекта (ТЗ §3.7).
+    """Тип лицензии — классификатор реквизитов, не используется как имя объекта.
 
     Два базовых типа («Программная», «Аппаратная») сеются data-миграцией с
     is_locked=True — физически не удаляются/не архивируются, имя не редактируется.
@@ -24,12 +24,12 @@ class LicenseType(models.Model):
 
     def delete(self, *args, **kwargs):
         if self.is_locked:
-            raise ProtectedError("Базовый Тип лицензии нельзя удалить (ТЗ §3.7).", {self})
+            raise ProtectedError("Базовый Тип лицензии нельзя удалить.", {self})
         super().delete(*args, **kwargs)
 
 
 class LicenseTypeField(models.Model):
-    """Реквизит типа лицензии (ТЗ §3.7) — EAV-схема значений, см. LicenseFieldValue."""
+    """Реквизит типа лицензии — EAV-схема значений, см. LicenseFieldValue."""
 
     class ValueType(models.TextChoices):
         BOOL = "bool", "Булево"
@@ -43,7 +43,7 @@ class LicenseTypeField(models.Model):
     value_type = models.CharField("Значение типа", max_length=10, choices=ValueType.choices)
     is_required = models.BooleanField("Обязательность", default=False)
     # «Номер/ключ» у базового Типа «Программная» — нельзя удалить/переименовать/
-    # сделать необязательным, маскируется в UI (§3.7, Фаза 8).
+    # сделать необязательным, маскируется в UI (Фаза 8).
     is_locked = models.BooleanField(default=False)
 
     class Meta:
@@ -55,12 +55,12 @@ class LicenseTypeField(models.Model):
 
     def delete(self, *args, **kwargs):
         if self.is_locked:
-            raise ProtectedError("Зафиксированный реквизит нельзя удалить (ТЗ §3.7).", {self})
+            raise ProtectedError("Зафиксированный реквизит нельзя удалить.", {self})
         super().delete(*args, **kwargs)
 
 
 class License(models.Model):
-    """Лицензия — идентифицируется собственным Наименованием, не Типом (ТЗ §3.6)."""
+    """Лицензия — идентифицируется собственным Наименованием, не Типом."""
 
     name = models.CharField("Наименование", max_length=255)
     equipment = models.ForeignKey(
@@ -69,9 +69,9 @@ class License(models.Model):
     )
     is_retired = models.BooleanField("Признак утилизации", default=False)
     # Проставляется в момент утилизации (utilize action) — нужна для колонки
-    # «Дата утилизации» вкладки Архив (§5.7), отдельно от is_retired.
+    # «Дата утилизации» вкладки Архив, отдельно от is_retired.
     retired_at = models.DateTimeField("Дата утилизации", null=True, blank=True)
-    # PROTECT: удаление Типа с привязанными объектами запрещено (ТЗ §5.4).
+    # PROTECT: удаление Типа с привязанными объектами запрещено.
     license_type = models.ForeignKey(
         LicenseType, verbose_name="Тип лицензии", on_delete=models.PROTECT, related_name="licenses",
     )
@@ -96,11 +96,11 @@ class LicenseFieldValue(models.Model):
     value_bool = models.BooleanField(null=True, blank=True)
     value_int = models.IntegerField(null=True, blank=True)
     value_float = models.FloatField(null=True, blank=True)
-    # Не более 20 МБ — валидация в сериализаторе. FK на StoredFile (§8.3, Фаза 5).
+    # Не более 20 МБ — валидация в сериализаторе. FK на StoredFile (Фаза 5).
     value_file = models.ForeignKey(
         "storage.StoredFile", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
-    # История изменений реквизитов Типа для «Истории изменений» карточки (§5.8).
+    # История изменений реквизитов Типа для «Истории изменений» карточки.
     history = HistoricalRecords()
 
     class Meta:
@@ -115,7 +115,7 @@ class LicenseFieldValue(models.Model):
 
 
 class LicenseCustomField(models.Model):
-    """Произвольное текстовое поле, созданное пользователем для конкретного объекта (§3.6)."""
+    """Произвольное текстовое поле, созданное пользователем для конкретного объекта."""
 
     license = models.ForeignKey(License, on_delete=models.CASCADE, related_name="custom_fields")
     name = models.CharField("Наименование", max_length=255)

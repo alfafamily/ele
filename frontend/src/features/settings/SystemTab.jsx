@@ -281,7 +281,7 @@ export function SystemTab() {
             })}
           </div>
 
-          {/* Перенос файлов между хранилищами (§8.3) — идёт в фоне (cron). Пока
+          {/* Перенос файлов между хранилищами — идёт в фоне (cron). Пока
               не завершён, смена режима заблокирована выше. */}
           {migration && migration.status === 'in_progress' ? (
             <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted)' }}>

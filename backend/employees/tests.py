@@ -88,7 +88,7 @@ class EmployeeTerminateTests(APITestCase):
 
 @override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
 class EmployeeAvatarUploadTests(APITestCase):
-    """Аватар (§3.3) — не более 600×600px, не более 2 МБ; грузит Admin/
+    """Аватар — не более 600×600px, не более 2 МБ; грузит Admin/
     Accountant из карточки, либо сам сотрудник из своего Профиля."""
 
     def setUp(self):

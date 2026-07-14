@@ -1,6 +1,6 @@
 import { Checkbox, Input } from '../ui'
 
-// Поле формы для одного реквизита Типа (field_values_input, §3.5/§3.7).
+// Поле формы для одного реквизита Типа (field_values_input,/).
 // Файловые реквизиты сюда не входят — грузятся отдельным action-эндпоинтом
 // после того, как объект уже существует (см. FileFieldSlot).
 export function FieldValueInput({ field, value, onChange, error }) {

@@ -8,7 +8,7 @@ if [ "${DJANGO_COLLECTSTATIC:-0}" = "1" ]; then
 fi
 
 # Автосоздание первого администратора из .env, если таблица пользователей
-# пуста (ТЗ §4.1, сценарий 1) — no-op, если ELE_ADMIN_* не заданы.
+# пуста (сценарий 1) — no-op, если ELE_ADMIN_* не заданы.
 python manage.py bootstrap_admin
 
 exec "$@"

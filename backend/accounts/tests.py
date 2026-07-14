@@ -238,7 +238,7 @@ class InviteAcceptTests(APITestCase):
 
 
 class ChangeEmailTests(APITestCase):
-    """§3.2, §5.6 — смена email из Профиля: повторная валидация домена,
+    """Смена email из Профиля: повторная валидация домена,
     подтверждение переходом по ссылке (сам email меняется только тогда)."""
 
     def setUp(self):
@@ -402,7 +402,7 @@ class SessionInvalidationTests(APITestCase):
         self.assertEqual(resp.status_code, 200, resp.data)
         user.refresh_from_db()
         self.assertTrue(user.check_password("New!Pass456"))
-        self.assertIsNotNone(user.password_changed_at)  # §5.6 «Пароль» блок в Профиле
+        self.assertIsNotNone(user.password_changed_at)  # «Пароль» блок в Профиле
 
 
 class WeakPasswordErrorSurfacingTests(APITestCase):
@@ -449,7 +449,7 @@ class WeakPasswordErrorSurfacingTests(APITestCase):
 
 
 class UserListTests(APITestCase):
-    """§5.5.2 — список Пользователей курсорно пагинирован; User не имеет
+    """ — список Пользователей курсорно пагинирован; User не имеет
     created_at (только date_joined), поэтому пагинатор должен сортировать
     по email, а не по дефолтному ordering ELECursorPagination."""
 
@@ -464,7 +464,7 @@ class UserListTests(APITestCase):
 
 
 class UserDeactivateTests(APITestCase):
-    """§5.5.2: деактивация с уточняющей веткой по связанному Сотруднику."""
+    """Деактивация с уточняющей веткой по связанному Сотруднику."""
 
     def setUp(self):
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
@@ -523,7 +523,7 @@ class UserDeactivateTests(APITestCase):
 
 @override_settings(YANDEX_ID_CLIENT_ID="cid", YANDEX_ID_CLIENT_SECRET="secret")
 class YandexIDCallbackTests(APITestCase):
-    """§4.3 — при первом входе через Яндекс ID создаётся и связанный Сотрудник
+    """ — при первом входе через Яндекс ID создаётся и связанный Сотрудник
     из имени/фамилии Яндекса (или логина до @, если их нет)."""
 
     def _callback(self, info):

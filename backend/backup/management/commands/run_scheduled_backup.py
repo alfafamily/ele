@@ -1,5 +1,5 @@
-"""Тик cron (§5.5.3) — то же расписание, что и миграция хранилища (Фаза 5),
-без Celery/очередей (CLAUDE.md). Идемпотентно: не более одной авто-копии
+"""Тик cron — то же расписание, что и миграция хранилища (Фаза 5),
+без Celery/очередей. Идемпотентно: не более одной авто-копии
 в сутки, см. backup/service.py run_scheduled_backup_if_due()."""
 from django.core.management.base import BaseCommand
 

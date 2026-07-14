@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Spinner } from './ui'
 
-// Подгрузка по скроллу (§5.1, §5.2, §5.3, §5.5.2) — наблюдатель за нижним
+// Подгрузка по скроллу — наблюдатель за нижним
 // краем списка вызывает loadMore(), как только попадает в область видимости.
 export function InfiniteScrollSentinel({ hasMore, loading, onLoadMore }) {
   const ref = useRef(null)

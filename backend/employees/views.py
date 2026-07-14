@@ -20,7 +20,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     pagination_class = ELECursorPagination
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["last_name"]
-    ordering = ["last_name", "first_name"]  # по умолчанию — по ФИО, А→Я (§5.3)
+    ordering = ["last_name", "first_name"]  # по умолчанию — по ФИО, А→Я
 
     def get_serializer_class(self):
         return EmployeeListSerializer if self.action == "list" else EmployeeSerializer
@@ -40,12 +40,12 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def terminate(self, request, pk=None):
-        """Увольнение (§5.3, E3): отвязывает всё оборудование, опционально
+        """Увольнение (E3): отвязывает всё оборудование, опционально
         деактивирует связанного Пользователя."""
         employee = self.get_object()
         equipment_list = list(employee.equipment.all())
         for eq in equipment_list:
-            # По одной, не bulk .update() — иначе не сработает история (§5.8).
+            # По одной, не bulk .update() — иначе не сработает история.
             eq.employee = None
             eq.save(update_fields=["employee"])
 
@@ -66,7 +66,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def departments(self, request):
-        # Автоподсказка по уже встречавшимся значениям (§3.3) — без отдельного справочника.
+        # Автоподсказка по уже встречавшимся значениям — без отдельного справочника.
         values = (
             Employee.objects.exclude(department="")
             .values_list("department", flat=True)
@@ -78,7 +78,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
 class _CanEditAvatar(BasePermission):
     """Аватар грузит либо Admin/Accountant из карточки Сотрудника, либо сам
-    пользователь из своего Профиля (§3.3) — по совпадению employee_id."""
+    пользователь из своего Профиля — по совпадению employee_id."""
 
     def has_permission(self, request, view):
         user = request.user
@@ -90,8 +90,8 @@ class _CanEditAvatar(BasePermission):
 
 
 class EmployeeAvatarUploadView(APIView):
-    """Аватар Сотрудника (ТЗ §3.3) — не более 600×600px, не более 2 МБ.
-    Отдельный multipart-эндпоинт, как и Company.logo (§8.3) — сериализатор
+    """Аватар Сотрудника — не более 600×600px, не более 2 МБ.
+    Отдельный multipart-эндпоинт, как и Company.logo — сериализатор
     карточки Сотрудника отдаёт avatar только на чтение."""
 
     permission_classes = [_CanEditAvatar]

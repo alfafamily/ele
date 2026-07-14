@@ -15,7 +15,7 @@ class LicenseTypeFieldSerializer(serializers.ModelSerializer):
         read_only_fields = ["license_type", "is_locked"]
 
     def validate(self, attrs):
-        # «Номер/ключ» у «Программной» — нельзя переименовать/сделать необязательным (§3.7).
+        # «Номер/ключ» у «Программной» — нельзя переименовать/сделать необязательным.
         if self.instance and self.instance.is_locked:
             if "name" in attrs and attrs["name"] != self.instance.name:
                 raise serializers.ValidationError({"name": ["Зафиксированный реквизит нельзя переименовать."]})
@@ -45,7 +45,7 @@ class LicenseFieldValueInputSerializer(serializers.Serializer):
 
 
 class LicenseFieldValueOutSerializer(serializers.ModelSerializer):
-    """Значение «Номер/ключ» видно только здесь (карточка), никогда в списках (§3.7)."""
+    """Значение «Номер/ключ» видно только здесь (карточка), никогда в списках."""
 
     name = serializers.CharField(source="field.name", read_only=True)
     value_type = serializers.CharField(source="field.value_type", read_only=True)
@@ -73,7 +73,7 @@ class LicenseCustomFieldSerializer(serializers.ModelSerializer):
 
 class LicenseSerializer(serializers.ModelSerializer):
     """Карточка объекта — используется на retrieve/create/update. Включает
-    «Номер/ключ» через field_values (§3.7: доступно только в карточке, роль
+    «Номер/ключ» через field_values (доступно только в карточке, роль
     уже ограничена на уровне permission_classes раздела «Лицензии»)."""
 
     license_type_name = serializers.CharField(source="license_type.name", read_only=True)
@@ -142,7 +142,7 @@ class LicenseSerializer(serializers.ModelSerializer):
         return instance
 
     def _raise_if_missing_required(self, instance):
-        # Утилизация — отдельное действие, сюда не заходит (исключение §5.4).
+        # Утилизация — отдельное действие, сюда не заходит (исключение).
         missing = missing_required_fields(instance, "field_values", instance.license_type.fields)
         if missing:
             names = ", ".join(f.name for f in missing)
@@ -150,7 +150,7 @@ class LicenseSerializer(serializers.ModelSerializer):
 
 
 class LicenseListSerializer(serializers.ModelSerializer):
-    """Список — «Номер/ключ» физически отсутствует в выдаче (§3.7), не просто скрыт на фронте."""
+    """Список — «Номер/ключ» физически отсутствует в выдаче, не просто скрыт на фронте."""
 
     license_type_name = serializers.CharField(source="license_type.name", read_only=True)
     equipment_detail = EquipmentMiniSerializer(source="equipment", read_only=True)

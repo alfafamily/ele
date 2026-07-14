@@ -10,7 +10,7 @@ from .models import Company
 
 
 class CompanyBriefTests(APITestCase):
-    """Название/лого для навигации (§8.5) — видно любой аутентифицированной
+    """Название/лого для навигации — видно любой аутентифицированной
     роли, не только Администратору (в отличие от Настройки → Компания)."""
 
     def test_requires_authentication(self):
@@ -30,8 +30,8 @@ class CompanyBriefTests(APITestCase):
 
 
 class CompanySettingsTests(APITestCase):
-    """Настройки → Компания (§5.5.1) — только Администратор; storage_mode
-    сюда не входит (отдельный эндпоинт со своей валидацией §8.3)."""
+    """Настройки → Компания — только Администратор; storage_mode
+    сюда не входит (отдельный эндпоинт со своей валидацией)."""
 
     def setUp(self):
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
@@ -49,7 +49,6 @@ class CompanySettingsTests(APITestCase):
             {
                 "name": "ООО «Ромашка»",
                 "inn": "7701234567",
-                "kpp": "770101001",
                 "domain": "romashka.ru",
                 "ip_allowlist": [{"ip": "195.19.0.0/16", "note": "Офис"}],
             },
@@ -104,16 +103,20 @@ class EnvironmentStatusTests(APITestCase):
 @override_settings(EMAIL_CONFIGURED=False)
 class SetupWizardLocalOnlyTests(APITestCase):
     """local-хранилище + пустые email/captcha/yandex — минимальный путь без
-    единой проверки (§4.1: ничего настроено — мастер не блокирует)."""
+    единой проверки (ничего настроено — мастер не блокирует)."""
 
     def test_complete_setup_without_any_integration(self):
         payload = {
-            "admin": {"email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
-            "company": {"name": "Alpha Family", "inn": "123", "kpp": "456"},
+            "admin": {"last_name": "Иванов", "first_name": "Пётр", "email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
+            "company": {"name": "Alpha Family", "inn": "123"},
         }
         resp = self.client.post("/api/setup/complete/", payload, format="json")
         self.assertEqual(resp.status_code, 201, resp.data)
-        self.assertTrue(User.objects.filter(email="admin@alpha.family", role=User.Role.ADMIN).exists())
+        admin = User.objects.get(email="admin@alpha.family", role=User.Role.ADMIN)
+        # Администратору заводится связанный Сотрудник из Фамилии/Имени.
+        self.assertIsNotNone(admin.employee)
+        self.assertEqual(admin.employee.last_name, "Иванов")
+        self.assertEqual(admin.employee.first_name, "Пётр")
         self.assertEqual(Company.load().name, "Alpha Family")
         self.assertEqual(Company.load().storage_mode, "local")
 
@@ -135,7 +138,7 @@ class SetupWizardS3IncompleteEnvTests(APITestCase):
 
     def test_complete_blocked_without_storage_verification(self):
         payload = {
-            "admin": {"email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
+            "admin": {"last_name": "Иванов", "first_name": "Пётр", "email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
             "company": {"name": "Alpha Family"},
         }
         resp = self.client.post("/api/setup/complete/", payload, format="json")
@@ -159,7 +162,7 @@ class SetupWizardS3ConnectionTests(APITestCase):
         self.assertEqual(resp.status_code, 400)
 
         payload = {
-            "admin": {"email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
+            "admin": {"last_name": "Иванов", "first_name": "Пётр", "email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
             "company": {"name": "Alpha Family"},
         }
         resp = self.client.post("/api/setup/complete/", payload, format="json")
@@ -171,7 +174,7 @@ class SetupWizardS3ConnectionTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
 
         payload = {
-            "admin": {"email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
+            "admin": {"last_name": "Иванов", "first_name": "Пётр", "email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
             "company": {"name": "Alpha Family"},
         }
         resp = self.client.post("/api/setup/complete/", payload, format="json")
@@ -182,7 +185,7 @@ class SetupWizardS3ConnectionTests(APITestCase):
 class SetupWizardEmailVerificationTests(APITestCase):
     def test_complete_blocked_without_email_verification(self):
         payload = {
-            "admin": {"email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
+            "admin": {"last_name": "Иванов", "first_name": "Пётр", "email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
             "company": {"name": "Alpha Family"},
         }
         resp = self.client.post("/api/setup/complete/", payload, format="json")
@@ -202,7 +205,7 @@ class SetupWizardEmailVerificationTests(APITestCase):
         self.assertEqual(resp.status_code, 200, resp.data)
 
         payload = {
-            "admin": {"email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
+            "admin": {"last_name": "Иванов", "first_name": "Пётр", "email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
             "company": {"name": "Alpha Family"},
         }
         resp = self.client.post("/api/setup/complete/", payload, format="json")
@@ -214,7 +217,7 @@ class SetupWizardEmailVerificationTests(APITestCase):
         self.client.post("/api/setup/verify-email/", {"code": code}, format="json")
 
         payload = {
-            "admin": {"email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
+            "admin": {"last_name": "Иванов", "first_name": "Пётр", "email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
             "company": {"name": "Alpha Family"},
         }
         resp = self.client.post("/api/setup/complete/", payload, format="json")
@@ -228,7 +231,7 @@ class SetupWizardCaptchaCheckTests(APITestCase):
         resp = self.client.post("/api/setup/test-captcha/")
         self.assertEqual(resp.status_code, 400)
         payload = {
-            "admin": {"email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
+            "admin": {"last_name": "Иванов", "first_name": "Пётр", "email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
             "company": {"name": "Alpha Family"},
         }
         resp = self.client.post("/api/setup/complete/", payload, format="json")
@@ -239,7 +242,7 @@ class SetupWizardCaptchaCheckTests(APITestCase):
         resp = self.client.post("/api/setup/test-captcha/")
         self.assertEqual(resp.status_code, 200)
         payload = {
-            "admin": {"email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
+            "admin": {"last_name": "Иванов", "first_name": "Пётр", "email": "admin@alpha.family", "password": "Str0ng!Pass1", "password_repeat": "Str0ng!Pass1"},
             "company": {"name": "Alpha Family"},
         }
         resp = self.client.post("/api/setup/complete/", payload, format="json")
@@ -323,7 +326,7 @@ class SystemSettingsPageTests(APITestCase):
 
 
 class StorageModeSwitchGuardTests(APITestCase):
-    """§8.3: пока идёт перенос файлов, менять режим хранилища нельзя (иначе
+    """Пока идёт перенос файлов, менять режим хранилища нельзя (иначе
     новый перенос пересечётся с текущим и рискует сохранностью файлов)."""
 
     def setUp(self):

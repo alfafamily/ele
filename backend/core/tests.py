@@ -7,7 +7,7 @@ from .ip_allowlist import is_ip_allowed
 
 
 class IsIPAllowedTests(APITestCase):
-    """Модульная проверка сопоставления IP/CIDR (§3.1) — независимо от HTTP-слоя."""
+    """Модульная проверка сопоставления IP/CIDR — независимо от HTTP-слоя."""
 
     def test_empty_allowlist_means_unrestricted(self):
         self.assertTrue(is_ip_allowed("1.2.3.4", []))
@@ -28,7 +28,7 @@ class IsIPAllowedTests(APITestCase):
 
 
 class IPCheckViewTests(APITestCase):
-    """§3.1, §7.2 — эндпоинт для Caddy forward_auth. Реальный IP клиента
+    """Эндпоинт для Caddy forward_auth. Реальный IP клиента
     берётся из ПОСЛЕДНЕГО значения X-Forwarded-For (Caddy сам его дописывает
     последним; более ранние значения мог подделать клиент)."""
 

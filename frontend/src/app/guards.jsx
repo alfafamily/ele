@@ -2,7 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
 
 // Guard'ы читают состояние, уже загруженное BootstrapGate (см. App.jsx) —
-// решают, какой экран первый: Setup Wizard, логин или приложение (ТЗ §4.1).
+// решают, какой экран первый: Setup Wizard, логин или приложение.
 
 export function RequireSetupPending({ children }) {
   const { bootstrap } = useAuth()
@@ -25,7 +25,7 @@ export function RequireAuth({ children }) {
   return children
 }
 
-// Раздел «Настройки» — только Администратор (§2.3); используется внутри
+// Раздел «Настройки» — только Администратор; используется внутри
 // RequireAuth, поэтому user здесь уже гарантированно есть.
 export function RequireAdmin({ children }) {
   const { user } = useAuth()
@@ -33,7 +33,7 @@ export function RequireAdmin({ children }) {
   return children
 }
 
-// Лицензии/Сотрудники/Типы — Admin/Accountant (§2.3). Сотрудник (в т.ч.
+// Лицензии/Сотрудники/Типы — Admin/Accountant. Сотрудник (в т.ч.
 // Наблюдатель) видит из бизнес-разделов только Оборудование — без этого
 // гейта прямой переход по URL показал бы сломанный экран вместо редиректа
 // (бэкенд и так отклонит запросы, это гейт только для UX).

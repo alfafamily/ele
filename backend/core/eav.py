@@ -52,7 +52,7 @@ def upsert_custom_fields(instance, model, fk_name: str, items: list[dict]) -> No
     """Обновляет «Дополнительные поля» объекта по id: существующие —
     обновляются (только при реальном изменении), новые — создаются,
     отсутствующие — удаляются. Стабильная идентичность нужна, чтобы «История
-    изменений» (§5.8) фиксировала правки полей, а не delete-all + recreate."""
+    изменений» фиксировала правки полей, а не delete-all + recreate."""
     existing = {cf.id: cf for cf in instance.custom_fields.all()}
     seen = set()
     for item in items:
@@ -76,7 +76,7 @@ def upsert_custom_fields(instance, model, fk_name: str, items: list[dict]) -> No
 
 def missing_required_fields(instance, value_related_name: str, type_fields) -> list:
     """Список обязательных реквизитов Типа без заполненного значения у объекта
-    (для валидации при создании/редактировании — исключение: списание/утилизация, §5.4)."""
+    (для валидации при создании/редактировании — исключение: списание/утилизация)."""
     values = {fv.field_id: fv for fv in getattr(instance, value_related_name).all()}
     missing = []
     for field in type_fields.filter(is_required=True):
@@ -95,8 +95,8 @@ def is_value_empty(field_value, value_type: str) -> bool:
 
 def count_missing_for_field(objects_qs, field, value_related_name: str) -> int:
     """Сколько объектов из objects_qs не имеют заполненного значения для field
-    (§5.4/T3 — предупреждение при переводе реквизита в обязательный задним
-    числом). Масштаб проекта (≤2000 объектов, ТЗ §7.1) — простой цикл достаточен."""
+    (/T3 — предупреждение при переводе реквизита в обязательный задним
+    числом). Масштаб проекта (≤2000 объектов) — простой цикл достаточен."""
     count = 0
     for obj in objects_qs:
         fv = getattr(obj, value_related_name).filter(field=field).first()

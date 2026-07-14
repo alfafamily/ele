@@ -17,7 +17,7 @@ def _reset_local_backend():
 
 @override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
 class LicenseFieldFileUploadTests(APITestCase):
-    """§3.7, §8.3 — реквизит типа «файл» у Лицензии: не более 20 МБ на сервере."""
+    """Реквизит типа «файл» у Лицензии: не более 20 МБ на сервере."""
 
     def setUp(self):
         _reset_local_backend()
@@ -52,7 +52,7 @@ class LicenseFieldFileUploadTests(APITestCase):
 
 
 class LicenseKeyMaskingTests(APITestCase):
-    """§3.7: «Номер/ключ» не отображается ни в одном списковом представлении."""
+    """«Номер/ключ» не отображается ни в одном списковом представлении."""
 
     def setUp(self):
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
@@ -130,7 +130,7 @@ class LicenseUtilizeTests(APITestCase):
         self.assertIsNotNone(license_obj.retired_at)
         self.assertIsNone(license_obj.equipment)
 
-        # Утилизированные — только во вкладке "Архив" (§5.2).
+        # Утилизированные — только во вкладке "Архив".
         resp = self.client.get("/api/licenses/?tab=active")
         self.assertNotIn(license_obj.id, [row["id"] for row in resp.data["results"]])
         resp = self.client.get("/api/licenses/?tab=archive")

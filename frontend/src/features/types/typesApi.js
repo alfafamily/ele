@@ -2,7 +2,7 @@ import { apiDelete, apiGet, apiPatch, apiPost } from '../../shared/api/client'
 
 // Общий клиент для equipment-types/license-types — оба ViewSet'а без
 // pagination_class (обычный массив) и с одинаковой формой fields/impact
-// вложенных эндпоинтов (§3.5, §3.7).
+// вложенных эндпоинтов .
 export function makeTypesApi(domain) {
   const base = `/api/${domain}-types/`
   return {

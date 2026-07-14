@@ -9,7 +9,7 @@ const ROLE_OPTIONS = [
   { value: 'employee', label: 'Сотрудник' },
 ]
 
-// S4 — приглашение пользователя (§4.4, §5.5.2): роль/Сотрудник/Наблюдатель
+// S4 — приглашение пользователя : роль/Сотрудник/Наблюдатель
 // сразу в модалке. Жёсткой блокировки по домену нет — только предупреждение,
 // возвращаемое сервером в успешном ответе.
 export function InviteModal({ onClose, onInvited }) {
@@ -28,7 +28,7 @@ export function InviteModal({ onClose, onInvited }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [warning, setWarning] = useState(null)
-  // Домен email отличается от домена компании — требуем подтверждения (§4.4):
+  // Домен email отличается от домена компании — требуем подтверждения:
   // первый сабмит показывает предупреждение, второй (с confirm_domain) шлёт.
   const [needsDomainConfirm, setNeedsDomainConfirm] = useState(false)
 

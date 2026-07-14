@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { FilePreviewModal } from './FilePreviewModal.jsx'
 
 // Read-only отображение значения реквизита в блоке «Параметры оборудования»/
-// «Параметры лицензии» карточки (§5.1, §5.2). fv — элемент field_values
+// «Параметры лицензии» карточки . fv — элемент field_values
 // (name, value_type, value, value_file).
 export function FieldValueDisplay({ fv }) {
   const [preview, setPreview] = useState(false)

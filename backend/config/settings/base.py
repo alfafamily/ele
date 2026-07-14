@@ -1,7 +1,7 @@
 """
 Base settings shared by dev.py and prod.py.
 Values that differ between environments — or are secrets — come from env
-vars only (see .env.example), never hardcoded here (CLAUDE.md §8.6).
+vars only (see .env.example), never hardcoded here.
 """
 
 from pathlib import Path
@@ -46,13 +46,13 @@ MIDDLEWARE = [
     # CSP sandbox на /media в dev (в проде — Caddy), защита от stored XSS через
     # загруженные файлы реквизитов.
     "core.middleware.MediaSecurityHeadersMiddleware",
-    # Автозаполнение history_user на Historical*-записях из request.user (§5.8).
+    # Автозаполнение history_user на Historical*-записях из request.user.
     "simple_history.middleware.HistoryRequestMiddleware",
 ]
 
 # SAMEORIGIN (вместо дефолтного DENY): фронтенд встраивает предпросмотр файлов
 # реквизитов (PDF и т.п.) с того же домена в iframe. Внешние сайты по-прежнему
-# не могут фреймить приложение — защита от clickjacking сохраняется (§7.2).
+# не могут фреймить приложение — защита от clickjacking сохраняется.
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
 AUTH_USER_MODEL = "accounts.User"
@@ -78,7 +78,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# Единственная компания на инстанс (СПЕК §1.3, CLAUDE.md) — Postgres задаётся
+# Единственная компания на инстанс — Postgres задаётся
 # через env, без мультитенантных схем/роутеров.
 DATABASES = {
     "default": env.db("DATABASE_URL", default="postgres://ele:ele@postgres:5432/ele"),
@@ -89,7 +89,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 8}},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
-    # Строчные+прописные латинские буквы, цифры, спецсимволы (ТЗ §7.3).
+    # Строчные+прописные латинские буквы, цифры, спецсимволы.
     {"NAME": "accounts.validators.ComplexityPasswordValidator"},
 ]
 
@@ -106,14 +106,14 @@ MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 # Явный запас над крупнейшим разрешённым файлом (реквизит типа "файл",
-# 20 МБ — §3.5, §8.3) — Django-дефолт 2.5 МБ формально не режет файловые
+# 20 МБ —) — Django-дефолт 2.5 МБ формально не режет файловые
 # части multipart-формы, но лучше не полагаться на этот нюанс парсера.
 DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Сессионная аутентификация, не JWT (ТЗ §8.7) — единая инвалидация сессий
+# Сессионная аутентификация, не JWT — единая инвалидация сессий
 # при смене пароля/деактивации (через встроенный get_session_auth_hash() —
 # см. комментарий в accounts/views.py). Классы пагинации — Фаза 4.
 REST_FRAMEWORK = {
@@ -126,41 +126,41 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "core.exceptions.exception_handler",
 }
 
-# SPA и backend — на одном домене за Caddy (ТЗ §8.7), поэтому CORS не нужен.
+# SPA и backend — на одном домене за Caddy, поэтому CORS не нужен.
 # Cookie CSRF-токена должна быть читаема из JS фронтенда.
 CSRF_COOKIE_HTTPONLY = False
 
 # Публичный адрес инстанса (совпадает и для SPA, и для API — один домен за
-# Caddy). Используется для абсолютных ссылок в письмах (§4.8) и OAuth redirect_uri.
+# Caddy). Используется для абсолютных ссылок в письмах и OAuth redirect_uri.
 SITE_URL = env("SITE_URL", default="http://localhost")
 
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ELE <no-reply@ele.local>")
 
-# Таймаут бездействия сессии — 24 часа (ТЗ §4.7, §7.3): SAVE_EVERY_REQUEST
+# Таймаут бездействия сессии — 24 часа : SAVE_EVERY_REQUEST
 # продлевает cookie при активности, т.е. это именно idle-таймаут, а не
 # абсолютный TTL с момента входа.
 SESSION_COOKIE_AGE = 60 * 60 * 24
 SESSION_SAVE_EVERY_REQUEST = True
 
 # Срок жизни токенов подтверждения email/приглашения/сброса пароля — 24 часа
-# (ТЗ §4.4, §4.5; для confirm-email/change-email в ТЗ явно не зафиксирован,
-# принят по аналогии для единообразия — см. docs/ELE_01, ELE_05).
+# (для confirm-email/change-email срок явно не зафиксирован, принят по
+# аналогии для единообразия).
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
 
-# --- Первый администратор из .env (ТЗ §4.1, сценарий 1) ---
+# --- Первый администратор из .env (сценарий 1) ---
 ELE_ADMIN_EMAIL = env("ELE_ADMIN_EMAIL", default="")
 ELE_ADMIN_PASSWORD = env("ELE_ADMIN_PASSWORD", default="")
 
-# --- Яндекс SmartCaptcha (ТЗ §4.6) — пусто = капча выключена без ошибок ---
+# --- Яндекс SmartCaptcha — пусто = капча выключена без ошибок ---
 YANDEX_SMARTCAPTCHA_SITE_KEY = env("YANDEX_SMARTCAPTCHA_SITE_KEY", default="")
 YANDEX_SMARTCAPTCHA_SECRET_KEY = env("YANDEX_SMARTCAPTCHA_SECRET_KEY", default="")
 
-# --- Яндекс ID OAuth (ТЗ §4.3) — пусто = кнопка входа не отображается ---
+# --- Яндекс ID OAuth — пусто = кнопка входа не отображается ---
 YANDEX_ID_CLIENT_ID = env("YANDEX_ID_CLIENT_ID", default="")
 YANDEX_ID_CLIENT_SECRET = env("YANDEX_ID_CLIENT_SECRET", default="")
 
-# --- Хранилище файлов (ТЗ §4.1 шаг 3, §8.3) ---
-# Backend НЕ пишет в .env (обсуждение §4.1 vs §8.6) — Setup Wizard только
+# --- Хранилище файлов (шаг 3) ---
+# Backend НЕ пишет в .env — Setup Wizard только
 # читает то, что уже задано в окружении контейнера, и тестирует подключение
 # (company/views.py EnvironmentStatusView/TestStorageConnectionView).
 ELE_STORAGE_MODE = env("ELE_STORAGE_MODE", default="local")

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Banner, Button, Checkbox, Modal } from '../../shared/ui'
 import { terminateEmployee } from './employeesApi.js'
 
-// E3 — увольнение (§5.3): отвязывает всё оборудование, при наличии связанной
+// E3 — увольнение: отвязывает всё оборудование, при наличии связанной
 // учётной записи предлагает опционально деактивировать её.
 export function TerminateModal({ employee, onClose, onDone }) {
   const [deactivateUser, setDeactivateUser] = useState(false)

@@ -1,6 +1,6 @@
 """Переносит файлы между хранилищами при смене режима в Настройках → Компания
-(ТЗ §8.3). Запускается по расписанию через cron-сервис в docker-compose —
-без Celery/очередей (CLAUDE.md, масштаб проекта их не требует).
+. Запускается по расписанию через cron-сервис в docker-compose —
+без Celery/очередей (масштаб проекта их не требует).
 
 Ошибочные записи не подхватываются автоматически следующим тиком — только
 через явный retry (см. company.views.StorageMigrationRetryView), чтобы
@@ -47,7 +47,7 @@ class Command(BaseCommand):
             with transaction.atomic():
                 # Одна строка = все ссылающиеся объекты (Company.logo,
                 # Employee.avatar, *FieldValue.value_file) обновляются
-                # атомарно "бесплатно", без обхода N таблиц (§8.3).
+                # атомарно "бесплатно", без обхода N таблиц.
                 stored_file.backend = target
                 stored_file.path = new_path
                 stored_file.migration_status = StoredFile.MigrationStatus.DONE

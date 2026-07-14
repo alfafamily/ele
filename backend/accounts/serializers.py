@@ -25,9 +25,9 @@ def validate_password_field(password, field, user=None):
 
 
 class MeSerializer(serializers.ModelSerializer):
-    """Профиль (§5.6) — employee вложен целиком (не просто id), иначе роль
+    """Профиль — employee вложен целиком (не просто id), иначе роль
     «Сотрудник» не смогла бы прочитать свои же Имя/Фамилию/Отдел/Аватар:
-    EmployeeViewSet закрыт для этой роли (§2.3), а тут — про себя, не про
+    EmployeeViewSet закрыт для этой роли, а тут — про себя, не про
     список чужих объектов."""
 
     employee = EmployeeListSerializer(read_only=True)
@@ -38,7 +38,7 @@ class MeSerializer(serializers.ModelSerializer):
 
 
 class UserListSerializer(serializers.ModelSerializer):
-    """Настройки → Пользователи, список (§5.5.2)."""
+    """Настройки → Пользователи, список."""
 
     status = serializers.SerializerMethodField()
     employee_name = serializers.SerializerMethodField()
@@ -75,7 +75,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class RegisterSerializer(serializers.Serializer):
-    """Самостоятельная регистрация (ТЗ §4.2) — роль «Сотрудник» по умолчанию.
+    """Самостоятельная регистрация — роль «Сотрудник» по умолчанию.
     При регистрации автоматически заводится связанный Сотрудник по введённым
     ФИО/отделу/должности (Фамилия и Имя обязательны — без них не создать
     Сотрудника; Отдел и Должность — по желанию)."""
@@ -104,7 +104,7 @@ class RegisterSerializer(serializers.Serializer):
                 raise serializers.ValidationError("Пользователь с таким email уже зарегистрирован.")
             if existing.invite_sent_at is not None:
                 # Приглашённый администратором аккаунт — самостоятельная
-                # регистрация не должна перехватывать его (§4.4 vs §4.2).
+                # регистрация не должна перехватывать его.
                 raise serializers.ValidationError(
                     "На этот email отправлено приглашение — используйте ссылку из письма."
                 )
@@ -143,7 +143,7 @@ class RegisterSerializer(serializers.Serializer):
 
 
 class InviteSerializer(serializers.Serializer):
-    """Приглашение пользователя администратором (ТЗ §4.4)."""
+    """Приглашение пользователя администратором."""
 
     email = serializers.EmailField()
     role = serializers.ChoiceField(choices=User.Role.choices)
@@ -158,7 +158,7 @@ class InviteSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
     position = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
     department = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
-    # Явное подтверждение отправки при несовпадении домена (§4.4) — без него
+    # Явное подтверждение отправки при несовпадении домена — без него
     # при несовпадении домена приглашение не отправляется, а запрашивается
     # подтверждение у администратора.
     confirm_domain = serializers.BooleanField(required=False, default=False)
@@ -204,7 +204,7 @@ class InviteSerializer(serializers.Serializer):
         domain_warning = None
         company = Company.load()
         if company.domain and email.rsplit("@", 1)[-1].lower() != company.domain.lower():
-            # Жёсткой блокировки нет — только предупреждение (§4.4).
+            # Жёсткой блокировки нет — только предупреждение.
             domain_warning = "Домен email отличается от домена компании."
 
         # Создание/обновление пользователя, нового Сотрудника (если попросили) и
@@ -285,7 +285,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class ChangeEmailRequestSerializer(serializers.Serializer):
-    """Смена email из Профиля (§3.2, §5.6) — повторная валидация домена,
+    """Смена email из Профиля — повторная валидация домена,
     подтверждение по ссылке (сам email меняется только в ChangeEmailConfirmView)."""
 
     new_email = serializers.EmailField()

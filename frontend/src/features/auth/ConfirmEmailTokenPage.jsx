@@ -4,7 +4,7 @@ import { apiPost } from '../../shared/api/client'
 import { Spinner } from '../../shared/ui'
 import { AuthShell } from './AuthShell.jsx'
 
-// Переход по ссылке из письма «Подтверждение email» (§4.8, ELE_01).
+// Переход по ссылке из письма «Подтверждение email».
 export function ConfirmEmailTokenPage() {
   const { token } = useParams()
   const [state, setState] = useState('pending') // pending | ok | error

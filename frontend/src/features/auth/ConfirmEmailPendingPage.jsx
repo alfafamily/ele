@@ -6,7 +6,7 @@ import { AuthShell } from './AuthShell.jsx'
 
 const RESEND_COOLDOWN = 60
 
-// R2 — экран сразу после самостоятельной регистрации (§4.2): ссылка ушла на
+// R2 — экран сразу после самостоятельной регистрации: ссылка ушла на
 // почту, здесь только повторная отправка с таймером.
 export function ConfirmEmailPendingPage() {
   const location = useLocation()

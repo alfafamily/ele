@@ -2,8 +2,8 @@ from django.db import models
 
 
 class BackupRecord(models.Model):
-    """Запись о резервной копии (ТЗ §5.5.3) — сам JSON лежит через
-    StoredFile (та же абстракция Local/S3, что и остальные файлы, §8.3),
+    """Запись о резервной копии — сам JSON лежит через
+    StoredFile (та же абстракция Local/S3, что и остальные файлы),
     здесь только метаданные."""
 
     class BackupType(models.TextChoices):

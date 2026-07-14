@@ -62,7 +62,7 @@ class EquipmentTypeFieldDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class EquipmentTypeFieldImpactView(APIView):
-    """§5.4/T3 — число объектов Типа без значения реквизита, для предупреждения
+    """/T3 — число объектов Типа без значения реквизита, для предупреждения
     при переводе реквизита в обязательный задним числом."""
 
     permission_classes = [IsAdminOrAccountant]
@@ -75,14 +75,14 @@ class EquipmentTypeFieldImpactView(APIView):
 
 
 class EquipmentViewSet(viewsets.ModelViewSet):
-    """Удаления нет — только списание (write_off), §5.1."""
+    """Удаления нет — только списание (write_off)."""
 
     serializer_class = EquipmentSerializer
     permission_classes = [EquipmentAccessPermission]
     pagination_class = ELECursorPagination
     # DELETE разрешён на уровне диспетчеризации только ради экшена удаления файла
     # реквизита (ниже); удаление самого Оборудования запрещено — destroy() отдаёт
-    # 405 (только списание, §5.1).
+    # 405 (только списание).
     http_method_names = ["get", "post", "put", "patch", "delete", "head", "options"]
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["created_at", "equipment_type__name", "employee__last_name"]
@@ -97,7 +97,7 @@ class EquipmentViewSet(viewsets.ModelViewSet):
         )
         user = self.request.user
         if user.role == "employee" and not user.is_observer:
-            # Не привязан к Сотруднику — не видит ничего (§2.3), а не «все свободные».
+            # Не привязан к Сотруднику — не видит ничего, а не «все свободные».
             qs = qs.filter(employee_id=user.employee_id) if user.employee_id else qs.none()
 
         # Фильтры вкладки/статуса/поиска относятся только к списку. Для retrieve
@@ -140,14 +140,14 @@ class EquipmentViewSet(viewsets.ModelViewSet):
                 status=409,
             )
         if detach:
-            # По одной, не bulk .update() — иначе не сработает история (§5.8,
-            # django-simple-history triggers только через save()).
+            # По одной, не bulk .update() — иначе не сработает история
+            # (django-simple-history triggers только через save()).
             for lic in active_licenses:
                 lic.equipment = None
                 lic.save(update_fields=["equipment"])
         # Списанное оборудование выходит из обращения — снимаем закрепление за
         # Сотрудником (аналогично тому, как увольнение открепляет оборудование,
-        # §5.3). Историю «за кем было закреплено» хранит журнал изменений (§5.8).
+        #). Историю «за кем было закреплено» хранит журнал изменений.
         equipment.employee = None
         equipment.is_written_off = True
         equipment.written_off_at = timezone.now()

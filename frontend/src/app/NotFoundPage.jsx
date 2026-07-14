@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../shared/ui'
 import './ErrorPage.css'
 
-// 404 (§5.9) — код, пояснение, «Назад»/«На главную».
+// 404 — код, пояснение, «Назад»/«На главную».
 export function NotFoundPage() {
   const navigate = useNavigate()
   return (

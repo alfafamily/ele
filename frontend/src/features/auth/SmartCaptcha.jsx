@@ -2,7 +2,7 @@ import { useEffect, useId, useRef } from 'react'
 
 const SCRIPT_SRC = 'https://smartcaptcha.yandexcloud.net/captcha.js'
 
-// Виджет Яндекс SmartCaptcha (§4.6) — активен только когда backend отдал
+// Виджет Яндекс SmartCaptcha — активен только когда backend отдал
 // captcha_site_key (задан в .env, см. BootstrapView). Best-effort: если
 // скрипт не загрузился (нет сети), поле токена просто остаётся пустым —
 // сервер и так не примет вход без него в состоянии captcha_required.

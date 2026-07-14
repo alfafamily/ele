@@ -4,7 +4,7 @@ import { apiPost } from '../../shared/api/client'
 import { Banner, Button, Input } from '../../shared/ui'
 import { AuthShell } from './AuthShell.jsx'
 
-// Самостоятельная регистрация (§4.2). Фамилия/Имя обязательны — при регистрации
+// Самостоятельная регистрация. Фамилия/Имя обязательны — при регистрации
 // на сервере заводится связанный Сотрудник; Отдел/Должность — по желанию.
 export function RegisterPage() {
   const navigate = useNavigate()

@@ -42,7 +42,7 @@
   --color-role-admin-text: #6B46C1;
   --color-role-admin-bg: #F0EBFF;
 
-  /* Статус-пилюли (см. README §Design Tokens) */
+  /* Статус-пилюли (см. README, раздел «Design Tokens») */
   --color-pill-assigned-text: var(--color-success);
   --color-pill-assigned-bg: var(--color-success-bg);
   --color-pill-free-text: var(--color-info);

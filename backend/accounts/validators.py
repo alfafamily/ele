@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 
 
 class ComplexityPasswordValidator:
-    """Строчные и прописные латинские буквы, цифры, спецсимволы (ТЗ §7.3)."""
+    """Строчные и прописные латинские буквы, цифры, спецсимволы."""
 
     SPECIAL_CHARS = re.compile(r"[!\"#$%&'()*+,\-./:;<=>?@\[\]^_`{|}~]")
 

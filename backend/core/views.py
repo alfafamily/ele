@@ -19,18 +19,18 @@ def health(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def ip_check(request):
-    """Проверка IP клиента для Caddy `forward_auth` (§3.1, §7.2) — единственный
+    """Проверка IP клиента для Caddy `forward_auth` — единственный
     способ реально заблокировать ВСЕ страницы сервиса (включая форму логина),
     а не только вызовы API: Django не отдаёт SPA-шелл в проде, это делает
     Caddy/frontend напрямую, поэтому блокировка должна стоять перед ним, не
     внутри Django-миддлвари. При самоблокировке администратора — сброс через
-    `manage.py reset_ip_allowlist` на сервере (§7.2), не через HTTP."""
+    `manage.py reset_ip_allowlist` на сервере, не через HTTP."""
     from company.models import Company
 
     company = Company.load()
     if is_ip_allowed(get_client_ip(request), company.ip_allowlist):
         return Response({"detail": "ok"})
-    # Отказ. Caddy forward_auth отдаёт тело этого 403 клиенту как есть (§3.1),
+    # Отказ. Caddy forward_auth отдаёт тело этого 403 клиенту как есть,
     # поэтому браузеру возвращаем стилизованную под дизайн-систему страницу
     # (иначе виден сырой DRF browsable-API), а API-клиенту — прежний JSON.
     if "text/html" in request.headers.get("Accept", ""):

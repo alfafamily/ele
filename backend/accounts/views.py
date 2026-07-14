@@ -45,13 +45,13 @@ User = get_user_model()
 
 _RESEND_COOLDOWN = timedelta(seconds=60)
 _LOCKOUT_DURATION = timedelta(minutes=5)
-_CAPTCHA_FROM_ATTEMPT = 2  # 0-indexed: 3-я попытка подряд (ТЗ §4.6)
+_CAPTCHA_FROM_ATTEMPT = 2  # 0-indexed: 3-я попытка подряд
 _MAX_ATTEMPTS = 5
 
 
 class BootstrapView(APIView):
     """Что показать при заходе (Setup Wizard/логин) и какие способы входа
-    активны — фронт не хардкодит наличие Яндекс ID/капчи (ТЗ §4.3, §4.6)."""
+    активны — фронт не хардкодит наличие Яндекс ID/капчи ."""
 
     permission_classes = [AllowAny]
 
@@ -121,7 +121,7 @@ class ResendConfirmationView(APIView):
 
 
 class LoginView(APIView):
-    """Сессионный вход с защитой от подбора пароля (ТЗ §4.6): капча с 3-й
+    """Сессионный вход с защитой от подбора пароля: капча с 3-й
     подряд неудачной попытки, блокировка на 5 минут после 5-й."""
 
     permission_classes = [AllowAny]
@@ -194,7 +194,7 @@ class LogoutView(APIView):
 
 
 class PasswordResetRequestView(APIView):
-    """Нейтральный ответ независимо от того, существует ли аккаунт (ТЗ §4.5)."""
+    """Нейтральный ответ независимо от того, существует ли аккаунт."""
 
     permission_classes = [AllowAny]
     _NEUTRAL_MESSAGE = "Если аккаунт с этим адресом существует, на него отправлена ссылка."
@@ -223,7 +223,7 @@ class PasswordResetConfirmView(APIView):
         user.failed_login_attempts = 0
         user.locked_until = None
         # Прочие сессии инвалидируются автоматически: get_session_auth_hash()
-        # завязан на password, Django сверяет его на каждом запросе (§4.7).
+        # завязан на password, Django сверяет его на каждом запросе.
         user.save()
         return Response({"detail": "Пароль изменён."})
 
@@ -249,13 +249,13 @@ class ChangePasswordView(APIView):
         user.set_password(serializer.validated_data["new_password"])
         user.save()
         # Обновляет hash ТЕКУЩЕЙ сессии — остальные сессии этого пользователя
-        # инвалидируются get_session_auth_hash()-проверкой (§4.7).
+        # инвалидируются get_session_auth_hash()-проверкой.
         update_session_auth_hash(request, user)
         return Response({"detail": "Пароль изменён."})
 
 
 class ChangeEmailRequestView(APIView):
-    """Профиль → смена email, шаг 1 (§3.2, §5.6): письмо со ссылкой на
+    """Профиль → смена email, шаг 1 : письмо со ссылкой на
     новый адрес, сам email меняется только по подтверждению перехода."""
 
     def post(self, request):
@@ -283,7 +283,7 @@ class ChangeEmailConfirmView(APIView):
 
 
 class InviteView(APIView):
-    """Настройки → Пользователи → «Пригласить» (ТЗ §4.4, §5.5.2) — только Администратор."""
+    """Настройки → Пользователи → «Пригласить» — только Администратор."""
 
     permission_classes = [IsAdmin]
 
@@ -292,7 +292,7 @@ class InviteView(APIView):
         serializer.is_valid(raise_exception=True)
 
         # Домен email отличается от домена компании — не отправляем сразу, а
-        # просим у администратора явного подтверждения (§4.4: жёсткой блокировки
+        # просим у администратора явного подтверждения (жёсткой блокировки
         # нет, но действие должно быть осознанным).
         mismatch, company_domain = serializer.domain_mismatch()
         if mismatch and not serializer.validated_data.get("confirm_domain"):
@@ -320,13 +320,13 @@ class InviteView(APIView):
 
 class _UserCursorPagination(ELECursorPagination):
     # User не имеет поля created_at (только date_joined) — переопределяем
-    # ordering пагинатора под реальную сортировку списка (§5.5.2: без
+    # ordering пагинатора под реальную сортировку списка (без
     # предпочтения по дате, порядок как в get_queryset()).
     ordering = "email"
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    """Настройки → Пользователи (§5.5.2) — только Администратор. Создание —
+    """Настройки → Пользователи — только Администратор. Создание —
     через InviteView (пригласить), не через POST сюда; удаления нет —
     только деактивация."""
 
@@ -353,7 +353,7 @@ class UserViewSet(viewsets.ModelViewSet):
         user.is_active = False
         user.save(update_fields=["is_active"])
         # Прочие сессии инвалидируются автоматически проверкой is_active в
-        # ModelBackend.user_can_authenticate() (§4.7) — доп. кода не нужно.
+        # ModelBackend.user_can_authenticate() — доп. кода не нужно.
 
         terminated_employee = False
         if request.data.get("terminate_employee") and user.employee_id:
@@ -365,7 +365,7 @@ class UserViewSet(viewsets.ModelViewSet):
             employee.save(update_fields=["is_employed"])
             terminated_employee = True
         else:
-            # «Нет» — связь снимается, Сотрудник остаётся «Работает» (§5.5.2).
+            # «Нет» — связь снимается, Сотрудник остаётся «Работает».
             user.employee = None
             user.save(update_fields=["employee"])
 
@@ -375,7 +375,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def activate(self, request, pk=None):
-        """Обратно включить деактивированного пользователя (§5.5.2) — только
+        """Обратно включить деактивированного пользователя — только
         восстанавливает вход (is_active=True). Занятость сотрудника и связь при
         необходимости управляются отдельно в разделе Сотрудники."""
         user = self.get_object()
@@ -396,7 +396,7 @@ class YandexIDAuthorizeView(APIView):
 
 
 class YandexIDCallbackView(APIView):
-    """Обмен code на access_token и вход/регистрация по email (ТЗ §4.3).
+    """Обмен code на access_token и вход/регистрация по email.
 
     Отдельной модели связки не требуется — совпадение email само по себе
     является привязкой между Яндекс ID и учётной записью ELE."""
@@ -429,12 +429,12 @@ class YandexIDCallbackView(APIView):
 
         company = Company.load()
         if company.domain and email.rsplit("@", 1)[-1].lower() != company.domain.lower():
-            # Вход отклоняется без исключений при несовпадении домена (§4.3).
+            # Вход отклоняется без исключений при несовпадении домена.
             return fail("domain")
 
         user = User.objects.filter(email__iexact=email).first()
         if user is None:
-            # Первый вход — заводим учётку и связанного Сотрудника (§3.3) из
+            # Первый вход — заводим учётку и связанного Сотрудника из
             # имени/фамилии Яндекса; если их нет — в оба поля логин (до @).
             login_part = email.split("@", 1)[0]
             with transaction.atomic():

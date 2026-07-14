@@ -13,7 +13,7 @@ CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS")
 
 SECURE_SSL_REDIRECT = False  # TLS terminates at Caddy, not Django
 # Режим определяем по схеме SITE_URL: HTTPS (домен + TLS через Caddy) или HTTP
-# (локальный инстанс по IP без TLS, §8.2). В HTTP-режиме secure-куки отправлять
+# (локальный инстанс по IP без TLS). В HTTP-режиме secure-куки отправлять
 # нельзя — иначе браузер не пошлёт их по http и вход не сработает; proxy-ssl-
 # header тоже не ставим (соединение реально http).
 _https = SITE_URL.startswith("https://")  # noqa: F405 — SITE_URL из base
@@ -25,7 +25,7 @@ if _https:
     # без этой настройки request.is_secure() всегда считал бы соединение http.
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# SMTP — опционален, как капча/Яндекс ID (§4.6, §4.3): пусто = приложение не
+# SMTP — опционален, как капча/Яндекс ID : пусто = приложение не
 # падает при старте, письма просто некуда слать (Setup Wizard пропустит
 # проверку почты и предупредит, что уведомления не будут доставляться).
 EMAIL_HOST = env("EMAIL_HOST", default="")

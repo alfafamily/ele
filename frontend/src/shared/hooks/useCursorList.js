@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiGet } from '../api/client'
 
-// Переиспользуемый хук бесконечной подгрузки под курсорную пагинацию DRF
-// (ТЗ §8.7): next/previous — уже готовые URL, не offset, поэтому loadMore()
-// просто дёргает next напрямую, не пересчитывает страницу сам.
+// Переиспользуемый хук бесконечной подгрузки под курсорную пагинацию DRF:
+// next/previous — уже готовые URL, не offset, поэтому loadMore() просто
+// дёргает next напрямую, не пересчитывает страницу сам.
 export function useCursorList(basePath, params = {}) {
   const paramsKey = JSON.stringify(params)
   const [items, setItems] = useState([])

@@ -2,7 +2,7 @@ from django.db import models
 
 
 class StoredFile(models.Model):
-    """Единый слой косвенности над файлами (ТЗ §8.3) — Company.logo,
+    """Единый слой косвенности над файлами — Company.logo,
     Employee.avatar, файловые EAV-значения ссылаются сюда, а не на путь
     напрямую. Смена хранилища всего инстанса = обновление backend/path
     в этих строках, без необходимости трогать N разных таблиц-ссылок."""
@@ -27,7 +27,7 @@ class StoredFile(models.Model):
 
     # Ошибочные записи не подхватываются автоматически следующим тиком cron
     # (см. storage/management/commands/migrate_storage_files.py) — только
-    # по явному запросу Администратора (§8.3: "доступно для просмотра и
+    # по явному запросу Администратора ("доступно для просмотра и
     # повторного запуска переноса именно по ним").
     migration_status = models.CharField(max_length=15, choices=MigrationStatus.choices, default=MigrationStatus.NONE)
     migration_error = models.TextField(blank=True)

@@ -1,7 +1,7 @@
 import { Component } from 'react'
 import { ServerErrorPage } from './ServerErrorPage.jsx'
 
-// Непойманная ошибка рендера → ERR·500 (§5.9) вместо белого экрана.
+// Непойманная ошибка рендера → ERR·500 вместо белого экрана.
 export class ErrorBoundary extends Component {
   state = { hasError: false }
 

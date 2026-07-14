@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Banner, Button, Modal } from '../../shared/ui'
 import { deactivateUser } from './settingsApi.js'
 
-// §5.5.2 — если у Пользователя есть привязанный Сотрудник, уточняем: уволить
+// — если у Пользователя есть привязанный Сотрудник, уточняем: уволить
 // его тоже («Да» — Сотрудник «Уволен» + оборудование откреплено, «Нет» —
 // связь снимается, Сотрудник остаётся «Работает»).
 export function DeactivateUserModal({ user, onClose, onDone }) {

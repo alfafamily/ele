@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Banner, Button, Modal } from '../../shared/ui'
 
 // T2 — удаление Типа без привязанных объектов; вместе с Типом удаляются
-// все его реквизиты (§5.4).
+// все его реквизиты.
 export function DeleteTypeModal({ type, onClose, onConfirm }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)

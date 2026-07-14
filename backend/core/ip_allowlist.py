@@ -11,7 +11,7 @@ def entry_ip(entry) -> str:
 
 
 def is_ip_allowed(ip: str, allowlist: list) -> bool:
-    """Пустой allowlist = ограничение выключено (§3.1). Непустой — сверяем
+    """Пустой allowlist = ограничение выключено. Непустой — сверяем
     по отдельным адресам и подсетям CIDR; некорректный IP клиента или
     записи allowlist трактуем как "не совпало", не как ошибку 500."""
     if not allowlist:

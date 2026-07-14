@@ -47,7 +47,7 @@
   padding-right: 30px;
 }
 
-/* Bottom-sheet ниже брейкпоинта ~768px (§8.5). */
+/* Bottom-sheet ниже брейкпоинта ~768px. */
 @media (max-width: 768px) {
   .ele-modal-overlay {
     align-items: flex-end;

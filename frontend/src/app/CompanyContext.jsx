@@ -4,7 +4,7 @@ import { useAuth } from './AuthContext'
 
 const CompanyContext = createContext(null)
 
-// Название + лого для навигации (§8.5) — видно любой аутентифицированной
+// Название + лого для навигации — видно любой аутентифицированной
 // роли, в отличие от полной карточки Настройки → Компания (только Admin).
 export function CompanyProvider({ children }) {
   const { user } = useAuth()

@@ -3,7 +3,7 @@ from simple_history.models import HistoricalRecords
 
 
 class EquipmentType(models.Model):
-    """Тип оборудования — классификатор, задающий набор реквизитов (ТЗ §3.5)."""
+    """Тип оборудования — классификатор, задающий набор реквизитов."""
 
     name = models.CharField("Наименование", max_length=255)
     is_archived = models.BooleanField("Архивный", default=False)
@@ -22,7 +22,7 @@ class EquipmentType(models.Model):
         if is_new:
             # Базовый реквизит «Модель» — у каждого Типа оборудования
             # автоматически, нельзя удалить/переименовать/сделать обязательным
-            # (ТЗ §3.5). Все Типы оборудования пользовательские (в отличие от
+            #. Все Типы оборудования пользовательские (в отличие от
             # лицензий), поэтому сеется здесь, не data-миграцией.
             EquipmentTypeField.objects.get_or_create(
                 equipment_type=self,
@@ -36,7 +36,7 @@ class EquipmentType(models.Model):
 
 
 class EquipmentTypeField(models.Model):
-    """Реквизит типа оборудования (ТЗ §3.5) — EAV-схема значений, см. EquipmentFieldValue."""
+    """Реквизит типа оборудования — EAV-схема значений, см. EquipmentFieldValue."""
 
     class ValueType(models.TextChoices):
         BOOL = "bool", "Булево"
@@ -49,7 +49,7 @@ class EquipmentTypeField(models.Model):
     name = models.CharField("Наименование реквизита", max_length=255)
     value_type = models.CharField("Значение типа", max_length=10, choices=ValueType.choices)
     is_required = models.BooleanField("Обязательность", default=False)
-    # «Модель» — нельзя удалить/переименовать/сделать обязательным (§3.5).
+    # «Модель» — нельзя удалить/переименовать/сделать обязательным.
     is_locked = models.BooleanField(default=False)
 
     class Meta:
@@ -61,7 +61,7 @@ class EquipmentTypeField(models.Model):
 
 
 class Equipment(models.Model):
-    """Единица физического актива компании (ТЗ §3.4)."""
+    """Единица физического актива компании."""
 
     inventory_number = models.CharField("Учётный номер", max_length=255)
     employee = models.ForeignKey(
@@ -70,10 +70,10 @@ class Equipment(models.Model):
     )
     is_written_off = models.BooleanField("Признак списания", default=False)
     # Проставляется в момент списания (write_off action) — нужна для колонки
-    # «Дата списания» вкладки Архив (§5.7), отдельно от is_written_off.
+    # «Дата списания» вкладки Архив, отдельно от is_written_off.
     written_off_at = models.DateTimeField("Дата списания", null=True, blank=True)
     # PROTECT: удаление Типа с привязанными объектами запрещено на уровне БД
-    # (ТЗ §5.4) — прикладной код (Фаза 4) превращает ProtectedError в 409.
+    # — прикладной код (Фаза 4) превращает ProtectedError в 409.
     equipment_type = models.ForeignKey(
         EquipmentType, verbose_name="Тип оборудования", on_delete=models.PROTECT, related_name="equipment",
     )
@@ -98,11 +98,11 @@ class EquipmentFieldValue(models.Model):
     value_bool = models.BooleanField(null=True, blank=True)
     value_int = models.IntegerField(null=True, blank=True)
     value_float = models.FloatField(null=True, blank=True)
-    # Не более 20 МБ — валидация в сериализаторе. FK на StoredFile (§8.3, Фаза 5).
+    # Не более 20 МБ — валидация в сериализаторе. FK на StoredFile (Фаза 5).
     value_file = models.ForeignKey(
         "storage.StoredFile", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
-    # История изменений реквизитов Типа для «Истории изменений» карточки (§5.8).
+    # История изменений реквизитов Типа для «Истории изменений» карточки.
     history = HistoricalRecords()
 
     class Meta:
@@ -117,7 +117,7 @@ class EquipmentFieldValue(models.Model):
 
 
 class EquipmentCustomField(models.Model):
-    """Произвольное текстовое поле, созданное пользователем для конкретного объекта (§3.4)."""
+    """Произвольное текстовое поле, созданное пользователем для конкретного объекта."""
 
     equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name="custom_fields")
     name = models.CharField("Наименование", max_length=255)

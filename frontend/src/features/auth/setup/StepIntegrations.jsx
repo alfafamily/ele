@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { apiGet, apiPost } from '../../../shared/api/client'
 import { Banner, Button, Input, StatusPill } from '../../../shared/ui'
 
-// Шаг 3 «Проверка интеграций» (ТЗ §4.1 v1.3): бэкенд не пишет в .env и не
+// Шаг 3 «Проверка интеграций» (v1.3): бэкенд не пишет в .env и не
 // принимает секреты через UI — только показывает, что уже задано, и
 // тестирует. Локальный статус карточки не тождественен env.*.verified
 // (тот boolean не различает «ещё не проверяли» и «проверили — не вышло»),

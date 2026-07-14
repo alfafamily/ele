@@ -14,7 +14,7 @@ from .service import create_backup
 
 
 class BackupCreateView(APIView):
-    """«Создать резервную копию сейчас» (ТЗ §5.5.3) — доступ строго Администратору."""
+    """«Создать резервную копию сейчас» — доступ строго Администратору."""
 
     permission_classes = [IsAdmin]
 
@@ -33,7 +33,7 @@ class BackupListView(generics.ListAPIView):
 
 
 class BackupDownloadView(APIView):
-    """Файл содержит хэши паролей и все бизнес-данные (§5.5.3) — стримится
+    """Файл содержит хэши паролей и все бизнес-данные — стримится
     через авторизованный эндпоинт, а не отдаётся статикой /media/* (см.
     infra/Caddyfile[.dev]: /media/backups/* заблокирован явно)."""
 

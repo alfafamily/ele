@@ -13,6 +13,7 @@ from accounts.captcha import is_captcha_enabled, verify_captcha
 from accounts.yandex_oauth import is_yandex_id_enabled
 from core.permissions import IsAdmin
 from core.utils.client_ip import get_client_ip
+from employees.models import Employee
 from storage.backends import target_backend_name
 from storage.models import StoredFile
 from storage.serializers import StoredFileErrorSerializer, StoredFileSerializer
@@ -62,7 +63,7 @@ def _guard(request):
 
 
 class CompanyBriefView(APIView):
-    """Название + лого для навигации (§8.5) — видно всем аутентифицированным
+    """Название + лого для навигации — видно всем аутентифицированным
     ролям, в отличие от полной карточки Настройки → Компания (только Admin)."""
 
     permission_classes = [IsAuthenticated]
@@ -72,7 +73,7 @@ class CompanyBriefView(APIView):
 
 
 class CompanySettingsView(APIView):
-    """Настройки → Компания (§5.5.1) — основные реквизиты, домен, IP-allowlist.
+    """Настройки → Компания — основные реквизиты, домен, IP-allowlist.
     Только Администратор; режим хранилища/лого/бэкап — отдельные эндпоинты."""
 
     permission_classes = [IsAdmin]
@@ -90,7 +91,7 @@ class CompanySettingsView(APIView):
 
 class EnvironmentStatusView(APIView):
     """Что сейчас задано в .env контейнера — для шага 3 мастера. Только
-    просмотр: ввода S3/почты/капчи/Яндекс ID через UI нет (ТЗ §4.1 vs §8.6,
+    просмотр: ввода S3/почты/капчи/Яндекс ID через UI нет (
     backend не пишет в .env)."""
 
     permission_classes = [AllowAny]
@@ -203,7 +204,7 @@ class VerifyEmailCodeView(APIView):
 
 
 class CompanyTestEmailView(APIView):
-    """Настройки → Компания → «Проверить SMTP» (аналог мастера §4.1, шаг 3, но
+    """Настройки → Компания → «Проверить SMTP» (аналог мастера, шаг 3, но
     для уже работающей системы). Шлёт код на почту текущего администратора;
     подтверждение кода в CompanyVerifyEmailView доказывает, что письма реально
     доходят, а не только что send() не упал. Только Администратор."""
@@ -269,7 +270,7 @@ class SystemStatusView(APIView):
 
 
 class CompanyStorageTestView(APIView):
-    """Проверка активного хранилища: запись/чтение/удаление test_file.txt (§8.3)."""
+    """Проверка активного хранилища: запись/чтение/удаление test_file.txt."""
 
     permission_classes = [IsAdmin]
 
@@ -283,7 +284,7 @@ class CompanyStorageTestView(APIView):
 
 
 class CompanyYandexIDCheckView(APIView):
-    """Проверка доступности Яндекс ID по заданным в .env реквизитам (§4.3)."""
+    """Проверка доступности Яндекс ID по заданным в .env реквизитам."""
 
     permission_classes = [IsAdmin]
 
@@ -296,7 +297,7 @@ class CompanyYandexIDCheckView(APIView):
 
 
 class CompanyCaptchaCheckView(APIView):
-    """Проверка SmartCaptcha (§4.6): админ решает капчу на странице, сюда
+    """Проверка SmartCaptcha: админ решает капчу на странице, сюда
     приходит токен — валидируем серверным ключом (это реальная проверка
     ключей, а не только доступность эндпоинта)."""
 
@@ -352,7 +353,7 @@ class TestYandexIDView(APIView):
 
 
 class SetupCompleteView(APIView):
-    """Setup Wizard, финальный шаг (ТЗ §4.1). Блокируется, если хоть одна
+    """Setup Wizard, финальный шаг. Блокируется, если хоть одна
     НАСТРОЕННАЯ в .env (не пустая) интеграция не была успешно проверена в
     этой же сессии — просит поправить .env/сеть и повторить проверку."""
 
@@ -388,11 +389,19 @@ class SetupCompleteView(APIView):
             return Response({"errors": {"non_field_errors": blockers}}, status=400)
 
         with transaction.atomic():
-            admin = User.objects.create_superuser(email=admin_email, password=data["admin"]["password"])
+            # Первый администратор получает связанного Сотрудника, чтобы сразу
+            # фигурировать в списке сотрудников и мочь быть закреплённым за
+            # оборудованием — как и учётки из приглашения/OAuth.
+            employee = Employee.objects.create(
+                last_name=data["admin"]["last_name"],
+                first_name=data["admin"]["first_name"],
+            )
+            admin = User.objects.create_superuser(
+                email=admin_email, password=data["admin"]["password"], employee=employee
+            )
             company = Company.load()
             company.name = data["company"]["name"]
             company.inn = data["company"]["inn"]
-            company.kpp = data["company"]["kpp"]
             company.storage_mode = settings.ELE_STORAGE_MODE
             company.save()
 
@@ -410,7 +419,7 @@ class SetupCompleteView(APIView):
 
 
 class StorageModeUpdateView(APIView):
-    """Настройки → Компания: смена режима хранилища (ТЗ §3.1, §8.3). Сама
+    """Настройки → Компания: смена режима хранилища . Сама
     смена мгновенна — перенос уже загруженных файлов забирает cron
     (storage/management/commands/migrate_storage_files.py) по расписанию."""
 
@@ -447,7 +456,7 @@ class StorageModeUpdateView(APIView):
 
 
 class StorageMigrationStatusView(APIView):
-    """Экран S2 (Настройки → Компания) — статус переноса файлов (ТЗ §8.3)."""
+    """Экран S2 (Настройки → Компания) — статус переноса файлов."""
 
     permission_classes = [IsAdmin]
 
@@ -469,7 +478,7 @@ class StorageMigrationStatusView(APIView):
             {
                 "target_backend": target,
                 "status": status_value,
-                # Точный "N из M" не считаем — при таком масштабе (§7.1)
+                # Точный "N из M" не считаем — при таком масштабе
                 # оставшееся количество даёт ту же практическую пользу без
                 # хрупкого учёта исходного размера партии на момент переключения.
                 "pending_count": pending_count,
@@ -480,7 +489,7 @@ class StorageMigrationStatusView(APIView):
 
 
 class StorageMigrationRetryView(APIView):
-    """Повторный запуск переноса только по файлам с ошибкой (ТЗ §8.3)."""
+    """Повторный запуск переноса только по файлам с ошибкой."""
 
     permission_classes = [IsAdmin]
 
@@ -493,8 +502,8 @@ class StorageMigrationRetryView(APIView):
 
 
 class CompanyLogoUploadView(APIView):
-    """Настройки → Компания: логотип (ТЗ §3.1). Не более 600×600, файл
-    сохраняется в текущее целевое хранилище компании (§8.3)."""
+    """Настройки → Компания: логотип. Не более 600×600, файл
+    сохраняется в текущее целевое хранилище компании."""
 
     permission_classes = [IsAdmin]
 
@@ -525,7 +534,7 @@ class CompanyLogoUploadView(APIView):
 
 class BackupSettingsView(APIView):
     """Настройки → Резервное копирование: тумблер/расписание/глубина
-    хранения автокопирования (ТЗ §5.5.3). Сам запуск — cron (backup/
+    хранения автокопирования. Сам запуск — cron (backup/
     service.py run_scheduled_backup_if_due), не этот эндпоинт."""
 
     permission_classes = [IsAdmin]

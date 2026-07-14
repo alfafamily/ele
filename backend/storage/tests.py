@@ -92,7 +92,7 @@ class StorageMigrationTests(APITestCase):
         self.assertEqual(resp.data["status"], "in_progress")
 
         # Файл, загруженный ПОСЛЕ смены режима, сразу на целевом хранилище —
-        # не ждёт своей очереди в переносе (§8.3).
+        # не ждёт своей очереди в переносе.
         stored2 = store_uploaded_file(SimpleUploadedFile("b.txt", b"content-b"), "test")
         self.assertEqual(stored2.backend, "s3")
         self.assertIn(stored2.path, self.s3.files)
@@ -149,7 +149,7 @@ class StorageMigrationTests(APITestCase):
         self.assertEqual(stored_ok.backend, "s3")
 
     def test_reference_stays_stable_across_migration(self):
-        """§8.3: обновляется только сама строка StoredFile — ссылающийся
+        """Обновляется только сама строка StoredFile — ссылающийся
         объект (Employee.avatar) не трогается, продолжает резолвиться."""
         from employees.models import Employee
 

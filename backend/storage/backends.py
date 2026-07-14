@@ -1,5 +1,5 @@
-"""Абстракция Local/S3 (ТЗ §8.3) — бизнес-логика работает через StoredFile
-и get_backend(), никогда не собирает пути к файлам напрямую (CLAUDE.md)."""
+"""Абстракция Local/S3 — бизнес-логика работает через StoredFile
+и get_backend(), никогда не собирает пути к файлам напрямую."""
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 
@@ -94,7 +94,7 @@ def get_backend(name: str) -> StorageBackend:
 def target_backend_name() -> str:
     """Текущий целевой backend компании — читается заново на каждой загрузке,
     поэтому файлы, загруженные во время активной миграции, сразу попадают
-    в новое хранилище (§8.3), без ожидания завершения переноса старых."""
+    в новое хранилище, без ожидания завершения переноса старых."""
     from company.models import Company
 
     return Company.load().storage_mode

@@ -17,7 +17,7 @@ def create_backup(backup_type: str) -> BackupRecord:
 
 
 def run_scheduled_backup_if_due() -> BackupRecord | None:
-    """Вызывается каждый тик cron (§5.5.3: расписание + глубина хранения).
+    """Вызывается каждый тик cron (расписание + глубина хранения).
     Не более одной авто-копии в календарные сутки, начиная с заданного часа."""
     from company.models import Company
 

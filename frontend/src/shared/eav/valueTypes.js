@@ -1,4 +1,4 @@
-// Типы значений динамических реквизитов Типа (§3.5, §3.7) — общие для
+// Типы значений динамических реквизитов Типа — общие для
 // EquipmentTypeField и LicenseTypeField.
 export const VALUE_TYPE_LABELS = {
   text: 'Текст',

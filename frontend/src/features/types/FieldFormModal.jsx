@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { VALUE_TYPE_OPTIONS } from '../../shared/eav'
 import { Banner, Button, Checkbox, Input, Modal, Select } from '../../shared/ui'
 
-// Добавление/редактирование реквизита Типа (§3.5, §3.7). Смена value_type
+// Добавление/редактирование реквизита Типа . Смена value_type
 // у существующего реквизита не предусмотрена спекой — при редактировании
 // поле типа значения скрыто (только имя/обязательность).
 //

@@ -6,7 +6,7 @@ import { AuthShell } from './AuthShell.jsx'
 
 const RESEND_COOLDOWN = 60
 
-// R3 → R3·2 (§4.5): нейтральный ответ независимо от того, существует ли
+// R3 → R3·2: нейтральный ответ независимо от того, существует ли
 // аккаунт — не палим факт существования учётной записи.
 export function PasswordResetRequestPage() {
   const [email, setEmail] = useState('')

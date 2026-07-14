@@ -6,7 +6,7 @@ import { FieldFormModal } from './FieldFormModal.jsx'
 import { NewTypeModal } from './NewTypeModal.jsx'
 import { makeTypesApi } from './typesApi.js'
 
-// Общий редактор Типов оборудования/лицензий (§3.5, §3.7, §5.4) — оба домена
+// Общий редактор Типов оборудования/лицензий — оба домена
 // делят один и тот же CRUD-контракт (список/детали/реквизиты/impact),
 // различия — только в текстах и в паре захардкоженных Типов лицензий.
 export function TypesEditorPage({ domain, title }) {

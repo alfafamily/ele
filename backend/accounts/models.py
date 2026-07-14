@@ -7,8 +7,8 @@ from .managers import UserManager
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    """Учётная запись для входа (ТЗ §3.2). Email — логин, роль — фиксированный enum
-    (CLAUDE.md: уровни доступа не редактируются через интерфейс)."""
+    """Учётная запись для входа. Email — логин, роль — фиксированный enum
+    (уровни доступа не редактируются через интерфейс)."""
 
     class Role(models.TextChoices):
         ADMIN = "admin", "Администратор"
@@ -17,7 +17,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     email = models.EmailField("Email", unique=True)
     role = models.CharField("Уровень доступа", max_length=20, choices=Role.choices, default=Role.EMPLOYEE)
-    # Применимо только при role=EMPLOYEE (§2.2) — проверка вне модели (Фаза 3/4).
+    # Применимо только при role=EMPLOYEE — проверка вне модели (Фаза 3/4).
     is_observer = models.BooleanField("Наблюдатель", default=False)
     is_active = models.BooleanField("Активен", default=True)
     is_email_confirmed = models.BooleanField("Email подтверждён", default=False)
@@ -30,21 +30,21 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
 
-    # Защита от подбора пароля (ТЗ §4.6): счётчик подряд неудачных попыток
+    # Защита от подбора пароля: счётчик подряд неудачных попыток
     # (капча — с 3-й, блокировка на 5 минут — с 5-й), сбрасывается при
     # успешном входе.
     failed_login_attempts = models.PositiveSmallIntegerField(default=0)
     locked_until = models.DateTimeField(null=True, blank=True)
 
-    # Таймеры повторной отправки писем (ТЗ §4.2 R2, §4.4, §4.5) — состояние на
+    # Таймеры повторной отправки писем — состояние на
     # сервере, а не только на фронте, чтобы нельзя было спамить отправку.
-    # password_reset_sent_at не влияет на нейтральный ответ (§4.5) — throttle
+    # password_reset_sent_at не влияет на нейтральный ответ — throttle
     # молча пропускает повторную отправку, наружу всегда один и тот же текст.
     email_confirmation_sent_at = models.DateTimeField(null=True, blank=True)
     invite_sent_at = models.DateTimeField(null=True, blank=True)
     password_reset_sent_at = models.DateTimeField(null=True, blank=True)
 
-    # Дата последнего изменения пароля (§5.6, блок «Пароль» в Профиле) —
+    # Дата последнего изменения пароля (блок «Пароль» в Профиле) —
     # проставляется в set_password() ниже, единой точкой для всех сценариев
     # (регистрация, приглашение, сброс, смена из Профиля, Setup Wizard).
     password_changed_at = models.DateTimeField(null=True, blank=True)

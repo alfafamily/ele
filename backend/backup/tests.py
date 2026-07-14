@@ -53,7 +53,7 @@ class ManualBackupTests(APITestCase):
         data = json.loads(content)
         for key in ("company", "users", "employees", "equipment", "licenses", "stored_files"):
             self.assertIn(key, data)
-        # Хэш пароля есть (§5.5.3 — осознанно, для восстановления), не в открытом виде.
+        # Хэш пароля есть (осознанно, для восстановления), не в открытом виде.
         admin_entry = next(u for u in data["users"] if u["fields"]["email"] == "admin@example.com")
         self.assertTrue(
             admin_entry["fields"]["password"].startswith("pbkdf2_") or "$" in admin_entry["fields"]["password"]

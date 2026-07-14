@@ -7,9 +7,9 @@ from .models import Company
 
 
 class CompanyBriefSerializer(serializers.ModelSerializer):
-    """Название и лого — единственное, что нужно навигации всем ролям (§8.5
-    «Навигация»); ИНН/КПП/домен/IP-ограничения/режим хранилища — это раздел
-    Настройки → Компания, доступный только Администратору (§2.3)."""
+    """Название и лого — единственное, что нужно навигации всем ролям
+    («Навигация»); ИНН/домен/IP-ограничения/режим хранилища — это раздел
+    Настройки → Компания, доступный только Администратору."""
 
     logo = StoredFileSerializer(read_only=True)
 
@@ -19,14 +19,14 @@ class CompanyBriefSerializer(serializers.ModelSerializer):
 
 
 class CompanySettingsSerializer(serializers.ModelSerializer):
-    """Настройки → Компания (§3.1, §5.5.1) — основные реквизиты и IP-ограничение.
-    Режим хранилища — отдельный эндпоинт (валидация S3-параметров из .env,
-    §8.3), лого — отдельный upload-эндпоинт (§8.3), секреты интеграций сюда
-    не входят никогда (§8.6)."""
+    """Настройки → Компания — основные реквизиты и IP-ограничение.
+    Режим хранилища — отдельный эндпоинт (валидация S3-параметров из .env),
+    лого — отдельный upload-эндпоинт, секреты интеграций сюда
+    не входят никогда."""
 
     class Meta:
         model = Company
-        fields = ["name", "inn", "kpp", "domain", "ip_allowlist"]
+        fields = ["name", "inn", "domain", "ip_allowlist"]
 
     def validate_ip_allowlist(self, value):
         import ipaddress
@@ -50,6 +50,8 @@ class CompanySettingsSerializer(serializers.ModelSerializer):
 
 
 class SetupAdminSerializer(serializers.Serializer):
+    last_name = serializers.CharField(max_length=150)
+    first_name = serializers.CharField(max_length=150)
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
     password_repeat = serializers.CharField(write_only=True)
@@ -64,7 +66,6 @@ class SetupAdminSerializer(serializers.Serializer):
 class SetupCompanySerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
     inn = serializers.CharField(max_length=32, required=False, allow_blank=True, default="")
-    kpp = serializers.CharField(max_length=32, required=False, allow_blank=True, default="")
 
 
 class SetupCompleteSerializer(serializers.Serializer):

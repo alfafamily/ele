@@ -1,4 +1,4 @@
-"""Живой тест подключения к S3 для Setup Wizard (ТЗ §4.1 шаг 3) — только
+"""Живой тест подключения к S3 для Setup Wizard (шаг 3) — только
 проверка, ничего не сохраняет. Реализация полноценного S3-backend — Фаза 5."""
 import boto3
 from botocore.config import Config
@@ -10,7 +10,7 @@ _BOTO_CONFIG = Config(connect_timeout=4, read_timeout=4, retries={"max_attempts"
 
 
 def storage_selftest() -> tuple[bool, str | None]:
-    """Проверка активного хранилища (§8.3): запись → чтение → удаление
+    """Проверка активного хранилища: запись → чтение → удаление
     тестового файла test_file.txt. Работает и для local, и для s3 через общий
     интерфейс бэкенда; за собой всегда прибирает."""
     from django.core.files.base import ContentFile

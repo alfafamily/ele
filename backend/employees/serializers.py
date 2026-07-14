@@ -7,7 +7,7 @@ from .models import Employee
 
 
 # Списанное (архивное) Оборудование не считается закреплённым за Сотрудником —
-# в списке/карточке и в счётчике показываем только активное (§5.1, §5.3).
+# в списке/карточке и в счётчике показываем только активное .
 def _active_equipment(employee):
     return [eq for eq in employee.equipment.all() if not eq.is_written_off]
 
@@ -16,7 +16,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     equipment_count = serializers.SerializerMethodField()
     # Аватар — только чтение здесь: загрузка/замена через отдельный
-    # EmployeeAvatarUploadView (multipart), как и Company.logo (§3.3, §8.3).
+    # EmployeeAvatarUploadView (multipart), как и Company.logo .
     avatar = StoredFileSerializer(read_only=True)
 
     class Meta:

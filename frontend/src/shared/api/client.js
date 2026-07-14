@@ -1,5 +1,5 @@
 // Единый API-клиент: cookie-сессия + CSRF-заголовок, разбор формата ошибок
-// {"detail": "..."} / {"errors": {"поле": ["..."]}} (ТЗ §8.7).
+// {"detail": "..."} / {"errors": {"поле": ["..."]}}.
 
 function readCookie(name) {
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))

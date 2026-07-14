@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Banner, Button, Modal } from '../../shared/ui'
 import { writeOffEquipment } from './equipmentApi.js'
 
-// D3 — списание (§5.1): блокируется при непогашенных лицензиях, система
+// D3 — списание: блокируется при непогашенных лицензиях, система
 // предлагает «Отвязать и списать» вместо жёсткого отказа.
 export function WriteOffModal({ equipment, onClose, onDone }) {
   const [conflictLicenses, setConflictLicenses] = useState(null) // null=ещё не проверяли, []=нет конфликта

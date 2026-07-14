@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Banner, Button, Input, Modal } from '../../shared/ui'
 import { requestEmailChange } from './profileApi.js'
 
-// §3.2, §5.6 — смена email из Профиля: ссылка уходит на НОВЫЙ адрес, сам
+// Смена email из Профиля: ссылка уходит на НОВЫЙ адрес, сам
 // email меняется только по переходу (ConfirmEmailChangePage).
 export function ChangeEmailModal({ onClose }) {
   const [newEmail, setNewEmail] = useState('')

@@ -67,7 +67,7 @@ export function AppRoutes() {
           </RequireGuest>
         }
       />
-      {/* Ссылки из писем (§4.4, §4.5) работают независимо от текущей сессии —
+      {/* Ссылки из писем работают независимо от текущей сессии —
           ни один из двух эндпоинтов сам не логинит пользователя. */}
       <Route path="/reset-password/:uid/:token" element={<SetPasswordPage mode="reset" />} />
       <Route path="/accept-invite/:uid/:token" element={<SetPasswordPage mode="invite" />} />
@@ -174,7 +174,7 @@ export function AppRoutes() {
         <Route path="/profile" element={<ProfilePage />} />
       </Route>
 
-      {/* Ссылка из письма «Подтверждение смены email» (§4.8) — сама себя
+      {/* Ссылка из письма «Подтверждение смены email» — сама себя
           аутентифицирует токеном, не требует активной сессии. */}
       <Route path="/change-email/:token" element={<ConfirmEmailChangePage />} />
 

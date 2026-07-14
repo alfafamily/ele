@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import './Modal.css'
 
-// Один компонент, две раскладки по CSS-медиа-запросу (§8.5): модалка по
+// Один компонент, две раскладки по CSS-медиа-запросу: модалка по
 // центру на desktop, bottom-sheet снизу ниже ~768px — без дублирования
 // логики open/close между вариантами.
 export function Modal({ open, onClose, title, children }) {

@@ -133,7 +133,7 @@ class EquipmentFullLifecycleTests(APITestCase):
 
 @override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
 class EquipmentFieldFileUploadTests(APITestCase):
-    """§3.5, §8.3 — реквизит типа «файл»: не более 20 МБ, проверка на сервере
+    """Реквизит типа «файл»: не более 20 МБ, проверка на сервере
     (не только на фронте)."""
 
     def setUp(self):
@@ -184,7 +184,7 @@ class EquipmentFieldFileUploadTests(APITestCase):
 
 
 class EquipmentAccessMatrixTests(APITestCase):
-    """§2.3: Сотрудник видит только своё; Сотрудник+Наблюдатель — всё, но без записи."""
+    """Сотрудник видит только своё; Сотрудник+Наблюдатель — всё, но без записи."""
 
     def setUp(self):
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")

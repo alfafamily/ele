@@ -9,7 +9,7 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-// PWA-устанавливаемость (§8.5) — offline не требуется, sw.js только
+// PWA-устанавливаемость — offline не требуется, sw.js только
 // проксирует сеть без кеширования.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {

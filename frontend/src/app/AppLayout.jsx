@@ -31,7 +31,7 @@ export function AppLayout() {
       )}
     </span>
   )
-  // «Настройки» — внизу rail, над «Помощью» (§8.5, макет N); остальные разделы
+  // «Настройки» — внизу rail, над «Помощью» (макет N); остальные разделы
   // идут сверху в порядке навигации.
   const topSections = sections.filter((s) => !s.bottom)
   const bottomSections = sections.filter((s) => s.bottom)

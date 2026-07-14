@@ -6,7 +6,7 @@
 # Скрипт: проверит Docker (при отсутствии предложит установить сам) →
 # склонирует/обновит репозиторий → если нет .env, интерактивно спросит параметры
 # и создаст .env сам (секреты не проходят через приложение — только в .env,
-# ТЗ §8.6) → соберёт и поднимет прод-стек.
+#) → соберёт и поднимет прод-стек.
 set -euo pipefail
 
 REPO_URL="${ELE_REPO_URL:-https://github.com/alfafamily/ele.git}"
@@ -87,7 +87,7 @@ else
   ask SITE_ADDRESS "Домен инстанса (Enter — без домена: локальный доступ по IP, HTTP без TLS)" ""
 
   # Домен → HTTPS (Caddy сам берёт TLS у Let's Encrypt). Пусто → локальный режим:
-  # определяем IP-адреса сервера и отдаём по HTTP без TLS (§8.2). Значения для
+  # определяем IP-адреса сервера и отдаём по HTTP без TLS. Значения для
   # Caddy (SITE_ADDRESS) и Django (ALLOWED_HOSTS/CSRF/SITE_URL) в этих режимах
   # разные, поэтому считаем их раздельно.
   if [ -n "$SITE_ADDRESS" ]; then
@@ -177,7 +177,7 @@ else
 
   umask 077
   cat > .env <<EOF
-# Сгенерировано install.sh. Секреты хранятся только здесь (ТЗ §8.6).
+# Сгенерировано install.sh. Секреты хранятся только здесь.
 DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
 DJANGO_ALLOWED_HOSTS=${ALLOWED_HOSTS_VAL}
 CSRF_TRUSTED_ORIGINS=${CSRF_VAL}
@@ -289,5 +289,5 @@ esac
 if [ -n "$ADMIN_IN_ENV" ]; then
   info "Первый вход — учётной записью администратора (${ADMIN_IN_ENV})."
 else
-  info "Первый вход — откройте адрес в браузере: запустится Setup Wizard для создания администратора и компании (ТЗ §4.1)."
+  info "Первый вход — откройте адрес в браузере: запустится Setup Wizard для создания администратора и компании."
 fi
