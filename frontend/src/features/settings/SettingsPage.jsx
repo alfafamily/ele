@@ -3,6 +3,7 @@ import { TabBar } from '../../shared/ui'
 import { BackupTab } from './BackupTab.jsx'
 import { CompanyTab } from './CompanyTab.jsx'
 import { SystemTab } from './SystemTab.jsx'
+import { UpdateTab } from './UpdateTab.jsx'
 import { UsersTab } from './UsersTab.jsx'
 
 const TABS = [
@@ -10,6 +11,7 @@ const TABS = [
   { value: 'users', label: 'Пользователи' },
   { value: 'system', label: 'Системные' },
   { value: 'backup', label: 'Резервное копирование' },
+  { value: 'update', label: 'Обновление' },
 ]
 
 // S1-S3 — единый раздел «Настройки» с вкладками, доступен только
@@ -23,7 +25,7 @@ export function SettingsPage() {
       <h1 style={{ fontSize: 'var(--font-size-h1)', fontWeight: 600, letterSpacing: 'var(--font-h1-letter-spacing)', marginBottom: 20 }}>
         Настройки
       </h1>
-      {/* Горизонтальный скролл — чтобы 4 таба (вкл. длинный «Резервное
+      {/* Горизонтальный скролл — чтобы табы (вкл. длинный «Резервное
           копирование») не ломали ширину на узких экранах. */}
       <div style={{ overflowX: 'auto', marginBottom: 20 }}>
         <TabBar options={TABS} value={tab} onChange={setTab} scroll />
@@ -35,8 +37,10 @@ export function SettingsPage() {
           <UsersTab />
         ) : tab === 'system' ? (
           <SystemTab />
-        ) : (
+        ) : tab === 'backup' ? (
           <BackupTab />
+        ) : (
+          <UpdateTab />
         )}
       </div>
     </div>

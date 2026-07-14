@@ -13,6 +13,7 @@ from accounts.captcha import is_captcha_enabled, verify_captcha
 from accounts.yandex_oauth import is_yandex_id_enabled
 from core.permissions import IsAdmin
 from core.utils.client_ip import get_client_ip
+from core.version import _RELEASES_PAGE, get_current_version, get_latest_release, is_newer
 from employees.models import Employee
 from storage.backends import target_backend_name
 from storage.models import StoredFile
@@ -248,6 +249,31 @@ class CompanyVerifyEmailView(APIView):
             return Response({"detail": "Неверный код."}, status=400)
         request.session.pop(_SESSION_SMTP_TEST_PENDING, None)
         return Response({"detail": "SMTP работает — письмо доставлено."})
+
+
+class UpdateInfoView(APIView):
+    """Настройки → Обновление: текущая версия инстанса + проверка последней в
+    публичном репозитории. Само обновление выполняется на сервере (git pull +
+    docker compose up) — интерфейс только показывает наличие обновления и
+    команду; бэкенд в контейнере не имеет доступа к docker/git хоста."""
+
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        current = get_current_version()
+        latest_release = get_latest_release()
+        latest = latest_release["version"] if latest_release else None
+        return Response(
+            {
+                "current_version": current,
+                "latest_version": latest,
+                "update_available": bool(latest and current != "unknown" and is_newer(latest, current)),
+                "release_url": latest_release["url"] if latest_release else _RELEASES_PAGE,
+                "release_notes": latest_release["notes"] if latest_release else None,
+                # false — не удалось достучаться до GitHub (нет сети / локальный режим)
+                "check_ok": latest_release is not None,
+            }
+        )
 
 
 class SystemStatusView(APIView):
@@ -540,7 +566,14 @@ class BackupSettingsView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
-        return Response(BackupSettingsSerializer(Company.load()).data)
+        data = BackupSettingsSerializer(Company.load()).data
+        # Время автокопирования сравнивается с localtime() сервера (TIME_ZONE),
+        # поэтому отдаём текущее серверное время и зону — чтобы админ понимал,
+        # в какой зоне задаёт расписание.
+        now = timezone.localtime()
+        data["server_time"] = now.isoformat()
+        data["server_timezone"] = settings.TIME_ZONE
+        return Response(data)
 
     def patch(self, request):
         company = Company.load()

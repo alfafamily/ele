@@ -80,7 +80,7 @@ export function LicenseListPage() {
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <SearchInput value={search} onChange={setSearch} placeholder="Поиск по учётному номеру оборудования" />
-        {tab === 'active' ? <TabBar options={FILTERS} value={status} onChange={setStatus} size="control" /> : null}
+        {tab === 'active' ? <TabBar options={FILTERS} value={status} onChange={setStatus} size="control" variant="filter" /> : null}
       </div>
 
       {error ? (

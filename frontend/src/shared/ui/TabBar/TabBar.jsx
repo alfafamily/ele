@@ -1,9 +1,16 @@
 import './TabBar.css'
 
-// Переиспользуемая группа переключателей — и вкладки «Активные/Архив»,
-// и фильтры-кнопки («Все/Закреплённое/Свободное» и т.п.).
-export function TabBar({ options, value, onChange, size, scroll }) {
-  const className = ['ele-tabbar', size === 'control' ? 'ele-tabbar--control' : '', scroll ? 'ele-tabbar--scroll' : '']
+// Переиспользуемая группа переключателей. По умолчанию — сегмент-контрол
+// (вкладки «Активные/Архив»). variant="filter" даёт вид фильтра-чипов
+// («Все/Закреплённое/Свободное»): раздельные круглые пилюли — визуально
+// отличается от вкладок-навигации.
+export function TabBar({ options, value, onChange, size, scroll, variant }) {
+  const className = [
+    'ele-tabbar',
+    size === 'control' ? 'ele-tabbar--control' : '',
+    scroll ? 'ele-tabbar--scroll' : '',
+    variant === 'filter' ? 'ele-tabbar--filter' : '',
+  ]
     .filter(Boolean)
     .join(' ')
   return (

@@ -31,6 +31,7 @@ services:
     volumes:
       - static_data:/app/staticfiles
       - media_data:/app/media
+      - ./VERSION:/app/VERSION:ro
     depends_on:
       postgres:
         condition: service_healthy

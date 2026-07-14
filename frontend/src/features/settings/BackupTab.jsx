@@ -83,8 +83,8 @@ export function BackupTab() {
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 600 }}>Автоматическое копирование</div>
-                <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Ежедневно, глубина хранения — последние N копий</div>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>Автоматическое создание резервных копий</div>
+                <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Ежедневно, с настройкой глубины хранения — последние N дней</div>
               </div>
               <Checkbox
                 checked={settings.auto_backup_enabled}
@@ -96,23 +96,34 @@ export function BackupTab() {
               />
             </div>
             {settings.auto_backup_enabled ? (
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 16 }}>
-                <Input
-                  label="Время автокопирования"
-                  type="time"
-                  value={settings.auto_backup_time?.slice(0, 5) || '03:00'}
-                  onChange={(e) => setSettings({ ...settings, auto_backup_time: e.target.value })}
-                  onBlur={() => patchSettings({ auto_backup_time: settings.auto_backup_time })}
-                />
-                <Input
-                  label="Хранить последних копий"
-                  type="number"
-                  min={1}
-                  value={settings.auto_backup_retention}
-                  onChange={(e) => setSettings({ ...settings, auto_backup_retention: Number(e.target.value) })}
-                  onBlur={() => patchSettings({ auto_backup_retention: settings.auto_backup_retention })}
-                />
-              </div>
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 16 }}>
+                  <Input
+                    label="Время автокопирования"
+                    type="time"
+                    value={settings.auto_backup_time?.slice(0, 5) || '03:00'}
+                    onChange={(e) => setSettings({ ...settings, auto_backup_time: e.target.value })}
+                    onBlur={() => patchSettings({ auto_backup_time: settings.auto_backup_time })}
+                  />
+                  <Input
+                    label="Хранить последних копий"
+                    type="number"
+                    min={1}
+                    value={settings.auto_backup_retention}
+                    onChange={(e) => setSettings({ ...settings, auto_backup_retention: Number(e.target.value) })}
+                    onBlur={() => patchSettings({ auto_backup_retention: settings.auto_backup_retention })}
+                  />
+                </div>
+                {settings.server_time ? (
+                  <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 8, lineHeight: 1.5 }}>
+                    Время указывается по часам сервера. Сейчас на сервере:{' '}
+                    <b style={{ color: 'var(--color-text-muted)' }}>
+                      {new Date(settings.server_time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: settings.server_timezone })}
+                    </b>{' '}
+                    ({settings.server_timezone}).
+                  </div>
+                ) : null}
+              </>
             ) : null}
           </Card>
         ) : null}

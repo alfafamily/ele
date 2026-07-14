@@ -31,6 +31,7 @@ services:
       EMAIL_PORT: "1025"
     volumes:
       - ./backend:/app
+      - ./VERSION:/app/VERSION:ro
     depends_on:
       postgres:
         condition: service_healthy

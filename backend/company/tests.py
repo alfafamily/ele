@@ -350,3 +350,45 @@ class StorageModeSwitchGuardTests(APITestCase):
         resp = self.client.patch("/api/company/storage-mode/", {"storage_mode": "s3"}, format="json")
         self.assertEqual(resp.status_code, 200, resp.data)
         self.assertEqual(Company.load().storage_mode, "s3")
+
+
+class UpdateInfoTests(APITestCase):
+    """Настройки → Обновление: текущая версия + проверка последней в репозитории.
+    Сетевой запрос к GitHub замокан — проверяем только логику сравнения/гейт."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+
+    def test_requires_admin(self):
+        resp = self.client.get("/api/company/update-info/")
+        self.assertEqual(resp.status_code, 403)
+
+    @patch("company.views.get_current_version", return_value="1.0.30")
+    @patch("company.views.get_latest_release", return_value={"version": "1.0.31", "url": "https://gh/r", "notes": "n"})
+    def test_update_available(self, _m_latest, _m_current):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.get("/api/company/update-info/")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["current_version"], "1.0.30")
+        self.assertEqual(resp.data["latest_version"], "1.0.31")
+        self.assertTrue(resp.data["update_available"])
+        self.assertTrue(resp.data["check_ok"])
+        self.assertEqual(resp.data["release_url"], "https://gh/r")
+
+    @patch("company.views.get_current_version", return_value="1.0.30")
+    @patch("company.views.get_latest_release", return_value={"version": "1.0.30", "url": "https://gh/r", "notes": ""})
+    def test_up_to_date(self, _m_latest, _m_current):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.get("/api/company/update-info/")
+        self.assertFalse(resp.data["update_available"])
+        self.assertTrue(resp.data["check_ok"])
+
+    @patch("company.views.get_current_version", return_value="1.0.30")
+    @patch("company.views.get_latest_release", return_value=None)
+    def test_check_offline(self, _m_latest, _m_current):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.get("/api/company/update-info/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(resp.data["check_ok"])
+        self.assertFalse(resp.data["update_available"])
+        self.assertIsNone(resp.data["latest_version"])

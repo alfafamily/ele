@@ -23,6 +23,13 @@
 }
 
 .ele-tabbar__item {
+  /* appearance:none — иначе мобильный Safari для <button> с нативным видом
+     может игнорировать заданный color. НЕ задаём -webkit-text-fill-color:
+     currentColor — на iOS Safari это значение не пересчитывается при смене
+     класса (React переносит --active по клику), из-за чего цвет текста застревал
+     тёмным на чёрном чипе, хотя фон перерисовывался. */
+  -webkit-appearance: none;
+  appearance: none;
   padding: 7px 16px;
   border-radius: 8px;
   font-size: 13.5px;
@@ -40,6 +47,45 @@
   font-weight: 600;
   color: var(--color-text-primary);
   box-shadow: 0 1px 3px rgba(28, 28, 33, 0.1);
+}
+
+/* variant="filter" — вид фильтра-чипов вместо сегмент-контрола: раздельные
+   круглые пилюли без общей подложки, активная залита акцентом. Так фильтр
+   статуса визуально не путается с вкладками-навигацией. */
+.ele-tabbar--filter {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  gap: 8px;
+  flex-wrap: nowrap; /* десктоп: все чипы в одну строку */
+}
+
+.ele-tabbar--filter .ele-tabbar__item {
+  padding: 6px 15px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* hover — только на устройствах с указателем (мышь) и только для НЕактивных
+   чипов. На тач-экранах :hover «залипает» после тапа, а этот селектор
+   специфичнее активного — из-за чего текст активного чипа становился тёмным
+   (color: text-primary из hover) на чёрном фоне. (hover: hover) исключает
+   тач, :not(--active) — не трогает активный чип даже под мышью. */
+@media (hover: hover) {
+  .ele-tabbar--filter .ele-tabbar__item:not(.ele-tabbar__item--active):hover {
+    border-color: var(--color-text-muted);
+    color: var(--color-text-primary);
+  }
+}
+
+.ele-tabbar--filter .ele-tabbar__item--active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-text);
+  font-weight: 600;
+  box-shadow: none;
 }
 
 /* На мобильных подложка занимает всю ширину строки, а плашки делят её
@@ -69,5 +115,14 @@
 
   .ele-tabbar--scroll .ele-tabbar__item {
     flex: 0 0 auto;
+  }
+
+  /* Фильтр-чипы на мобильном: делят ширину строки поровну и остаются в одну
+     строку; компактнее по горизонтали, чтобы длинные подписи («Закреплённое»)
+     не обрезались. flex:1 наследуется от .ele-tabbar__item выше. */
+  .ele-tabbar--filter .ele-tabbar__item {
+    padding: 6px 6px;
+    font-size: 12.5px;
+    min-width: 0;
   }
 }

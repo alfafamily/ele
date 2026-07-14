@@ -23,6 +23,7 @@ export const sendSmtpTestCode = () => apiPost('/api/company/test-email/')
 export const verifySmtpTestCode = (code) => apiPost('/api/company/verify-email/', { code })
 
 export const getSystemStatus = () => apiGet('/api/company/system-status/')
+export const getUpdateInfo = () => apiGet('/api/company/update-info/')
 export const testStorage = () => apiPost('/api/company/storage-test/')
 export const checkYandexId = () => apiPost('/api/company/yandex-id-check/')
 export const checkCaptcha = (token) => apiPost('/api/company/captcha-check/', { token })

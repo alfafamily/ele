@@ -28,6 +28,7 @@ urlpatterns = [
     path("company/test-email/", views.CompanyTestEmailView.as_view(), name="company-test-email"),
     path("company/verify-email/", views.CompanyVerifyEmailView.as_view(), name="company-verify-email"),
     path("company/system-status/", views.SystemStatusView.as_view(), name="company-system-status"),
+    path("company/update-info/", views.UpdateInfoView.as_view(), name="company-update-info"),
     path("company/storage-test/", views.CompanyStorageTestView.as_view(), name="company-storage-test"),
     path("company/yandex-id-check/", views.CompanyYandexIDCheckView.as_view(), name="company-yandex-id-check"),
     path("company/captcha-check/", views.CompanyCaptchaCheckView.as_view(), name="company-captcha-check"),
