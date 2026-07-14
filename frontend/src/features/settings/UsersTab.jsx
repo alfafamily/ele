@@ -38,12 +38,15 @@ export function UsersTab() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+        <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 19, fontWeight: 600 }}>Пользователи</div>
           <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginTop: 2 }}>Доступ к системе и роли</div>
         </div>
-        <Button onClick={() => setShowInvite(true)}>+ Пригласить пользователя</Button>
+        <Button onClick={() => setShowInvite(true)} style={{ flex: 'none' }}>
+          <span className="ele-only-desktop">+ Пригласить пользователя</span>
+          <span className="ele-only-mobile">Пригласить</span>
+        </Button>
       </div>
 
       {error ? (

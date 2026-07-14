@@ -62,13 +62,12 @@ export function LicenseListPage() {
         <Can perm="canManageLicenses">
           <div className="ele-page-head__actions">
             <Link to="/license-types">
-              <Button variant="secondary">
-                <span className="ele-only-desktop">Типы лицензий</span>
-                <span className="ele-only-mobile">Типы</span>
+              <Button variant="secondary" style={{ whiteSpace: 'normal', height: 'auto', minHeight: 'var(--control-height)', lineHeight: 1.15, padding: '6px 20px' }}>
+                Настроить типы
               </Button>
             </Link>
             <Link to="/licenses/new">
-              <Button>
+              <Button style={{ height: 'auto', minHeight: 'var(--control-height)' }}>
                 <span className="ele-only-desktop">+ Добавить лицензию</span>
                 <span className="ele-only-mobile">+ Добавить</span>
               </Button>
