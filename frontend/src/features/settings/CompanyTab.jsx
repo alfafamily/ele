@@ -22,9 +22,11 @@ function readImageSize(file) {
   })
 }
 
-// Настройки → Компания — только реквизиты организации (лого, название, ИНН,
-// КПП). Технические настройки (хранилище, домен/IP, проверки интеграций) —
-// в отдельной вкладке «Системные» (SystemTab).
+const TILE = 96
+const linkBtn = { border: 'none', background: 'none', color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }
+
+// Настройки → Компания — реквизиты организации: логотип, название, ИНН.
+// Технические настройки — в отдельной вкладке «Системные» (SystemTab).
 export function CompanyTab() {
   const company = useCompany()
   const refreshCompany = useRefreshCompany()
@@ -48,15 +50,15 @@ export function CompanyTab() {
     )
   }
 
+  const pickLogo = () => fileInputRef.current?.click()
+
   const onLogoSelected = async (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
     setError(null)
-
     // Клиентская проверка (§3.1: не более 600×600 px) — мгновенная понятная
-    // ошибка, не «молча ничего не произошло». Серверная валидация остаётся
-    // источником истины (её ошибку тоже показываем ниже).
+    // ошибка. Серверная валидация остаётся источником истины.
     if (!file.type.startsWith('image/')) {
       setError('Файл должен быть изображением (PNG, JPG, SVG).')
       return
@@ -66,11 +68,11 @@ export function CompanyTab() {
       setError(`Логотип должен быть не более 600×600 px — загружено ${dims.width}×${dims.height} px.`)
       return
     }
-
     setUploadingLogo(true)
     try {
+      // Загрузка нового лого на бэкенде сама удаляет старый (CompanyLogoUploadView).
       await uploadCompanyLogo(file)
-      await refreshCompany() // обновляем лого в rail и на этой странице без релоада
+      await refreshCompany()
     } catch (err) {
       setError(err.errors ? Object.values(err.errors).flat().join(' ') : err.detail || 'Не удалось загрузить логотип.')
     } finally {
@@ -97,7 +99,7 @@ export function CompanyTab() {
     setError(null)
     setSaved(false)
     try {
-      const updated = await updateCompanySettings({ name: settings.name, inn: settings.inn, kpp: settings.kpp })
+      const updated = await updateCompanySettings({ name: settings.name, inn: settings.inn })
       setSettings((prev) => ({ ...prev, ...updated }))
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
@@ -107,6 +109,57 @@ export function CompanyTab() {
       setSubmitting(false)
     }
   }
+
+  const logoBlock = (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, flex: 'none' }}>
+      {uploadingLogo ? (
+        <span style={{ width: TILE, height: TILE, borderRadius: 16, background: 'var(--color-fill-active-tint)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Spinner size={24} />
+        </span>
+      ) : company?.logo ? (
+        <>
+          <span style={{ width: TILE, height: TILE, borderRadius: 16, overflow: 'hidden', background: 'var(--color-fill-active-tint)', display: 'block' }}>
+            <img src={company.logo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </span>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button type="button" style={linkBtn} onClick={pickLogo}>
+              Загрузить новый
+            </button>
+            <button type="button" style={{ ...linkBtn, color: 'var(--color-error)' }} onClick={onRemoveLogo}>
+              Удалить
+            </button>
+          </div>
+        </>
+      ) : (
+        // Лого не загружено — вся плитка кликабельна для выбора файла.
+        <button
+          type="button"
+          onClick={pickLogo}
+          style={{
+            width: TILE,
+            height: TILE,
+            borderRadius: 16,
+            border: '1.5px dashed var(--color-border-strong)',
+            background: 'var(--color-fill-active-tint)',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 4,
+            color: 'var(--color-text-muted)',
+            fontFamily: 'inherit',
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          <span style={{ fontSize: 11 }}>Логотип</span>
+        </button>
+      )}
+      <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogoSelected} />
+    </div>
+  )
 
   return (
     <div>
@@ -126,51 +179,14 @@ export function CompanyTab() {
         </div>
       ) : null}
 
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Card style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <span
-            style={{
-              width: 72,
-              height: 72,
-              flex: 'none',
-              borderRadius: 16,
-              background: 'var(--color-fill-active-tint)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--color-text-muted)',
-              fontWeight: 700,
-              fontSize: 20,
-              overflow: 'hidden',
-            }}
-          >
-            {uploadingLogo ? <Spinner size={24} /> : company?.logo ? <img src={company.logo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (settings.name?.[0] || 'E')}
-          </span>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Логотип компании</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button type="button" variant="secondary" onClick={() => fileInputRef.current?.click()}>
-                Загрузить
-              </Button>
-              {company?.logo ? (
-                <button type="button" onClick={onRemoveLogo} style={{ border: 'none', background: 'none', color: 'var(--color-error)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                  Удалить
-                </button>
-              ) : null}
-              <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onLogoSelected} />
-            </div>
-            <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 6 }}>Не более 600×600 px</div>
-          </div>
-        </Card>
-
+      <form onSubmit={submit}>
         <Card>
-          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>Основные реквизиты</div>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
-            <div style={{ gridColumn: isMobile ? 'auto' : 'span 2' }}>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'center' : 'flex-start', gap: 20 }}>
+            {logoBlock}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
               <Input label="Название компании" required value={settings.name} onChange={(e) => setSettings({ ...settings, name: e.target.value })} />
+              <Input label="ИНН" value={settings.inn} onChange={(e) => setSettings({ ...settings, inn: e.target.value })} />
             </div>
-            <Input label="ИНН" value={settings.inn} onChange={(e) => setSettings({ ...settings, inn: e.target.value })} />
-            <Input label="КПП" value={settings.kpp} onChange={(e) => setSettings({ ...settings, kpp: e.target.value })} />
           </div>
         </Card>
       </form>

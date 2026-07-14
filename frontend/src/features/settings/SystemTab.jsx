@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { SmartCaptcha } from '../auth/SmartCaptcha.jsx'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
-import { Banner, Button, Card, Checkbox, Input, Spinner } from '../../shared/ui'
+import { Banner, Button, Card, Input, Spinner } from '../../shared/ui'
 import {
   checkCaptcha,
   checkYandexId,
@@ -20,17 +20,88 @@ const notConfigured = (
   <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Настройки для сервиса не заданы в .env.</div>
 )
 
+function iconPaths(kind) {
+  switch (kind) {
+    case 'edit':
+      return (
+        <>
+          <path d="M12 20h9" />
+          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+        </>
+      )
+    case 'delete':
+      return (
+        <>
+          <path d="M4 7h16" />
+          <path d="M9 7V5h6v2" />
+          <path d="M6 7l1 13h10l1-13" />
+        </>
+      )
+    case 'apply':
+      return <path d="M5 12l5 5L20 6" />
+    default: // cancel
+      return <path d="M18 6L6 18M6 6l12 12" />
+  }
+}
+
+// Иконочная кнопка действия у поля (редактировать/удалить/применить/отменить).
+function IconBtn({ kind, title, onClick, disabled }) {
+  const color = kind === 'delete' ? 'var(--color-error)' : kind === 'apply' ? 'var(--color-success)' : 'var(--color-text-muted)'
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      disabled={disabled}
+      style={{ border: 'none', background: 'none', cursor: disabled ? 'default' : 'pointer', color, padding: 6, opacity: disabled ? 0.4 : 1, display: 'inline-flex' }}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        {iconPaths(kind)}
+      </svg>
+    </button>
+  )
+}
+
+// «Записанное» поле — лейбл + значение под ним (как на просмотре оборудования),
+// справа кнопки-действия.
+function ReadField({ label, value, mono, actions }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ flex: 1, minWidth: 0, background: 'var(--color-fill-input)', borderRadius: 10, padding: '8px 14px' }}>
+        <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+        <div
+          style={{
+            fontSize: 15,
+            color: value ? 'var(--color-text-primary)' : 'var(--color-text-placeholder)',
+            fontFamily: mono ? 'var(--font-mono)' : 'inherit',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {value || '—'}
+        </div>
+      </div>
+      {actions ? <div style={{ display: 'flex', gap: 2, flex: 'none' }}>{actions}</div> : null}
+    </div>
+  )
+}
+
 export function SystemTab() {
   const isMobile = useMediaQuery('(max-width: 768px)')
   const [status, setStatus] = useState(null) // system-status: флаги конфигурации из .env
   const [loadError, setLoadError] = useState(null)
 
-  // Домен и ограничение по IP
+  // Домен и IP — inline-редактирование каждого поля отдельно, без общей кнопки
+  // «Сохранить»: каждое действие сразу пишется в company/settings.
   const [domain, setDomain] = useState('')
-  const [restrictByIp, setRestrictByIp] = useState(false)
-  const [ipRows, setIpRows] = useState([]) // [{ ip, note }]
-  const [savingAccess, setSavingAccess] = useState(false)
-  const [accessSaved, setAccessSaved] = useState(false)
+  const [ipList, setIpList] = useState([]) // сохранённые [{ ip, note }]
+  const [domainEditing, setDomainEditing] = useState(false)
+  const [domainDraft, setDomainDraft] = useState('')
+  const [addingIp, setAddingIp] = useState(false)
+  const [ipDraft, setIpDraft] = useState({ ip: '', note: '' })
+  const [accessBusy, setAccessBusy] = useState(false)
   const [accessError, setAccessError] = useState(null)
 
   // Хранилище
@@ -60,9 +131,7 @@ export function SystemTab() {
         setStatus(st)
         setStorageMode(st.storage_mode)
         setDomain(company.domain || '')
-        const list = company.ip_allowlist || []
-        setRestrictByIp(list.length > 0)
-        setIpRows(list.length > 0 ? list.map((e) => ({ ip: e.ip || '', note: e.note || '' })) : [{ ip: '', note: '' }])
+        setIpList((company.ip_allowlist || []).map((e) => ({ ip: e.ip || '', note: e.note || '' })))
       })
       .catch(() => setLoadError('Не удалось загрузить системные настройки.'))
   }, [])
@@ -102,28 +171,34 @@ export function SystemTab() {
     }
   }
 
-  const saveAccess = async () => {
-    setSavingAccess(true)
+  // Единая запись domain/ip_allowlist: патчим только переданное поле.
+  const patchAccess = async (patch, after) => {
+    setAccessBusy(true)
     setAccessError(null)
-    setAccessSaved(false)
-    const ip_allowlist = restrictByIp
-      ? ipRows.map((r) => ({ ip: r.ip.trim(), note: r.note.trim() })).filter((r) => r.ip)
-      : []
     try {
-      const updated = await updateCompanySettings({ domain, ip_allowlist })
+      const updated = await updateCompanySettings(patch)
       setDomain(updated.domain || '')
-      setAccessSaved(true)
-      setTimeout(() => setAccessSaved(false), 2000)
+      setIpList((updated.ip_allowlist || []).map((e) => ({ ip: e.ip || '', note: e.note || '' })))
+      after?.()
     } catch (err) {
       setAccessError(err.errors ? Object.values(err.errors).flat().join(' ') : err.detail || 'Не удалось сохранить.')
     } finally {
-      setSavingAccess(false)
+      setAccessBusy(false)
     }
   }
 
-  const setRow = (i, patch) => setIpRows((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)))
-  const addRow = () => setIpRows((rows) => [...rows, { ip: '', note: '' }])
-  const removeRow = (i) => setIpRows((rows) => (rows.length > 1 ? rows.filter((_, idx) => idx !== i) : [{ ip: '', note: '' }]))
+  const applyDomain = () => patchAccess({ domain: domainDraft.trim() }, () => setDomainEditing(false))
+  const deleteDomain = () => patchAccess({ domain: '' })
+
+  const applyAddIp = () => {
+    const entry = { ip: ipDraft.ip.trim(), note: ipDraft.note.trim() }
+    if (!entry.ip) {
+      setAccessError('Укажите IP-адрес.')
+      return
+    }
+    patchAccess({ ip_allowlist: [...ipList, entry] }, () => setAddingIp(false))
+  }
+  const deleteIp = (i) => patchAccess({ ip_allowlist: ipList.filter((_, idx) => idx !== i) })
 
   const sendSmtp = async () => {
     setSmtpStatus('sending')
@@ -164,9 +239,6 @@ export function SystemTab() {
     }
   }
 
-  // Обычная функция, не useCallback: все хуки должны стоять выше ранних return
-  // (спиннер при !status), иначе на первом рендере хуков меньше, чем на втором,
-  // и React падает «Rendered more hooks than previous render».
   const onCaptchaToken = async (token) => {
     setCaptchaChecking(true)
     setCaptchaResult(null)
@@ -197,19 +269,13 @@ export function SystemTab() {
         <Card>
           <div style={sectionTitle}>Хранилище файлов</div>
           <div style={sectionHint}>Где хранятся загруженные файлы. Параметры S3 задаются в .env сервера.</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 10 : 24 }}>
             {[
               { value: 'local', label: 'Локальное хранилище' },
               { value: 's3', label: 'S3' },
             ].map((opt) => (
               <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
-                <input
-                  type="radio"
-                  name="storage-mode"
-                  checked={storageMode === opt.value}
-                  disabled={savingStorage}
-                  onChange={() => onStorageMode(opt.value)}
-                />
+                <input type="radio" name="storage-mode" checked={storageMode === opt.value} disabled={savingStorage} onChange={() => onStorageMode(opt.value)} />
                 {opt.label}
               </label>
             ))}
@@ -228,67 +294,73 @@ export function SystemTab() {
 
         {/* Домен и ограничения входа */}
         <Card>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div style={{ ...sectionTitle, marginBottom: 0 }}>Домен и ограничения входа</div>
-            <Button type="button" loading={savingAccess} onClick={saveAccess}>
-              {accessSaved ? 'Сохранено' : 'Сохранить'}
-            </Button>
-          </div>
+          <div style={sectionTitle}>Домен и ограничения входа</div>
+          <div style={sectionHint}>Каждое поле редактируется отдельно и сохраняется сразу.</div>
           {accessError ? (
             <div style={{ marginBottom: 12 }}>
               <Banner variant="error">{accessError}</Banner>
             </div>
           ) : null}
-          <Input label="Домен аккаунтов в системе" value={domain} onChange={(e) => setDomain(e.target.value)} />
-          <div style={{ marginTop: 14 }}>
-            <Checkbox label="Ограничивать вход по IP" checked={restrictByIp} onChange={setRestrictByIp} />
+
+          {/* Домен */}
+          {domainEditing ? (
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
+              <div style={{ flex: 1 }}>
+                <Input label="Домен аккаунтов в системе" value={domainDraft} onChange={(e) => setDomainDraft(e.target.value)} autoFocus />
+              </div>
+              <IconBtn kind="apply" title="Применить" onClick={applyDomain} disabled={accessBusy} />
+              <IconBtn kind="cancel" title="Отменить" onClick={() => setDomainEditing(false)} disabled={accessBusy} />
+            </div>
+          ) : (
+            <ReadField
+              label="Домен аккаунтов в системе"
+              value={domain}
+              actions={
+                <>
+                  <IconBtn kind="edit" title="Редактировать" onClick={() => { setDomainDraft(domain); setAccessError(null); setDomainEditing(true) }} disabled={accessBusy} />
+                  <IconBtn kind="delete" title="Очистить" onClick={deleteDomain} disabled={accessBusy || !domain} />
+                </>
+              }
+            />
+          )}
+
+          {/* Список разрешённых IP */}
+          <div style={{ ...sectionTitle, marginTop: 20, marginBottom: 6, fontSize: 13 }}>Разрешённые IP-адреса</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 12 }}>
+            Пока список пуст — вход не ограничивается. Примечание к адресу показывается его подписью.
           </div>
-          {restrictByIp ? (
-            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {ipRows.map((row, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex',
-                    gap: 8,
-                    flexDirection: isMobile ? 'column' : 'row',
-                    alignItems: isMobile ? 'stretch' : 'flex-end',
-                  }}
-                >
-                  <div style={{ width: isMobile ? 'auto' : 200 }}>
-                    <Input label="IP или подсеть" placeholder="203.0.113.0/24" value={row.ip} onChange={(e) => setRow(i, { ip: e.target.value })} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <Input label="Примечание" placeholder="Офис, VPN…" value={row.note} onChange={(e) => setRow(i, { note: e.target.value })} />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeRow(i)}
-                    title="Удалить"
-                    aria-label="Удалить IP"
-                    style={{
-                      border: 'none',
-                      background: 'none',
-                      color: 'var(--color-text-muted)',
-                      cursor: 'pointer',
-                      height: 44,
-                      padding: '0 6px',
-                      alignSelf: isMobile ? 'flex-end' : 'auto',
-                    }}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M18 6L6 18M6 6l12 12" />
-                    </svg>
-                  </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {ipList.map((row, i) => (
+              <ReadField
+                key={i}
+                mono
+                label={row.note || 'IP-адрес'}
+                value={row.ip}
+                actions={<IconBtn kind="delete" title="Удалить" onClick={() => deleteIp(i)} disabled={accessBusy} />}
+              />
+            ))}
+
+            {addingIp ? (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', flexDirection: isMobile ? 'column' : 'row' }}>
+                <div style={{ width: isMobile ? 'auto' : 200 }}>
+                  <Input label="IP или подсеть" placeholder="203.0.113.0/24" value={ipDraft.ip} onChange={(e) => setIpDraft({ ...ipDraft, ip: e.target.value })} autoFocus />
                 </div>
-              ))}
+                <div style={{ flex: 1, alignSelf: isMobile ? 'stretch' : 'auto' }}>
+                  <Input label="Примечание" placeholder="Офис, VPN…" value={ipDraft.note} onChange={(e) => setIpDraft({ ...ipDraft, note: e.target.value })} />
+                </div>
+                <div style={{ display: 'flex', flex: 'none', alignSelf: isMobile ? 'flex-end' : 'auto' }}>
+                  <IconBtn kind="apply" title="Применить" onClick={applyAddIp} disabled={accessBusy} />
+                  <IconBtn kind="cancel" title="Отменить" onClick={() => setAddingIp(false)} disabled={accessBusy} />
+                </div>
+              </div>
+            ) : (
               <div>
-                <Button type="button" variant="secondary" onClick={addRow}>
+                <Button type="button" variant="secondary" onClick={() => { setIpDraft({ ip: '', note: '' }); setAccessError(null); setAddingIp(true) }}>
                   + Добавить IP
                 </Button>
               </div>
-            </div>
-          ) : null}
+            )}
+          </div>
         </Card>
 
         {/* Проверка почты (SMTP) */}
