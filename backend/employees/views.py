@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.pagination import ELECursorPagination
-from core.permissions import IsAdminOrAccountant
+from core.permissions import IsAdminOrAccountant, SimCardAccessPermission
 from storage.service import delete_stored_file, store_uploaded_file
 from storage.validators import validate_image_max_dimensions
 
@@ -91,21 +91,26 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
 
 class SimCardViewSet(viewsets.ModelViewSet):
-    """Корпоративные SIM/E-SIM сотрудников. Списка-страницы нет — работа только
-    из карточки Сотрудника (фильтр по ?employee=)."""
+    """Корпоративные SIM/E-SIM сотрудников. Управление — из карточки Сотрудника
+    (admin/accountant); Сотрудник видит свои номера в Профиле (read-only,
+    Наблюдатель — все) — как Оборудование, см. SimCardAccessPermission."""
 
-    permission_classes = [IsAdminOrAccountant]
+    permission_classes = [SimCardAccessPermission]
     serializer_class = SimCardSerializer
     pagination_class = None
 
     def get_queryset(self):
         qs = SimCard.objects.all()
+        user = self.request.user
+        if user.role == "employee" and not user.is_observer:
+            # Только свои номера; не привязан к Сотруднику — не видит ничего.
+            return qs.filter(employee_id=user.employee_id) if user.employee_id else qs.none()
         employee = self.request.query_params.get("employee")
         if employee:
             qs = qs.filter(employee_id=employee)
         return qs
 
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def deactivate(self, request, pk=None):
         """Деактивация номера (архив). Симка остаётся в карточке для истории."""
         sim = self.get_object()
@@ -115,7 +120,7 @@ class SimCardViewSet(viewsets.ModelViewSet):
             sim.save(update_fields=["is_deactivated", "deactivated_at"])
         return Response(SimCardSerializer(sim).data)
 
-    @action(detail=False, methods=["get"])
+    @action(detail=False, methods=["get"], permission_classes=[IsAdminOrAccountant])
     def operators(self, request):
         # Автоподсказка «Оператор» — без отдельного справочника, как departments.
         values = (
@@ -126,9 +131,9 @@ class SimCardViewSet(viewsets.ModelViewSet):
         )
         return Response(list(values))
 
-    @action(detail=False, methods=["get"])
+    @action(detail=False, methods=["get"], permission_classes=[IsAdminOrAccountant])
     def providers(self, request):
-        # Автоподсказка «Поставщик услуг связи».
+        # Автоподсказка «Поставщик».
         values = (
             SimCard.objects.exclude(provider="")
             .values_list("provider", flat=True)

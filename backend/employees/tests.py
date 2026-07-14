@@ -168,6 +168,63 @@ class SimCardTests(APITestCase):
         self.assertEqual(sorted(resp_pr.data), ["Йота", "Тинькофф Мобайл"])
 
 
+class SimCardAccessTests(APITestCase):
+    """Сотрудник видит свои номера (read-only), Наблюдатель — все; управление
+    и автоподсказки — только admin/accountant."""
+
+    def setUp(self):
+        self.emp = Employee.objects.create(first_name="Иван", last_name="Прозоров")
+        self.other = Employee.objects.create(first_name="Пётр", last_name="Сидоров")
+        self.my_sim = SimCard.objects.create(employee=self.emp, phone_number="+79001112233")
+        self.other_sim = SimCard.objects.create(employee=self.other, phone_number="+79004445566")
+        self.emp_user = User.objects.create_user(
+            email="ivan@example.com", password="Str0ng!Pass1", employee=self.emp
+        )
+
+    def test_employee_sees_only_own_even_with_foreign_param(self):
+        self.client.force_authenticate(user=self.emp_user)
+        resp = self.client.get(f"/api/sim-cards/?employee={self.other.id}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual([s["phone_number"] for s in resp.data], ["+79001112233"])
+
+    def test_employee_cannot_retrieve_foreign_sim(self):
+        self.client.force_authenticate(user=self.emp_user)
+        resp = self.client.get(f"/api/sim-cards/{self.other_sim.id}/")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_employee_cannot_create(self):
+        self.client.force_authenticate(user=self.emp_user)
+        resp = self.client.post(
+            "/api/sim-cards/", {"employee": self.emp.id, "phone_number": "+70000000000"}, format="json"
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_employee_cannot_deactivate(self):
+        self.client.force_authenticate(user=self.emp_user)
+        resp = self.client.post(f"/api/sim-cards/{self.my_sim.id}/deactivate/", format="json")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_employee_cannot_use_autocomplete(self):
+        self.client.force_authenticate(user=self.emp_user)
+        self.assertEqual(self.client.get("/api/sim-cards/operators/").status_code, 403)
+        self.assertEqual(self.client.get("/api/sim-cards/providers/").status_code, 403)
+
+    def test_observer_sees_all(self):
+        self.emp_user.is_observer = True
+        self.emp_user.save(update_fields=["is_observer"])
+        self.client.force_authenticate(user=self.emp_user)
+        resp = self.client.get("/api/sim-cards/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 2)
+
+    def test_unlinked_employee_sees_nothing(self):
+        orphan = User.objects.create_user(email="orphan@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=orphan)
+        resp = self.client.get("/api/sim-cards/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 0)
+
+
 @override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
 class EmployeeAvatarUploadTests(APITestCase):
     """Аватар — не более 600×600px, не более 2 МБ; грузит Admin/

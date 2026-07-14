@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext.jsx'
 import { roleLabel } from '../../shared/roles.js'
-import { Button, Card, Spinner } from '../../shared/ui'
+import { Button, Card, Spinner, StatusPill } from '../../shared/ui'
 import { uploadEmployeeAvatar } from '../employees/employeesApi.js'
 import { ChangeEmailModal } from './ChangeEmailModal.jsx'
 import { ChangePasswordModal } from './ChangePasswordModal.jsx'
+import { getMySimCards } from './profileApi.js'
 
 function initials(name) {
   return (name || '?').slice(0, 2).toUpperCase()
@@ -20,6 +21,7 @@ export function ProfilePage() {
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [showChangeEmail, setShowChangeEmail] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [simCards, setSimCards] = useState([])
   const fileInputRef = useRef(null)
 
   // При открытии профиля перечитываем пользователя — ФИО/аватар связанного
@@ -29,6 +31,10 @@ export function ProfilePage() {
   }, [refreshUser])
 
   const employee = user.employee
+
+  useEffect(() => {
+    if (employee?.id) getMySimCards(employee.id).then(setSimCards)
+  }, [employee?.id])
   const displayName = employee?.full_name || user.email
 
   const onAvatarSelected = async (e) => {
@@ -124,6 +130,35 @@ export function ProfilePage() {
               <Field label="Отдел" value={employee.department} />
               <Field label="Должность" value={employee.position} />
             </div>
+          </Card>
+        ) : null}
+
+        {employee ? (
+          <Card>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Корпоративная связь</div>
+            {simCards.length === 0 ? (
+              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено SIM-карт.</div>
+            ) : (
+              simCards.map((sim) => {
+                const meta = [sim.network_operator, sim.provider].filter(Boolean).join(' · ')
+                return (
+                  <div key={sim.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '1px 7px', borderRadius: 5 }}>
+                          {sim.sim_type_display}
+                        </span>
+                        <span style={{ font: '600 13.5px var(--font-mono)', color: 'var(--color-text-primary)' }}>{sim.phone_number}</span>
+                        <StatusPill variant={sim.is_deactivated ? 'archived' : 'assigned'}>
+                          {sim.is_deactivated ? 'Деактивирована' : 'Активна'}
+                        </StatusPill>
+                      </div>
+                      {meta ? <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 3 }}>{meta}</div> : null}
+                    </div>
+                  </div>
+                )
+              })
+            )}
           </Card>
         ) : null}
 
