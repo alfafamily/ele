@@ -16,6 +16,9 @@
 
 .ele-table__head {
   display: grid;
+  /* Небольшой зазор между колонками, чтобы содержимое соседних колонок не
+     «слипалось» (особенно на узких мобильных списках). */
+  column-gap: 16px;
   padding: 12px 18px;
   font-size: var(--font-size-min-desktop);
   font-weight: 600;
@@ -50,6 +53,7 @@
 
 .ele-table__row {
   display: grid;
+  column-gap: 16px;
   padding: 14px 18px;
   align-items: center;
   font-size: 14px;

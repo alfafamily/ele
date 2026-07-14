@@ -11,7 +11,8 @@ export function gridTemplateColumns(columns) {
 // полировки (§8.5); здесь минимальная защита от обрезанных колонок —
 // горизонтальный скролл с сохранённой шириной содержимого.
 function minTableWidth(columns) {
-  return columns.reduce((sum, c) => sum + (c.width && c.width.endsWith('px') ? parseInt(c.width, 10) : 150), 0)
+  const cols = columns.reduce((sum, c) => sum + (c.width && c.width.endsWith('px') ? parseInt(c.width, 10) : 150), 0)
+  return cols + 16 * Math.max(0, columns.length - 1) // + column-gap между колонками (Table.css)
 }
 
 export function Table({ columns, sortKey, sortDir, onSort, children }) {
