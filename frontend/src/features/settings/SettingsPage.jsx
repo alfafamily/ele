@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { BackupTab } from './BackupTab.jsx'
 import { CompanyTab } from './CompanyTab.jsx'
+import { SystemTab } from './SystemTab.jsx'
 import { UsersTab } from './UsersTab.jsx'
 
 const TABS = [
   { key: 'company', label: 'Компания' },
   { key: 'users', label: 'Пользователи' },
+  { key: 'system', label: 'Системные' },
   { key: 'backup', label: 'Резервное копирование' },
 ]
 
@@ -46,7 +48,15 @@ export function SettingsPage() {
           ))}
         </div>
         <div style={{ minWidth: 0 }}>
-          {tab === 'company' ? <CompanyTab /> : tab === 'users' ? <UsersTab /> : <BackupTab />}
+          {tab === 'company' ? (
+            <CompanyTab />
+          ) : tab === 'users' ? (
+            <UsersTab />
+          ) : tab === 'system' ? (
+            <SystemTab />
+          ) : (
+            <BackupTab />
+          )}
         </div>
       </div>
     </div>

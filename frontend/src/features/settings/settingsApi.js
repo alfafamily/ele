@@ -22,6 +22,11 @@ export const inviteUser = (payload) => apiPost('/api/users/invite/', payload)
 export const sendSmtpTestCode = () => apiPost('/api/company/test-email/')
 export const verifySmtpTestCode = (code) => apiPost('/api/company/verify-email/', { code })
 
+export const getSystemStatus = () => apiGet('/api/company/system-status/')
+export const testStorage = () => apiPost('/api/company/storage-test/')
+export const checkYandexId = () => apiPost('/api/company/yandex-id-check/')
+export const checkCaptcha = (token) => apiPost('/api/company/captcha-check/', { token })
+
 export const getBackupSettings = () => apiGet('/api/company/backup-settings/')
 export const updateBackupSettings = (payload) => apiPatch('/api/company/backup-settings/', payload)
 export const createBackup = () => apiPost('/api/backup/create/')

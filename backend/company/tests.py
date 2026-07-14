@@ -51,7 +51,7 @@ class CompanySettingsTests(APITestCase):
                 "inn": "7701234567",
                 "kpp": "770101001",
                 "domain": "romashka.ru",
-                "ip_allowlist": ["195.19.0.0/16"],
+                "ip_allowlist": [{"ip": "195.19.0.0/16", "note": "Офис"}],
             },
             format="json",
         )
@@ -59,7 +59,16 @@ class CompanySettingsTests(APITestCase):
         company = Company.load()
         self.assertEqual(company.name, "ООО «Ромашка»")
         self.assertEqual(company.domain, "romashka.ru")
-        self.assertEqual(company.ip_allowlist, ["195.19.0.0/16"])
+        self.assertEqual(company.ip_allowlist, [{"ip": "195.19.0.0/16", "note": "Офис"}])
+
+    def test_ip_allowlist_rejects_invalid_ip(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.patch(
+            "/api/company/settings/",
+            {"ip_allowlist": [{"ip": "не-айпи", "note": ""}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
 
     def test_storage_mode_not_writable_here(self):
         self.client.force_authenticate(user=self.admin)
@@ -267,4 +276,47 @@ class CompanySmtpCheckTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         with override_settings(EMAIL_CONFIGURED=False):
             resp = self.client.post("/api/company/test-email/")
+        self.assertEqual(resp.status_code, 400)
+
+
+class SystemSettingsPageTests(APITestCase):
+    """Настройки → Системные: статус конфигурации и точечные проверки."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+
+    def test_system_status_requires_admin(self):
+        worker = User.objects.create_user(email="worker@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=worker)
+        self.assertEqual(self.client.get("/api/company/system-status/").status_code, 403)
+
+    def test_system_status_reports_flags(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/company/system-status/")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        for key in ("storage_mode", "s3_configured", "email_configured", "yandex_id_configured", "captcha_configured"):
+            self.assertIn(key, resp.data)
+
+    def test_storage_test_local_ok(self):
+        import tempfile
+
+        self.client.force_authenticate(user=self.admin)
+        with tempfile.TemporaryDirectory() as tmp, override_settings(MEDIA_ROOT=tmp):
+            resp = self.client.post("/api/company/storage-test/")
+        self.assertEqual(resp.status_code, 200, resp.data)
+
+    def test_yandex_id_check_blocked_when_not_configured(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/company/yandex-id-check/")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_captcha_check_blocked_when_not_configured(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/company/captcha-check/", {"token": "x"}, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+    @override_settings(YANDEX_SMARTCAPTCHA_SITE_KEY="site", YANDEX_SMARTCAPTCHA_SECRET_KEY="secret")
+    def test_captcha_check_requires_token(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/company/captcha-check/", {}, format="json")
         self.assertEqual(resp.status_code, 400)

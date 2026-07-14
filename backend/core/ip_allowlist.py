@@ -1,7 +1,16 @@
 import ipaddress
 
 
-def is_ip_allowed(ip: str, allowlist: list[str]) -> bool:
+def entry_ip(entry) -> str:
+    """IP-адрес/подсеть из записи allowlist. Записи теперь — словари
+    {"ip": ..., "note": ...}; строки поддерживаются для совместимости со
+    старым форматом (данные до миграции 0004)."""
+    if isinstance(entry, dict):
+        return (entry.get("ip") or "").strip()
+    return str(entry).strip()
+
+
+def is_ip_allowed(ip: str, allowlist: list) -> bool:
     """Пустой allowlist = ограничение выключено (§3.1). Непустой — сверяем
     по отдельным адресам и подсетям CIDR; некорректный IP клиента или
     записи allowlist трактуем как "не совпало", не как ошибку 500."""
@@ -12,12 +21,14 @@ def is_ip_allowed(ip: str, allowlist: list[str]) -> bool:
     except ValueError:
         return False
     for entry in allowlist:
-        entry = entry.strip()
+        value = entry_ip(entry)
+        if not value:
+            continue
         try:
-            if "/" in entry:
-                if client in ipaddress.ip_network(entry, strict=False):
+            if "/" in value:
+                if client in ipaddress.ip_network(value, strict=False):
                     return True
-            elif client == ipaddress.ip_address(entry):
+            elif client == ipaddress.ip_address(value):
                 return True
         except ValueError:
             continue

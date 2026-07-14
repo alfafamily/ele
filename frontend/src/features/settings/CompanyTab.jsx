@@ -1,16 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useCompany, useRefreshCompany } from '../../app/CompanyContext.jsx'
-import { Banner, Button, Card, Checkbox, Input, Select, Spinner } from '../../shared/ui'
-import {
-  deleteCompanyLogo,
-  getCompanySettings,
-  getStorageMode,
-  sendSmtpTestCode,
-  updateCompanySettings,
-  updateStorageMode,
-  uploadCompanyLogo,
-  verifySmtpTestCode,
-} from './settingsApi.js'
+import { Banner, Button, Card, Input, Spinner } from '../../shared/ui'
+import { deleteCompanyLogo, getCompanySettings, updateCompanySettings, uploadCompanyLogo } from './settingsApi.js'
 
 // Читает натуральные размеры выбранного изображения в браузере (без загрузки
 // на сервер) — для проверки ограничения 600×600 px до отправки.
@@ -30,39 +21,24 @@ function readImageSize(file) {
   })
 }
 
+// Настройки → Компания — только реквизиты организации (лого, название, ИНН,
+// КПП). Технические настройки (хранилище, домен/IP, проверки интеграций) —
+// в отдельной вкладке «Системные» (SystemTab).
 export function CompanyTab() {
   const company = useCompany()
   const refreshCompany = useRefreshCompany()
   const [settings, setSettings] = useState(null)
-  const [storageMode, setStorageMode] = useState(null)
-  const [ipListText, setIpListText] = useState('')
-  const [restrictByIp, setRestrictByIp] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
-  const [savingStorage, setSavingStorage] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [saved, setSaved] = useState(false)
   const fileInputRef = useRef(null)
 
-  // Проверка SMTP: письмо с кодом на почту текущего администратора → ввод кода
-  // подтверждает, что письма реально доходят (аналог Setup Wizard).
-  const [smtpStatus, setSmtpStatus] = useState('idle') // idle|sending|sent|checking|ok
-  const [smtpCode, setSmtpCode] = useState('')
-  const [smtpEmail, setSmtpEmail] = useState('')
-  const [smtpError, setSmtpError] = useState(null)
+  useEffect(() => {
+    getCompanySettings().then(setSettings)
+  }, [])
 
-  const load = () => {
-    getCompanySettings().then((data) => {
-      setSettings(data)
-      setIpListText((data.ip_allowlist || []).join(', '))
-      setRestrictByIp((data.ip_allowlist || []).length > 0)
-    })
-    getStorageMode().then((data) => setStorageMode(data.storage_mode))
-  }
-
-  useEffect(load, [])
-
-  if (!settings || !storageMode) {
+  if (!settings) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
         <Spinner />
@@ -113,65 +89,14 @@ export function CompanyTab() {
     }
   }
 
-  const onStorageModeChange = async (mode) => {
-    setSavingStorage(true)
-    setError(null)
-    try {
-      await updateStorageMode(mode)
-      setStorageMode(mode)
-    } catch (err) {
-      setError(err.detail || 'Не удалось сменить режим хранилища.')
-    } finally {
-      setSavingStorage(false)
-    }
-  }
-
-  const sendSmtp = async () => {
-    setSmtpStatus('sending')
-    setSmtpError(null)
-    try {
-      const data = await sendSmtpTestCode()
-      setSmtpEmail(data.email)
-      setSmtpCode('')
-      setSmtpStatus('sent')
-    } catch (err) {
-      setSmtpStatus('idle')
-      setSmtpError(err.detail || 'Не удалось отправить письмо. Проверьте настройки SMTP в .env.')
-    }
-  }
-
-  const verifySmtp = async () => {
-    setSmtpStatus('checking')
-    setSmtpError(null)
-    try {
-      await verifySmtpTestCode(smtpCode)
-      setSmtpStatus('ok')
-    } catch (err) {
-      setSmtpStatus('sent')
-      setSmtpError(err.detail || 'Неверный код.')
-    }
-  }
-
   const submit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
     setError(null)
     setSaved(false)
-    const ipList = restrictByIp
-      ? ipListText
-          .split(/[,\n]/)
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : []
     try {
-      const updated = await updateCompanySettings({
-        name: settings.name,
-        inn: settings.inn,
-        kpp: settings.kpp,
-        domain: settings.domain,
-        ip_allowlist: ipList,
-      })
-      setSettings(updated)
+      const updated = await updateCompanySettings({ name: settings.name, inn: settings.inn, kpp: settings.kpp })
+      setSettings((prev) => ({ ...prev, ...updated }))
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (err) {
@@ -246,71 +171,7 @@ export function CompanyTab() {
             <Input label="КПП" value={settings.kpp} onChange={(e) => setSettings({ ...settings, kpp: e.target.value })} />
           </div>
         </Card>
-
-        <Card>
-          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>Доступ и приглашения</div>
-          <Input label="Домен для приглашений" value={settings.domain} onChange={(e) => setSettings({ ...settings, domain: e.target.value })} />
-          <div style={{ marginTop: 14 }}>
-            <Checkbox label="Ограничивать вход по IP" checked={restrictByIp} onChange={setRestrictByIp} />
-          </div>
-          {restrictByIp ? (
-            <div style={{ marginTop: 12 }}>
-              <Input label="Разрешённые IP (через запятую)" value={ipListText} onChange={(e) => setIpListText(e.target.value)} />
-            </div>
-          ) : null}
-        </Card>
-
-        <Card>
-          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>Хранилище файлов</div>
-          <Select label="Режим" value={storageMode} onChange={onStorageModeChange} disabled={savingStorage}>
-            <option value="local">Локально</option>
-            <option value="s3">S3</option>
-          </Select>
-          <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 8 }}>
-            Параметры подключения S3 задаются в .env сервера (§8.6) — здесь только выбор активного режима.
-          </div>
-        </Card>
       </form>
-
-      <Card style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Проверка отправки почты (SMTP)</div>
-        <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
-          {smtpStatus === 'sent' || smtpStatus === 'checking'
-            ? `Код отправлен на ${smtpEmail} — введите его, чтобы подтвердить доставку.`
-            : 'Отправим письмо с кодом на вашу почту и попросим ввести код — так проверяется, что письма реально доходят.'}
-        </div>
-
-        {smtpError ? (
-          <div style={{ marginBottom: 12 }}>
-            <Banner variant="error">{smtpError}</Banner>
-          </div>
-        ) : null}
-
-        {smtpStatus === 'ok' ? (
-          <Banner variant="success">SMTP работает — письмо доставлено.</Banner>
-        ) : smtpStatus === 'sent' || smtpStatus === 'checking' ? (
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-            <div style={{ width: 160 }}>
-              <Input
-                label="Код из письма"
-                value={smtpCode}
-                onChange={(e) => setSmtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
-              />
-            </div>
-            <Button type="button" loading={smtpStatus === 'checking'} disabled={smtpCode.length !== 6} onClick={verifySmtp}>
-              Подтвердить
-            </Button>
-            <Button type="button" variant="secondary" onClick={sendSmtp}>
-              Отправить ещё раз
-            </Button>
-          </div>
-        ) : (
-          <Button type="button" variant="secondary" loading={smtpStatus === 'sending'} onClick={sendSmtp}>
-            Отправить проверочное письмо
-          </Button>
-        )}
-      </Card>
     </div>
   )
 }

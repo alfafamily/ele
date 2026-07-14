@@ -9,9 +9,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from accounts.captcha import is_captcha_enabled
+from accounts.captcha import is_captcha_enabled, verify_captcha
 from accounts.yandex_oauth import is_yandex_id_enabled
 from core.permissions import IsAdmin
+from core.utils.client_ip import get_client_ip
 from storage.backends import target_backend_name
 from storage.models import StoredFile
 from storage.serializers import StoredFileErrorSerializer, StoredFileSerializer
@@ -30,7 +31,7 @@ from .serializers import (
     VerifyEmailCodeSerializer,
 )
 from .setup_email import CODE_TTL_SECONDS, generate_code, send_test_code_email
-from .storage_test import test_s3_connection
+from .storage_test import storage_selftest, test_s3_connection
 
 User = get_user_model()
 
@@ -246,6 +247,70 @@ class CompanyVerifyEmailView(APIView):
             return Response({"detail": "Неверный код."}, status=400)
         request.session.pop(_SESSION_SMTP_TEST_PENDING, None)
         return Response({"detail": "SMTP работает — письмо доставлено."})
+
+
+class SystemStatusView(APIView):
+    """Настройки → Системные: какие интеграции сконфигурированы в .env — чтобы
+    фронт показывал кнопку «Выполнить проверку» либо примечание «не задано»."""
+
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        return Response(
+            {
+                "storage_mode": Company.load().storage_mode,
+                "s3_configured": _s3_env_configured(),
+                "email_configured": settings.EMAIL_CONFIGURED,
+                "yandex_id_configured": is_yandex_id_enabled(),
+                "captcha_configured": is_captcha_enabled(),
+                "captcha_site_key": settings.YANDEX_SMARTCAPTCHA_SITE_KEY or None,
+            }
+        )
+
+
+class CompanyStorageTestView(APIView):
+    """Проверка активного хранилища: запись/чтение/удаление test_file.txt (§8.3)."""
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request):
+        if target_backend_name() == "s3" and not _s3_env_configured():
+            return Response({"detail": "S3 не настроен в .env."}, status=400)
+        ok, error = storage_selftest()
+        if not ok:
+            return Response({"detail": error or "Проверка не пройдена."}, status=400)
+        return Response({"detail": "Хранилище работает — тестовый файл записан и удалён."})
+
+
+class CompanyYandexIDCheckView(APIView):
+    """Проверка доступности Яндекс ID по заданным в .env реквизитам (§4.3)."""
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request):
+        if not is_yandex_id_enabled():
+            return Response({"detail": "Яндекс ID не настроен в .env."}, status=400)
+        if not check_yandex_oauth_reachable():
+            return Response({"detail": "Эндпоинт Яндекс ID недоступен — проверьте сеть."}, status=400)
+        return Response({"detail": "Яндекс ID доступен."})
+
+
+class CompanyCaptchaCheckView(APIView):
+    """Проверка SmartCaptcha (§4.6): админ решает капчу на странице, сюда
+    приходит токен — валидируем серверным ключом (это реальная проверка
+    ключей, а не только доступность эндпоинта)."""
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request):
+        if not is_captcha_enabled():
+            return Response({"detail": "SmartCaptcha не настроена в .env."}, status=400)
+        token = request.data.get("token") or ""
+        if not token:
+            return Response({"detail": "Сначала решите капчу."}, status=400)
+        if not verify_captcha(token, get_client_ip(request)):
+            return Response({"detail": "Капча не пройдена — проверьте ключи в .env."}, status=400)
+        return Response({"detail": "Капча пройдена — ключи рабочие."})
 
 
 class TestCaptchaView(APIView):

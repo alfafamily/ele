@@ -29,9 +29,24 @@ class CompanySettingsSerializer(serializers.ModelSerializer):
         fields = ["name", "inn", "kpp", "domain", "ip_allowlist"]
 
     def validate_ip_allowlist(self, value):
-        if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
-            raise serializers.ValidationError("Ожидается список строк (IP-адреса или подсети CIDR).")
-        return value
+        import ipaddress
+
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Ожидается список записей {ip, note}.")
+        cleaned = []
+        for item in value:
+            if not isinstance(item, dict):
+                raise serializers.ValidationError("Каждая запись — объект {ip, note}.")
+            ip = (item.get("ip") or "").strip()
+            note = (item.get("note") or "").strip()
+            if not ip:
+                raise serializers.ValidationError("IP-адрес не может быть пустым.")
+            try:
+                ipaddress.ip_network(ip, strict=False) if "/" in ip else ipaddress.ip_address(ip)
+            except ValueError:
+                raise serializers.ValidationError(f"«{ip}» — не корректный IP-адрес или подсеть CIDR.")
+            cleaned.append({"ip": ip, "note": note})
+        return cleaned
 
 
 class SetupAdminSerializer(serializers.Serializer):
