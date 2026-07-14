@@ -72,7 +72,7 @@ export function BackupTab() {
         <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 600 }}>Создать резервную копию сейчас</div>
-            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Разовый экспорт в файл, скачивается сразу.</div>
+            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Разовый экспорт в файл</div>
           </div>
           <Button loading={creating} onClick={doCreateBackup} style={{ flex: 'none' }}>
             Экспорт
