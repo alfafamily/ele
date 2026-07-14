@@ -7,7 +7,9 @@ import {
   checkCaptcha,
   checkYandexId,
   getCompanySettings,
+  getStorageMigrationStatus,
   getSystemStatus,
+  retryStorageMigration,
   sendSmtpTestCode,
   testStorage,
   updateCompanySettings,
@@ -60,6 +62,8 @@ export function SystemTab() {
   const [savingStorage, setSavingStorage] = useState(false)
   const [storageTesting, setStorageTesting] = useState(false)
   const [storageResult, setStorageResult] = useState(null) // { ok, msg }
+  const [migration, setMigration] = useState(null) // { status, pending_count, error_count, target_backend }
+  const [migrationRetrying, setMigrationRetrying] = useState(false)
 
   // SMTP
   const [smtpStatus, setSmtpStatus] = useState('idle') // idle|sending|sent|checking|ok
@@ -77,15 +81,26 @@ export function SystemTab() {
   const [captchaChecking, setCaptchaChecking] = useState(false)
 
   useEffect(() => {
-    Promise.all([getSystemStatus(), getCompanySettings()])
-      .then(([st, company]) => {
+    Promise.all([getSystemStatus(), getCompanySettings(), getStorageMigrationStatus()])
+      .then(([st, company, mig]) => {
         setStatus(st)
         setStorageMode(st.storage_mode)
         setDomain(company.domain || '')
         setIpList(normalizeIps(company.ip_allowlist))
+        setMigration(mig)
       })
       .catch(() => setLoadError('Не удалось загрузить системные настройки.'))
   }, [])
+
+  // Пока идёт перенос файлов — периодически обновляем статус, чтобы поймать
+  // завершение и снова разрешить смену режима.
+  useEffect(() => {
+    if (migration?.status !== 'in_progress') return
+    const id = setInterval(() => {
+      getStorageMigrationStatus().then(setMigration).catch(() => {})
+    }, 4000)
+    return () => clearInterval(id)
+  }, [migration?.status])
 
   if (loadError) return <Banner variant="error">{loadError}</Banner>
   if (!status) {
@@ -108,10 +123,25 @@ export function SystemTab() {
     try {
       await updateStorageMode(mode)
       setStorageMode(mode)
+      // Смена режима запускает перенос уже загруженных файлов — сразу
+      // подтягиваем статус, чтобы заблокировать повторную смену.
+      getStorageMigrationStatus().then(setMigration).catch(() => {})
     } catch (err) {
       setStorageResult({ ok: false, msg: err.detail || 'Не удалось сменить режим хранилища.' })
     } finally {
       setSavingStorage(false)
+    }
+  }
+
+  const retryMigration = async () => {
+    setMigrationRetrying(true)
+    try {
+      await retryStorageMigration()
+      setMigration(await getStorageMigrationStatus())
+    } catch {
+      // статус обновится следующим опросом
+    } finally {
+      setMigrationRetrying(false)
     }
   }
 
@@ -240,13 +270,33 @@ export function SystemTab() {
             {[
               { value: 'local', label: 'Локальное хранилище' },
               { value: 's3', label: 'S3' },
-            ].map((opt) => (
-              <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
-                <input type="radio" name="storage-mode" checked={storageMode === opt.value} disabled={savingStorage} onChange={() => onStorageMode(opt.value)} />
-                {opt.label}
-              </label>
-            ))}
+            ].map((opt) => {
+              const locked = savingStorage || migration?.status === 'in_progress'
+              return (
+                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: locked ? 'default' : 'pointer', fontSize: 14, opacity: locked && storageMode !== opt.value ? 0.55 : 1 }}>
+                  <input type="radio" name="storage-mode" checked={storageMode === opt.value} disabled={locked} onChange={() => onStorageMode(opt.value)} />
+                  {opt.label}
+                </label>
+              )
+            })}
           </div>
+
+          {/* Перенос файлов между хранилищами (§8.3) — идёт в фоне (cron). Пока
+              не завершён, смена режима заблокирована выше. */}
+          {migration && migration.status === 'in_progress' ? (
+            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted)' }}>
+              <Spinner size={14} />
+              Идёт перенос файлов в «{migration.target_backend === 's3' ? 'S3' : 'Локальное хранилище'}»: осталось {migration.pending_count}. Смена режима недоступна до завершения.
+            </div>
+          ) : migration && migration.status === 'error' ? (
+            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <Banner variant="error">Не удалось перенести файлов: {migration.error_count}.</Banner>
+              <Button type="button" variant="secondary" loading={migrationRetrying} onClick={retryMigration}>
+                Повторить перенос
+              </Button>
+            </div>
+          ) : null}
+
           <div style={{ ...checkRow, marginTop: 14 }}>
             <Button type="button" variant="secondary" loading={storageTesting} onClick={runStorageTest}>
               Выполнить проверку

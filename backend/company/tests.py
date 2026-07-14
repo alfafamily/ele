@@ -320,3 +320,30 @@ class SystemSettingsPageTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         resp = self.client.post("/api/company/captcha-check/", {}, format="json")
         self.assertEqual(resp.status_code, 400)
+
+
+class StorageModeSwitchGuardTests(APITestCase):
+    """§8.3: пока идёт перенос файлов, менять режим хранилища нельзя (иначе
+    новый перенос пересечётся с текущим и рискует сохранностью файлов)."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+
+    def test_switch_blocked_while_migrating(self):
+        from storage.models import StoredFile
+
+        # текущий target — local; файл на s3 без ошибки = идёт перенос
+        StoredFile.objects.create(backend="s3", path="a/x.txt")
+        resp = self.client.patch("/api/company/storage-mode/", {"storage_mode": "s3"}, format="json")
+        self.assertEqual(resp.status_code, 409, resp.data)
+        self.assertEqual(Company.load().storage_mode, "local")
+
+    @override_settings(S3_ENDPOINT="https://s3", S3_BUCKET="b", S3_REGION="r", S3_ACCESS_KEY="k", S3_SECRET_KEY="s")
+    def test_errored_files_do_not_block(self):
+        from storage.models import StoredFile
+
+        StoredFile.objects.create(backend="s3", path="a/x.txt", migration_status=StoredFile.MigrationStatus.ERROR)
+        resp = self.client.patch("/api/company/storage-mode/", {"storage_mode": "s3"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(Company.load().storage_mode, "s3")

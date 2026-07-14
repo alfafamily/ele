@@ -423,7 +423,20 @@ class StorageModeUpdateView(APIView):
         company = Company.load()
         serializer = StorageModeSerializer(company, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        if serializer.validated_data["storage_mode"] == Company.StorageMode.S3:
+        new_mode = serializer.validated_data["storage_mode"]
+        # Пока идёт перенос файлов в текущее целевое хранилище (есть файлы не на
+        # target и без ошибки), менять режим нельзя — иначе новый перенос в
+        # другое хранилище пересечётся с текущим и рискует сохранностью файлов.
+        if new_mode != company.storage_mode:
+            target = target_backend_name()
+            migrating = StoredFile.objects.exclude(backend=target).exclude(
+                migration_status=StoredFile.MigrationStatus.ERROR
+            ).exists()
+            if migrating:
+                return Response(
+                    {"detail": "Идёт перенос файлов между хранилищами — дождитесь завершения."}, status=409
+                )
+        if new_mode == Company.StorageMode.S3:
             missing = [k for k in ("S3_ENDPOINT", "S3_BUCKET", "S3_REGION", "S3_ACCESS_KEY", "S3_SECRET_KEY") if not getattr(settings, k)]
             if missing:
                 return Response(
