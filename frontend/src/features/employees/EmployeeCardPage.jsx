@@ -166,20 +166,11 @@ export function EmployeeCardPage() {
         </Card>
 
         <Card>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ fontSize: 16, fontWeight: 600 }}>Корпоративная связь</div>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
-                {employee.sim_cards.length}
-              </span>
-            </div>
-            {employee.is_employed ? (
-              <Can perm="canManageEmployees">
-                <Button variant="secondary" onClick={() => setSimModal('new')}>
-                  Добавить
-                </Button>
-              </Can>
-            ) : null}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>Корпоративная связь</div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
+              {employee.sim_cards.length}
+            </span>
           </div>
           {employee.sim_cards.length === 0 ? (
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено SIM-карт.</div>
@@ -200,6 +191,13 @@ export function EmployeeCardPage() {
               </div>
             ))
           )}
+          {employee.is_employed ? (
+            <Can perm="canManageEmployees">
+              <Button variant="secondary" fullWidth style={{ marginTop: employee.sim_cards.length ? 4 : 12 }} onClick={() => setSimModal('new')}>
+                + Добавить SIM-карту
+              </Button>
+            </Can>
+          ) : null}
         </Card>
       </div>
 
