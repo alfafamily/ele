@@ -52,64 +52,71 @@ export function BackupTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ fontSize: 19, fontWeight: 600 }}>Резервное копирование</div>
+      <div>
+        <div style={{ fontSize: 19, fontWeight: 600 }}>Резервное копирование</div>
+        <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 6, lineHeight: 1.5, maxWidth: 760 }}>
+          Система создает файл, который можно скачать с объектами в системе: оборудование, лицензии, сотрудники,
+          пользователи (с хэшами паролей), типы, ссылки на файлы. Файлы необходимо выгрузить из хранилища
+          самостоятельно, по ссылкам указанным в объектах файла экспорта.
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 8, lineHeight: 1.5, maxWidth: 760 }}>
+          Файл содержит чувствительные данные — храните и передавайте его только по защищённым каналам.
+        </div>
+      </div>
 
       {error ? <Banner variant="error">{error}</Banner> : null}
 
-      <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
-        <div style={{ maxWidth: 520 }}>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Создать резервную копию сейчас</div>
-          <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.5 }}>
-            Система создаст файл, который можно скачать с объектами в системе: оборудование, лицензии, сотрудники,
-            пользователи (с хэшами паролей), типы, ссылки на файлы. Файлы необходимо выгрузить из хранилища самостоятельно,
-            по ссылкам указанным в объектах файла экспорта.
+      {/* Создать копию и Автокопирование — в ряд на десктопе, стопкой на мобиле
+          (первым — «Создать резервную копию»). */}
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, alignItems: 'stretch' }}>
+        <Card style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>Создать резервную копию сейчас</div>
+            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Разовый экспорт в файл, скачивается сразу.</div>
           </div>
-          <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 8, lineHeight: 1.5 }}>
-            Файл содержит чувствительные данные — храните и передавайте его только по защищённым каналам.
-          </div>
-        </div>
-        <Button loading={creating} onClick={doCreateBackup}>
-          Экспорт
-        </Button>
-      </Card>
-
-      {settings ? (
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>Автоматическое копирование</div>
-              <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Ежедневно, глубина хранения — последние N копий</div>
-            </div>
-            <Checkbox
-              checked={settings.auto_backup_enabled}
-              onChange={(checked) => {
-                setSettings({ ...settings, auto_backup_enabled: checked })
-                patchSettings({ auto_backup_enabled: checked })
-              }}
-              disabled={savingSettings}
-            />
-          </div>
-          {settings.auto_backup_enabled ? (
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 16 }}>
-              <Input
-                label="Время автокопирования"
-                type="time"
-                value={settings.auto_backup_time?.slice(0, 5) || '03:00'}
-                onChange={(e) => setSettings({ ...settings, auto_backup_time: e.target.value })}
-                onBlur={() => patchSettings({ auto_backup_time: settings.auto_backup_time })}
-              />
-              <Input
-                label="Хранить последних копий"
-                type="number"
-                min={1}
-                value={settings.auto_backup_retention}
-                onChange={(e) => setSettings({ ...settings, auto_backup_retention: Number(e.target.value) })}
-                onBlur={() => patchSettings({ auto_backup_retention: settings.auto_backup_retention })}
-              />
-            </div>
-          ) : null}
+          <Button loading={creating} onClick={doCreateBackup} style={{ flex: 'none' }}>
+            Экспорт
+          </Button>
         </Card>
-      ) : null}
+
+        {settings ? (
+          <Card style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>Автоматическое копирование</div>
+                <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Ежедневно, глубина хранения — последние N копий</div>
+              </div>
+              <Checkbox
+                checked={settings.auto_backup_enabled}
+                onChange={(checked) => {
+                  setSettings({ ...settings, auto_backup_enabled: checked })
+                  patchSettings({ auto_backup_enabled: checked })
+                }}
+                disabled={savingSettings}
+              />
+            </div>
+            {settings.auto_backup_enabled ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginTop: 16 }}>
+                <Input
+                  label="Время автокопирования"
+                  type="time"
+                  value={settings.auto_backup_time?.slice(0, 5) || '03:00'}
+                  onChange={(e) => setSettings({ ...settings, auto_backup_time: e.target.value })}
+                  onBlur={() => patchSettings({ auto_backup_time: settings.auto_backup_time })}
+                />
+                <Input
+                  label="Хранить последних копий"
+                  type="number"
+                  min={1}
+                  value={settings.auto_backup_retention}
+                  onChange={(e) => setSettings({ ...settings, auto_backup_retention: Number(e.target.value) })}
+                  onBlur={() => patchSettings({ auto_backup_retention: settings.auto_backup_retention })}
+                />
+              </div>
+            ) : null}
+          </Card>
+        ) : null}
+      </div>
 
       <Card style={{ padding: '6px 6px 6px' }}>
         {loading ? (
