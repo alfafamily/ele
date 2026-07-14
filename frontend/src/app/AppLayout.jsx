@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
 import { useCompany } from './CompanyContext.jsx'
@@ -15,6 +16,21 @@ export function AppLayout() {
   const company = useCompany()
   const sections = navSectionsForRole(user.role)
   const employeeName = user.employee ? user.employee.full_name : null
+  // Настройки — только у Администратора и в мобильной нижней навигации их нет
+  // (там первые 3 раздела + Профиль). Поэтому у админа тап по «Профиль» на
+  // мобиле открывает меню Профиль/Настройки; у остальных — прямой переход.
+  const isAdmin = user.role === 'admin'
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+
+  const avatar = (size, fontSize) => (
+    <span className="ele-rail__avatar" style={{ width: size, height: size, fontSize, overflow: 'hidden' }}>
+      {user.employee?.avatar ? (
+        <img src={user.employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        initials(employeeName || user.email)
+      )}
+    </span>
+  )
   // «Настройки» — внизу rail, над «Помощью» (§8.5, макет N); остальные разделы
   // идут сверху в порядке навигации.
   const topSections = sections.filter((s) => !s.bottom)
@@ -118,17 +134,38 @@ export function AppLayout() {
             <span>{label}</span>
           </NavLink>
         ))}
-        <NavLink to="/profile" className={({ isActive }) => `ele-bottom-nav__item${isActive ? ' ele-bottom-nav__item--active' : ''}`}>
-          <span className="ele-rail__avatar" style={{ width: 22, height: 22, fontSize: 9, overflow: 'hidden' }}>
-            {user.employee?.avatar ? (
-              <img src={user.employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              initials(employeeName || user.email)
-            )}
-          </span>
-          <span>Профиль</span>
-        </NavLink>
+        {isAdmin ? (
+          <button
+            type="button"
+            className={`ele-bottom-nav__item${profileMenuOpen ? ' ele-bottom-nav__item--active' : ''}`}
+            aria-haspopup="menu"
+            aria-expanded={profileMenuOpen}
+            onClick={() => setProfileMenuOpen((v) => !v)}
+          >
+            {avatar(22, 9)}
+            <span>Профиль</span>
+          </button>
+        ) : (
+          <NavLink to="/profile" className={({ isActive }) => `ele-bottom-nav__item${isActive ? ' ele-bottom-nav__item--active' : ''}`}>
+            {avatar(22, 9)}
+            <span>Профиль</span>
+          </NavLink>
+        )}
       </nav>
+
+      {profileMenuOpen ? (
+        <>
+          <div className="ele-profile-menu__backdrop" onClick={() => setProfileMenuOpen(false)} />
+          <div className="ele-profile-menu" role="menu">
+            <NavLink to="/profile" role="menuitem" className="ele-profile-menu__item" onClick={() => setProfileMenuOpen(false)}>
+              Профиль
+            </NavLink>
+            <NavLink to="/settings" role="menuitem" className="ele-profile-menu__item" onClick={() => setProfileMenuOpen(false)}>
+              Настройки
+            </NavLink>
+          </div>
+        </>
+      ) : null}
     </div>
   )
 }

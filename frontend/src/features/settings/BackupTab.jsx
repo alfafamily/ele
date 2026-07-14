@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useCursorList } from '../../shared/hooks/useCursorList.js'
+import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { Banner, Button, Card, Checkbox, Input, Skeleton } from '../../shared/ui'
 import { backupDownloadUrl, createBackup, getBackupSettings, updateBackupSettings } from './settingsApi.js'
 
@@ -13,6 +14,9 @@ function formatDate(iso) {
 const TYPE_LABEL = { manual: 'Вручную', auto: 'Авто' }
 
 export function BackupTab() {
+  const isMobile = useMediaQuery('(max-width: 768px)')
+  const backupCols = isMobile ? '1fr auto auto 28px' : '200px 1fr 130px 40px'
+  const backupPad = isMobile ? '12px 12px' : '12px 18px'
   const [settings, setSettings] = useState(null)
   const [creating, setCreating] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
@@ -85,7 +89,7 @@ export function BackupTab() {
             />
           </div>
           {settings.auto_backup_enabled ? (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 16 }}>
               <Input
                 label="Время автокопирования"
                 type="time"
@@ -115,14 +119,14 @@ export function BackupTab() {
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--color-text-placeholder)', fontSize: 13.5 }}>Резервных копий ещё не было.</div>
         ) : (
           <div>
-            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr 130px 40px', padding: '12px 18px', fontSize: 11, fontWeight: 600, letterSpacing: '.6px', color: 'var(--color-text-placeholder)', textTransform: 'uppercase' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: backupCols, gap: 8, padding: backupPad, fontSize: 11, fontWeight: 600, letterSpacing: '.6px', color: 'var(--color-text-placeholder)', textTransform: 'uppercase' }}>
               <div>Дата</div>
               <div>Размер</div>
               <div>Тип</div>
               <div></div>
             </div>
             {items.map((b) => (
-              <div key={b.id} style={{ display: 'grid', gridTemplateColumns: '200px 1fr 130px 40px', padding: '13px 18px', borderTop: '1px solid var(--color-border-hairline)', alignItems: 'center', fontSize: 14 }}>
+              <div key={b.id} style={{ display: 'grid', gridTemplateColumns: backupCols, gap: 8, padding: backupPad, borderTop: '1px solid var(--color-border-hairline)', alignItems: 'center', fontSize: 14 }}>
                 <div style={{ font: '500 13px var(--font-mono)' }}>{formatDate(b.created_at)}</div>
                 <div style={{ color: 'var(--color-text-muted)' }}>{formatSize(b.size)}</div>
                 <div style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{TYPE_LABEL[b.backup_type]}</div>

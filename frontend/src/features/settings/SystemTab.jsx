@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { SmartCaptcha } from '../auth/SmartCaptcha.jsx'
+import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { Banner, Button, Card, Checkbox, Input, Spinner } from '../../shared/ui'
 import {
   checkCaptcha,
@@ -20,6 +21,7 @@ const notConfigured = (
 )
 
 export function SystemTab() {
+  const isMobile = useMediaQuery('(max-width: 768px)')
   const [status, setStatus] = useState(null) // system-status: флаги конфигурации из .env
   const [loadError, setLoadError] = useState(null)
 
@@ -244,8 +246,16 @@ export function SystemTab() {
           {restrictByIp ? (
             <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {ipRows.map((row, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-                  <div style={{ width: 200 }}>
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    flexDirection: isMobile ? 'column' : 'row',
+                    alignItems: isMobile ? 'stretch' : 'flex-end',
+                  }}
+                >
+                  <div style={{ width: isMobile ? 'auto' : 200 }}>
                     <Input label="IP или подсеть" placeholder="203.0.113.0/24" value={row.ip} onChange={(e) => setRow(i, { ip: e.target.value })} />
                   </div>
                   <div style={{ flex: 1 }}>
@@ -256,7 +266,15 @@ export function SystemTab() {
                     onClick={() => removeRow(i)}
                     title="Удалить"
                     aria-label="Удалить IP"
-                    style={{ border: 'none', background: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', height: 44, padding: '0 6px' }}
+                    style={{
+                      border: 'none',
+                      background: 'none',
+                      color: 'var(--color-text-muted)',
+                      cursor: 'pointer',
+                      height: 44,
+                      padding: '0 6px',
+                      alignSelf: isMobile ? 'flex-end' : 'auto',
+                    }}
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M18 6L6 18M6 6l12 12" />
@@ -293,7 +311,7 @@ export function SystemTab() {
                 </div>
               ) : null}
               {smtpStatus === 'sent' || smtpStatus === 'checking' ? (
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
                   <div style={{ width: 160 }}>
                     <Input label="Код из письма" value={smtpCode} onChange={(e) => setSmtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" />
                   </div>

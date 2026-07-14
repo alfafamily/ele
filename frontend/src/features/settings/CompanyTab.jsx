@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useCompany, useRefreshCompany } from '../../app/CompanyContext.jsx'
+import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { Banner, Button, Card, Input, Spinner } from '../../shared/ui'
 import { deleteCompanyLogo, getCompanySettings, updateCompanySettings, uploadCompanyLogo } from './settingsApi.js'
 
@@ -27,6 +28,7 @@ function readImageSize(file) {
 export function CompanyTab() {
   const company = useCompany()
   const refreshCompany = useRefreshCompany()
+  const isMobile = useMediaQuery('(max-width: 768px)')
   const [settings, setSettings] = useState(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -163,8 +165,8 @@ export function CompanyTab() {
 
         <Card>
           <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>Основные реквизиты</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div style={{ gridColumn: 'span 2' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+            <div style={{ gridColumn: isMobile ? 'auto' : 'span 2' }}>
               <Input label="Название компании" required value={settings.name} onChange={(e) => setSettings({ ...settings, name: e.target.value })} />
             </div>
             <Input label="ИНН" value={settings.inn} onChange={(e) => setSettings({ ...settings, inn: e.target.value })} />

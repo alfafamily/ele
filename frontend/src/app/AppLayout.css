@@ -338,4 +338,50 @@
     color: var(--color-text-primary);
     font-weight: 600;
   }
+
+  /* Пункт «Профиль» у админа — <button> с меню; сбрасываем стили кнопки. */
+  button.ele-bottom-nav__item {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 0;
+  }
+}
+
+/* Мобильное меню профиля (Профиль/Настройки) — всплывает над нижней навигацией.
+   Показывается только на мобиле: открыть его можно лишь кнопкой в .ele-bottom-nav,
+   которая на десктопе скрыта. */
+.ele-profile-menu__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+}
+
+.ele-profile-menu {
+  position: fixed;
+  right: 12px;
+  bottom: 74px;
+  z-index: 46;
+  min-width: 180px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-block);
+}
+
+.ele-profile-menu__item {
+  padding: 11px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.ele-profile-menu__item:active {
+  background: var(--color-fill-active-tint);
 }
