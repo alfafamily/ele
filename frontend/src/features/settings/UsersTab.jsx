@@ -85,9 +85,14 @@ export function UsersTab() {
                         justifyContent: 'center',
                         fontSize: 11,
                         fontWeight: 600,
+                        overflow: 'hidden',
                       }}
                     >
-                      {u.employee_name.slice(0, 2).toUpperCase()}
+                      {u.employee_avatar ? (
+                        <img src={u.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        u.employee_name.slice(0, 2).toUpperCase()
+                      )}
                     </span>
                     <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.employee_name}</span>
                   </>

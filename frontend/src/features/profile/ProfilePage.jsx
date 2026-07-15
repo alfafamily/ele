@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext.jsx'
 import { roleLabel } from '../../shared/roles.js'
 import { Button, Card, Spinner } from '../../shared/ui'
-import { uploadEmployeeAvatar } from '../employees/employeesApi.js'
+import { deleteEmployeeAvatar, uploadEmployeeAvatar } from '../employees/employeesApi.js'
 import { SimCardInfo } from '../employees/SimCardInfo.jsx'
 import { ChangeEmailModal } from './ChangeEmailModal.jsx'
 import { ChangePasswordModal } from './ChangePasswordModal.jsx'
@@ -17,11 +17,26 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('ru-RU')
 }
 
+const avatarMenuItem = {
+  border: 'none',
+  background: 'none',
+  textAlign: 'left',
+  padding: '10px 12px',
+  borderRadius: 8,
+  fontSize: 14,
+  fontWeight: 500,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  color: 'var(--color-text-primary)',
+  whiteSpace: 'nowrap',
+}
+
 export function ProfilePage() {
   const { user, logout, refreshUser } = useAuth()
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [showChangeEmail, setShowChangeEmail] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [avatarMenu, setAvatarMenu] = useState(false)
   const [simCards, setSimCards] = useState([])
   const fileInputRef = useRef(null)
 
@@ -51,33 +66,71 @@ export function ProfilePage() {
     }
   }
 
+  const onRemoveAvatar = async () => {
+    if (!employee) return
+    setUploadingAvatar(true)
+    try {
+      await deleteEmployeeAvatar(employee.id)
+      await refreshUser()
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  // Клик по аватару: если фото есть — меню Загрузить/Удалить (как логотип
+  // компании), иначе сразу выбор файла.
+  const onAvatarClick = () => {
+    if (!employee) return
+    if (employee.avatar) setAvatarMenu((v) => !v)
+    else fileInputRef.current?.click()
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div style={{ width: '100%', maxWidth: 640, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Card style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-          <span
-            style={{
-              width: 66,
-              height: 66,
-              flex: 'none',
-              borderRadius: '50%',
-              background: 'var(--color-fill-active-tint)',
-              color: 'var(--color-text-muted)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 22,
-              fontWeight: 600,
-              overflow: 'hidden',
-              cursor: employee ? 'pointer' : 'default',
-              position: 'relative',
-            }}
-            onClick={() => employee && fileInputRef.current?.click()}
-            title={employee ? 'Изменить фото' : undefined}
-          >
-            {employee?.avatar ? <img src={employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials(displayName)}
-            {uploadingAvatar ? <Spinner size={20} /> : null}
-          </span>
+          <div style={{ flex: 'none', position: 'relative' }}>
+            <span
+              style={{
+                width: 66,
+                height: 66,
+                borderRadius: '50%',
+                background: 'var(--color-fill-active-tint)',
+                color: 'var(--color-text-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 22,
+                fontWeight: 600,
+                overflow: 'hidden',
+                cursor: employee ? 'pointer' : 'default',
+                position: 'relative',
+              }}
+              onClick={onAvatarClick}
+              title={employee ? (employee.avatar ? 'Действия с фото' : 'Загрузить фото') : undefined}
+              aria-haspopup={employee?.avatar ? 'menu' : undefined}
+              aria-expanded={employee?.avatar ? avatarMenu : undefined}
+            >
+              {employee?.avatar ? <img src={employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials(displayName)}
+              {uploadingAvatar ? <Spinner size={20} /> : null}
+            </span>
+            {avatarMenu && employee?.avatar ? (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 45 }} onClick={() => setAvatarMenu(false)} />
+                <div
+                  role="menu"
+                  style={{ position: 'absolute', top: 72, left: 0, zIndex: 46, minWidth: 168, padding: 6, display: 'flex', flexDirection: 'column', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, boxShadow: 'var(--shadow-block)' }}
+                >
+                  <button type="button" style={avatarMenuItem} onClick={() => { setAvatarMenu(false); fileInputRef.current?.click() }}>
+                    Загрузить новый
+                  </button>
+                  <button type="button" style={{ ...avatarMenuItem, color: 'var(--color-error)' }} onClick={() => { setAvatarMenu(false); onRemoveAvatar() }}>
+                    Удалить
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
           {employee ? <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onAvatarSelected} /> : null}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 20, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</div>

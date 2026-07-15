@@ -3,7 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
 import { Banner, Button, Card, Input, Select, Spinner } from '../../shared/ui'
-import { createLicense, getLicense, getLicenseTypes, updateLicense, uploadLicenseFieldFile } from './licensesApi.js'
+import {
+  createLicense,
+  deleteLicenseFieldFilePath,
+  getLicense,
+  getLicenseTypes,
+  updateLicense,
+  uploadLicenseFieldFile,
+} from './licensesApi.js'
 
 function buildValueMap(fieldValues) {
   const map = {}
@@ -150,10 +157,12 @@ export function LicenseFormPage() {
                     <FileFieldSlot
                       key={f.id}
                       field={f}
-                      currentValueFile={fileValues[f.id]?.value_file}
+                      fv={fileValues[f.id]}
+                      multiple={f.allow_multiple}
                       disabled={!isEdit}
                       uploadPath={isEdit ? uploadLicenseFieldFile(id, f.id) : undefined}
-                      onUploaded={(data) => setFileValues((prev) => ({ ...prev, [f.id]: data }))}
+                      makeDeleteFilePath={isEdit ? (fileId) => deleteLicenseFieldFilePath(id, f.id, fileId) : undefined}
+                      onChange={(data) => setFileValues((prev) => ({ ...prev, [f.id]: data }))}
                     />
                   ))}
               </div>

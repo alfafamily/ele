@@ -12,7 +12,14 @@ from core.permissions import EquipmentAccessPermission, IsAdminOrAccountant
 from employees.models import Employee
 from storage.service import delete_stored_file, store_uploaded_file
 
-from .models import Equipment, EquipmentCustomField, EquipmentFieldValue, EquipmentType, EquipmentTypeField
+from .models import (
+    Equipment,
+    EquipmentCustomField,
+    EquipmentFieldFile,
+    EquipmentFieldValue,
+    EquipmentType,
+    EquipmentTypeField,
+)
 from .serializers import (
     EquipmentFieldValueOutSerializer,
     EquipmentSerializer,
@@ -22,7 +29,7 @@ from .serializers import (
 
 
 class EquipmentTypeViewSet(viewsets.ModelViewSet):
-    queryset = EquipmentType.objects.all().order_by("name")
+    queryset = EquipmentType.objects.all().order_by("name").prefetch_related("fields__options")
     serializer_class = EquipmentTypeSerializer
     permission_classes = [IsAdminOrAccountant]
 
@@ -40,7 +47,7 @@ class EquipmentTypeFieldListView(generics.ListCreateAPIView):
     permission_classes = [IsAdminOrAccountant]
 
     def get_queryset(self):
-        return EquipmentTypeField.objects.filter(equipment_type_id=self.kwargs["type_pk"])
+        return EquipmentTypeField.objects.filter(equipment_type_id=self.kwargs["type_pk"]).prefetch_related("options")
 
     def perform_create(self, serializer):
         equipment_type = get_object_or_404(EquipmentType, pk=self.kwargs["type_pk"])
@@ -52,7 +59,7 @@ class EquipmentTypeFieldDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAdminOrAccountant]
 
     def get_queryset(self):
-        return EquipmentTypeField.objects.filter(equipment_type_id=self.kwargs["type_pk"])
+        return EquipmentTypeField.objects.filter(equipment_type_id=self.kwargs["type_pk"]).prefetch_related("options")
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -93,7 +100,7 @@ class EquipmentViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Equipment.objects.select_related("employee", "employee__avatar", "equipment_type").prefetch_related(
-            "field_values__field", "custom_fields"
+            "field_values__field", "field_values__files__stored_file", "custom_fields"
         )
         user = self.request.user
         if user.role == "employee" and not user.is_observer:
@@ -225,6 +232,29 @@ class EquipmentViewSet(viewsets.ModelViewSet):
             label_fn=lambda rec: (field_of(rec).name if field_of(rec) else "Реквизит"),
             value_fn=fv_value,
         )
+
+        # Файлы реквизитов «Несколько файлов» — добавление/удаление отдельных
+        # файлов (хранятся в EquipmentFieldFile, не в value_file).
+        fv_field_name = dict(
+            EquipmentFieldValue.objects.filter(equipment_id=eq.id).values_list("id", "field__name")
+        )
+        if fv_field_name:
+            def file_value(rec):
+                if not rec.stored_file_id:
+                    return None
+                return (
+                    StoredFile.objects.filter(pk=rec.stored_file_id)
+                    .values_list("original_filename", flat=True)
+                    .first()
+                    or "файл"
+                )
+
+            rows += build_related_history_rows(
+                EquipmentFieldFile.history.filter(field_value_id__in=list(fv_field_name)),
+                label_fn=lambda rec: fv_field_name.get(rec.field_value_id, "Файл реквизита"),
+                value_fn=file_value,
+            )
+
         # Дополнительные поля
         rows += build_related_history_rows(
             EquipmentCustomField.history.filter(equipment_id=eq.id),
@@ -247,7 +277,8 @@ class EquipmentViewSet(viewsets.ModelViewSet):
         if field.value_type != "file":
             return Response({"detail": "Реквизит не файлового типа."}, status=400)
 
-        # Удаление прикреплённого файла реквизита (не только замена).
+        # Удаление одиночного файла реквизита (не только замена). Для реквизитов
+        # с несколькими файлами удаление — через delete_field_file по id файла.
         if request.method == "DELETE":
             field_value = EquipmentFieldValue.objects.filter(equipment=equipment, field=field).first()
             if field_value and field_value.value_file_id:
@@ -264,8 +295,37 @@ class EquipmentViewSet(viewsets.ModelViewSet):
 
         stored_file = store_uploaded_file(file_obj, "equipment/fields")
         field_value, created = EquipmentFieldValue.objects.get_or_create(equipment=equipment, field=field)
-        if not created:
-            delete_stored_file(field_value.value_file)
-        field_value.value_file = stored_file
-        field_value.save(update_fields=["value_file"])
+        if field.allow_multiple:
+            # Несколько файлов — добавляем новый в дочернюю таблицу. Если у
+            # реквизита остался legacy одиночный value_file (например, флаг
+            # включили позже) — переносим его туда же для единообразия.
+            if field_value.value_file_id:
+                EquipmentFieldFile.objects.create(field_value=field_value, stored_file=field_value.value_file)
+                field_value.value_file = None
+                field_value.save(update_fields=["value_file"])
+            EquipmentFieldFile.objects.create(field_value=field_value, stored_file=stored_file)
+        else:
+            if not created:
+                delete_stored_file(field_value.value_file)
+            field_value.value_file = stored_file
+            field_value.save(update_fields=["value_file"])
         return Response(EquipmentFieldValueOutSerializer(field_value).data)
+
+    @action(
+        detail=True,
+        methods=["delete"],
+        url_path=r"field-values/(?P<field_id>[^/.]+)/files/(?P<file_pk>[^/.]+)",
+        permission_classes=[IsAdminOrAccountant],
+    )
+    def delete_field_file(self, request, pk=None, field_id=None, file_pk=None):
+        equipment = self.get_object()
+        field_file = get_object_or_404(
+            EquipmentFieldFile,
+            pk=file_pk,
+            field_value__equipment=equipment,
+            field_value__field_id=field_id,
+        )
+        stored = field_file.stored_file
+        field_file.delete()
+        delete_stored_file(stored)
+        return Response(status=204)

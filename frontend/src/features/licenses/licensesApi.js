@@ -11,3 +11,6 @@ export const attachLicenseToEquipment = (id, equipmentId) => apiPatch(`/api/lice
 export const detachLicenseFromEquipment = (id) => apiPatch(`/api/licenses/${id}/`, { equipment: null })
 export const getLicenseHistoryPath = (id) => `/api/licenses/${id}/history/`
 export const uploadLicenseFieldFile = (id, fieldId) => `/api/licenses/${id}/field-values/${fieldId}/file/`
+// Удаление одного из нескольких файлов реквизита (allow_multiple) по id файла.
+export const deleteLicenseFieldFilePath = (id, fieldId, fileId) =>
+  `/api/licenses/${id}/field-values/${fieldId}/files/${fileId}/`

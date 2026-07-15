@@ -342,7 +342,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserListSerializer if self.action == "list" else UserSerializer
 
     def get_queryset(self):
-        return User.objects.select_related("employee").order_by("email")
+        return User.objects.select_related("employee", "employee__avatar").order_by("email")
 
     def create(self, request, *args, **kwargs):
         return Response({"detail": "Пользователи создаются через /api/users/invite/."}, status=405)

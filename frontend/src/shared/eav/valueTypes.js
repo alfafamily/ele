@@ -6,6 +6,7 @@ export const VALUE_TYPE_LABELS = {
   int: 'Целое число',
   float: 'Дробное число',
   file: 'Файл',
+  list: 'Список',
 }
 
 export const VALUE_TYPE_OPTIONS = Object.entries(VALUE_TYPE_LABELS).map(([value, label]) => ({ value, label }))

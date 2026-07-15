@@ -16,8 +16,10 @@ const ROLE_OPTIONS = [
 // скрыто — поэтому при сохранении не роли «Сотрудник» отправляем false.
 export function EditUserModal({ user, onClose, onSaved }) {
   const [role, setRole] = useState(user.role)
-  // { id, full_name } | null. Инициализируем из связанного Сотрудника, если есть.
-  const [employee, setEmployee] = useState(user.employee ? { id: user.employee, full_name: user.employee_name } : null)
+  // { id, full_name, avatar } | null. Инициализируем из связанного Сотрудника, если есть.
+  const [employee, setEmployee] = useState(
+    user.employee ? { id: user.employee, full_name: user.employee_name, avatar: user.employee_avatar } : null,
+  )
   const [showEmployeePicker, setShowEmployeePicker] = useState(false)
   const [isObserver, setIsObserver] = useState(user.is_observer)
   const [submitting, setSubmitting] = useState(false)
@@ -80,9 +82,14 @@ export function EditUserModal({ user, onClose, onSaved }) {
                   justifyContent: 'center',
                   fontSize: 13,
                   fontWeight: 600,
+                  overflow: 'hidden',
                 }}
               >
-                {employee.full_name?.slice(0, 2).toUpperCase()}
+                {employee.avatar ? (
+                  <img src={employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  employee.full_name?.slice(0, 2).toUpperCase()
+                )}
               </span>
               <Link to={`/employees/${employee.id}`} style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
                 {employee.full_name}

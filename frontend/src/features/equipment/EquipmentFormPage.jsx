@@ -6,6 +6,7 @@ import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { Banner, Button, Card, Input, Select, Spinner } from '../../shared/ui'
 import {
   createEquipment,
+  deleteEquipmentFieldFilePath,
   getEquipment,
   getEquipmentTypes,
   updateEquipment,
@@ -210,10 +211,12 @@ export function EquipmentFormPage() {
                     <FileFieldSlot
                       key={f.id}
                       field={f}
-                      currentValueFile={fileValues[f.id]?.value_file}
+                      fv={fileValues[f.id]}
+                      multiple={f.allow_multiple}
                       disabled={!isEdit}
                       uploadPath={isEdit ? uploadEquipmentFieldFile(id, f.id) : undefined}
-                      onUploaded={(data) => setFileValues((prev) => ({ ...prev, [f.id]: data }))}
+                      makeDeleteFilePath={isEdit ? (fileId) => deleteEquipmentFieldFilePath(id, f.id, fileId) : undefined}
+                      onChange={(data) => setFileValues((prev) => ({ ...prev, [f.id]: data }))}
                     />
                   ))}
               </div>

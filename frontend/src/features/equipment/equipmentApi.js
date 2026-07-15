@@ -12,3 +12,6 @@ export const assignEmployee = (id, employeeId) => apiPost(`/api/equipment/${id}/
 export const unassignEmployee = (id) => apiPost(`/api/equipment/${id}/unassign/`)
 export const getEquipmentHistoryPath = (id) => `/api/equipment/${id}/history/`
 export const uploadEquipmentFieldFile = (id, fieldId) => `/api/equipment/${id}/field-values/${fieldId}/file/`
+// Удаление одного из нескольких файлов реквизита (allow_multiple) по id файла.
+export const deleteEquipmentFieldFilePath = (id, fieldId, fileId) =>
+  `/api/equipment/${id}/field-values/${fieldId}/files/${fileId}/`

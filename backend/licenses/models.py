@@ -37,11 +37,15 @@ class LicenseTypeField(models.Model):
         INT = "int", "Целое число"
         FLOAT = "float", "Дробное число"
         FILE = "file", "Файл"
+        LIST = "list", "Список"
 
     license_type = models.ForeignKey(LicenseType, on_delete=models.CASCADE, related_name="fields")
     name = models.CharField("Наименование реквизита", max_length=255)
     value_type = models.CharField("Значение типа", max_length=10, choices=ValueType.choices)
     is_required = models.BooleanField("Обязательность", default=False)
+    # Только для value_type=file — разрешить прикреплять несколько файлов
+    # (хранятся в LicenseFieldFile, см.).
+    allow_multiple = models.BooleanField("Несколько файлов", default=False)
     # «Номер/ключ» у базового Типа «Программная» — нельзя удалить/переименовать/
     # сделать необязательным, маскируется в UI (Фаза 8).
     is_locked = models.BooleanField(default=False)
@@ -57,6 +61,23 @@ class LicenseTypeField(models.Model):
         if self.is_locked:
             raise ProtectedError("Зафиксированный реквизит нельзя удалить.", {self})
         super().delete(*args, **kwargs)
+
+
+class LicenseTypeFieldOption(models.Model):
+    """Элемент списка для реквизита value_type=list — выбирается в форме
+    Лицензии через селект; выбранное значение хранится в value_text."""
+
+    field = models.ForeignKey(LicenseTypeField, on_delete=models.CASCADE, related_name="options")
+    value = models.CharField("Значение", max_length=255)
+    order = models.IntegerField("Порядок", default=0)
+
+    class Meta:
+        verbose_name = "Элемент списка реквизита лицензии"
+        verbose_name_plural = "Элементы списка реквизита лицензии"
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.field.name} / {self.value}"
 
 
 class License(models.Model):
@@ -112,6 +133,26 @@ class LicenseFieldValue(models.Model):
 
     def __str__(self):
         return f"{self.license} / {self.field.name}"
+
+
+class LicenseFieldFile(models.Model):
+    """Один из нескольких файлов реквизита value_type=file с allow_multiple.
+    Одиночные файловые реквизиты продолжают жить в LicenseFieldValue.value_file
+    — эта таблица используется только для множественных."""
+
+    field_value = models.ForeignKey(LicenseFieldValue, on_delete=models.CASCADE, related_name="files")
+    stored_file = models.ForeignKey("storage.StoredFile", on_delete=models.SET_NULL, null=True, related_name="+")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    # Чтобы добавление/удаление файла попадало в «Историю изменений» карточки.
+    history = HistoricalRecords()
+
+    class Meta:
+        verbose_name = "Файл реквизита лицензии"
+        verbose_name_plural = "Файлы реквизита лицензии"
+        ordering = ["uploaded_at", "id"]
+
+    def __str__(self):
+        return f"{self.field_value} / {self.stored_file_id}"
 
 
 class LicenseCustomField(models.Model):

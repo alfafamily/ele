@@ -183,6 +183,154 @@ class EquipmentFieldFileUploadTests(APITestCase):
         self.assertEqual(resp.status_code, 400)
 
 
+class EquipmentListAndBoolFieldTests(APITestCase):
+    """Реквизит «Список» (выбор из значений) и булев реквизит с явным
+    Да/Нет — «Нет» (False) считается заполненным, отсутствие выбора — нет."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/equipment-types/", {"name": "Ноутбук"}, format="json")
+        self.type_id = resp.data["id"]
+
+    def test_list_field_options_and_selection(self):
+        resp = self.client.post(
+            f"/api/equipment-types/{self.type_id}/fields/",
+            {
+                "name": "Цвет",
+                "value_type": "list",
+                "is_required": True,
+                "options": [{"value": "Чёрный", "order": 0}, {"value": "Серебристый", "order": 1}],
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        field_id = resp.data["id"]
+        self.assertEqual([o["value"] for o in resp.data["options"]], ["Чёрный", "Серебристый"])
+
+        # Обязательный «Список» без выбора — отклонено.
+        resp = self.client.post(
+            "/api/equipment/", {"inventory_number": "L-1", "equipment_type": self.type_id}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400, resp.data)
+
+        # Значение вне списка — отклонено.
+        resp = self.client.post(
+            "/api/equipment/",
+            {
+                "inventory_number": "L-1",
+                "equipment_type": self.type_id,
+                "field_values_input": [{"field": field_id, "value": "Розовый"}],
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400, resp.data)
+
+        # Корректное значение из списка — принято.
+        resp = self.client.post(
+            "/api/equipment/",
+            {
+                "inventory_number": "L-1",
+                "equipment_type": self.type_id,
+                "field_values_input": [{"field": field_id, "value": "Чёрный"}],
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        fv = next(f for f in resp.data["field_values"] if f["field"] == field_id)
+        self.assertEqual(fv["value_type"], "list")
+        self.assertEqual(fv["value"], "Чёрный")
+
+    def test_list_options_editable_after_creation(self):
+        resp = self.client.post(
+            f"/api/equipment-types/{self.type_id}/fields/",
+            {"name": "Размер", "value_type": "list", "options": [{"value": "S", "order": 0}]},
+            format="json",
+        )
+        field_id = resp.data["id"]
+        resp = self.client.patch(
+            f"/api/equipment-types/{self.type_id}/fields/{field_id}/",
+            {"options": [{"value": "S", "order": 0}, {"value": "M", "order": 1}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual([o["value"] for o in resp.data["options"]], ["S", "M"])
+
+    def test_bool_false_satisfies_required(self):
+        resp = self.client.post(
+            f"/api/equipment-types/{self.type_id}/fields/",
+            {"name": "Гарантия", "value_type": "bool", "is_required": True},
+            format="json",
+        )
+        bool_id = resp.data["id"]
+
+        # Без значения — не заполнено.
+        resp = self.client.post(
+            "/api/equipment/", {"inventory_number": "B-1", "equipment_type": self.type_id}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400, resp.data)
+
+        # Явный «Нет» (False) — заполнено.
+        resp = self.client.post(
+            "/api/equipment/",
+            {
+                "inventory_number": "B-1",
+                "equipment_type": self.type_id,
+                "field_values_input": [{"field": bool_id, "value": False}],
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        fv = next(f for f in resp.data["field_values"] if f["field"] == bool_id)
+        self.assertEqual(fv["value"], False)
+
+
+@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
+class EquipmentMultipleFilesTests(APITestCase):
+    """Файловый реквизит с allow_multiple — несколько файлов, точечное
+    удаление по id."""
+
+    def setUp(self):
+        _reset_local_backend()
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/equipment-types/", {"name": "Ноутбук"}, format="json")
+        self.type_id = resp.data["id"]
+        resp = self.client.post(
+            f"/api/equipment-types/{self.type_id}/fields/",
+            {"name": "Документы", "value_type": "file", "allow_multiple": True},
+            format="json",
+        )
+        self.assertTrue(resp.data["allow_multiple"])
+        self.field_id = resp.data["id"]
+        self.equipment = Equipment.objects.create(inventory_number="EQ-MF-1", equipment_type_id=self.type_id)
+
+    def _upload(self, name):
+        return self.client.post(
+            f"/api/equipment/{self.equipment.id}/field-values/{self.field_id}/file/",
+            {"file": SimpleUploadedFile(name, b"%PDF-1.4 fake", content_type="application/pdf")},
+            format="multipart",
+        )
+
+    def test_multiple_upload_and_delete_one(self):
+        resp = self._upload("a.pdf")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        resp = self._upload("b.pdf")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(len(resp.data["value_files"]), 2)
+        first_id = resp.data["value_files"][0]["id"]
+
+        resp = self.client.delete(
+            f"/api/equipment/{self.equipment.id}/field-values/{self.field_id}/files/{first_id}/"
+        )
+        self.assertEqual(resp.status_code, 204)
+
+        resp = self.client.get(f"/api/equipment/{self.equipment.id}/")
+        fv = next(f for f in resp.data["field_values"] if f["field"] == self.field_id)
+        self.assertEqual(len(fv["value_files"]), 1)
+        self.assertEqual(fv["value_files"][0]["file"]["original_filename"], "b.pdf")
+
+
 class EquipmentAccessMatrixTests(APITestCase):
     """Сотрудник видит только своё; Сотрудник+Наблюдатель — всё, но без записи."""
 

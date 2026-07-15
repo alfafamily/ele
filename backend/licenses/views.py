@@ -11,7 +11,14 @@ from core.pagination import ELECursorPagination
 from core.permissions import IsAdminOrAccountant
 from storage.service import delete_stored_file, store_uploaded_file
 
-from .models import License, LicenseCustomField, LicenseFieldValue, LicenseType, LicenseTypeField
+from .models import (
+    License,
+    LicenseCustomField,
+    LicenseFieldFile,
+    LicenseFieldValue,
+    LicenseType,
+    LicenseTypeField,
+)
 from .serializers import (
     LicenseFieldValueOutSerializer,
     LicenseListSerializer,
@@ -22,7 +29,7 @@ from .serializers import (
 
 
 class LicenseTypeViewSet(viewsets.ModelViewSet):
-    queryset = LicenseType.objects.all().order_by("name")
+    queryset = LicenseType.objects.all().order_by("name").prefetch_related("fields__options")
     serializer_class = LicenseTypeSerializer
     permission_classes = [IsAdminOrAccountant]
 
@@ -44,7 +51,7 @@ class LicenseTypeFieldListView(generics.ListCreateAPIView):
     permission_classes = [IsAdminOrAccountant]
 
     def get_queryset(self):
-        return LicenseTypeField.objects.filter(license_type_id=self.kwargs["type_pk"])
+        return LicenseTypeField.objects.filter(license_type_id=self.kwargs["type_pk"]).prefetch_related("options")
 
     def perform_create(self, serializer):
         license_type = get_object_or_404(LicenseType, pk=self.kwargs["type_pk"])
@@ -56,7 +63,7 @@ class LicenseTypeFieldDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAdminOrAccountant]
 
     def get_queryset(self):
-        return LicenseTypeField.objects.filter(license_type_id=self.kwargs["type_pk"])
+        return LicenseTypeField.objects.filter(license_type_id=self.kwargs["type_pk"]).prefetch_related("options")
 
     def destroy(self, request, *args, **kwargs):
         try:
@@ -98,7 +105,7 @@ class LicenseViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = License.objects.select_related("equipment", "equipment__equipment_type", "license_type").prefetch_related(
-            "field_values__field", "custom_fields"
+            "field_values__field", "field_values__files__stored_file", "custom_fields"
         )
         # Фильтры списка — только для list; иначе карточка утилизированной
         # (архивной) Лицензии отдавала бы 404 и висла бы на лоадере (как было
@@ -188,6 +195,28 @@ class LicenseViewSet(viewsets.ModelViewSet):
             value_fn=fv_value,
             secret_fn=fv_secret,
         )
+
+        # Файлы реквизитов «Несколько файлов» — добавление/удаление отдельных файлов.
+        fv_field_name = dict(
+            LicenseFieldValue.objects.filter(license_id=lic.id).values_list("id", "field__name")
+        )
+        if fv_field_name:
+            def file_value(rec):
+                if not rec.stored_file_id:
+                    return None
+                return (
+                    StoredFile.objects.filter(pk=rec.stored_file_id)
+                    .values_list("original_filename", flat=True)
+                    .first()
+                    or "файл"
+                )
+
+            rows += build_related_history_rows(
+                LicenseFieldFile.history.filter(field_value_id__in=list(fv_field_name)),
+                label_fn=lambda rec: fv_field_name.get(rec.field_value_id, "Файл реквизита"),
+                value_fn=file_value,
+            )
+
         rows += build_related_history_rows(
             LicenseCustomField.history.filter(license_id=lic.id),
             label_fn=lambda rec: rec.name,
@@ -226,8 +255,36 @@ class LicenseViewSet(viewsets.ModelViewSet):
 
         stored_file = store_uploaded_file(file_obj, "licenses/fields")
         field_value, created = LicenseFieldValue.objects.get_or_create(license=license_obj, field=field)
-        if not created:
-            delete_stored_file(field_value.value_file)
-        field_value.value_file = stored_file
-        field_value.save(update_fields=["value_file"])
+        if field.allow_multiple:
+            # Несколько файлов — добавляем в дочернюю таблицу; переносим legacy
+            # одиночный файл, если он был (флаг включили позже).
+            if field_value.value_file_id:
+                LicenseFieldFile.objects.create(field_value=field_value, stored_file=field_value.value_file)
+                field_value.value_file = None
+                field_value.save(update_fields=["value_file"])
+            LicenseFieldFile.objects.create(field_value=field_value, stored_file=stored_file)
+        else:
+            if not created:
+                delete_stored_file(field_value.value_file)
+            field_value.value_file = stored_file
+            field_value.save(update_fields=["value_file"])
         return Response(LicenseFieldValueOutSerializer(field_value).data)
+
+    @action(
+        detail=True,
+        methods=["delete"],
+        url_path=r"field-values/(?P<field_id>[^/.]+)/files/(?P<file_pk>[^/.]+)",
+        permission_classes=[IsAdminOrAccountant],
+    )
+    def delete_field_file(self, request, pk=None, field_id=None, file_pk=None):
+        license_obj = self.get_object()
+        field_file = get_object_or_404(
+            LicenseFieldFile,
+            pk=file_pk,
+            field_value__license=license_obj,
+            field_value__field_id=field_id,
+        )
+        stored = field_file.stored_file
+        field_file.delete()
+        delete_stored_file(stored)
+        return Response(status=204)

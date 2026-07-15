@@ -44,11 +44,15 @@ class EquipmentTypeField(models.Model):
         INT = "int", "Целое число"
         FLOAT = "float", "Дробное число"
         FILE = "file", "Файл"
+        LIST = "list", "Список"
 
     equipment_type = models.ForeignKey(EquipmentType, on_delete=models.CASCADE, related_name="fields")
     name = models.CharField("Наименование реквизита", max_length=255)
     value_type = models.CharField("Значение типа", max_length=10, choices=ValueType.choices)
     is_required = models.BooleanField("Обязательность", default=False)
+    # Только для value_type=file — разрешить прикреплять несколько файлов
+    # (хранятся в EquipmentFieldFile, см.).
+    allow_multiple = models.BooleanField("Несколько файлов", default=False)
     # «Модель» — нельзя удалить/переименовать/сделать обязательным.
     is_locked = models.BooleanField(default=False)
 
@@ -58,6 +62,23 @@ class EquipmentTypeField(models.Model):
 
     def __str__(self):
         return f"{self.equipment_type.name} / {self.name}"
+
+
+class EquipmentTypeFieldOption(models.Model):
+    """Элемент списка для реквизита value_type=list — выбирается в форме
+    Оборудования через селект; выбранное значение хранится в value_text."""
+
+    field = models.ForeignKey(EquipmentTypeField, on_delete=models.CASCADE, related_name="options")
+    value = models.CharField("Значение", max_length=255)
+    order = models.IntegerField("Порядок", default=0)
+
+    class Meta:
+        verbose_name = "Элемент списка реквизита оборудования"
+        verbose_name_plural = "Элементы списка реквизита оборудования"
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.field.name} / {self.value}"
 
 
 class Equipment(models.Model):
@@ -114,6 +135,26 @@ class EquipmentFieldValue(models.Model):
 
     def __str__(self):
         return f"{self.equipment} / {self.field.name}"
+
+
+class EquipmentFieldFile(models.Model):
+    """Один из нескольких файлов реквизита value_type=file с allow_multiple.
+    Одиночные файловые реквизиты продолжают жить в EquipmentFieldValue.value_file
+    — эта таблица используется только для множественных."""
+
+    field_value = models.ForeignKey(EquipmentFieldValue, on_delete=models.CASCADE, related_name="files")
+    stored_file = models.ForeignKey("storage.StoredFile", on_delete=models.SET_NULL, null=True, related_name="+")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    # Чтобы добавление/удаление файла попадало в «Историю изменений» карточки.
+    history = HistoricalRecords()
+
+    class Meta:
+        verbose_name = "Файл реквизита оборудования"
+        verbose_name_plural = "Файлы реквизита оборудования"
+        ordering = ["uploaded_at", "id"]
+
+    def __str__(self):
+        return f"{self.field_value} / {self.stored_file_id}"
 
 
 class EquipmentCustomField(models.Model):

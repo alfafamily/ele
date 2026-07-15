@@ -40,6 +40,15 @@ def apply_field_values(instance, fk_name: str, field_value_model, items: list[di
             except (TypeError, ValueError):
                 errors.append(f"«{field.name}»: ожидается дробное число.")
                 continue
+        elif field.value_type == "list":
+            if value is None or value == "":
+                defaults["value_text"] = None
+            else:
+                allowed = {o.value for o in field.options.all()}
+                if str(value) not in allowed:
+                    errors.append(f"«{field.name}»: значение не входит в список допустимых.")
+                    continue
+                defaults["value_text"] = str(value)
         elif field.value_type == "file":
             # Файлы — только через отдельный upload-эндпоинт, не JSON-payload.
             continue
@@ -88,7 +97,11 @@ def missing_required_fields(instance, value_related_name: str, type_fields) -> l
 
 def is_value_empty(field_value, value_type: str) -> bool:
     if value_type == "file":
-        return not field_value.value_file
+        # Одиночный файл — в value_file; несколько (allow_multiple) — в files.
+        return not (field_value.value_file_id or field_value.files.exists())
+    if value_type == "list":
+        # «Список» хранит выбранное значение в value_text (нет value_list).
+        return field_value.value_text is None or field_value.value_text == ""
     value = getattr(field_value, f"value_{value_type}")
     return value is None or value == ""
 

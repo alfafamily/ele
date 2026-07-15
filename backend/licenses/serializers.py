@@ -5,13 +5,32 @@ from core.eav import apply_field_values, missing_required_fields, upsert_custom_
 from equipment.serializers import EquipmentMiniSerializer
 from storage.serializers import StoredFileSerializer
 
-from .models import License, LicenseCustomField, LicenseFieldValue, LicenseType, LicenseTypeField
+from .models import (
+    License,
+    LicenseCustomField,
+    LicenseFieldFile,
+    LicenseFieldValue,
+    LicenseType,
+    LicenseTypeField,
+    LicenseTypeFieldOption,
+)
+
+
+class LicenseTypeFieldOptionSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
+
+    class Meta:
+        model = LicenseTypeFieldOption
+        fields = ["id", "value", "order"]
 
 
 class LicenseTypeFieldSerializer(serializers.ModelSerializer):
+    # Элементы списка для value_type=list — writable nested (см. equipment).
+    options = LicenseTypeFieldOptionSerializer(many=True, required=False)
+
     class Meta:
         model = LicenseTypeField
-        fields = ["id", "license_type", "name", "value_type", "is_required", "is_locked"]
+        fields = ["id", "license_type", "name", "value_type", "is_required", "allow_multiple", "is_locked", "options"]
         read_only_fields = ["license_type", "is_locked"]
 
     def validate(self, attrs):
@@ -22,6 +41,28 @@ class LicenseTypeFieldSerializer(serializers.ModelSerializer):
             if attrs.get("is_required") is False:
                 raise serializers.ValidationError({"is_required": ["Зафиксированный реквизит нельзя сделать необязательным."]})
         return attrs
+
+    def create(self, validated_data):
+        options = validated_data.pop("options", None)
+        field = super().create(validated_data)
+        if options is not None:
+            self._sync_options(field, options)
+        return field
+
+    def update(self, instance, validated_data):
+        options = validated_data.pop("options", None)
+        field = super().update(instance, validated_data)
+        if options is not None:
+            self._sync_options(field, options)
+        return field
+
+    def _sync_options(self, field, options):
+        field.options.all().delete()
+        for i, opt in enumerate(options):
+            value = (opt.get("value") or "").strip()
+            if not value:
+                continue
+            LicenseTypeFieldOption.objects.create(field=field, value=value, order=opt.get("order", i))
 
 
 class LicenseTypeSerializer(serializers.ModelSerializer):
@@ -44,22 +85,35 @@ class LicenseFieldValueInputSerializer(serializers.Serializer):
     value = serializers.JSONField(required=False, allow_null=True)
 
 
+class LicenseFieldFileSerializer(serializers.ModelSerializer):
+    file = StoredFileSerializer(source="stored_file", read_only=True)
+
+    class Meta:
+        model = LicenseFieldFile
+        fields = ["id", "file"]
+
+
 class LicenseFieldValueOutSerializer(serializers.ModelSerializer):
     """Значение «Номер/ключ» видно только здесь (карточка), никогда в списках."""
 
     name = serializers.CharField(source="field.name", read_only=True)
     value_type = serializers.CharField(source="field.value_type", read_only=True)
+    allow_multiple = serializers.BooleanField(source="field.allow_multiple", read_only=True)
     value = serializers.SerializerMethodField()
     value_file = StoredFileSerializer(read_only=True)
+    value_files = LicenseFieldFileSerializer(source="files", many=True, read_only=True)
 
     class Meta:
         model = LicenseFieldValue
-        fields = ["field", "name", "value_type", "value", "value_file"]
+        fields = ["field", "name", "value_type", "allow_multiple", "value", "value_file", "value_files"]
 
     def get_value(self, obj):
-        if obj.field.value_type == "file":
+        vt = obj.field.value_type
+        if vt == "file":
             return None
-        return getattr(obj, f"value_{obj.field.value_type}")
+        if vt == "list":
+            return obj.value_text
+        return getattr(obj, f"value_{vt}")
 
 
 class LicenseCustomFieldSerializer(serializers.ModelSerializer):

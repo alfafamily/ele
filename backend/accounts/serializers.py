@@ -5,6 +5,7 @@ from rest_framework import serializers
 
 from employees.models import Employee
 from employees.serializers import EmployeeListSerializer
+from storage.serializers import StoredFileSerializer
 
 from .tokens import get_user_from_uid, set_password_token_generator
 
@@ -42,10 +43,11 @@ class UserListSerializer(serializers.ModelSerializer):
 
     status = serializers.SerializerMethodField()
     employee_name = serializers.SerializerMethodField()
+    employee_avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["id", "email", "role", "is_observer", "status", "employee", "employee_name"]
+        fields = ["id", "email", "role", "is_observer", "status", "employee", "employee_name", "employee_avatar"]
 
     def get_status(self, obj):
         if not obj.is_active:
@@ -56,6 +58,14 @@ class UserListSerializer(serializers.ModelSerializer):
 
     def get_employee_name(self, obj):
         return str(obj.employee) if obj.employee_id else None
+
+    def get_employee_avatar(self, obj):
+        # Аватар связанного Сотрудника — чтобы список Пользователей и карточка
+        # показывали фото, а не заглушку по инициалам (симметрично
+        # EquipmentSerializer.get_employee_avatar).
+        if obj.employee_id and obj.employee.avatar_id:
+            return StoredFileSerializer(obj.employee.avatar).data
+        return None
 
 
 class UserSerializer(serializers.ModelSerializer):

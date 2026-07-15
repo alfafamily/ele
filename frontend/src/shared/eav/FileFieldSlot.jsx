@@ -6,16 +6,36 @@ import './FileFieldSlot.css'
 // через отдельный action-эндпоинт, не часть основного submit формы. Объект
 // должен уже существовать (uploadPath строится из его id), поэтому на форме
 // создания слот заблокирован до первого сохранения.
-export function FileFieldSlot({ field, currentValueFile, uploadPath, onUploaded, disabled }) {
+//
+// multiple (allow_multiple) — можно прикрепить несколько файлов: они приходят в
+// fv.value_files ([{id, file}]) и удаляются по одному через makeDeleteFilePath.
+// Одиночный режим работает с fv.value_file и DELETE на uploadPath (как раньше).
+export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFilePath, onChange, disabled }) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
 
-  const handleDelete = async () => {
+  const currentValueFile = fv?.value_file || null
+  const files = fv?.value_files || []
+
+  const handleDeleteSingle = async () => {
     setUploading(true)
     setError(null)
     try {
       await apiDelete(uploadPath)
-      onUploaded(null) // очищаем значение в форме (файл удалён на сервере)
+      onChange(null) // очищаем значение в форме (файл удалён на сервере)
+    } catch (err) {
+      setError(err.detail || 'Не удалось удалить файл.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleDeleteOne = async (fileId) => {
+    setUploading(true)
+    setError(null)
+    try {
+      await apiDelete(makeDeleteFilePath(fileId))
+      onChange({ ...fv, value_files: files.filter((f) => f.id !== fileId) })
     } catch (err) {
       setError(err.detail || 'Не удалось удалить файл.')
     } finally {
@@ -37,7 +57,7 @@ export function FileFieldSlot({ field, currentValueFile, uploadPath, onUploaded,
     formData.append('file', file)
     try {
       const data = await apiPost(uploadPath, formData)
-      onUploaded(data)
+      onChange(data) // POST возвращает полный FieldValueOut (value_file/value_files)
     } catch (err) {
       setError(err.detail || 'Не удалось загрузить файл.')
     } finally {
@@ -46,55 +66,78 @@ export function FileFieldSlot({ field, currentValueFile, uploadPath, onUploaded,
     }
   }
 
+  const dropzone = (
+    <div className="ele-file-slot__dropzone">
+      <input type="file" onChange={handleFile} disabled={uploading} />
+      <div style={{ fontSize: 14 }}>
+        <b>{uploading ? 'Загрузка…' : multiple ? 'Добавить файл' : 'Выберите файл'}</b>
+        {!uploading ? ' или перетяните в эту область' : ''}
+      </div>
+      <div className="ele-file-slot__hint">максимальный размер 20 МБ</div>
+    </div>
+  )
+
   return (
     <div>
       <div className="ele-file-slot__label">
         {field.name}
         {field.is_required ? <span style={{ color: 'var(--color-error)' }}> *</span> : null}
       </div>
-      {currentValueFile ? (
-        <div className="ele-file-slot__current">
-          <a href={currentValueFile.url} target="_blank" rel="noreferrer" style={{ fontWeight: 500, fontSize: 13.5 }}>
-            {currentValueFile.original_filename}
-          </a>
-          <span style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
-            {Math.round(currentValueFile.size / 1024)} КБ
-          </span>
-          {!disabled ? (
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={uploading}
-              style={{
-                border: 'none',
-                background: 'none',
-                color: 'var(--color-error)',
-                fontSize: 13,
-                fontWeight: 600,
-                fontFamily: 'inherit',
-                cursor: uploading ? 'default' : 'pointer',
-                padding: 4,
-              }}
-            >
-              {uploading ? 'Удаление…' : 'Удалить'}
-            </button>
+
+      {multiple ? (
+        <>
+          {files.map((f) => (
+            <div key={f.id} className="ele-file-slot__current">
+              <a href={f.file.url} target="_blank" rel="noreferrer" style={{ fontWeight: 500, fontSize: 13.5 }}>
+                {f.file.original_filename}
+              </a>
+              <span style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{Math.round(f.file.size / 1024)} КБ</span>
+              {!disabled ? (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteOne(f.id)}
+                  disabled={uploading}
+                  style={{ border: 'none', background: 'none', color: 'var(--color-error)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: uploading ? 'default' : 'pointer', padding: 4 }}
+                >
+                  Удалить
+                </button>
+              ) : null}
+            </div>
+          ))}
+          {disabled ? (
+            files.length === 0 ? <div className="ele-file-slot__disabled">Сохраните объект, чтобы прикрепить файлы</div> : null
+          ) : (
+            dropzone
+          )}
+        </>
+      ) : (
+        <>
+          {currentValueFile ? (
+            <div className="ele-file-slot__current">
+              <a href={currentValueFile.url} target="_blank" rel="noreferrer" style={{ fontWeight: 500, fontSize: 13.5 }}>
+                {currentValueFile.original_filename}
+              </a>
+              <span style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{Math.round(currentValueFile.size / 1024)} КБ</span>
+              {!disabled ? (
+                <button
+                  type="button"
+                  onClick={handleDeleteSingle}
+                  disabled={uploading}
+                  style={{ border: 'none', background: 'none', color: 'var(--color-error)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: uploading ? 'default' : 'pointer', padding: 4 }}
+                >
+                  {uploading ? 'Удаление…' : 'Удалить'}
+                </button>
+              ) : null}
+            </div>
+          ) : disabled ? (
+            <div className="ele-file-slot__disabled">Сохраните объект, чтобы прикрепить файл</div>
           ) : null}
-        </div>
-      ) : disabled ? (
-        <div className="ele-file-slot__disabled">Сохраните объект, чтобы прикрепить файл</div>
-      ) : null}
-      {!disabled && !currentValueFile ? (
-        // Зона загрузки показывается только когда файла нет. Чтобы заменить —
-        // сначала явное «Удалить», затем загрузка нового (по просьбе).
-        <div className="ele-file-slot__dropzone">
-          <input type="file" onChange={handleFile} disabled={uploading} />
-          <div style={{ fontSize: 14 }}>
-            <b>{uploading ? 'Загрузка…' : 'Выберите файл'}</b>
-            {!uploading ? ' или перетяните в эту область' : ''}
-          </div>
-          <div className="ele-file-slot__hint">максимальный размер 20 МБ</div>
-        </div>
-      ) : null}
+          {/* Зона загрузки показывается только когда файла нет. Чтобы заменить —
+              сначала явное «Удалить», затем загрузка нового (по просьбе). */}
+          {!disabled && !currentValueFile ? dropzone : null}
+        </>
+      )}
+
       {error ? <div className="ele-field__error-text">{error}</div> : null}
     </div>
   )

@@ -237,6 +237,57 @@ class InviteAcceptTests(APITestCase):
         self.assertFalse(User.objects.filter(email="new@example.com").exists())
 
 
+import tempfile  # noqa: E402
+
+from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: E402
+from storage import backends as storage_backends  # noqa: E402
+
+_USERS_TEST_MEDIA_ROOT = tempfile.mkdtemp(prefix="ele-users-tests-")
+
+
+@override_settings(MEDIA_ROOT=_USERS_TEST_MEDIA_ROOT)
+class UsersListEmployeeAvatarTests(APITestCase):
+    """Список Пользователей отдаёт аватар связанного Сотрудника, чтобы UI
+    показывал фото, а не заглушку по инициалам."""
+
+    def setUp(self):
+        from employees.models import Employee
+
+        storage_backends._INSTANCES.pop("local", None)
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.employee = Employee.objects.create(first_name="Иван", last_name="Прозоров")
+        self.user = User.objects.create_user(
+            email="worker@example.com", password="Str0ng!Pass1", employee=self.employee
+        )
+
+    def _row(self, resp, email):
+        return next(r for r in resp.data["results"] if r["email"] == email)
+
+    def test_avatar_null_then_present(self):
+        resp = self.client.get("/api/users/")
+        self.assertIsNone(self._row(resp, "worker@example.com")["employee_avatar"])
+
+        img = SimpleUploadedFile("ava.png", _PNG_1PX, content_type="image/png")
+        resp = self.client.post(
+            f"/api/employees/{self.employee.id}/avatar/", {"file": img}, format="multipart"
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+
+        resp = self.client.get("/api/users/")
+        avatar = self._row(resp, "worker@example.com")["employee_avatar"]
+        self.assertIsNotNone(avatar)
+        self.assertEqual(avatar["original_filename"], "ava.png")
+
+
+# 1×1 прозрачный PNG — валиден для проверки размеров аватара (≤600×600).
+_PNG_1PX = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00"
+    b"\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00"
+    b"\x00IEND\xaeB`\x82"
+)
+
+
 class ChangeEmailTests(APITestCase):
     """Смена email из Профиля: повторная валидация домена,
     подтверждение переходом по ссылке (сам email меняется только тогда)."""
