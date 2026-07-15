@@ -177,6 +177,7 @@ export function TypesEditorPage({ domain, title }) {
                     </div>
                     <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 1 }}>
                       {VALUE_TYPE_LABELS[f.value_type]} · {f.is_required ? 'обязательный' : 'необязательный'}
+                      {f.value_type === 'file' ? ` · ${f.allow_multiple ? 'несколько файлов' : 'один файл'}` : ''}
                       {f.is_locked ? ' · зафиксирован' : ''}
                     </div>
                   </div>
