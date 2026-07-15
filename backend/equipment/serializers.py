@@ -190,7 +190,18 @@ class EquipmentSerializer(serializers.ModelSerializer):
         # EquipmentMiniSerializer, модульный импорт наверху дал бы цикл.
         from licenses.serializers import LicenseMiniSerializer
 
-        return LicenseMiniSerializer(obj.licenses.filter(is_retired=False), many=True).data
+        # «Номер/ключ» программной лицензии — только на карточке (retrieve) и
+        # только Admin/Accountant. В списках Оборудования не отдаём (лишние
+        # запросы к field_values + не показывается там). На фронте маскируется.
+        view = self.context.get("view")
+        request = self.context.get("request")
+        role = getattr(getattr(request, "user", None), "role", None)
+        include_key = getattr(view, "action", None) == "retrieve" and role in ("admin", "accountant")
+        return LicenseMiniSerializer(
+            obj.licenses.filter(is_retired=False),
+            many=True,
+            context={"include_key": include_key},
+        ).data
 
     def validate(self, attrs):
         equipment_type = attrs.get("equipment_type") or getattr(self.instance, "equipment_type", None)

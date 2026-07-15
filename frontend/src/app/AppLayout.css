@@ -283,6 +283,21 @@
   }
 }
 
+/* Ряд из двух полей формы: рядом на desktop, друг под другом на мобильных
+   (иначе Учётный номер и Сотрудник расходятся по высоте, а раскрытие подбора
+   Сотрудника ресайзит соседнее поле). */
+.ele-form-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 768px) {
+  .ele-form-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
 .ele-content__inner {
   padding: 24px 30px;
 }

@@ -480,3 +480,54 @@ class EquipmentAccessMatrixTests(APITestCase):
         self.client.force_authenticate(user=self.worker)
         resp = self.client.get("/api/equipment-types/")
         self.assertEqual(resp.status_code, 403)
+
+
+class EquipmentSearchTests(APITestCase):
+    """Поиск по списку Оборудования: Учётный номер, ФИО Сотрудника, Тип, Модель."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/equipment-types/", {"name": "Ноутбук"}, format="json")
+        self.type_id = resp.data["id"]
+        self.model_field_id = next(f["id"] for f in resp.data["fields"] if f["name"] == "Модель")
+        resp = self.client.post("/api/equipment-types/", {"name": "Принтер"}, format="json")
+        self.type2_id = resp.data["id"]
+
+        self.emp = Employee.objects.create(first_name="Анастасия", last_name="Стратиенко", position="Бухгалтер")
+        resp = self.client.post(
+            "/api/equipment/",
+            {
+                "inventory_number": "DESKTOP-98",
+                "equipment_type": self.type_id,
+                "employee": self.emp.id,
+                "field_values_input": [{"field": self.model_field_id, "value": "ZALMAN"}],
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.eq1 = resp.data["id"]
+        self.eq2 = Equipment.objects.create(inventory_number="PRN-777", equipment_type_id=self.type2_id)
+
+    def _search_ids(self, term):
+        resp = self.client.get("/api/equipment/", {"search": term})
+        self.assertEqual(resp.status_code, 200, resp.data)
+        return {row["id"] for row in resp.data["results"]}
+
+    def test_search_by_inventory_number(self):
+        self.assertEqual(self._search_ids("DESKTOP"), {self.eq1})
+
+    def test_search_by_employee_last_name(self):
+        self.assertEqual(self._search_ids("Стратиенко"), {self.eq1})
+
+    def test_search_by_type(self):
+        self.assertEqual(self._search_ids("Принтер"), {self.eq2.id})
+
+    def test_search_by_model(self):
+        self.assertEqual(self._search_ids("ZALMAN"), {self.eq1})
+
+    def test_search_no_duplicate_rows(self):
+        # join по field_values мог бы задвоить строку — проверяем distinct().
+        resp = self.client.get("/api/equipment/", {"search": "DESKTOP"})
+        ids = [row["id"] for row in resp.data["results"]]
+        self.assertEqual(ids, [self.eq1])

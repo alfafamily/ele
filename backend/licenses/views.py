@@ -1,4 +1,4 @@
-from django.db.models import ProtectedError
+from django.db.models import ProtectedError, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import filters, generics, viewsets
@@ -103,6 +103,15 @@ class LicenseViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         return LicenseListSerializer if self.action == "list" else LicenseSerializer
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        # Раздел «Лицензии» доступен только Admin/Accountant (permission_classes),
+        # поэтому «Номер/ключ» можно вернуть в списке по явному запросу
+        # (?include_key=1 — форма подбора лицензии на карточке Оборудования).
+        # На фронте он всё равно маскируется за «глазиком».
+        context["include_key"] = self.request.query_params.get("include_key") in ("1", "true")
+        return context
+
     def get_queryset(self):
         qs = License.objects.select_related("equipment", "equipment__equipment_type", "license_type").prefetch_related(
             "field_values__field", "field_values__files__stored_file", "custom_fields"
@@ -124,7 +133,13 @@ class LicenseViewSet(viewsets.ModelViewSet):
 
         search = self.request.query_params.get("search")
         if search:
-            qs = qs.filter(equipment__inventory_number__icontains=search)
+            # Поиск по Учётному номеру привязанного Оборудования, Наименованию
+            # Лицензии и её Типу.
+            qs = qs.filter(
+                Q(equipment__inventory_number__icontains=search)
+                | Q(name__icontains=search)
+                | Q(license_type__name__icontains=search)
+            )
         return qs
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])

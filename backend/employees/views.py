@@ -32,7 +32,12 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         )
         search = self.request.query_params.get("search")
         if search:
-            qs = qs.filter(Q(first_name__icontains=search) | Q(last_name__icontains=search))
+            # Поиск по Имени, Фамилии и Должности.
+            qs = qs.filter(
+                Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+                | Q(position__icontains=search)
+            )
         return qs
 
     def destroy(self, request, *args, **kwargs):

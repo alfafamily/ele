@@ -147,7 +147,7 @@ export function EquipmentFormPage() {
                     </option>
                   ))}
               </Select>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div className="ele-form-2col">
                 <Input
                   label="Учётный номер"
                   required

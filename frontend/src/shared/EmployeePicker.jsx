@@ -95,9 +95,14 @@ export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40 }) {
                   justifyContent: 'center',
                   fontSize: 12,
                   fontWeight: 600,
+                  overflow: 'hidden',
                 }}
               >
-                {initials(emp)}
+                {emp.avatar ? (
+                  <img src={emp.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  initials(emp)
+                )}
               </span>
               <span style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600 }}>{emp.full_name}</div>

@@ -7,6 +7,7 @@ import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, Spinner } from '../../shared/ui'
 import { AttachLicenseModal } from './AttachLicenseModal.jsx'
+import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
 import { assignEmployee, getEquipment, getEquipmentHistoryPath, unassignEmployee } from './equipmentApi.js'
 import { EQUIPMENT_STATUS_LABEL } from './statusLabels.js'
 import { WriteOffModal } from './WriteOffModal.jsx'
@@ -195,10 +196,13 @@ export function EquipmentCardPage() {
           {(equipment.licenses || []).map((lic) => (
             <div key={lic.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
               {perms.canManageLicenses ? (
-                <Link to={`/licenses/${lic.id}`} style={{ flex: 1, minWidth: 0 }}>
-                  <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{lic.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{lic.license_type_name}</div>
-                </Link>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Link to={`/licenses/${lic.id}`}>
+                    <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{lic.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{lic.license_type_name}</div>
+                  </Link>
+                  {lic.key ? <div style={{ marginTop: 4 }}><InlineMaskedKey value={lic.key} /></div> : null}
+                </div>
               ) : (
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600 }}>{lic.name}</div>

@@ -312,3 +312,27 @@ class DepartmentsAutocompleteTests(APITestCase):
         resp = self.client.get("/api/employees/departments/")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(sorted(resp.data), ["IT", "Бухгалтерия"])
+
+
+class EmployeeSearchTests(APITestCase):
+    """Поиск Сотрудников: Имя, Фамилия, Должность."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.e1 = Employee.objects.create(first_name="Анастасия", last_name="Стратиенко", position="Бухгалтер")
+        self.e2 = Employee.objects.create(first_name="Сергей", last_name="Виноградов", position="Водитель")
+
+    def _search_ids(self, term):
+        resp = self.client.get("/api/employees/", {"search": term})
+        self.assertEqual(resp.status_code, 200, resp.data)
+        return {row["id"] for row in resp.data["results"]}
+
+    def test_search_by_first_name(self):
+        self.assertEqual(self._search_ids("Анастасия"), {self.e1.id})
+
+    def test_search_by_last_name(self):
+        self.assertEqual(self._search_ids("Виноградов"), {self.e2.id})
+
+    def test_search_by_position(self):
+        self.assertEqual(self._search_ids("Водитель"), {self.e2.id})

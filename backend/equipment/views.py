@@ -111,7 +111,9 @@ class EquipmentViewSet(viewsets.ModelViewSet):
         # и detail-действий их применять нельзя: иначе карточка архивного объекта
         # (tab по умолчанию «active») отдавала бы 404, а фронт вис бы на лоадере.
         if self.action != "list":
-            return qs
+            # На карточке (retrieve) отдаём «Номер/ключ» привязанных лицензий —
+            # прогреваем field_values, чтобы не ловить N+1 при сериализации.
+            return qs.prefetch_related("licenses__field_values__field")
 
         tab = self.request.query_params.get("tab", "active")
         qs = qs.filter(is_written_off=(tab == "archive"))
@@ -124,11 +126,16 @@ class EquipmentViewSet(viewsets.ModelViewSet):
 
         search = self.request.query_params.get("search")
         if search:
+            # Поиск по Учётному номеру, ФИО Сотрудника, Типу и Модели.
+            # «Модель» — зафиксированный (is_locked) реквизит Типа, значение в
+            # value_text; join по field_values даёт дубли строк — снимаем distinct().
             qs = qs.filter(
                 Q(inventory_number__icontains=search)
                 | Q(employee__first_name__icontains=search)
                 | Q(employee__last_name__icontains=search)
-            )
+                | Q(equipment_type__name__icontains=search)
+                | Q(field_values__field__is_locked=True, field_values__value_text__icontains=search)
+            ).distinct()
         return qs
 
     @action(detail=True, methods=["post"], url_path="write-off", permission_classes=[IsAdminOrAccountant])

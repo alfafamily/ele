@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom'
 import { apiPatch } from '../../shared/api/client'
 import { fetchAllPages } from '../../shared/api/fetchAll'
 import { Button, EmptyState, Modal } from '../../shared/ui'
+import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
 
-// D4 — привязка лицензии к оборудованию. Поиск по Наименованию у бэкенда
-// есть только для Оборудования (по учётному №), не для Лицензии — при
-// заявленном масштабе дешевле один раз забрать все свободные
-// лицензии и искать по имени на клиенте, чем заводить отдельный
-// search-параметр на бэкенде ради одной этой модалки.
+// D4 — привязка лицензии к оборудованию. При заявленном масштабе дешевле один
+// раз забрать все свободные лицензии и искать на клиенте (по Наименованию и
+// Номеру/ключу), чем заводить отдельный search-эндпоинт ради этой модалки.
+// include_key=1 — раздел доступен только Admin/Accountant, «Номер/ключ» на
+// фронте всё равно маскируется за «глазиком».
 export function AttachLicenseModal({ equipment, onClose, onAttached }) {
   const [all, setAll] = useState(null)
   const [query, setQuery] = useState('')
@@ -16,10 +17,13 @@ export function AttachLicenseModal({ equipment, onClose, onAttached }) {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    fetchAllPages('/api/licenses/?status=free&tab=active').then(setAll)
+    fetchAllPages('/api/licenses/?status=free&tab=active&include_key=1').then(setAll)
   }, [])
 
-  const filtered = (all || []).filter((lic) => lic.name.toLowerCase().includes(query.toLowerCase()))
+  const q = query.trim().toLowerCase()
+  const filtered = (all || []).filter(
+    (lic) => lic.name.toLowerCase().includes(q) || (lic.key || '').toLowerCase().includes(q),
+  )
 
   const attach = async () => {
     setSubmitting(true)
@@ -53,7 +57,7 @@ export function AttachLicenseModal({ equipment, onClose, onAttached }) {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск по наименованию лицензии"
+            placeholder="Поиск по наименованию или номеру/ключу"
             style={{
               width: '100%',
               height: 42,
@@ -67,18 +71,26 @@ export function AttachLicenseModal({ equipment, onClose, onAttached }) {
             }}
           />
           <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden', maxHeight: 260, overflowY: 'auto', marginBottom: 16 }}>
+            {/* Строка — div, а не button: внутри «глазик» «Номера/ключа» —
+                вложенные button недопустимы. Клик по строке выбирает лицензию. */}
             {filtered.map((lic, i) => (
-              <button
+              <div
                 key={lic.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedId(lic.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setSelectedId(lic.id)
+                  }
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 11,
                   width: '100%',
                   padding: '11px 13px',
-                  border: 'none',
                   borderTop: i === 0 ? 'none' : '1px solid var(--color-border-hairline)',
                   background: selectedId === lic.id ? 'var(--color-info-bg)' : 'transparent',
                   cursor: 'pointer',
@@ -105,11 +117,12 @@ export function AttachLicenseModal({ equipment, onClose, onAttached }) {
                     </svg>
                   ) : null}
                 </span>
-                <span style={{ minWidth: 0 }}>
+                <span style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600 }}>{lic.name}</div>
                   <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>{lic.license_type_name} · свободна</div>
+                  {lic.key ? <div style={{ marginTop: 4 }}><InlineMaskedKey value={lic.key} /></div> : null}
                 </span>
-              </button>
+              </div>
             ))}
             {filtered.length === 0 ? (
               <div style={{ padding: 14, fontSize: 13, color: 'var(--color-text-placeholder)' }}>Ничего не найдено</div>

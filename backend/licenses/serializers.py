@@ -16,6 +16,18 @@ from .models import (
 )
 
 
+# «Номер/ключ» — зафиксированный (is_locked) реквизит базового Типа
+# «Программная», никогда не переименовывается. Значение хранится в value_text.
+LICENSE_KEY_FIELD_NAME = "Номер/ключ"
+
+
+def _license_key_value(license_obj):
+    for fv in license_obj.field_values.all():
+        if fv.field.name == LICENSE_KEY_FIELD_NAME:
+            return fv.value_text
+    return None
+
+
 class LicenseTypeFieldOptionSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
 
@@ -206,11 +218,14 @@ class LicenseSerializer(serializers.ModelSerializer):
 
 
 class LicenseListSerializer(serializers.ModelSerializer):
-    """Список — «Номер/ключ» физически отсутствует в выдаче, не просто скрыт на фронте."""
+    """Список — «Номер/ключ» отдаётся только по явному запросу (context
+    include_key, форма подбора лицензии на карточке Оборудования); в обычном
+    списке Лицензий физически отсутствует в выдаче, не просто скрыт на фронте."""
 
     license_type_name = serializers.CharField(source="license_type.name", read_only=True)
     equipment_detail = EquipmentMiniSerializer(source="equipment", read_only=True)
     status = serializers.SerializerMethodField()
+    key = serializers.SerializerMethodField()
 
     class Meta:
         model = License
@@ -224,17 +239,31 @@ class LicenseListSerializer(serializers.ModelSerializer):
             "status",
             "retired_at",
             "created_at",
+            "key",
         ]
 
     def get_status(self, obj):
         return "assigned" if obj.equipment_id else "free"
 
+    def get_key(self, obj):
+        if not self.context.get("include_key"):
+            return None
+        return _license_key_value(obj)
+
 
 class LicenseMiniSerializer(serializers.ModelSerializer):
-    """Для вложенных списков (блок «Установленные лицензии» карточки Оборудования)."""
+    """Для вложенных списков (блок «Установленные лицензии» карточки Оборудования).
+    «Номер/ключ» отдаётся только по context include_key (Admin/Accountant), на
+    фронте всё равно маскируется за «глазиком»."""
 
     license_type_name = serializers.CharField(source="license_type.name", read_only=True)
+    key = serializers.SerializerMethodField()
 
     class Meta:
         model = License
-        fields = ["id", "name", "license_type_name"]
+        fields = ["id", "name", "license_type_name", "key"]
+
+    def get_key(self, obj):
+        if not self.context.get("include_key"):
+            return None
+        return _license_key_value(obj)

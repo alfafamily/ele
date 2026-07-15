@@ -59,6 +59,47 @@ export function MaskedKeyField({ fv }) {
   )
 }
 
+// Компактный «Номер/ключ» для списков (блок «Установленные лицензии» на
+// карточке Оборудования, форма подбора лицензии) — маскирован по умолчанию,
+// раскрывается «глазиком». Без подписи и копирования — только показ.
+export function InlineMaskedKey({ value }) {
+  const [revealed, setRevealed] = useState(false)
+
+  const toggle = (e) => {
+    // В списках компонент лежит внутри кликабельной строки/ссылки — не даём
+    // всплыть, чтобы «глазик» не выбирал строку и не переходил по ссылке.
+    e.preventDefault()
+    e.stopPropagation()
+    setRevealed((r) => !r)
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+      <span style={{ font: '500 12px var(--font-mono)', letterSpacing: revealed ? 'normal' : 1.5, color: 'var(--color-text-placeholder)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: revealed ? 'normal' : 'nowrap', wordBreak: revealed ? 'break-all' : 'normal' }}>
+        {revealed ? value || '—' : '•••• •••• ••••'}
+      </span>
+      <button
+        type="button"
+        title={revealed ? 'Скрыть' : 'Показать'}
+        onClick={toggle}
+        style={{ width: 22, height: 22, flex: 'none', borderRadius: 6, background: 'transparent', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
+      >
+        {revealed ? (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#757784" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+            <path d="M4 4l16 16" />
+          </svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#757784" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        )}
+      </button>
+    </div>
+  )
+}
+
 const iconBtnStyle = {
   width: 30,
   height: 30,

@@ -82,7 +82,7 @@ export function EquipmentListPage() {
       <TabBar options={TABS} value={tab} onChange={setTab} />
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <SearchInput value={search} onChange={setSearch} placeholder="Поиск по учётному номеру или ФИО сотрудника" />
+        <SearchInput value={search} onChange={setSearch} placeholder="Поиск по номеру, сотруднику, типу или модели" />
         {tab === 'active' ? <TabBar options={FILTERS} value={status} onChange={setStatus} size="control" variant="filter" /> : null}
       </div>
 

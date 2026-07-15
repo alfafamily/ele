@@ -136,3 +136,93 @@ class LicenseUtilizeTests(APITestCase):
         resp = self.client.get("/api/licenses/?tab=archive")
         archived_row = next(row for row in resp.data["results"] if row["id"] == license_obj.id)
         self.assertIsNotNone(archived_row["retired_at"])
+
+
+class LicenseSearchTests(APITestCase):
+    """Поиск по списку Лицензий: Наименование, Тип, Учётный номер Оборудования."""
+
+    def setUp(self):
+        from equipment.models import Equipment, EquipmentType
+
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.type_a = LicenseType.objects.create(name="Антивирус")
+        self.type_b = LicenseType.objects.create(name="Офис")
+        eq_type = EquipmentType.objects.create(name="ПК")
+        self.eq = Equipment.objects.create(inventory_number="DESKTOP-42", equipment_type=eq_type)
+        self.lic1 = License.objects.create(name="Kaspersky", license_type=self.type_a, equipment=self.eq)
+        self.lic2 = License.objects.create(name="Microsoft 365", license_type=self.type_b)
+
+    def _search_ids(self, term):
+        resp = self.client.get("/api/licenses/", {"search": term})
+        self.assertEqual(resp.status_code, 200, resp.data)
+        return {row["id"] for row in resp.data["results"]}
+
+    def test_search_by_name(self):
+        self.assertEqual(self._search_ids("Kaspersky"), {self.lic1.id})
+
+    def test_search_by_type(self):
+        self.assertEqual(self._search_ids("Офис"), {self.lic2.id})
+
+    def test_search_by_equipment_inventory_number(self):
+        self.assertEqual(self._search_ids("DESKTOP-42"), {self.lic1.id})
+
+
+class LicenseKeyExposureTests(APITestCase):
+    """«Номер/ключ» отдаётся в списке только по ?include_key=1 и на карточке
+    Оборудования только Admin/Accountant; в обычном списке отсутствует."""
+
+    def setUp(self):
+        from equipment.models import Equipment, EquipmentType
+
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.soft_type = LicenseType.objects.get(name="Программная")
+        self.key_field = self.soft_type.fields.get(name="Номер/ключ")
+        eq_type = EquipmentType.objects.create(name="ПК")
+        self.eq = Equipment.objects.create(inventory_number="PC-1", equipment_type=eq_type)
+        resp = self.client.post(
+            "/api/licenses/",
+            {
+                "name": "Windows 11",
+                "license_type": self.soft_type.id,
+                "equipment": self.eq.id,
+                "field_values_input": [{"field": self.key_field.id, "value": "AAAA-BBBB-CCCC"}],
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.lic_id = resp.data["id"]
+
+    def test_key_absent_in_plain_list(self):
+        resp = self.client.get("/api/licenses/")
+        row = next(r for r in resp.data["results"] if r["id"] == self.lic_id)
+        self.assertIsNone(row.get("key"))
+
+    def test_key_present_with_include_key(self):
+        resp = self.client.get("/api/licenses/?include_key=1")
+        row = next(r for r in resp.data["results"] if r["id"] == self.lic_id)
+        self.assertEqual(row["key"], "AAAA-BBBB-CCCC")
+
+    def test_key_searchable_via_include_key(self):
+        # Модалка привязки лицензии ищет по ключу на клиенте — ключ должен
+        # приходить в выдаче.
+        resp = self.client.get("/api/licenses/?include_key=1&search=Windows")
+        row = next(r for r in resp.data["results"] if r["id"] == self.lic_id)
+        self.assertEqual(row["key"], "AAAA-BBBB-CCCC")
+
+    def test_key_on_equipment_card_for_admin(self):
+        resp = self.client.get(f"/api/equipment/{self.eq.id}/")
+        self.assertEqual(resp.data["licenses"][0]["key"], "AAAA-BBBB-CCCC")
+
+    def test_key_hidden_from_employee_on_equipment_card(self):
+        from employees.models import Employee
+
+        emp = Employee.objects.create(first_name="И", last_name="И")
+        self.eq.employee = emp
+        self.eq.save(update_fields=["employee"])
+        worker = User.objects.create_user(email="w@example.com", password="Str0ng!Pass1", employee=emp)
+        self.client.force_authenticate(user=worker)
+        resp = self.client.get(f"/api/equipment/{self.eq.id}/")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertIsNone(resp.data["licenses"][0]["key"])
