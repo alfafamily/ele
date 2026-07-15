@@ -17,9 +17,9 @@ export function PassInfo({ pass }) {
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={badgeStyle}>{pass.is_deactivated ? 'Деактивирован' : 'Активен'}</span>
-        {pass.account_number ? (
-          <span style={{ font: '600 13px var(--font-mono)', color: 'var(--color-text-muted)' }}>№ {pass.account_number}</span>
-        ) : null}
+        <span style={{ font: '600 13px var(--font-mono)', color: 'var(--color-text-muted)' }}>
+          № {pass.account_number && pass.account_number.trim() ? pass.account_number : 'б/н'}
+        </span>
       </div>
       <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
         {buildings.map((b) => {

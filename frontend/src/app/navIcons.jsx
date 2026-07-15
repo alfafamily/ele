@@ -60,11 +60,15 @@ export function HelpIcon() {
 }
 
 export function MoreIcon() {
+  // Три точки, вписанные в круг — чтобы по «весу» совпадать с остальными
+  // иконками нижней навигации (у трёх точек в ряд без обводки визуальный
+  // размер меньше). Точки — залитые, круг — обводкой в цвет текста.
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-      <circle cx="5" cy="12" r="1.6" />
-      <circle cx="12" cy="12" r="1.6" />
-      <circle cx="19" cy="12" r="1.6" />
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="8" cy="12" r="1.05" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.05" fill="currentColor" stroke="none" />
+      <circle cx="16" cy="12" r="1.05" fill="currentColor" stroke="none" />
     </svg>
   )
 }
