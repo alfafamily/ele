@@ -385,6 +385,23 @@ class EquipmentMultipleFilesTests(APITestCase):
             format="multipart",
         )
 
+    def test_multiple_files_in_single_request(self):
+        # Выбор нескольких файлов за раз в диалоге — один POST с несколькими "file".
+        resp = self.client.post(
+            f"/api/equipment/{self.equipment.id}/field-values/{self.field_id}/file/",
+            {
+                "file": [
+                    SimpleUploadedFile("a.pdf", b"%PDF a", content_type="application/pdf"),
+                    SimpleUploadedFile("b.pdf", b"%PDF b", content_type="application/pdf"),
+                ]
+            },
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(len(resp.data["value_files"]), 2)
+        names = {f["file"]["original_filename"] for f in resp.data["value_files"]}
+        self.assertEqual(names, {"a.pdf", "b.pdf"})
+
     def test_multiple_upload_and_delete_one(self):
         resp = self._upload("a.pdf")
         self.assertEqual(resp.status_code, 200, resp.data)

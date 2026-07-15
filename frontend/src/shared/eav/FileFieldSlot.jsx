@@ -54,17 +54,20 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
   }
 
   const handleFile = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 20 * 1024 * 1024) {
-      setError('Файл больше 20 МБ.')
+    const selected = Array.from(e.target.files || [])
+    if (!selected.length) return
+    const tooBig = selected.find((f) => f.size > 20 * 1024 * 1024)
+    if (tooBig) {
+      setError(`Файл «${tooBig.name}» больше 20 МБ.`)
       e.target.value = ''
       return
     }
     setUploading(true)
     setError(null)
+    // Множественный реквизит грузит все выбранные файлы одним запросом
+    // (несколько полей "file"); одиночный — один.
     const formData = new FormData()
-    formData.append('file', file)
+    for (const f of selected) formData.append('file', f)
     try {
       const data = await apiPost(uploadPath, formData)
       onChange(data) // POST возвращает полный FieldValueOut (value_file/value_files)
@@ -78,7 +81,7 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
 
   const dropzone = (
     <div className="ele-file-slot__dropzone">
-      <input type="file" onChange={handleFile} disabled={uploading} />
+      <input type="file" multiple={multiple} onChange={handleFile} disabled={uploading} />
       <div style={{ fontSize: 14 }}>
         <b>{uploading ? 'Загрузка…' : multiple ? 'Добавить файл' : 'Выберите файл'}</b>
         {!uploading ? ' или перетяните в эту область' : ''}

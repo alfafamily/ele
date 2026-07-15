@@ -287,24 +287,30 @@ class EquipmentViewSet(viewsets.ModelViewSet):
                 field_value.save(update_fields=["value_file"])
             return Response(status=204)
 
-        file_obj = request.FILES.get("file")
-        if not file_obj:
+        # getlist — реквизит с allow_multiple разрешает выбрать несколько файлов
+        # за один раз (одиночный присылает один). Валидируем все до сохранения.
+        file_objs = request.FILES.getlist("file")
+        if not file_objs:
             return Response({"detail": "Файл не передан."}, status=400)
-        if file_obj.size > 20 * 1024 * 1024:
-            return Response({"detail": "Файл больше 20 МБ."}, status=400)
+        for f in file_objs:
+            if f.size > 20 * 1024 * 1024:
+                return Response({"detail": f"Файл «{f.name}» больше 20 МБ."}, status=400)
 
-        stored_file = store_uploaded_file(file_obj, "equipment/fields")
         field_value, created = EquipmentFieldValue.objects.get_or_create(equipment=equipment, field=field)
         if field.allow_multiple:
-            # Несколько файлов — добавляем новый в дочернюю таблицу. Если у
-            # реквизита остался legacy одиночный value_file (например, флаг
-            # включили позже) — переносим его туда же для единообразия.
+            # Несколько файлов — добавляем в дочернюю таблицу. Если у реквизита
+            # остался legacy одиночный value_file (флаг включили позже) —
+            # переносим его туда же для единообразия.
             if field_value.value_file_id:
                 EquipmentFieldFile.objects.create(field_value=field_value, stored_file=field_value.value_file)
                 field_value.value_file = None
                 field_value.save(update_fields=["value_file"])
-            EquipmentFieldFile.objects.create(field_value=field_value, stored_file=stored_file)
+            for f in file_objs:
+                stored = store_uploaded_file(f, "equipment/fields")
+                EquipmentFieldFile.objects.create(field_value=field_value, stored_file=stored)
         else:
+            # Одиночный реквизит — берём первый файл, заменяя прежний.
+            stored_file = store_uploaded_file(file_objs[0], "equipment/fields")
             if not created:
                 delete_stored_file(field_value.value_file)
             field_value.value_file = stored_file

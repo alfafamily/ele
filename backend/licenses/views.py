@@ -247,13 +247,15 @@ class LicenseViewSet(viewsets.ModelViewSet):
                 field_value.save(update_fields=["value_file"])
             return Response(status=204)
 
-        file_obj = request.FILES.get("file")
-        if not file_obj:
+        # getlist — allow_multiple разрешает выбрать несколько файлов за раз
+        # (одиночный присылает один). Валидируем все до сохранения.
+        file_objs = request.FILES.getlist("file")
+        if not file_objs:
             return Response({"detail": "Файл не передан."}, status=400)
-        if file_obj.size > 20 * 1024 * 1024:
-            return Response({"detail": "Файл больше 20 МБ."}, status=400)
+        for f in file_objs:
+            if f.size > 20 * 1024 * 1024:
+                return Response({"detail": f"Файл «{f.name}» больше 20 МБ."}, status=400)
 
-        stored_file = store_uploaded_file(file_obj, "licenses/fields")
         field_value, created = LicenseFieldValue.objects.get_or_create(license=license_obj, field=field)
         if field.allow_multiple:
             # Несколько файлов — добавляем в дочернюю таблицу; переносим legacy
@@ -262,8 +264,12 @@ class LicenseViewSet(viewsets.ModelViewSet):
                 LicenseFieldFile.objects.create(field_value=field_value, stored_file=field_value.value_file)
                 field_value.value_file = None
                 field_value.save(update_fields=["value_file"])
-            LicenseFieldFile.objects.create(field_value=field_value, stored_file=stored_file)
+            for f in file_objs:
+                stored = store_uploaded_file(f, "licenses/fields")
+                LicenseFieldFile.objects.create(field_value=field_value, stored_file=stored)
         else:
+            # Одиночный реквизит — берём первый файл, заменяя прежний.
+            stored_file = store_uploaded_file(file_objs[0], "licenses/fields")
             if not created:
                 delete_stored_file(field_value.value_file)
             field_value.value_file = stored_file
