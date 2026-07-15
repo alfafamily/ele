@@ -1,9 +1,11 @@
 from rest_framework import serializers
 
 from equipment.serializers import EquipmentMiniSerializer
+from locations.models import Building, Room
+from locations.serializers import BuildingMiniSerializer, RoomMiniSerializer
 from storage.serializers import StoredFileSerializer
 
-from .models import Employee, SimCard
+from .models import AccessPass, Employee, SimCard
 
 
 class SimCardSerializer(serializers.ModelSerializer):
@@ -31,6 +33,57 @@ class SimCardSerializer(serializers.ModelSerializer):
         if not value:
             raise serializers.ValidationError("Укажите номер телефона.")
         return value
+
+
+class AccessPassSerializer(serializers.ModelSerializer):
+    # Здания/помещения на чтение — вложенно; на запись — по id. Один пропуск
+    # может действовать в нескольких зданиях (buildings — M2M).
+    buildings = BuildingMiniSerializer(many=True, read_only=True)
+    building_ids = serializers.PrimaryKeyRelatedField(
+        source="buildings",
+        queryset=Building.objects.filter(is_archived=False),
+        many=True,
+        write_only=True,
+        allow_empty=False,
+    )
+    rooms = RoomMiniSerializer(many=True, read_only=True)
+    room_ids = serializers.PrimaryKeyRelatedField(
+        source="rooms",
+        queryset=Room.objects.filter(is_archived=False),
+        many=True,
+        write_only=True,
+        required=False,
+    )
+
+    class Meta:
+        model = AccessPass
+        fields = [
+            "id",
+            "employee",
+            "account_number",
+            "buildings",
+            "building_ids",
+            "rooms",
+            "room_ids",
+            "is_deactivated",
+            "deactivated_at",
+            "created_at",
+        ]
+        # Деактивация — только через отдельный action, не записью поля.
+        read_only_fields = ["is_deactivated", "deactivated_at", "created_at"]
+
+    def validate(self, attrs):
+        # Каждое выбранное помещение должно принадлежать одному из выбранных зданий.
+        buildings = attrs.get("buildings")
+        if buildings is None:
+            buildings = list(self.instance.buildings.all()) if self.instance else []
+        rooms = attrs.get("rooms")
+        building_ids = {b.id for b in buildings}
+        if rooms and any(r.building_id not in building_ids for r in rooms):
+            raise serializers.ValidationError(
+                {"room_ids": "Помещения должны относиться к выбранным зданиям."}
+            )
+        return attrs
 
 
 # Списанное (архивное) Оборудование не считается закреплённым за Сотрудником —
@@ -71,6 +124,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     equipment = serializers.SerializerMethodField()
     sim_cards = serializers.SerializerMethodField()
+    passes = serializers.SerializerMethodField()
     user_email = serializers.SerializerMethodField()
     avatar = StoredFileSerializer(read_only=True)
 
@@ -87,6 +141,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "is_employed",
             "equipment",
             "sim_cards",
+            "passes",
             "user_email",
         ]
         read_only_fields = ["is_employed"]
@@ -101,6 +156,10 @@ class EmployeeSerializer(serializers.ModelSerializer):
         # Показываем и активные, и деактивированные (для истории). Порядок —
         # из Meta.ordering модели: активные выше архивных.
         return SimCardSerializer(obj.sim_cards.all(), many=True).data
+
+    def get_passes(self, obj):
+        # И активные, и деактивированные пропуска (для истории).
+        return AccessPassSerializer(obj.passes.all(), many=True).data
 
     def get_user_email(self, obj):
         return obj.user.email if hasattr(obj, "user") else None

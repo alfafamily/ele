@@ -4,10 +4,11 @@ import { useAuth } from '../../app/AuthContext.jsx'
 import { roleLabel } from '../../shared/roles.js'
 import { Button, Card, Spinner } from '../../shared/ui'
 import { deleteEmployeeAvatar, uploadEmployeeAvatar } from '../employees/employeesApi.js'
+import { PassInfo } from '../employees/PassInfo.jsx'
 import { SimCardInfo } from '../employees/SimCardInfo.jsx'
 import { ChangeEmailModal } from './ChangeEmailModal.jsx'
 import { ChangePasswordModal } from './ChangePasswordModal.jsx'
-import { getMySimCards } from './profileApi.js'
+import { getMyPasses, getMySimCards } from './profileApi.js'
 
 function initials(name) {
   return (name || '?').slice(0, 2).toUpperCase()
@@ -38,6 +39,7 @@ export function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [avatarMenu, setAvatarMenu] = useState(false)
   const [simCards, setSimCards] = useState([])
+  const [passes, setPasses] = useState([])
   const fileInputRef = useRef(null)
 
   // При открытии профиля перечитываем пользователя — ФИО/аватар связанного
@@ -49,7 +51,10 @@ export function ProfilePage() {
   const employee = user.employee
 
   useEffect(() => {
-    if (employee?.id) getMySimCards(employee.id).then(setSimCards)
+    if (employee?.id) {
+      getMySimCards(employee.id).then(setSimCards)
+      getMyPasses(employee.id).then(setPasses)
+    }
   }, [employee?.id])
   const displayName = employee?.full_name || user.email
 
@@ -196,6 +201,21 @@ export function ProfilePage() {
               simCards.map((sim) => (
                 <div key={sim.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
                   <SimCardInfo sim={sim} />
+                </div>
+              ))
+            )}
+          </Card>
+        ) : null}
+
+        {employee ? (
+          <Card>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Пропуска</div>
+            {passes.length === 0 ? (
+              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено пропусков.</div>
+            ) : (
+              passes.map((pass) => (
+                <div key={pass.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+                  <PassInfo pass={pass} />
                 </div>
               ))
             )}

@@ -69,3 +69,44 @@ class SimCard(models.Model):
 
     def __str__(self):
         return self.phone_number
+
+
+class AccessPass(models.Model):
+    """Физический пропуск СКУД, закреплённый за Сотрудником.
+
+    Механика 1:1 как у SimCard: выдаётся admin/accountant, деактивируется
+    (архивная запись), при увольнении деактивируется, но остаётся закреплённым
+    за сотрудником для истории (кому какой пропуск выдавали). Пропуск всегда
+    привязан к Зданию; набор Помещений — необязательный: если ни одного не
+    выбрано, пропуск действует на все помещения здания.
+    """
+
+    employee = models.ForeignKey(
+        Employee, verbose_name="Сотрудник", on_delete=models.CASCADE, related_name="passes",
+    )
+    # Учётный номер физической карточки — необязательный (карту могли выдать
+    # без нанесённого номера).
+    account_number = models.CharField("Учётный номер", max_length=64, blank=True)
+    # Один пропуск может действовать сразу в нескольких зданиях.
+    buildings = models.ManyToManyField(
+        "locations.Building", verbose_name="Здания", related_name="+",
+    )
+    # Конкретные помещения (подмножество помещений выбранных зданий). Если для
+    # какого-то из выбранных зданий не отмечено ни одного помещения — пропуск
+    # действует на все его помещения.
+    rooms = models.ManyToManyField(
+        "locations.Room", verbose_name="Помещения/зоны", blank=True, related_name="+",
+    )
+    is_deactivated = models.BooleanField("Деактивирован", default=False)
+    deactivated_at = models.DateTimeField("Дата деактивации", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    history = HistoricalRecords(m2m_fields=[buildings, rooms])
+
+    class Meta:
+        verbose_name = "Пропуск"
+        verbose_name_plural = "Пропуска"
+        # Активные выше деактивированных, внутри группы — новые выше.
+        ordering = ["is_deactivated", "-created_at"]
+
+    def __str__(self):
+        return self.account_number or f"Пропуск #{self.pk}"

@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "employees",
     "equipment",
     "licenses",
+    "locations",
     "audit",
     "backup",
 ]

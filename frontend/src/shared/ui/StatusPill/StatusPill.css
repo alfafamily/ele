@@ -16,9 +16,10 @@
   background: var(--color-pill-free-bg);
   color: var(--color-pill-free-text);
 }
-.ele-pill--archived {
-  background: var(--color-pill-archived-bg);
-  color: var(--color-pill-archived-text);
+.ele-pill--archived,
+.ele-pill--meta {
+  background: var(--color-badge-bg);
+  color: var(--color-badge-text);
 }
 .ele-pill--role-admin {
   background: var(--color-role-admin-bg);

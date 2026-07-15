@@ -6,6 +6,7 @@ from . import views
 router = DefaultRouter()
 router.register("employees", views.EmployeeViewSet, basename="employee")
 router.register("sim-cards", views.SimCardViewSet, basename="sim-card")
+router.register("access-passes", views.AccessPassViewSet, basename="access-pass")
 
 urlpatterns = [
     path(

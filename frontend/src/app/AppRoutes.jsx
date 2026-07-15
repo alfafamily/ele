@@ -15,6 +15,7 @@ import { LicenseListPage } from '../features/licenses/LicenseListPage.jsx'
 import { EmployeeCardPage } from '../features/employees/EmployeeCardPage.jsx'
 import { EmployeeFormPage } from '../features/employees/EmployeeFormPage.jsx'
 import { EmployeeListPage } from '../features/employees/EmployeeListPage.jsx'
+import { PremisesPage } from '../features/premises/PremisesPage.jsx'
 import { TypesEditorPage } from '../features/types/TypesEditorPage.jsx'
 import { SettingsPage } from '../features/settings/SettingsPage.jsx'
 import { ConfirmEmailChangePage } from '../features/profile/ConfirmEmailChangePage.jsx'
@@ -161,6 +162,14 @@ export function AppRoutes() {
           element={
             <RequireStaff>
               <EmployeeFormPage />
+            </RequireStaff>
+          }
+        />
+        <Route
+          path="/premises"
+          element={
+            <RequireStaff>
+              <PremisesPage />
             </RequireStaff>
           }
         />

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { VALUE_TYPE_LABELS } from '../../shared/eav'
-import { Banner, BackButton, Button, Card, Spinner, StatusPill } from '../../shared/ui'
+import { ActionMenu, Badge, Banner, BackButton, Button, Card, Spinner } from '../../shared/ui'
 import { DeleteTypeModal } from './DeleteTypeModal.jsx'
 import { FieldFormModal } from './FieldFormModal.jsx'
 import { NewTypeModal } from './NewTypeModal.jsx'
@@ -14,7 +14,7 @@ export function TypesEditorPage({ domain, title }) {
   const [types, setTypes] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [showNewType, setShowNewType] = useState(false)
-  const [showDeleteType, setShowDeleteType] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null) // тип, который удаляем
   const [fieldModal, setFieldModal] = useState(null) // null | 'new' | field object
   const [error, setError] = useState(null)
 
@@ -50,12 +50,12 @@ export function TypesEditorPage({ domain, title }) {
 
   const deleteType = async () => {
     try {
-      await api.deleteType(selected.id)
-      setShowDeleteType(false)
+      await api.deleteType(deleteTarget.id)
+      setDeleteTarget(null)
       load(false)
     } catch (err) {
       if (err.status === 409) {
-        setShowDeleteType(false)
+        setDeleteTarget(null)
         setError(err.detail)
       } else {
         throw err
@@ -72,13 +72,26 @@ export function TypesEditorPage({ domain, title }) {
     }
   }
 
+  const typeMenu = (t) => {
+    const items = [{ label: t.is_archived ? 'Вернуть из архива' : 'Архивировать', onClick: () => toggleArchive(t) }]
+    // Удаление — только если к типу не привязаны объекты (иначе доступно
+    // лишь архивирование).
+    if (t.objects_count === 0) {
+      items.push({ label: 'Удалить', danger: true, onClick: () => setDeleteTarget(t) })
+    }
+    return items
+  }
+
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-        <BackButton />
-        <h1 style={{ fontSize: 'var(--font-size-h1)', fontWeight: 600, letterSpacing: 'var(--font-h1-letter-spacing)' }}>
-          Типы {title}
-        </h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <BackButton />
+          <h1 style={{ fontSize: 'var(--font-size-h1)', fontWeight: 600, letterSpacing: 'var(--font-h1-letter-spacing)', margin: 0 }}>
+            Типы {title}
+          </h1>
+        </div>
+        <Button onClick={() => setShowNewType(true)}>＋ Новый тип</Button>
       </div>
       {error ? (
         <div style={{ marginBottom: 14 }}>
@@ -86,66 +99,40 @@ export function TypesEditorPage({ domain, title }) {
         </div>
       ) : null}
 
-      <div className="ele-sidebar-layout" style={{ gridTemplateColumns: '260px 1fr' }}>
-        <div style={{ background: 'var(--color-surface)', borderRadius: 16, padding: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div className="ele-sidebar-layout" style={{ gridTemplateColumns: '300px 1fr' }}>
+        <div style={{ background: 'var(--color-surface)', borderRadius: 16, padding: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {types.map((t) => (
-            <button
+            <div
               key={t.id}
-              type="button"
-              onClick={() => setSelectedId(t.id)}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 8,
-                padding: '10px 12px',
-                borderRadius: 10,
-                border: 'none',
+                display: 'flex', alignItems: 'center', gap: 6, paddingRight: 6, borderRadius: 11,
                 background: t.id === selectedId ? 'var(--color-fill-active-tint)' : 'transparent',
-                fontWeight: t.id === selectedId ? 600 : 500,
-                fontSize: 14,
-                cursor: 'pointer',
-                textAlign: 'left',
-                fontFamily: 'inherit',
-                opacity: t.is_archived ? 0.65 : 1,
               }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
-                {t.is_archived ? <StatusPill variant="archived">Архивный</StatusPill> : null}
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--color-text-placeholder)', flex: 'none' }}>{t.objects_count}</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setSelectedId(t.id)}
+                style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '10px 12px', border: 'none', flex: 1, minWidth: 0, textAlign: 'left', fontFamily: 'inherit', cursor: 'pointer', color: 'var(--color-text-primary)', background: 'transparent' }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  {t.is_archived ? <Badge>Архив</Badge> : null}
+                  <span style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: t.is_archived ? 0.65 : 1 }}>{t.name}</span>
+                </span>
+                <span style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>
+                  Реквизиты: {t.fields.length} · объектов: {t.objects_count}
+                </span>
+              </button>
+              {!t.is_locked ? <ActionMenu items={typeMenu(t)} /> : null}
+            </div>
           ))}
-          <Button variant="secondary" fullWidth onClick={() => setShowNewType(true)} style={{ marginTop: 6 }}>
-            + Новый тип
-          </Button>
         </div>
 
         {selected ? (
           <Card style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ fontSize: 18, fontWeight: 600 }}>{selected.name}</div>
-                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '3px 9px', borderRadius: 20 }}>
-                  {selected.objects_count} объектов
-                </span>
-              </div>
-              {!selected.is_locked ? (
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <Button variant="secondary" onClick={() => toggleArchive(selected)}>
-                    {selected.is_archived ? 'Вернуть из архива' : 'Архивировать'}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    disabled={selected.objects_count > 0}
-                    title={selected.objects_count > 0 ? 'Есть привязанные объекты — доступно только архивирование' : undefined}
-                    onClick={() => setShowDeleteType(true)}
-                  >
-                    Удалить
-                  </Button>
-                </div>
-              ) : null}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 18, fontWeight: 600 }}>{selected.name}</div>
+              <Badge style={{ fontSize: 11, padding: '3px 9px' }}>{selected.objects_count} объектов</Badge>
+              {selected.is_archived ? <Badge style={{ fontSize: 11, padding: '3px 9px' }}>В архиве</Badge> : null}
             </div>
 
             {selected.objects_count > 0 && !selected.is_locked ? (
@@ -154,7 +141,7 @@ export function TypesEditorPage({ domain, title }) {
                   <rect x="5" y="11" width="14" height="9" rx="2" />
                   <path d="M8 11V8a4 4 0 0 1 8 0v3" />
                 </svg>
-                Удаление недоступно: к типу привязаны объекты. Доступно архивирование.
+                Удаление недоступно: к типу привязаны объекты. Доступно архивирование (в меню списка слева).
               </div>
             ) : null}
 
@@ -176,7 +163,7 @@ export function TypesEditorPage({ domain, title }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                       {f.name}
-                      {f.is_locked ? <StatusPill variant="archived">базовый</StatusPill> : null}
+                      {f.is_locked ? <Badge>базовый</Badge> : null}
                     </div>
                     <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 1 }}>
                       {VALUE_TYPE_LABELS[f.value_type]} · {f.is_required ? 'обязательный' : 'необязательный'}
@@ -185,20 +172,18 @@ export function TypesEditorPage({ domain, title }) {
                     </div>
                   </div>
                   {!f.is_locked ? (
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <IconButton title="Редактировать" onClick={() => setFieldModal(f)}>
-                        <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
-                      </IconButton>
-                      <IconButton title="Удалить" onClick={() => deleteField(f)}>
-                        <path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13h10l1-13" />
-                      </IconButton>
-                    </div>
+                    <ActionMenu
+                      items={[
+                        { label: 'Редактировать', onClick: () => setFieldModal(f) },
+                        { label: 'Удалить', danger: true, onClick: () => deleteField(f) },
+                      ]}
+                    />
                   ) : null}
                 </div>
               ))}
             </div>
             <Button variant="secondary" fullWidth style={{ marginTop: 12 }} onClick={() => setFieldModal('new')}>
-              + Добавить реквизит
+              ＋ Добавить реквизит
             </Button>
           </Card>
         ) : (
@@ -220,7 +205,7 @@ export function TypesEditorPage({ domain, title }) {
         />
       ) : null}
 
-      {showDeleteType && selected ? <DeleteTypeModal type={selected} onClose={() => setShowDeleteType(false)} onConfirm={deleteType} /> : null}
+      {deleteTarget ? <DeleteTypeModal type={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={deleteType} /> : null}
 
       {fieldModal ? (
         <FieldFormModal
@@ -239,20 +224,5 @@ export function TypesEditorPage({ domain, title }) {
         />
       ) : null}
     </div>
-  )
-}
-
-function IconButton({ title, onClick, children }) {
-  return (
-    <button
-      type="button"
-      title={title}
-      onClick={onClick}
-      style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--color-fill-input)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-    >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-        {children}
-      </svg>
-    </button>
   )
 }

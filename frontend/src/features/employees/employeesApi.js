@@ -14,6 +14,11 @@ export const deleteSimCard = (id) => apiRequest(`/api/sim-cards/${id}/`, { metho
 export const deactivateSimCard = (id) => apiPost(`/api/sim-cards/${id}/deactivate/`, {})
 export const getSimOperators = () => apiGet('/api/sim-cards/operators/')
 export const getSimProviders = () => apiGet('/api/sim-cards/providers/')
+
+// Пропуска СКУД — работа только из карточки Сотрудника (admin/accountant).
+export const createPass = (payload) => apiPost('/api/access-passes/', payload)
+export const updatePass = (id, payload) => apiPatch(`/api/access-passes/${id}/`, payload)
+export const deactivatePass = (id) => apiPost(`/api/access-passes/${id}/deactivate/`, {})
 export const uploadEmployeeAvatar = (id, file) => {
   const formData = new FormData()
   formData.append('file', file)

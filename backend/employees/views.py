@@ -8,12 +8,17 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.pagination import ELECursorPagination
-from core.permissions import IsAdminOrAccountant, SimCardAccessPermission
+from core.permissions import AccessPassAccessPermission, IsAdminOrAccountant, SimCardAccessPermission
 from storage.service import delete_stored_file, store_uploaded_file
 from storage.validators import validate_image_max_dimensions
 
-from .models import Employee, SimCard
-from .serializers import EmployeeListSerializer, EmployeeSerializer, SimCardSerializer
+from .models import AccessPass, Employee, SimCard
+from .serializers import (
+    AccessPassSerializer,
+    EmployeeListSerializer,
+    EmployeeSerializer,
+    SimCardSerializer,
+)
 
 
 class EmployeeViewSet(viewsets.ModelViewSet):
@@ -28,7 +33,11 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Employee.objects.all().prefetch_related(
-            "equipment__equipment_type", "equipment__field_values__field", "sim_cards"
+            "equipment__equipment_type",
+            "equipment__field_values__field",
+            "sim_cards",
+            "passes__buildings",
+            "passes__rooms",
         )
         search = self.request.query_params.get("search")
         if search:
@@ -49,8 +58,8 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def terminate(self, request, pk=None):
         """Увольнение (E3): отвязывает всё оборудование, деактивирует
-        выданные SIM-карты (для истории остаются в карточке), опционально
-        деактивирует связанного Пользователя."""
+        выданные SIM-карты и пропуска (для истории остаются в карточке),
+        опционально деактивирует связанного Пользователя."""
         employee = self.get_object()
         equipment_list = list(employee.equipment.all())
         for eq in equipment_list:
@@ -58,14 +67,23 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             eq.employee = None
             eq.save(update_fields=["employee"])
 
+        now = timezone.now()
+
         # SIM-карты не открепляем (номер не передаётся другому) — помечаем
         # деактивированными, чтобы напомнить оператору погасить их у поставщика.
         active_sims = list(employee.sim_cards.filter(is_deactivated=False))
-        now = timezone.now()
         for sim in active_sims:
             sim.is_deactivated = True
             sim.deactivated_at = now
             sim.save(update_fields=["is_deactivated", "deactivated_at"])
+
+        # Пропуска тоже не открепляем — деактивируем (напоминание отключить
+        # карту в СКУД), но оставляем закреплёнными для истории.
+        active_passes = list(employee.passes.filter(is_deactivated=False))
+        for ap in active_passes:
+            ap.is_deactivated = True
+            ap.deactivated_at = now
+            ap.save(update_fields=["is_deactivated", "deactivated_at"])
 
         employee.is_employed = False
         employee.save(update_fields=["is_employed"])
@@ -80,6 +98,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         data = EmployeeSerializer(employee).data
         data["detached_equipment_count"] = len(equipment_list)
         data["deactivated_sim_count"] = len(active_sims)
+        data["deactivated_pass_count"] = len(active_passes)
         data["deactivated_user"] = deactivated_user
         return Response(data)
 
@@ -148,6 +167,37 @@ class SimCardViewSet(viewsets.ModelViewSet):
             .order_by("provider")
         )
         return Response(list(values))
+
+
+class AccessPassViewSet(viewsets.ModelViewSet):
+    """Пропуска СКУД сотрудников. Управление — из карточки Сотрудника
+    (admin/accountant); Сотрудник видит только свои пропуска в Профиле
+    (read-only). Механика 1:1 как у SimCardViewSet. См. AccessPassAccessPermission."""
+
+    permission_classes = [AccessPassAccessPermission]
+    serializer_class = AccessPassSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        qs = AccessPass.objects.all().prefetch_related("buildings", "rooms")
+        user = self.request.user
+        if user.role == "employee":
+            # Только свои пропуска; не привязан к Сотруднику — не видит ничего.
+            return qs.filter(employee_id=user.employee_id) if user.employee_id else qs.none()
+        employee = self.request.query_params.get("employee")
+        if employee:
+            qs = qs.filter(employee_id=employee)
+        return qs
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
+    def deactivate(self, request, pk=None):
+        """Деактивация пропуска (архив). Остаётся в карточке для истории."""
+        access_pass = self.get_object()
+        if not access_pass.is_deactivated:
+            access_pass.is_deactivated = True
+            access_pass.deactivated_at = timezone.now()
+            access_pass.save(update_fields=["is_deactivated", "deactivated_at"])
+        return Response(AccessPassSerializer(access_pass).data)
 
 
 class _CanEditAvatar(BasePermission):

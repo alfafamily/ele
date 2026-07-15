@@ -20,6 +20,15 @@ export function LicensesIcon() {
   )
 }
 
+export function PremisesIcon() {
+  return (
+    <svg {...common}>
+      <path d="M3 21h18M6 21V6l7-3v18M18 21V10l-5-2" />
+      <path d="M9 9h.01M9 12h.01M9 15h.01" />
+    </svg>
+  )
+}
+
 export function EmployeesIcon() {
   return (
     <svg {...common}>

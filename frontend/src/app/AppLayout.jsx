@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
 import { useCompany } from './CompanyContext.jsx'
 import { navSectionsForRole } from './navSections.js'
-import { HelpIcon } from './navIcons.jsx'
+import { HelpIcon, MoreIcon } from './navIcons.jsx'
 import { roleLabel } from '../shared/roles.js'
+import { Button, Modal } from '../shared/ui'
 import './AppLayout.css'
 
 function initials(email) {
@@ -21,6 +22,13 @@ export function AppLayout() {
   // меню: у всех — Профиль/Руководство, у админа между ними ещё Настройки.
   const isAdmin = user.role === 'admin'
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const goTo = (to, close) => {
+    close(false)
+    navigate(to)
+  }
 
   const avatar = (size, fontSize) => (
     <span className="ele-rail__avatar" style={{ width: size, height: size, fontSize, overflow: 'hidden' }}>
@@ -35,6 +43,12 @@ export function AppLayout() {
   // идут сверху в порядке навигации.
   const topSections = sections.filter((s) => !s.bottom)
   const bottomSections = sections.filter((s) => s.bottom)
+  // Мобильная нижняя навигация: первые два раздела — напрямую, остальные
+  // прячем в меню «Ещё» (иначе не помещаются, а разделов у admin/accountant
+  // теперь больше — добавились «Помещения»).
+  const mobilePrimary = topSections.slice(0, 2)
+  const mobileMore = topSections.slice(2)
+  const isMoreActive = mobileMore.some((s) => (s.to === '/' ? location.pathname === '/' : location.pathname.startsWith(s.to)))
 
   return (
     <div className="ele-shell">
@@ -127,7 +141,7 @@ export function AppLayout() {
       </main>
 
       <nav className="ele-bottom-nav">
-        {sections.slice(0, 3).map(({ key, to, label, icon: Icon }) => (
+        {mobilePrimary.map(({ key, to, label, icon: Icon }) => (
           <NavLink
             key={key}
             to={to}
@@ -138,6 +152,18 @@ export function AppLayout() {
             <span>{label}</span>
           </NavLink>
         ))}
+        {mobileMore.length > 0 ? (
+          <button
+            type="button"
+            className={`ele-bottom-nav__item${moreMenuOpen || isMoreActive ? ' ele-bottom-nav__item--active' : ''}`}
+            aria-haspopup="menu"
+            aria-expanded={moreMenuOpen}
+            onClick={() => setMoreMenuOpen((v) => !v)}
+          >
+            <MoreIcon />
+            <span>Ещё</span>
+          </button>
+        ) : null}
         <button
           type="button"
           className={`ele-bottom-nav__item${profileMenuOpen ? ' ele-bottom-nav__item--active' : ''}`}
@@ -150,23 +176,34 @@ export function AppLayout() {
         </button>
       </nav>
 
-      {profileMenuOpen ? (
-        <>
-          <div className="ele-profile-menu__backdrop" onClick={() => setProfileMenuOpen(false)} />
-          <div className="ele-profile-menu" role="menu">
-            <NavLink to="/profile" role="menuitem" className="ele-profile-menu__item" onClick={() => setProfileMenuOpen(false)}>
-              Профиль
-            </NavLink>
-            {isAdmin ? (
-              <NavLink to="/settings" role="menuitem" className="ele-profile-menu__item" onClick={() => setProfileMenuOpen(false)}>
-                Настройки
-              </NavLink>
-            ) : null}
-            <NavLink to="/guide" role="menuitem" className="ele-profile-menu__item" onClick={() => setProfileMenuOpen(false)}>
-              Руководство
-            </NavLink>
+      {moreMenuOpen ? (
+        <Modal open onClose={() => setMoreMenuOpen(false)} title="Выберите пункт меню">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+            {mobileMore.map(({ key, to, label }) => (
+              <Button key={key} variant="secondary" fullWidth onClick={() => goTo(to, setMoreMenuOpen)}>
+                {label}
+              </Button>
+            ))}
           </div>
-        </>
+        </Modal>
+      ) : null}
+
+      {profileMenuOpen ? (
+        <Modal open onClose={() => setProfileMenuOpen(false)} title="Выберите пункт меню">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+            <Button variant="secondary" fullWidth onClick={() => goTo('/profile', setProfileMenuOpen)}>
+              Профиль
+            </Button>
+            {isAdmin ? (
+              <Button variant="secondary" fullWidth onClick={() => goTo('/settings', setProfileMenuOpen)}>
+                Настройки
+              </Button>
+            ) : null}
+            <Button variant="secondary" fullWidth onClick={() => goTo('/guide', setProfileMenuOpen)}>
+              Руководство
+            </Button>
+          </div>
+        </Modal>
       ) : null}
     </div>
   )

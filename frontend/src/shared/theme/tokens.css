@@ -42,13 +42,20 @@
   --color-role-admin-text: #6B46C1;
   --color-role-admin-bg: #F0EBFF;
 
+  /* Нейтральный информационный бейдж (этаж/тип/счётчик/архив и т.п.).
+     Единый серо-синий тон с более тёмной заливкой, чем у любых подложек
+     объектов (белая / fill-input / fill-active-tint при ховере), — чтобы
+     плашка не сливалась с фоном ни в одном из состояний. */
+  --color-badge-bg: #D4D9E8;
+  --color-badge-text: #4C4F5E;
+
   /* Статус-пилюли (см. README, раздел «Design Tokens») */
   --color-pill-assigned-text: var(--color-success);
   --color-pill-assigned-bg: var(--color-success-bg);
   --color-pill-free-text: var(--color-info);
   --color-pill-free-bg: var(--color-info-bg);
-  --color-pill-archived-text: var(--color-text-muted);
-  --color-pill-archived-bg: var(--color-fill-active-tint);
+  --color-pill-archived-text: var(--color-badge-text);
+  --color-pill-archived-bg: var(--color-badge-bg);
 
   /* Типографика */
   --font-ui: "Golos Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;

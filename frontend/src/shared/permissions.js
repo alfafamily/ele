@@ -18,6 +18,8 @@ export function computePermissions(user) {
     canManageLicenses: isStaff,
     canViewEmployeesSection: isStaff,
     canManageEmployees: isStaff,
+    canViewPremises: isStaff,
+    canManagePremises: isStaff,
     canManageTypes: isStaff,
     canViewSettings: isAdmin,
   }

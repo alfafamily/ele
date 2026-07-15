@@ -70,3 +70,23 @@ class SimCardAccessPermission(BasePermission):
         if role != "employee" or request.method not in _SAFE_METHODS:
             return False
         return obj.employee_id == request.user.employee_id
+
+
+class AccessPassAccessPermission(BasePermission):
+    """Пропуска СКУД: как и SIM-карты — сотрудник видит только свои (в Профиле,
+    read-only), управление — admin/accountant. Признак «Наблюдатель» доступ
+    не расширяет. Фильтрация под «только своё» — в AccessPassViewSet.get_queryset()."""
+
+    def has_permission(self, request, view):
+        role = _role(request)
+        if role in ("admin", "accountant"):
+            return True
+        return role == "employee" and request.method in _SAFE_METHODS
+
+    def has_object_permission(self, request, view, obj):
+        role = _role(request)
+        if role in ("admin", "accountant"):
+            return True
+        if role != "employee" or request.method not in _SAFE_METHODS:
+            return False
+        return obj.employee_id == request.user.employee_id
