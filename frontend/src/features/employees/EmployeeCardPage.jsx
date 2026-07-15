@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { apiPatch } from '../../shared/api/client'
 import { Can, usePermissions } from '../../app/usePermissions.js'
-import { ActionMenu, Button, Card, Spinner, StatusPill } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, Spinner, StatusPill } from '../../shared/ui'
 import { deactivateSimCard, getEmployee, uploadEmployeeAvatar } from './employeesApi.js'
 import { SimCardInfo } from './SimCardInfo.jsx'
 import { SimCardModal } from './SimCardModal.jsx'
@@ -65,6 +65,7 @@ export function EmployeeCardPage() {
       <div style={{ width: '100%', maxWidth: 660, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
+            <BackButton />
             <span
               style={{
                 width: 54,

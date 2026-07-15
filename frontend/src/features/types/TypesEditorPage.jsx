@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { VALUE_TYPE_LABELS } from '../../shared/eav'
-import { Banner, Button, Card, Spinner, StatusPill } from '../../shared/ui'
+import { Banner, BackButton, Button, Card, Spinner, StatusPill } from '../../shared/ui'
 import { DeleteTypeModal } from './DeleteTypeModal.jsx'
 import { FieldFormModal } from './FieldFormModal.jsx'
 import { NewTypeModal } from './NewTypeModal.jsx'
@@ -74,9 +74,12 @@ export function TypesEditorPage({ domain, title }) {
 
   return (
     <div>
-      <h1 style={{ fontSize: 'var(--font-size-h1)', fontWeight: 600, letterSpacing: 'var(--font-h1-letter-spacing)', marginBottom: 16 }}>
-        Типы {title}
-      </h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <BackButton />
+        <h1 style={{ fontSize: 'var(--font-size-h1)', fontWeight: 600, letterSpacing: 'var(--font-h1-letter-spacing)' }}>
+          Типы {title}
+        </h1>
+      </div>
       {error ? (
         <div style={{ marginBottom: 14 }}>
           <Banner variant="error">{error}</Banner>

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, Button, Card, Spinner } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, Spinner } from '../../shared/ui'
 import { AttachEquipmentModal } from './AttachEquipmentModal.jsx'
 import { detachLicenseFromEquipment, getLicense, getLicenseHistoryPath } from './licensesApi.js'
 import { MaskedKeyField } from './MaskedKeyField.jsx'
@@ -63,7 +63,10 @@ export function LicenseCardPage() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
-        <h1 className="ele-card-title">{license.name}</h1>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flex: 1, minWidth: 0 }}>
+          <BackButton />
+          <h1 className="ele-card-title">{license.name}</h1>
+        </div>
         {!license.is_retired && perms.canManageLicenses ? (
           <>
             <div className="ele-card-actions-desktop">

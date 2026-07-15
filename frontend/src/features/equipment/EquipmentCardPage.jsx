@@ -5,7 +5,7 @@ import { Can, usePermissions } from '../../app/usePermissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, Button, Card, Spinner } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, Spinner } from '../../shared/ui'
 import { AttachLicenseModal } from './AttachLicenseModal.jsx'
 import { assignEmployee, getEquipment, getEquipmentHistoryPath, unassignEmployee } from './equipmentApi.js'
 import { EQUIPMENT_STATUS_LABEL } from './statusLabels.js'
@@ -74,7 +74,10 @@ export function EquipmentCardPage() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
-        <h1 className="ele-card-title">{equipment.type_and_model}</h1>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flex: 1, minWidth: 0 }}>
+          <BackButton />
+          <h1 className="ele-card-title">{equipment.type_and_model}</h1>
+        </div>
         {!equipment.is_written_off && perms.canManageEquipment ? (
           <>
             <div className="ele-card-actions-desktop">

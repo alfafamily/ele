@@ -1,0 +1,25 @@
+.ele-back-btn {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.ele-back-btn:hover {
+  background: var(--color-fill-active-tint);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
+}
+
+.ele-back-btn:active {
+  transform: translateY(0.5px);
+}
