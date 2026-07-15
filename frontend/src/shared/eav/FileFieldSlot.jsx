@@ -19,7 +19,7 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
   // реквизит раньше был одиночным, а флаг «несколько файлов» включили позже —
   // он ещё не перенесён в дочернюю таблицу и появится там при следующей
   // загрузке). single: true — удаляется field-level эндпоинтом, не по id.
-  const files = [
+  const displayFiles = [
     ...(fv?.value_file ? [{ key: 'single', file: fv.value_file, single: true }] : []),
     ...(fv?.value_files || []).map((f) => ({ key: f.id, id: f.id, file: f.file, single: false })),
   ]
@@ -43,7 +43,9 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
     setError(null)
     try {
       await apiDelete(makeDeleteFilePath(fileId))
-      onChange({ ...fv, value_files: files.filter((f) => f.id !== fileId) })
+      // Фильтруем оригинальный value_files (не объединённый displayFiles),
+      // иначе legacy value_file попал бы в value_files и задвоился.
+      onChange({ ...fv, value_files: (fv.value_files || []).filter((f) => f.id !== fileId) })
     } catch (err) {
       setError(err.detail || 'Не удалось удалить файл.')
     } finally {
@@ -94,9 +96,9 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
 
       {multiple ? (
         <>
-          {files.length ? (
+          {displayFiles.length ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, marginBottom: disabled ? 0 : 10 }}>
-              {files.map((f) => (
+              {displayFiles.map((f) => (
                 <div key={f.key} className="ele-file-slot__current">
                   <a href={f.file.url} target="_blank" rel="noreferrer" style={{ fontWeight: 500, fontSize: 13.5 }}>
                     {f.file.original_filename}
@@ -117,7 +119,7 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
             </div>
           ) : null}
           {disabled ? (
-            files.length === 0 ? <div className="ele-file-slot__disabled">Сохраните объект, чтобы прикрепить файлы</div> : null
+            displayFiles.length === 0 ? <div className="ele-file-slot__disabled">Сохраните объект, чтобы прикрепить файлы</div> : null
           ) : (
             dropzone
           )}
