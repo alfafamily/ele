@@ -17,8 +17,8 @@ export function AppLayout() {
   const sections = navSectionsForRole(user.role)
   const employeeName = user.employee ? user.employee.full_name : null
   // Настройки — только у Администратора и в мобильной нижней навигации их нет
-  // (там первые 3 раздела + Профиль). Поэтому у админа тап по «Профиль» на
-  // мобиле открывает меню Профиль/Настройки; у остальных — прямой переход.
+  // (там первые 3 раздела + Профиль). Тап по «Профиль» на мобиле открывает
+  // меню: у всех — Профиль/Руководство, у админа между ними ещё Настройки.
   const isAdmin = user.role === 'admin'
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
 
@@ -108,12 +108,16 @@ export function AppLayout() {
           </NavLink>
         ))}
 
-        <span className="ele-rail__item" style={{ color: 'var(--color-text-placeholder)', cursor: 'default' }}>
+        <NavLink
+          to="/guide"
+          onClick={(e) => e.currentTarget.blur()}
+          className={({ isActive }) => `ele-rail__item${isActive ? ' ele-rail__item--active' : ''}`}
+        >
           <span className="ele-rail__item-icon">
             <HelpIcon />
           </span>
-          <span className="ele-rail__label">Помощь</span>
-        </span>
+          <span className="ele-rail__label">Руководство</span>
+        </NavLink>
       </aside>
 
       <main className="ele-content">
@@ -134,23 +138,16 @@ export function AppLayout() {
             <span>{label}</span>
           </NavLink>
         ))}
-        {isAdmin ? (
-          <button
-            type="button"
-            className={`ele-bottom-nav__item${profileMenuOpen ? ' ele-bottom-nav__item--active' : ''}`}
-            aria-haspopup="menu"
-            aria-expanded={profileMenuOpen}
-            onClick={() => setProfileMenuOpen((v) => !v)}
-          >
-            {avatar(22, 9)}
-            <span>Профиль</span>
-          </button>
-        ) : (
-          <NavLink to="/profile" className={({ isActive }) => `ele-bottom-nav__item${isActive ? ' ele-bottom-nav__item--active' : ''}`}>
-            {avatar(22, 9)}
-            <span>Профиль</span>
-          </NavLink>
-        )}
+        <button
+          type="button"
+          className={`ele-bottom-nav__item${profileMenuOpen ? ' ele-bottom-nav__item--active' : ''}`}
+          aria-haspopup="menu"
+          aria-expanded={profileMenuOpen}
+          onClick={() => setProfileMenuOpen((v) => !v)}
+        >
+          {avatar(22, 9)}
+          <span>Профиль</span>
+        </button>
       </nav>
 
       {profileMenuOpen ? (
@@ -160,8 +157,13 @@ export function AppLayout() {
             <NavLink to="/profile" role="menuitem" className="ele-profile-menu__item" onClick={() => setProfileMenuOpen(false)}>
               Профиль
             </NavLink>
-            <NavLink to="/settings" role="menuitem" className="ele-profile-menu__item" onClick={() => setProfileMenuOpen(false)}>
-              Настройки
+            {isAdmin ? (
+              <NavLink to="/settings" role="menuitem" className="ele-profile-menu__item" onClick={() => setProfileMenuOpen(false)}>
+                Настройки
+              </NavLink>
+            ) : null}
+            <NavLink to="/guide" role="menuitem" className="ele-profile-menu__item" onClick={() => setProfileMenuOpen(false)}>
+              Руководство
             </NavLink>
           </div>
         </>

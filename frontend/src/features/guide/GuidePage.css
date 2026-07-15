@@ -1,0 +1,210 @@
+.ele-guide__h1 {
+  font-size: var(--font-size-h1);
+  font-weight: 600;
+  letter-spacing: var(--font-h1-letter-spacing);
+  margin-bottom: 20px;
+}
+
+.ele-guide__layout {
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+
+/* Оглавление — липкое на desktop, обычным блоком сверху на мобильных
+   (правило .ele-sidebar-layout перекладывает первую колонку наверх). */
+.ele-guide__toc {
+  position: sticky;
+  top: 24px;
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ele-guide__toc-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ele-guide__toc-item:hover {
+  background: var(--color-fill-active-tint);
+}
+
+.ele-guide__toc-num {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: var(--color-fill-input);
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.ele-guide__content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.ele-guide__intro .ele-guide__p:last-child {
+  margin-bottom: 0;
+}
+
+.ele-guide__section {
+  scroll-margin-top: 20px;
+}
+
+.ele-guide__h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  margin-bottom: 16px;
+}
+
+.ele-guide__section-num {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ele-guide__p {
+  font-size: var(--font-size-body);
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+.ele-guide__p:last-child {
+  margin-bottom: 0;
+}
+
+.ele-guide__list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.ele-guide__list:last-child {
+  margin-bottom: 0;
+}
+
+.ele-guide__list li {
+  position: relative;
+  padding-left: 20px;
+  font-size: var(--font-size-body);
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+
+.ele-guide__list li::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 8.5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-brand-accent);
+}
+
+/* Вложенный список — отступ и другой маркер. */
+.ele-guide__list .ele-guide__list {
+  margin: 8px 0 0;
+}
+
+.ele-guide__list .ele-guide__list li::before {
+  background: var(--color-border-strong);
+}
+
+.ele-guide__sub {
+  margin-top: 18px;
+}
+
+.ele-guide__sub-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 10px;
+}
+
+.ele-guide__note {
+  background: var(--color-info-bg);
+  border-radius: var(--radius-control);
+  padding: 12px 14px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+.ele-guide__note:last-child {
+  margin-bottom: 0;
+}
+
+.ele-guide__table-scroll {
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+
+.ele-guide__table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--font-size-body);
+}
+
+.ele-guide__table th,
+.ele-guide__table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--color-border-hairline);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.ele-guide__table th {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  background: var(--color-fill-input);
+  white-space: nowrap;
+}
+
+.ele-guide__table tr:last-child td {
+  border-bottom: none;
+}
+
+.ele-guide__table th:first-child,
+.ele-guide__table td:first-child {
+  white-space: nowrap;
+}

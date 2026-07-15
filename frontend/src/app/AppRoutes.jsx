@@ -19,6 +19,7 @@ import { TypesEditorPage } from '../features/types/TypesEditorPage.jsx'
 import { SettingsPage } from '../features/settings/SettingsPage.jsx'
 import { ConfirmEmailChangePage } from '../features/profile/ConfirmEmailChangePage.jsx'
 import { ProfilePage } from '../features/profile/ProfilePage.jsx'
+import { GuidePage } from '../features/guide/GuidePage.jsx'
 import { AppLayout } from './AppLayout.jsx'
 import { NotFoundPage } from './NotFoundPage.jsx'
 import { RequireAdmin, RequireAuth, RequireGuest, RequireSetupPending, RequireStaff } from './guards.jsx'
@@ -172,6 +173,7 @@ export function AppRoutes() {
           }
         />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/guide" element={<GuidePage />} />
       </Route>
 
       {/* Ссылка из письма «Подтверждение смены email» — сама себя
