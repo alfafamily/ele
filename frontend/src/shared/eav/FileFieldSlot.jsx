@@ -15,14 +15,22 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
   const [error, setError] = useState(null)
 
   const currentValueFile = fv?.value_file || null
-  const files = fv?.value_files || []
+  // В множественном режиме показываем и legacy-одиночный value_file (если
+  // реквизит раньше был одиночным, а флаг «несколько файлов» включили позже —
+  // он ещё не перенесён в дочернюю таблицу и появится там при следующей
+  // загрузке). single: true — удаляется field-level эндпоинтом, не по id.
+  const files = [
+    ...(fv?.value_file ? [{ key: 'single', file: fv.value_file, single: true }] : []),
+    ...(fv?.value_files || []).map((f) => ({ key: f.id, id: f.id, file: f.file, single: false })),
+  ]
 
   const handleDeleteSingle = async () => {
     setUploading(true)
     setError(null)
     try {
       await apiDelete(uploadPath)
-      onChange(null) // очищаем значение в форме (файл удалён на сервере)
+      // Сохраняем остальные (value_files) — обнуляем только legacy value_file.
+      onChange(fv ? { ...fv, value_file: null } : null)
     } catch (err) {
       setError(err.detail || 'Не удалось удалить файл.')
     } finally {
@@ -89,7 +97,7 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
           {files.length ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, marginBottom: disabled ? 0 : 10 }}>
               {files.map((f) => (
-                <div key={f.id} className="ele-file-slot__current">
+                <div key={f.key} className="ele-file-slot__current">
                   <a href={f.file.url} target="_blank" rel="noreferrer" style={{ fontWeight: 500, fontSize: 13.5 }}>
                     {f.file.original_filename}
                   </a>
@@ -97,7 +105,7 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
                   {!disabled ? (
                     <button
                       type="button"
-                      onClick={() => handleDeleteOne(f.id)}
+                      onClick={() => (f.single ? handleDeleteSingle() : handleDeleteOne(f.id))}
                       disabled={uploading}
                       style={{ border: 'none', background: 'none', color: 'var(--color-error)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: uploading ? 'default' : 'pointer', padding: 4 }}
                     >
