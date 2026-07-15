@@ -91,7 +91,11 @@ export function EquipmentFormPage() {
         navigate(`/equipment/${id}`)
       } else {
         const created = await createEquipment(payload)
-        navigate(`/equipment/${created.id}`)
+        // Файловые реквизиты можно приложить только после создания объекта —
+        // ведём на форму редактирования, где слоты активны (иначе обязательный
+        // файл прикрепить негде).
+        const hasFileFields = typeFields.some((f) => f.value_type === 'file')
+        navigate(hasFileFields ? `/equipment/${created.id}/edit` : `/equipment/${created.id}`)
       }
     } catch (err) {
       if (err.errors) {

@@ -86,24 +86,28 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
 
       {multiple ? (
         <>
-          {files.map((f) => (
-            <div key={f.id} className="ele-file-slot__current">
-              <a href={f.file.url} target="_blank" rel="noreferrer" style={{ fontWeight: 500, fontSize: 13.5 }}>
-                {f.file.original_filename}
-              </a>
-              <span style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{Math.round(f.file.size / 1024)} КБ</span>
-              {!disabled ? (
-                <button
-                  type="button"
-                  onClick={() => handleDeleteOne(f.id)}
-                  disabled={uploading}
-                  style={{ border: 'none', background: 'none', color: 'var(--color-error)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: uploading ? 'default' : 'pointer', padding: 4 }}
-                >
-                  Удалить
-                </button>
-              ) : null}
+          {files.length ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, marginBottom: disabled ? 0 : 10 }}>
+              {files.map((f) => (
+                <div key={f.id} className="ele-file-slot__current">
+                  <a href={f.file.url} target="_blank" rel="noreferrer" style={{ fontWeight: 500, fontSize: 13.5 }}>
+                    {f.file.original_filename}
+                  </a>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{Math.round(f.file.size / 1024)} КБ</span>
+                  {!disabled ? (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteOne(f.id)}
+                      disabled={uploading}
+                      style={{ border: 'none', background: 'none', color: 'var(--color-error)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: uploading ? 'default' : 'pointer', padding: 4 }}
+                    >
+                      Удалить
+                    </button>
+                  ) : null}
+                </div>
+              ))}
             </div>
-          ))}
+          ) : null}
           {disabled ? (
             files.length === 0 ? <div className="ele-file-slot__disabled">Сохраните объект, чтобы прикрепить файлы</div> : null
           ) : (

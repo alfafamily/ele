@@ -178,7 +178,9 @@ class LicenseSerializer(serializers.ModelSerializer):
         if field_values_input:
             apply_field_values(instance, "license", LicenseFieldValue, field_values_input, instance.license_type.fields.all())
         upsert_custom_fields(instance, LicenseCustomField, "license", custom_fields_data)
-        self._raise_if_missing_required(instance)
+        # При создании файловые реквизиты пропускаем: файл прикладывается
+        # отдельным эндпоинтом уже после того, как объект существует.
+        self._raise_if_missing_required(instance, skip_file_fields=True)
         return instance
 
     @transaction.atomic
@@ -195,9 +197,9 @@ class LicenseSerializer(serializers.ModelSerializer):
         self._raise_if_missing_required(instance)
         return instance
 
-    def _raise_if_missing_required(self, instance):
+    def _raise_if_missing_required(self, instance, skip_file_fields=False):
         # Утилизация — отдельное действие, сюда не заходит (исключение).
-        missing = missing_required_fields(instance, "field_values", instance.license_type.fields)
+        missing = missing_required_fields(instance, "field_values", instance.license_type.fields, skip_file_fields=skip_file_fields)
         if missing:
             names = ", ".join(f.name for f in missing)
             raise serializers.ValidationError({"field_values": [f"Не заполнены обязательные реквизиты: {names}."]})

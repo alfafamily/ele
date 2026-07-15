@@ -86,7 +86,10 @@ export function LicenseFormPage() {
         navigate(`/licenses/${id}`)
       } else {
         const created = await createLicense(payload)
-        navigate(`/licenses/${created.id}`)
+        // Файловые реквизиты прикладываются только после создания — ведём на
+        // форму редактирования, где слоты активны.
+        const hasFileFields = typeFields.some((f) => f.value_type === 'file')
+        navigate(hasFileFields ? `/licenses/${created.id}/edit` : `/licenses/${created.id}`)
       }
     } catch (err) {
       if (err.errors) {

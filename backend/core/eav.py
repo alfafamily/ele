@@ -83,12 +83,29 @@ def upsert_custom_fields(instance, model, fk_name: str, items: list[dict]) -> No
             cf.delete()
 
 
-def missing_required_fields(instance, value_related_name: str, type_fields) -> list:
+def missing_required_fields(instance, value_related_name: str, type_fields, skip_file_fields: bool = False) -> list:
     """Список обязательных реквизитов Типа без заполненного значения у объекта
-    (для валидации при создании/редактировании — исключение: списание/утилизация)."""
+    (для валидации при создании/редактировании — исключение: списание/утилизация).
+
+    skip_file_fields — не проверять файловые реквизиты (при создании: файл
+    грузится отдельным эндпоинтом уже после того, как объект существует, поэтому
+    обязательный файл физически невозможно приложить в момент создания —
+    см. views/форма; при последующем редактировании обязательность проверяется).
+    """
+    # apply_field_values только что создал/обновил значения прямым запросом, а
+    # instance мог прийти из get_object() с prefetch_related("field_values") —
+    # сбрасываем устаревший кеш, иначе только что добавленный обязательный
+    # реквизит ошибочно считается незаполненным.
+    cache = getattr(instance, "_prefetched_objects_cache", None)
+    if cache:
+        cache.pop(value_related_name, None)
+
     values = {fv.field_id: fv for fv in getattr(instance, value_related_name).all()}
+    required = type_fields.filter(is_required=True)
+    if skip_file_fields:
+        required = required.exclude(value_type="file")
     missing = []
-    for field in type_fields.filter(is_required=True):
+    for field in required:
         fv = values.get(field.pk)
         if fv is None or is_value_empty(fv, field.value_type):
             missing.append(field)
