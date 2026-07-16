@@ -1,10 +1,24 @@
 import { useEffect, useState } from 'react'
 import { VALUE_TYPE_LABELS } from '../../shared/eav'
-import { ActionMenu, Badge, Banner, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
+import { ActionMenu, Badge, Banner, BackButton, Button, Card, Spinner } from '../../shared/ui'
 import { DeleteTypeModal } from './DeleteTypeModal.jsx'
 import { FieldFormModal } from './FieldFormModal.jsx'
 import { NewTypeModal } from './NewTypeModal.jsx'
 import { makeTypesApi } from './typesApi.js'
+
+// Склонение «объект» по числу + примечание, почему удаление типа заблокировано.
+function objectsPlural(n) {
+  const d = n % 10
+  const h = n % 100
+  if (d === 1 && h !== 11) return 'объект'
+  if (d >= 2 && d <= 4 && (h < 10 || h >= 20)) return 'объекта'
+  return 'объектов'
+}
+
+function deleteBlockedNote(n) {
+  const verb = n % 10 === 1 && n % 100 !== 11 ? 'Создан' : 'Создано'
+  return `Удаление невозможно. ${verb} ${n} ${objectsPlural(n)} с этим типом`
+}
 
 // Общий редактор Типов оборудования/лицензий — оба домена
 // делят один и тот же CRUD-контракт (список/детали/реквизиты/impact),
@@ -74,10 +88,12 @@ export function TypesEditorPage({ domain, title }) {
 
   const typeMenu = (t) => {
     const items = [{ label: t.is_archived ? 'Вернуть из архива' : 'Архивировать', onClick: () => toggleArchive(t) }]
-    // Удаление — только если к типу не привязаны объекты (иначе доступно
-    // лишь архивирование).
+    // Удаление — только если к типу не привязаны объекты. Иначе пункт остаётся
+    // видимым, но заблокирован (замочек) + примечание почему (см. note ниже).
     if (t.objects_count === 0) {
       items.push({ label: 'Удалить', danger: true, onClick: () => setDeleteTarget(t) })
+    } else {
+      items.push({ label: 'Удалить', icon: 'lock', disabled: true })
     }
     return items
   }
@@ -125,7 +141,7 @@ export function TypesEditorPage({ domain, title }) {
                   Реквизиты: {t.fields.length} · объектов: {t.objects_count}
                 </span>
               </button>
-              {!t.is_locked ? <ActionMenu items={typeMenu(t)} /> : null}
+              {!t.is_locked ? <ActionMenu items={typeMenu(t)} note={t.objects_count > 0 ? deleteBlockedNote(t.objects_count) : undefined} /> : null}
             </div>
           ))}
         </div>
@@ -137,13 +153,6 @@ export function TypesEditorPage({ domain, title }) {
               <Badge style={{ fontSize: 11, padding: '3px 9px' }}>{selected.objects_count} объектов</Badge>
               {selected.is_archived ? <Badge style={{ fontSize: 11, padding: '3px 9px' }}>В архиве</Badge> : null}
             </div>
-
-            {selected.objects_count > 0 && !selected.is_locked ? (
-              <div style={{ fontSize: 11, color: 'var(--color-text-placeholder)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Icon name="lock" size={13} strokeWidth={2} />
-                Удаление недоступно: к типу привязаны объекты. Доступно архивирование (в меню списка слева).
-              </div>
-            ) : null}
 
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Реквизиты типа</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

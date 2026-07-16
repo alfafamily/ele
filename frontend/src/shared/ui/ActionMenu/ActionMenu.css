@@ -32,6 +32,9 @@
 }
 
 .ele-action-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   border: none;
   background: none;
   text-align: left;
@@ -50,4 +53,29 @@
 
 .ele-action-menu__item--danger {
   color: var(--color-error);
+}
+
+.ele-action-menu__item--disabled {
+  color: var(--color-text-placeholder);
+  cursor: default;
+}
+
+.ele-action-menu__item--disabled:hover {
+  background: none;
+}
+
+/* Примечание под пунктами — напр. почему действие недоступно. */
+.ele-action-menu__note {
+  padding: 8px 12px 4px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--color-text-placeholder);
+  border-top: 1px solid var(--color-border);
+  margin-top: 4px;
+}
+
+.ele-action-menu__note--mobile {
+  padding: 12px 2px 0;
+  border-top: none;
+  text-align: center;
 }
