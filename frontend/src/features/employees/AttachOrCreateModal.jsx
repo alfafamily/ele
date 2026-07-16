@@ -3,9 +3,10 @@ import { fetchAllPages } from '../../shared/api/fetchAll'
 import { Button, EmptyState, Icon, Modal } from '../../shared/ui'
 import { attachPass, attachSimCard } from './employeesApi.js'
 
-// Привязка к сотруднику переиспользуемого объекта (SIM/пропуск): показываем
-// свободные (деактивированные) объекты для выбора, либо предлагаем создать
-// новый — сразу привязанным. Аналог AttachLicenseModal, но привязка одиночная.
+// Привязка к сотруднику переиспользуемых объектов (SIM/пропуск): показываем
+// свободные (деактивированные) объекты для множественного выбора (за одним
+// сотрудником может быть несколько SIM/пропусков) либо предлагаем создать
+// новый. По образцу AttachLicenseModal (чекбоксы, подсветка выбранного).
 const CONFIG = {
   sim: {
     title: 'Привязать SIM-карту',
@@ -60,6 +61,7 @@ export function AttachOrCreateModal({ kind, employeeId, onClose, onAttached, onC
   const cfg = CONFIG[kind]
   const [all, setAll] = useState(null)
   const [query, setQuery] = useState('')
+  const [selectedIds, setSelectedIds] = useState([])
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -69,10 +71,16 @@ export function AttachOrCreateModal({ kind, employeeId, onClose, onAttached, onC
   const q = query.trim().toLowerCase()
   const filtered = (all || []).filter((o) => cfg.match(o, q))
 
-  const attach = async (id) => {
+  const toggle = (id) =>
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+
+  const attach = async () => {
     setSubmitting(true)
     try {
-      await cfg.attach(id, employeeId)
+      // За одним сотрудником можно закрепить несколько — привязываем по очереди.
+      for (const id of selectedIds) {
+        await cfg.attach(id, employeeId)
+      }
       onAttached()
     } finally {
       setSubmitting(false)
@@ -102,24 +110,61 @@ export function AttachOrCreateModal({ kind, employeeId, onClose, onAttached, onC
             <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)', marginBottom: 16 }}>Ничего не найдено</div>
           ) : (
             <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden', maxHeight: 300, overflowY: 'auto', marginBottom: 16 }}>
-              {filtered.map((item, i) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  disabled={submitting}
-                  onClick={() => attach(item.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '11px 13px', borderTop: i === 0 ? 'none' : '1px solid var(--color-border-hairline)', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
-                >
-                  {kind === 'sim' ? <SimRow item={item} /> : <PassRow item={item} />}
-                  <Icon name="chevron-right" size={16} strokeWidth={2} style={{ color: 'var(--color-border-strong)', flex: 'none' }} />
-                </button>
-              ))}
+              {filtered.map((item, i) => {
+                const checked = selectedIds.includes(item.id)
+                return (
+                  <div
+                    key={item.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => toggle(item.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        toggle(item.id)
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 11,
+                      width: '100%',
+                      padding: '11px 13px',
+                      borderTop: i === 0 ? 'none' : '1px solid var(--color-border-hairline)',
+                      background: checked ? 'var(--color-info-bg)' : 'transparent',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 20,
+                        height: 20,
+                        flex: 'none',
+                        borderRadius: 6,
+                        background: checked ? 'var(--color-primary)' : 'transparent',
+                        boxShadow: checked ? 'none' : 'inset 0 0 0 1.5px var(--color-border-strong)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {checked ? <Icon name="check" size={12} strokeWidth={3} style={{ color: '#fff' }} /> : null}
+                    </span>
+                    {kind === 'sim' ? <SimRow item={item} /> : <PassRow item={item} />}
+                  </div>
+                )
+              })}
             </div>
           )}
           <div style={{ display: 'flex', gap: 10 }}>
-            <Button variant="secondary" fullWidth onClick={onCreateNew}>{cfg.createLabel}</Button>
             <Button variant="secondary" fullWidth onClick={onClose}>Отмена</Button>
+            <Button fullWidth disabled={selectedIds.length === 0} loading={submitting} onClick={attach}>
+              Привязать{selectedIds.length > 1 ? ` (${selectedIds.length})` : ''}
+            </Button>
           </div>
+          <Button fullWidth style={{ marginTop: 10 }} onClick={onCreateNew}>{cfg.createLabel}</Button>
         </>
       )}
     </Modal>

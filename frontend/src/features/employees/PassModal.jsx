@@ -102,9 +102,13 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
 
             <div>
               <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>Тип пропуска</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <TypeToggle label="Авто" checked={typeVehicle} onChange={setTypeVehicle} />
-                <TypeToggle label="Пеший" checked={typePedestrian} onChange={setTypePedestrian} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <CheckRow checked={typeVehicle} onChange={setTypeVehicle}>
+                  <span style={{ fontSize: 14, fontWeight: 500 }}>Авто</span>
+                </CheckRow>
+                <CheckRow checked={typePedestrian} onChange={setTypePedestrian}>
+                  <span style={{ fontSize: 14, fontWeight: 500 }}>Пеший</span>
+                </CheckRow>
               </div>
             </div>
 
@@ -166,25 +170,6 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
         </>
       )}
     </Modal>
-  )
-}
-
-// Тумблер-чип типа пропуска (Авто / Пеший). Можно включить оба или ни одного.
-function TypeToggle({ label, checked, onChange }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      style={{
-        flex: 1, padding: '9px 14px', borderRadius: 'var(--radius-control)', border: 'none',
-        fontSize: 13.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
-        background: checked ? 'var(--color-primary)' : 'var(--color-surface)',
-        color: checked ? '#fff' : 'var(--color-text-secondary)',
-        boxShadow: checked ? 'none' : 'inset 0 0 0 1px var(--color-border-strong)',
-      }}
-    >
-      {label}
-    </button>
   )
 }
 

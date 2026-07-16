@@ -1,8 +1,8 @@
 // Левая (информационная) часть строки Пропуска — общая для карточки Сотрудника
 // и Профиля. Показывается только за сотрудником (значит, всегда активен),
-// поэтому плашки статуса нет. Сверху: плашки типа (Авто/Пеший) · Название. Ниже
-// — Учётный номер и по строке на каждое здание с перечнем помещений (или «все
-// помещения», если для здания ничего не выбрано).
+// поэтому плашки статуса нет. Сверху: Название · Учётный номер. Ниже — плашки
+// типа (Авто/Пеший) отдельной строкой, затем по строке на каждое здание с
+// перечнем помещений (или «все помещения», если для здания ничего не выбрано).
 export function PassInfo({ pass }) {
   const buildings = pass.buildings || []
   const rooms = pass.rooms || []
@@ -18,8 +18,6 @@ export function PassInfo({ pass }) {
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        {pass.type_vehicle ? <span style={typeBadgeStyle}>Авто</span> : null}
-        {pass.type_pedestrian ? <span style={typeBadgeStyle}>Пеший</span> : null}
         {pass.name ? (
           <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{pass.name}</span>
         ) : null}
@@ -27,6 +25,12 @@ export function PassInfo({ pass }) {
           № {pass.account_number && pass.account_number.trim() ? pass.account_number : 'б/н'}
         </span>
       </div>
+      {pass.type_vehicle || pass.type_pedestrian ? (
+        <div style={{ display: 'flex', gap: 6, marginTop: 5 }}>
+          {pass.type_vehicle ? <span style={typeBadgeStyle}>Авто</span> : null}
+          {pass.type_pedestrian ? <span style={typeBadgeStyle}>Пеший</span> : null}
+        </div>
+      ) : null}
       <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
         {buildings.map((b) => {
           const bRooms = rooms.filter((r) => r.building === b.id)
