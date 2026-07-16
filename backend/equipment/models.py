@@ -105,6 +105,10 @@ class Equipment(models.Model):
         verbose_name = "Оборудование"
         verbose_name_plural = "Оборудование"
         ordering = ["-created_at"]
+        constraints = [
+            # Учётный номер уникален по всему Оборудованию (включая списанное).
+            models.UniqueConstraint(fields=["inventory_number"], name="uniq_equipment_inventory"),
+        ]
 
     def __str__(self):
         return self.inventory_number

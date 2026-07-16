@@ -102,13 +102,17 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
 
             <div>
               <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>Тип пропуска</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <CheckRow checked={typeVehicle} onChange={setTypeVehicle}>
-                  <span style={{ fontSize: 14, fontWeight: 500 }}>Авто</span>
-                </CheckRow>
-                <CheckRow checked={typePedestrian} onChange={setTypePedestrian}>
-                  <span style={{ fontSize: 14, fontWeight: 500 }}>Пеший</span>
-                </CheckRow>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <CheckRow checked={typeVehicle} onChange={setTypeVehicle}>
+                    <span style={{ fontSize: 14, fontWeight: 500 }}>Авто</span>
+                  </CheckRow>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <CheckRow checked={typePedestrian} onChange={setTypePedestrian}>
+                    <span style={{ fontSize: 14, fontWeight: 500 }}>Пеший</span>
+                  </CheckRow>
+                </div>
               </div>
             </div>
 

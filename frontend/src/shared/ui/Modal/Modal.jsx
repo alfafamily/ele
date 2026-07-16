@@ -13,7 +13,14 @@ export function Modal({ open, onClose, title, children }) {
       if (e.key === 'Escape') onClose?.()
     }
     document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
+    // Блокируем скролл фона, пока открыта модалка: иначе на мобильных жест
+    // прокрутки внутри модалки «проваливается» на страницу под ней.
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = prevOverflow
+    }
   }, [open, onClose])
 
   if (!open) return null

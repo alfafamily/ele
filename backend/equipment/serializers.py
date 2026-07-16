@@ -127,6 +127,9 @@ class EquipmentSerializer(serializers.ModelSerializer):
     """Единый сериализатор чтения/записи. Файловые реквизиты — через
     отдельный upload-эндпоинт (см. views.py), в этом payload не участвуют."""
 
+    # Объявлено явно, чтобы уникальность проверялась своим сообщением
+    # (validate_inventory_number), а не авто-валидатором DRF по UniqueConstraint.
+    inventory_number = serializers.CharField(max_length=255)
     equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True)
     type_and_model = serializers.SerializerMethodField()
     employee_name = serializers.SerializerMethodField()
@@ -202,6 +205,18 @@ class EquipmentSerializer(serializers.ModelSerializer):
             many=True,
             context={"include_key": include_key},
         ).data
+
+    def validate_inventory_number(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Укажите учётный номер.")
+        # Уникальность по всему Оборудованию (включая списанное).
+        qs = Equipment.objects.filter(inventory_number=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("Оборудование с таким учётным номером уже есть.")
+        return value
 
     def validate(self, attrs):
         equipment_type = attrs.get("equipment_type") or getattr(self.instance, "equipment_type", None)

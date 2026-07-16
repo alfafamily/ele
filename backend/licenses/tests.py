@@ -82,12 +82,16 @@ class LicenseKeyMaskingTests(APITestCase):
         values = {fv["field"]: fv["value"] for fv in resp.data["field_values"]}
         self.assertEqual(values[self.key_field.id], "XXXX-YYYY-ZZZZ")
 
-    def test_missing_required_key_blocks_creation(self):
-        resp = self.client.post(
-            "/api/licenses/", {"name": "Без ключа", "license_type": self.software.id}, format="json"
+    def test_key_optional_allows_creation_without_key(self):
+        # «Номер/ключ» необязателен: лицензий без ключа может быть несколько.
+        r1 = self.client.post(
+            "/api/licenses/", {"name": "Без ключа 1", "license_type": self.software.id}, format="json"
         )
-        self.assertEqual(resp.status_code, 400)
-        self.assertFalse(License.objects.filter(name="Без ключа").exists())
+        r2 = self.client.post(
+            "/api/licenses/", {"name": "Без ключа 2", "license_type": self.software.id}, format="json"
+        )
+        self.assertEqual(r1.status_code, 201, r1.data)
+        self.assertEqual(r2.status_code, 201, r2.data)
 
     def _create(self, name, key):
         return self.client.post(
