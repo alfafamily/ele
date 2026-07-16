@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { VALUE_TYPE_LABELS } from '../../shared/eav'
-import { ActionMenu, Badge, Banner, BackButton, Button, Card, Spinner } from '../../shared/ui'
+import { ActionMenu, Badge, Banner, BackButton, Button, Card, ConfirmModal, Spinner } from '../../shared/ui'
 import { DeleteTypeModal } from './DeleteTypeModal.jsx'
 import { FieldFormModal } from './FieldFormModal.jsx'
 import { NewTypeModal } from './NewTypeModal.jsx'
@@ -28,19 +28,24 @@ export function TypesEditorPage({ domain, title }) {
   const api = makeTypesApi(domain)
   const [types, setTypes] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
+  const [showArchived, setShowArchived] = useState(false)
   const [showNewType, setShowNewType] = useState(false)
   const [renameTarget, setRenameTarget] = useState(null) // тип, который переименовываем
   const [deleteTarget, setDeleteTarget] = useState(null) // тип, который удаляем
+  const [deleteFieldTarget, setDeleteFieldTarget] = useState(null) // реквизит, который удаляем
   const [fieldModal, setFieldModal] = useState(null) // null | 'new' | field object
   const [error, setError] = useState(null)
+
+  // По умолчанию выбираем первый активный тип (архивные скрыты).
+  const pickDefaultId = (data) => (data.find((t) => !t.is_archived) || data[0])?.id ?? null
 
   const load = async (keepSelection = true) => {
     const data = await api.listTypes()
     setTypes(data)
     if (!keepSelection || (selectedId && !data.some((t) => t.id === selectedId))) {
-      setSelectedId(data[0]?.id ?? null)
+      setSelectedId(pickDefaultId(data))
     } else if (selectedId === null && data.length > 0) {
-      setSelectedId(data[0].id)
+      setSelectedId(pickDefaultId(data))
     }
   }
 
@@ -58,6 +63,10 @@ export function TypesEditorPage({ domain, title }) {
   }
 
   const selected = types.find((t) => t.id === selectedId) || null
+  // Архивные типы скрыты по умолчанию; кнопка «Показать архив» — как у списка
+  // Зданий в «Помещениях».
+  const hasArchived = types.some((t) => t.is_archived)
+  const visibleTypes = showArchived ? types : types.filter((t) => !t.is_archived)
 
   const toggleArchive = async (type) => {
     await api.updateType(type.id, { is_archived: !type.is_archived })
@@ -79,11 +88,13 @@ export function TypesEditorPage({ domain, title }) {
     }
   }
 
-  const deleteField = async (field) => {
+  const deleteField = async () => {
     try {
-      await api.deleteField(selected.id, field.id)
+      await api.deleteField(selected.id, deleteFieldTarget.id)
+      setDeleteFieldTarget(null)
       load()
     } catch (err) {
+      setDeleteFieldTarget(null)
       setError(err.detail || 'Не удалось удалить реквизит.')
     }
   }
@@ -122,15 +133,20 @@ export function TypesEditorPage({ domain, title }) {
 
       <div className="ele-sidebar-layout" style={{ gridTemplateColumns: selected ? '300px 1fr' : '300px' }}>
         <div style={{ background: 'var(--color-surface)', borderRadius: 16, padding: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <div style={{ padding: '6px 8px 8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 8px 8px' }}>
             <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--color-text-placeholder)' }}>
               Типы
             </span>
+            {hasArchived ? (
+              <button type="button" onClick={() => setShowArchived((v) => !v)} style={toggleBtnStyle}>
+                {showArchived ? 'Скрыть архив' : 'Показать архив'}
+              </button>
+            ) : null}
           </div>
-          {types.length === 0 ? (
+          {visibleTypes.length === 0 ? (
             <div style={{ fontSize: 13, color: 'var(--color-text-muted)', padding: '8px 10px' }}>Типы пока не созданы</div>
           ) : null}
-          {types.map((t) => (
+          {visibleTypes.map((t) => (
             <div
               key={t.id}
               style={{
@@ -194,7 +210,7 @@ export function TypesEditorPage({ domain, title }) {
                     <ActionMenu
                       items={[
                         { label: 'Редактировать', onClick: () => setFieldModal(f) },
-                        { label: 'Удалить', danger: true, onClick: () => deleteField(f) },
+                        { label: 'Удалить', danger: true, onClick: () => setDeleteFieldTarget(f) },
                       ]}
                     />
                   ) : null}
@@ -234,6 +250,16 @@ export function TypesEditorPage({ domain, title }) {
 
       {deleteTarget ? <DeleteTypeModal type={deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={deleteType} /> : null}
 
+      {deleteFieldTarget ? (
+        <ConfirmModal
+          title="Удалить реквизит?"
+          message={`Реквизит «${deleteFieldTarget.name}» будет удалён у Типа. Значения этого реквизита во всех объектах этого Типа будут удалены безвозвратно.`}
+          confirmLabel="Удалить"
+          onConfirm={deleteField}
+          onClose={() => setDeleteFieldTarget(null)}
+        />
+      ) : null}
+
       {fieldModal ? (
         <FieldFormModal
           field={fieldModal === 'new' ? null : fieldModal}
@@ -252,4 +278,17 @@ export function TypesEditorPage({ domain, title }) {
       ) : null}
     </div>
   )
+}
+
+const toggleBtnStyle = {
+  fontFamily: 'inherit',
+  fontSize: 12,
+  fontWeight: 600,
+  color: 'var(--color-text-muted)',
+  background: 'var(--color-fill-input)',
+  border: 'none',
+  borderRadius: 8,
+  padding: '5px 10px',
+  cursor: 'pointer',
+  flex: 'none',
 }
