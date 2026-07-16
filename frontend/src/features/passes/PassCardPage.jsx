@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, BackButton, Button, Card, Modal, Spinner } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, Spinner } from '../../shared/ui'
 import {
   attachPass,
-  deletePass,
   getPass,
   getPassHistoryPath,
 } from '../employees/employeesApi.js'
@@ -24,14 +23,12 @@ function keyTargetText(pass) {
 
 export function PassCardPage() {
   const { id } = useParams()
-  const navigate = useNavigate()
   const perms = usePermissions()
   const [pass, setPass] = useState(null)
   const [loadError, setLoadError] = useState(false)
   const [editModal, setEditModal] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [disposeModal, setDisposeModal] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const load = useCallback(() => {
     setLoadError(false)
@@ -66,13 +63,10 @@ export function PassCardPage() {
     setShowPicker(false)
     load()
   }
-  const onDelete = async () => {
-    await deletePass(pass.id)
-    navigate('/passes')
-  }
 
   // Наборы действий: активный → открепить (с выбором утилизации); свободный →
-  // утилизировать или удалить; утилизированный → только удалить.
+  // редактировать/утилизировать; утилизированный → без действий (терминальный
+  // статус, удаления из системы нет — только утилизация).
   const actions = []
   if (perms.canManageEmployees && !pass.is_utilized) {
     actions.push({ label: 'Редактировать', onClick: () => setEditModal(true) })
@@ -80,10 +74,7 @@ export function PassCardPage() {
       actions.push({ label: 'Открепить', danger: true, onClick: () => setDisposeModal(true) })
     } else {
       actions.push({ label: 'Утилизировать', danger: true, onClick: () => setDisposeModal(true) })
-      actions.push({ label: 'Удалить', danger: true, onClick: () => setConfirmDelete(true) })
     }
-  } else if (perms.canManageEmployees && pass.is_utilized) {
-    actions.push({ label: 'Удалить', danger: true, onClick: () => setConfirmDelete(true) })
   }
 
   return (
@@ -129,10 +120,7 @@ export function PassCardPage() {
             {(pass.buildings || []).length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>Здания не указаны.</div>
             ) : isKey ? (
-              <div style={{ fontSize: 13.5 }}>
-                <span style={{ fontWeight: 600 }}>Ключ</span>
-                <span style={{ color: 'var(--color-text-placeholder)' }}> · {keyTargetText(pass)}</span>
-              </div>
+              <div style={{ fontSize: 13.5, fontWeight: 600 }}>{keyTargetText(pass)}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {pass.buildings.map((b) => {
@@ -205,17 +193,6 @@ export function PassCardPage() {
         />
       ) : null}
 
-      {confirmDelete ? (
-        <Modal open onClose={() => setConfirmDelete(false)} title={isKey ? 'Удалить ключ?' : 'Удалить пропуск?'}>
-          <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: '4px 0 20px' }}>
-            {title} будет удалён безвозвратно вместе с историей.
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <Button variant="danger" fullWidth onClick={onDelete}>Удалить</Button>
-            <Button variant="secondary" fullWidth onClick={() => setConfirmDelete(false)}>Отмена</Button>
-          </div>
-        </Modal>
-      ) : null}
     </div>
   )
 }

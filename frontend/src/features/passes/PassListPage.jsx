@@ -137,8 +137,8 @@ export function PassListPage() {
                 </div>
                 <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {row.object_type === 'key' ? (
-                    <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
-                      <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Ключ</span> · {keyTargetText(row)}
+                    <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+                      {keyTargetText(row)}
                     </div>
                   ) : accessLines(row).length === 0 ? (
                     <span style={{ color: 'var(--color-text-placeholder)', fontSize: 13 }}>—</span>

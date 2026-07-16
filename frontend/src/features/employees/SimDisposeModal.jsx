@@ -44,11 +44,7 @@ export function SimDisposeModal({ sim, onClose, onDone }) {
         {OPTIONS.map((opt) => (
           <label
             key={opt.value}
-            style={{
-              display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', cursor: 'pointer',
-              borderRadius: 'var(--radius-control)',
-              boxShadow: `inset 0 0 0 ${choice === opt.value ? 2 : 1}px ${choice === opt.value ? 'var(--color-accent)' : 'var(--color-border-strong)'}`,
-            }}
+            className={'ele-option' + (choice === opt.value ? ' ele-option--selected' : '')}
           >
             <input type="radio" name="sim-dispose" checked={choice === opt.value} onChange={() => setChoice(opt.value)} style={{ marginTop: 2 }} />
             <span style={{ minWidth: 0 }}>

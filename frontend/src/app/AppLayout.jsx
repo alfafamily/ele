@@ -14,6 +14,7 @@ export function AppLayout() {
   const sections = navSectionsForRole(user.role)
   const employeeName = user.employee ? user.employee.full_name : null
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [topbarHidden, setTopbarHidden] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -21,10 +22,26 @@ export function AppLayout() {
   // (маршруты …/new и …/edit) — чтобы не отвлекать при заполнении формы.
   const isFormPage = /\/(new|edit)\/?$/.test(location.pathname)
 
-  // Закрываем выезжающее меню при переходе на другую страницу.
+  // Закрываем выезжающее меню и показываем панель при переходе на другую страницу.
   useEffect(() => {
     setDrawerOpen(false)
+    setTopbarHidden(false)
   }, [location.pathname])
+
+  // Верхняя панель уезжает вверх при скролле вниз и возвращается при скролле
+  // вверх (паттерн Material). У самого верха страницы всегда видна.
+  useEffect(() => {
+    let lastY = window.scrollY
+    const onScroll = () => {
+      const y = window.scrollY
+      if (y < 10) setTopbarHidden(false)
+      else if (y > lastY + 5) setTopbarHidden(true)
+      else if (y < lastY - 5) setTopbarHidden(false)
+      lastY = y
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   const avatar = (size, fontSize) => (
     <span className="ele-rail__avatar" style={{ width: size, height: size, fontSize, overflow: 'hidden' }}>
@@ -134,7 +151,7 @@ export function AppLayout() {
       {/* Мобильная верхняя панель: профиль слева, лого ELE по центру, меню
           справа. Скрыта на десктопе (там rail) и на страницах форм. */}
       {!isFormPage ? (
-        <header className="ele-topbar">
+        <header className={`ele-topbar${topbarHidden ? ' ele-topbar--hidden' : ''}`}>
           <button type="button" className="ele-topbar__profile" aria-label="Профиль" onClick={() => navigate('/profile')}>
             {avatar(34, 12)}
           </button>

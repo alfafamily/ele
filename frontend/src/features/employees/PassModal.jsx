@@ -258,8 +258,8 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
 function CheckRow({ checked, onChange, small, children }) {
   return (
     <label
-      className="ele-checkbox"
-      style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: small ? 40 : 44, padding: small ? '8px 12px' : '9px 14px', background: 'var(--color-surface)', borderRadius: 'var(--radius-control)', boxShadow: 'inset 0 0 0 1px var(--color-border-strong)', cursor: 'pointer' }}
+      className={'ele-checkbox' + (checked ? ' ele-option--selected' : '')}
+      style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: small ? 40 : 44, padding: small ? '8px 12px' : '9px 14px', background: checked ? undefined : 'var(--color-surface)', borderRadius: 'var(--radius-control)', boxShadow: checked ? undefined : 'inset 0 0 0 1.5px var(--color-border-strong)', cursor: 'pointer' }}
     >
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       <span className="ele-checkbox__box" style={{ flex: 'none' }}>

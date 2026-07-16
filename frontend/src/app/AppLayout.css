@@ -462,5 +462,11 @@
     background: var(--color-surface);
     border-bottom: 1px solid var(--color-border);
     z-index: 40;
+    transition: transform 0.25s ease;
+  }
+
+  /* Уезжает вверх за границу экрана при скролле вниз. */
+  .ele-topbar--hidden {
+    transform: translateY(-100%);
   }
 }

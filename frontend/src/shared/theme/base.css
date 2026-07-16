@@ -39,6 +39,25 @@ a {
   text-decoration: none;
 }
 
+/* Выбираемый блок-строка (радио/чекбокс) в модалках — единый стиль: рамка
+   присутствует всегда, выбранный отличается цветом рамки и лёгкой заливкой
+   (толщина рамки не меняется — нет «прыжка» разметки). */
+.ele-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  cursor: pointer;
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 1.5px var(--color-border-strong);
+  transition: box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.ele-option--selected {
+  box-shadow: inset 0 0 0 1.5px var(--color-primary);
+  background: var(--color-fill-active-tint);
+}
+
 /* Сегментированный переключатель (2+ варианта, один активен) — напр. тип
    объекта «Пропуск СКУД / Ключ». */
 .ele-segmented {
