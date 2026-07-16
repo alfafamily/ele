@@ -6,6 +6,7 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.mixins import CreationCommentMixin
 from core.pagination import ELECursorPagination
 from core.permissions import AccessPassAccessPermission, IsAdminOrAccountant, SimCardAccessPermission
 from storage.service import delete_stored_file, store_uploaded_file
@@ -62,9 +63,15 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def terminate(self, request, pk=None):
-        """Увольнение (E3): отвязывает всё оборудование, деактивирует
-        выданные SIM-карты и пропуска (для истории остаются в карточке),
-        опционально деактивирует связанного Пользователя."""
+        """Увольнение (E3): отвязывает всё оборудование, обрабатывает выданные
+        SIM-карты и пропуска по выбору пользователя (открепить / утилизировать /
+        передать арендодателю), опционально деактивирует связанного Пользователя.
+
+        sim_actions / pass_actions — словари {id: {"action": ..., "comment": ...}}.
+        action: 'detach' (по умолчанию) | 'utilized' | 'handed' (только пропуска).
+        """
+        from django.utils import timezone
+
         employee = self.get_object()
         equipment_list = list(employee.equipment.all())
         for eq in equipment_list:
@@ -72,18 +79,45 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             eq.employee = None
             eq.save(update_fields=["employee"])
 
-        # SIM-карты и пропуска — переиспользуемые объекты: при увольнении
-        # отвязываем (employee=NULL ⇒ деактивированы, освобождаются для выдачи
-        # другому). По одной, не bulk — иначе не сработает история.
+        sim_actions = request.data.get("sim_actions") or {}
+        pass_actions = request.data.get("pass_actions") or {}
+
+        # SIM-карты — переиспользуемые объекты: открепляем (⇒ «Неиспользуемые») или
+        # утилизируем по выбору. По одной, не bulk — иначе не сработает история.
         active_sims = list(employee.sim_cards.all())
+        utilized_sim_count = 0
         for sim in active_sims:
+            spec = sim_actions.get(str(sim.id)) or {}
             sim.employee = None
-            sim.save(update_fields=["employee"])
+            if spec.get("action") == "utilized":
+                sim.is_utilized = True
+                sim.utilized_at = timezone.now()
+                utilized_sim_count += 1
+                comment = (spec.get("comment") or "").strip()
+                if comment:
+                    sim._change_reason = comment
+                sim.save(update_fields=["employee", "is_utilized", "utilized_at"])
+            else:
+                sim.save(update_fields=["employee"])
 
         active_passes = list(employee.passes.all())
+        utilized_pass_count = 0
+        reason_map = {c[0] for c in AccessPass.UtilizationReason.choices}
         for ap in active_passes:
+            spec = pass_actions.get(str(ap.id)) or {}
+            action = spec.get("action")
             ap.employee = None
-            ap.save(update_fields=["employee"])
+            if action in reason_map:
+                ap.is_utilized = True
+                ap.utilized_at = timezone.now()
+                ap.utilization_reason = action
+                utilized_pass_count += 1
+                comment = (spec.get("comment") or "").strip()
+                if comment:
+                    ap._change_reason = comment
+                ap.save(update_fields=["employee", "is_utilized", "utilized_at", "utilization_reason"])
+            else:
+                ap.save(update_fields=["employee"])
 
         employee.is_employed = False
         employee.save(update_fields=["is_employed"])
@@ -97,8 +131,10 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
         data = EmployeeSerializer(employee).data
         data["detached_equipment_count"] = len(equipment_list)
-        data["deactivated_sim_count"] = len(active_sims)
-        data["deactivated_pass_count"] = len(active_passes)
+        data["deactivated_sim_count"] = len(active_sims) - utilized_sim_count
+        data["utilized_sim_count"] = utilized_sim_count
+        data["deactivated_pass_count"] = len(active_passes) - utilized_pass_count
+        data["utilized_pass_count"] = utilized_pass_count
         data["deactivated_user"] = deactivated_user
         return Response(data)
 
@@ -124,7 +160,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         return Response(list(values))
 
 
-class SimCardViewSet(viewsets.ModelViewSet):
+class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     """Корпоративные SIM/E-SIM — самостоятельный раздел (admin/accountant).
     Сотрудник видит только свои номера в Профиле (read-only). Статус — по
     привязке: закреплена ⇒ активна, отвязана ⇒ деактивирована.
@@ -149,12 +185,15 @@ class SimCardViewSet(viewsets.ModelViewSet):
             qs = qs.filter(employee_id=employee)
 
         if self.action == "list":
-            # Вкладки раздела: Активные (привязаны) / Деактивированные (отвязаны).
+            # Вкладки раздела: Активные (привязаны) / Неиспользуемые (отвязаны, не
+            # утилизированы) / Утилизировано (необратимо).
             tab = self.request.query_params.get("tab")
             if tab == "active":
-                qs = qs.filter(employee__isnull=False)
+                qs = qs.filter(employee__isnull=False, is_utilized=False)
             elif tab == "deactivated":
-                qs = qs.filter(employee__isnull=True)
+                qs = qs.filter(employee__isnull=True, is_utilized=False)
+            elif tab == "utilized":
+                qs = qs.filter(is_utilized=True)
             search = self.request.query_params.get("search")
             if search:
                 qs = qs.filter(
@@ -183,6 +222,24 @@ class SimCardViewSet(viewsets.ModelViewSet):
         sim.save(update_fields=["employee"])
         return Response(SimCardSerializer(sim).data)
 
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
+    def utilize(self, request, pk=None):
+        """Утилизировать SIM — необратимый статус. Отвязывает от сотрудника и
+        переводит в таб «Утилизировано». Комментарий (необязательный) попадает в
+        историю движений."""
+        from django.utils import timezone
+
+        sim = self.get_object()
+        if not sim.is_utilized:
+            sim.employee = None
+            sim.is_utilized = True
+            sim.utilized_at = timezone.now()
+            comment = (request.data.get("comment") or "").strip()
+            if comment:
+                sim._change_reason = comment
+            sim.save(update_fields=["employee", "is_utilized", "utilized_at"])
+        return Response(SimCardSerializer(sim).data)
+
     @action(detail=True, methods=["get"], url_path="history")
     def history_list(self, request, pk=None):
         from core.history import build_history_rows
@@ -203,9 +260,17 @@ class SimCardViewSet(viewsets.ModelViewSet):
             "sim_type": {"label": "Тип", "format": fmt_sim_type},
             "network_operator": {"label": "Оператор"},
             "provider": {"label": "Поставщик услуг связи"},
-            "employee": {"label": "Закреплена за", "format": fmt_employee},
+            "employee": {"label": "Закреплена за", "format": fmt_employee, "in_created": False},
         }
-        rows = build_history_rows(sim, field_specs)
+        rows = build_history_rows(
+            sim, field_specs,
+            movement_fields={"employee"},
+            movement_events=[{
+                "trigger": "is_utilized", "to": True,
+                "consume": ["is_utilized", "utilized_at", "employee"],
+                "label": "Утилизирована",
+            }],
+        )
         rows.sort(key=lambda r: r["date"], reverse=True)
         return Response(rows)
 
@@ -232,7 +297,7 @@ class SimCardViewSet(viewsets.ModelViewSet):
         return Response(list(values))
 
 
-class AccessPassViewSet(viewsets.ModelViewSet):
+class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     """Пропуска СКУД — самостоятельный раздел (admin/accountant). Сотрудник видит
     только свои пропуска в Профиле (read-only). Статус — по привязке.
     Механика 1:1 как у SimCardViewSet. См. AccessPassAccessPermission."""
@@ -255,11 +320,14 @@ class AccessPassViewSet(viewsets.ModelViewSet):
             qs = qs.filter(employee_id=employee)
 
         if self.action == "list":
+            # Активные / Неиспользуемые (отвязаны, не утилизированы) / Утилизировано.
             tab = self.request.query_params.get("tab")
             if tab == "active":
-                qs = qs.filter(employee__isnull=False)
+                qs = qs.filter(employee__isnull=False, is_utilized=False)
             elif tab == "deactivated":
-                qs = qs.filter(employee__isnull=True)
+                qs = qs.filter(employee__isnull=True, is_utilized=False)
+            elif tab == "utilized":
+                qs = qs.filter(is_utilized=True)
             search = self.request.query_params.get("search")
             if search:
                 qs = qs.filter(
@@ -286,6 +354,30 @@ class AccessPassViewSet(viewsets.ModelViewSet):
         access_pass.save(update_fields=["employee"])
         return Response(AccessPassSerializer(access_pass).data)
 
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
+    def utilize(self, request, pk=None):
+        """Утилизировать пропуск/ключ — необратимый статус. reason:
+        utilized (выброшен) | handed (передан арендодателю). Отвязывает от
+        сотрудника, переводит в таб «Утилизировано». Комментарий (необязательный)
+        попадает в историю движений."""
+        from django.utils import timezone
+
+        access_pass = self.get_object()
+        reason = request.data.get("reason")
+        valid = {c[0] for c in AccessPass.UtilizationReason.choices}
+        if reason not in valid:
+            return Response({"detail": "Некорректная причина утилизации."}, status=400)
+        if not access_pass.is_utilized:
+            access_pass.employee = None
+            access_pass.is_utilized = True
+            access_pass.utilized_at = timezone.now()
+            access_pass.utilization_reason = reason
+            comment = (request.data.get("comment") or "").strip()
+            if comment:
+                access_pass._change_reason = comment
+            access_pass.save(update_fields=["employee", "is_utilized", "utilized_at", "utilization_reason"])
+        return Response(AccessPassSerializer(access_pass).data)
+
     @action(detail=True, methods=["get"], url_path="history")
     def history_list(self, request, pk=None):
         from core.history import build_history_rows
@@ -299,14 +391,29 @@ class AccessPassViewSet(viewsets.ModelViewSet):
             return str(emp) if emp else "—"
 
         yes_no = lambda v: "Да" if v else "Нет"
+        fmt_object_type = lambda v: dict(AccessPass.ObjectType.choices).get(v, v or "—")
+
+        def utilize_label(record):
+            reason = record.utilization_reason
+            return dict(AccessPass.UtilizationReason.choices).get(reason, "Утилизирован")
+
         field_specs = {
+            "object_type": {"label": "Тип объекта", "format": fmt_object_type},
             "name": {"label": "Название"},
             "account_number": {"label": "Учётный номер"},
             "type_vehicle": {"label": "Тип «Авто»", "format": yes_no},
             "type_pedestrian": {"label": "Тип «Пеший»", "format": yes_no},
-            "employee": {"label": "Закреплён за", "format": fmt_employee},
+            "employee": {"label": "Закреплён за", "format": fmt_employee, "in_created": False},
         }
-        rows = build_history_rows(access_pass, field_specs)
+        rows = build_history_rows(
+            access_pass, field_specs,
+            movement_fields={"employee"},
+            movement_events=[{
+                "trigger": "is_utilized", "to": True,
+                "consume": ["is_utilized", "utilized_at", "utilization_reason", "employee"],
+                "label": utilize_label,
+            }],
+        )
         rows.sort(key=lambda r: r["date"], reverse=True)
         return Response(rows)
 

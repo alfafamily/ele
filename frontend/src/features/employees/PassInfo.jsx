@@ -10,33 +10,43 @@ import { Badge } from '../../shared/ui'
 export function PassInfo({ pass }) {
   const buildings = pass.buildings || []
   const rooms = pass.rooms || []
+  const isKey = pass.object_type === 'key'
+  const b0 = buildings[0]
+  const r0 = rooms[0]
+  const keyTarget = b0 ? (r0 ? `${r0.name} (${b0.name})` : b0.name) : '—'
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        {pass.name ? (
-          <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{pass.name}</span>
-        ) : null}
+        <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+          {isKey ? `Ключ · ${keyTarget}` : pass.name ? pass.name : 'Пропуск'}
+        </span>
         <span style={{ font: '600 13px var(--font-mono)', color: 'var(--color-text-muted)' }}>
           № {pass.account_number && pass.account_number.trim() ? pass.account_number : 'б/н'}
         </span>
       </div>
-      {pass.type_vehicle || pass.type_pedestrian ? (
-        <div style={{ display: 'flex', gap: 6, marginTop: 5 }}>
-          {pass.type_vehicle ? <Badge>Авто</Badge> : null}
-          {pass.type_pedestrian ? <Badge>Пеший</Badge> : null}
+      <div style={{ display: 'flex', gap: 6, marginTop: 5 }}>
+        {isKey ? (
+          <Badge>Ключ</Badge>
+        ) : (
+          <>
+            {pass.type_vehicle ? <Badge>Авто</Badge> : null}
+            {pass.type_pedestrian ? <Badge>Пеший</Badge> : null}
+          </>
+        )}
+      </div>
+      {!isKey ? (
+        <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {buildings.map((b) => {
+            const bRooms = rooms.filter((r) => r.building === b.id)
+            const roomsText = bRooms.length === 0 ? 'все помещения' : bRooms.map((r) => r.name).join(', ')
+            return (
+              <div key={b.id} style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
+                <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>{b.name}</span> — {roomsText}
+              </div>
+            )
+          })}
         </div>
       ) : null}
-      <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {buildings.map((b) => {
-          const bRooms = rooms.filter((r) => r.building === b.id)
-          const roomsText = bRooms.length === 0 ? 'все помещения' : bRooms.map((r) => r.name).join(', ')
-          return (
-            <div key={b.id} style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
-              <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>{b.name}</span> — {roomsText}
-            </div>
-          )
-        })}
-      </div>
     </div>
   )
 }

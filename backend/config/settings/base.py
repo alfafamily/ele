@@ -58,6 +58,11 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 
 AUTH_USER_MODEL = "accounts.User"
 
+# Комментарии к движениям/созданию объектов (Оборудование, Лицензии, SIM,
+# Средства доступа) храним в history_change_reason. Делаем его TextField, чтобы
+# вместить многострочный комментарий (по умолчанию — CharField на 100 символов).
+SIMPLE_HISTORY_HISTORY_CHANGE_REASON_USE_TEXT_FIELD = True
+
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [

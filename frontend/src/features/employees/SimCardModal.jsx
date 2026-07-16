@@ -11,6 +11,7 @@ export function SimCardModal({ employeeId, sim, onClose, onDone }) {
   const [phoneNumber, setPhoneNumber] = useState(sim?.phone_number || '')
   const [networkOperator, setNetworkOperator] = useState(sim?.network_operator || '')
   const [provider, setProvider] = useState(sim?.provider || '')
+  const [comment, setComment] = useState('')
   const [operators, setOperators] = useState([])
   const [providers, setProviders] = useState([])
   const [submitting, setSubmitting] = useState(false)
@@ -34,6 +35,7 @@ export function SimCardModal({ employeeId, sim, onClose, onDone }) {
     }
     // Из карточки сотрудника создаём сразу привязанной; из раздела — свободной.
     if (!isEdit && employeeId) payload.employee = employeeId
+    if (!isEdit && comment.trim()) payload.comment = comment.trim()
     try {
       const saved = isEdit ? await updateSimCard(sim.id, payload) : await createSimCard(payload)
       onDone(saved)
@@ -91,6 +93,15 @@ export function SimCardModal({ employeeId, sim, onClose, onDone }) {
             ))}
           </datalist>
         </div>
+        {!isEdit ? (
+          <Input
+            label="Комментарий (необязательно)"
+            multiline
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Отобразится в истории движений при создании"
+          />
+        ) : null}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Button fullWidth loading={submitting} onClick={submit}>

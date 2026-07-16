@@ -13,7 +13,8 @@ const CACHE_KEY = 'pass-list'
 
 const TABS = [
   { value: 'active', label: 'Активные' },
-  { value: 'deactivated', label: 'Деактивированные' },
+  { value: 'deactivated', label: 'Неиспользуемые' },
+  { value: 'utilized', label: 'Утилизировано' },
 ]
 
 const COLUMNS = [
@@ -22,8 +23,8 @@ const COLUMNS = [
   { key: 'chevron', label: '', width: '30px' },
 ]
 
-// Строки «Доступ в»: по строке на здание с перечнем помещений (или «все
-// помещения»). Тот же принцип, что и в PassInfo.
+// Строки «Доступ в» для пропуска: по строке на здание с перечнем помещений (или
+// «все помещения»). Тот же принцип, что и в PassInfo.
 function accessLines(pass) {
   const rooms = pass.rooms || []
   return (pass.buildings || []).map((b) => {
@@ -31,6 +32,15 @@ function accessLines(pass) {
     const roomsText = bRooms.length === 0 ? 'все помещения' : bRooms.map((r) => r.name).join(', ')
     return { id: b.id, name: b.name, roomsText }
   })
+}
+
+// У ключа ровно один объект: одно помещение (с указанием здания) либо здание
+// целиком.
+function keyTargetText(pass) {
+  const b = (pass.buildings || [])[0]
+  const r = (pass.rooms || [])[0]
+  if (!b) return '—'
+  return r ? `${r.name} (${b.name})` : b.name
 }
 
 export function PassListPage() {
@@ -62,12 +72,12 @@ export function PassListPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="ele-page-head">
         <h1 style={{ fontSize: 'var(--font-size-h1)', fontWeight: 600, letterSpacing: 'var(--font-h1-letter-spacing)' }}>
-          Пропуска
+          Средства доступа
         </h1>
         <Can perm="canManageEmployees">
           <div className="ele-page-head__actions">
             <Button onClick={() => setModal('new')}>
-              <span className="ele-only-desktop">+ Добавить пропуск</span>
+              <span className="ele-only-desktop">+ Добавить средство доступа</span>
               <span className="ele-only-mobile">+ Добавить</span>
             </Button>
           </div>
@@ -90,13 +100,15 @@ export function PassListPage() {
         </div>
       ) : items.length === 0 ? (
         <EmptyState
-          title={search ? 'Ничего не найдено' : tab === 'deactivated' ? 'Нет деактивированных' : 'Пока пусто'}
+          title={search ? 'Ничего не найдено' : tab === 'utilized' ? 'Нет утилизированных' : tab === 'deactivated' ? 'Нет неиспользуемых' : 'Пока пусто'}
           description={
             search
-              ? `По запросу «${search}» пропуска не найдены.`
-              : tab === 'deactivated'
-                ? 'Отвязанные от сотрудников пропуска будут отображаться здесь.'
-                : 'Когда вы добавите пропуск, он будет отображаться здесь.'
+              ? `По запросу «${search}» ничего не найдено.`
+              : tab === 'utilized'
+                ? 'Утилизированные пропуска и ключи будут отображаться здесь.'
+                : tab === 'deactivated'
+                  ? 'Отвязанные от сотрудников пропуска и ключи будут отображаться здесь.'
+                  : 'Когда вы добавите пропуск или ключ, он будет отображаться здесь.'
           }
           action={search ? <Button variant="secondary" onClick={() => setSearch('')}>Сбросить фильтры</Button> : undefined}
         />
@@ -106,19 +118,29 @@ export function PassListPage() {
             <Link key={row.id} to={`/passes/${row.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
               <TableRow columns={COLUMNS}>
                 <div style={{ minWidth: 0 }}>
-                  <div className="ele-clamp-2" style={{ fontWeight: 600 }}>{row.name || 'Без названия'}</div>
+                  <div className="ele-clamp-2" style={{ fontWeight: 600 }}>
+                    {row.object_type === 'key' ? `Ключ · ${keyTargetText(row)}` : `Пропуск · ${row.name || 'Без названия'}`}
+                  </div>
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>
                     № {row.account_number && row.account_number.trim() ? row.account_number : 'б/н'}
                   </div>
-                  {row.type_vehicle || row.type_pedestrian ? (
-                    <div style={{ display: 'flex', gap: 5, marginTop: 5 }}>
-                      {row.type_vehicle ? <Badge>Авто</Badge> : null}
-                      {row.type_pedestrian ? <Badge>Пеший</Badge> : null}
-                    </div>
-                  ) : null}
+                  <div style={{ display: 'flex', gap: 5, marginTop: 5 }}>
+                    {row.object_type === 'key' ? (
+                      <Badge>Ключ</Badge>
+                    ) : (
+                      <>
+                        {row.type_vehicle ? <Badge>Авто</Badge> : null}
+                        {row.type_pedestrian ? <Badge>Пеший</Badge> : null}
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {accessLines(row).length === 0 ? (
+                  {row.object_type === 'key' ? (
+                    <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
+                      <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>Ключ</span> · {keyTargetText(row)}
+                    </div>
+                  ) : accessLines(row).length === 0 ? (
                     <span style={{ color: 'var(--color-text-placeholder)', fontSize: 13 }}>—</span>
                   ) : (
                     accessLines(row).map((a) => (

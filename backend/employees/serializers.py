@@ -10,7 +10,8 @@ from .models import AccessPass, Employee, SimCard
 
 class SimCardSerializer(serializers.ModelSerializer):
     sim_type_display = serializers.CharField(source="get_sim_type_display", read_only=True)
-    # Статус вычисляется по привязке: отвязана (employee=NULL) ⇒ деактивирована.
+    # «Неиспользуемая» (отвязана, не утилизирована). Утилизация — отдельный
+    # необратимый статус is_utilized.
     is_deactivated = serializers.BooleanField(read_only=True)
     employee_name = serializers.SerializerMethodField()
     # Объявлено явно, чтобы уникальность проверялась своим сообщением
@@ -29,11 +30,14 @@ class SimCardSerializer(serializers.ModelSerializer):
             "network_operator",
             "provider",
             "is_deactivated",
+            "is_utilized",
+            "utilized_at",
             "created_at",
         ]
         # employee можно задать при создании (сразу привязать) или через
-        # action attach/detach; статус is_deactivated — вычисляемый.
-        read_only_fields = ["created_at"]
+        # action attach/detach; статусы is_deactivated/is_utilized — read-only,
+        # утилизация только через action utilize.
+        read_only_fields = ["created_at", "is_utilized", "utilized_at"]
 
     def get_employee_name(self, obj):
         return str(obj.employee) if obj.employee_id else None
@@ -71,6 +75,8 @@ class AccessPassSerializer(serializers.ModelSerializer):
         required=False,
     )
     is_deactivated = serializers.BooleanField(read_only=True)
+    object_type_display = serializers.CharField(source="get_object_type_display", read_only=True)
+    utilization_reason_display = serializers.CharField(source="get_utilization_reason_display", read_only=True)
     employee_name = serializers.SerializerMethodField()
     # Явно — чтобы уникальность непустого номера проверялась своим сообщением.
     account_number = serializers.CharField(max_length=64, required=False, allow_blank=True)
@@ -79,6 +85,8 @@ class AccessPassSerializer(serializers.ModelSerializer):
         model = AccessPass
         fields = [
             "id",
+            "object_type",
+            "object_type_display",
             "employee",
             "employee_name",
             "name",
@@ -90,11 +98,16 @@ class AccessPassSerializer(serializers.ModelSerializer):
             "rooms",
             "room_ids",
             "is_deactivated",
+            "is_utilized",
+            "utilized_at",
+            "utilization_reason",
+            "utilization_reason_display",
             "created_at",
         ]
         # employee можно задать при создании (сразу привязать) или через
-        # action attach/detach; статус is_deactivated — вычисляемый.
-        read_only_fields = ["created_at"]
+        # action attach/detach; статусы утилизации — read-only (только action
+        # utilize).
+        read_only_fields = ["created_at", "is_utilized", "utilized_at", "utilization_reason"]
 
     def get_employee_name(self, obj):
         return str(obj.employee) if obj.employee_id else None
@@ -116,11 +129,29 @@ class AccessPassSerializer(serializers.ModelSerializer):
         if buildings is None:
             buildings = list(self.instance.buildings.all()) if self.instance else []
         rooms = attrs.get("rooms")
+        if rooms is None:
+            rooms = list(self.instance.rooms.all()) if self.instance else []
         building_ids = {b.id for b in buildings}
         if rooms and any(r.building_id not in building_ids for r in rooms):
             raise serializers.ValidationError(
                 {"room_ids": "Помещения должны относиться к выбранным зданиям."}
             )
+
+        # Ключ — строго один объект доступа: одно здание ИЛИ одно помещение.
+        # Название у ключа не используется.
+        object_type = attrs.get("object_type")
+        if object_type is None:
+            object_type = self.instance.object_type if self.instance else AccessPass.ObjectType.PASS
+        if object_type == AccessPass.ObjectType.KEY:
+            if len(buildings) != 1:
+                raise serializers.ValidationError(
+                    {"building_ids": "У ключа должно быть выбрано ровно одно здание."}
+                )
+            if len(rooms) > 1:
+                raise serializers.ValidationError(
+                    {"room_ids": "У ключа можно выбрать только одно помещение."}
+                )
+            attrs["name"] = ""
         return attrs
 
 

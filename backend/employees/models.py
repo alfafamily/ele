@@ -45,6 +45,11 @@ class SimCard(models.Model):
         Employee, verbose_name="Сотрудник", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="sim_cards",
     )
+    # Утилизация — необратимый статус (аналог списания Оборудования). Отвязанная,
+    # но не утилизированная карта — «Неиспользуемая», может быть выдана снова;
+    # утилизированная — уходит в отдельный таб и не возвращается.
+    is_utilized = models.BooleanField("Утилизирована", default=False)
+    utilized_at = models.DateTimeField("Дата утилизации", null=True, blank=True)
     sim_type = models.CharField("Тип", max_length=8, choices=SimType.choices, default=SimType.SIM)
     phone_number = models.CharField("Номер телефона", max_length=32)
     # Оператор сети, в которой физически работает SIM. Free-text с
@@ -68,7 +73,8 @@ class SimCard(models.Model):
 
     @property
     def is_deactivated(self):
-        return self.employee_id is None
+        # «Неиспользуемая»: отвязана, но не утилизирована.
+        return self.employee_id is None and not self.is_utilized
 
     def __str__(self):
         return self.phone_number
@@ -89,11 +95,33 @@ class AccessPass(models.Model):
         VEHICLE = "vehicle", "Авто"
         PEDESTRIAN = "pedestrian", "Пеший"
 
+    class ObjectType(models.TextChoices):
+        PASS = "pass", "Пропуск СКУД"
+        KEY = "key", "Ключ"
+
+    class UtilizationReason(models.TextChoices):
+        UTILIZED = "utilized", "Утилизирован"
+        HANDED = "handed", "Передан арендодателю"
+
+    # Тип объекта учёта: пропуск СКУД или физический ключ от замка. У ключа
+    # доступ ограничен ровно одним объектом (одно здание ИЛИ одно помещение),
+    # без Названия; остальная механика — как у пропуска.
+    object_type = models.CharField(
+        "Тип объекта", max_length=8, choices=ObjectType.choices, default=ObjectType.PASS
+    )
     employee = models.ForeignKey(
         Employee, verbose_name="Сотрудник", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="passes",
     )
-    # Название пропуска — необязательное.
+    # Утилизация — необратимый статус. Отвязанный, но не утилизированный объект —
+    # «Неиспользуемый»; утилизированный (выброшен / передан арендодателю) уходит в
+    # отдельный таб и не возвращается.
+    is_utilized = models.BooleanField("Утилизирован", default=False)
+    utilized_at = models.DateTimeField("Дата утилизации", null=True, blank=True)
+    utilization_reason = models.CharField(
+        "Причина утилизации", max_length=8, choices=UtilizationReason.choices, blank=True
+    )
+    # Название пропуска — необязательное (у ключа не используется).
     name = models.CharField("Название", max_length=255, blank=True)
     # Учётный номер физической карточки — необязательный (карту могли выдать
     # без нанесённого номера).
@@ -129,7 +157,10 @@ class AccessPass(models.Model):
 
     @property
     def is_deactivated(self):
-        return self.employee_id is None
+        # «Неиспользуемый»: отвязан, но не утилизирован.
+        return self.employee_id is None and not self.is_utilized
 
     def __str__(self):
+        if self.object_type == self.ObjectType.KEY:
+            return self.account_number or f"Ключ #{self.pk}"
         return self.name or self.account_number or f"Пропуск #{self.pk}"

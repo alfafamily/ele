@@ -39,6 +39,35 @@ a {
   text-decoration: none;
 }
 
+/* Сегментированный переключатель (2+ варианта, один активен) — напр. тип
+   объекта «Пропуск СКУД / Ключ». */
+.ele-segmented {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  background: var(--color-fill-input);
+  border-radius: var(--radius-control);
+}
+
+.ele-segmented__btn {
+  flex: 1;
+  min-width: 0;
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: 500 14px inherit;
+  color: var(--color-text-muted);
+  padding: 9px 12px;
+  border-radius: calc(var(--radius-control) - 3px);
+}
+
+.ele-segmented__btn--active {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
 /* На мобильных Safari/Chrome зумят страницу при фокусе в поле, если у него
    размер шрифта < 16px — что даёт горизонтальный скролл. Приводим все поля
    ввода к 16px ниже брейкпоинта (перебивая инлайновые размеры). */

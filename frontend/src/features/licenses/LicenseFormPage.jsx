@@ -33,6 +33,7 @@ export function LicenseFormPage() {
   const [values, setValues] = useState({})
   const [fileValues, setFileValues] = useState({})
   const [customFields, setCustomFields] = useState([])
+  const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
@@ -81,6 +82,7 @@ export function LicenseFormPage() {
       field_values_input: typeFields.filter((f) => f.value_type !== 'file').map((f) => ({ field: f.id, value: values[f.id] ?? null })),
       custom_fields: customFields.filter((f) => f.name.trim()),
     }
+    if (!isEdit && comment.trim()) payload.comment = comment.trim()
     try {
       if (isEdit) {
         await updateLicense(id, payload)
@@ -202,6 +204,16 @@ export function LicenseFormPage() {
             </div>
             <CustomFieldsEditor items={customFields} onChange={setCustomFields} />
           </Card>
+
+          {!isEdit ? (
+            <Card>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Комментарий</div>
+              <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
+                Необязательный. Отобразится в истории движений в записи создания.
+              </div>
+              <Input multiline value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Например: приобретено по договору №…" />
+            </Card>
+          ) : null}
         </form>
       </div>
     </div>

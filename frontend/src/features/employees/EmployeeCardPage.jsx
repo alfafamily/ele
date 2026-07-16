@@ -4,12 +4,14 @@ import { apiPatch } from '../../shared/api/client'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner, StatusPill } from '../../shared/ui'
 import { nameInitials } from '../../shared/employeeName.js'
-import { detachPass, detachSimCard, getEmployee, restoreEmployee, uploadEmployeeAvatar } from './employeesApi.js'
+import { getEmployee, restoreEmployee, uploadEmployeeAvatar } from './employeesApi.js'
 import { AttachOrCreateModal } from './AttachOrCreateModal.jsx'
 import { PassInfo } from './PassInfo.jsx'
 import { PassModal } from './PassModal.jsx'
+import { PassDisposeModal } from './PassDisposeModal.jsx'
 import { SimCardInfo } from './SimCardInfo.jsx'
 import { SimCardModal } from './SimCardModal.jsx'
+import { SimDisposeModal } from './SimDisposeModal.jsx'
 import { TerminateModal } from './TerminateModal.jsx'
 
 export function EmployeeCardPage() {
@@ -25,6 +27,9 @@ export function EmployeeCardPage() {
   // Аналогично для пропусков.
   const [passModal, setPassModal] = useState(null)
   const [passAttach, setPassAttach] = useState(false)
+  // Открепление/утилизация — выбор действия (SimDisposeModal/PassDisposeModal).
+  const [disposeSim, setDisposeSim] = useState(null)
+  const [disposePass, setDisposePass] = useState(null)
   // Подтверждение открепления: { title, message, onConfirm }.
   const [confirm, setConfirm] = useState(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -62,34 +67,15 @@ export function EmployeeCardPage() {
     load()
   }
 
-  const onDetachSim = async (simId) => {
-    await detachSimCard(simId)
-    load()
-  }
-
-  const onDetachPass = async (passId) => {
-    await detachPass(passId)
-    load()
-  }
-
   const onRestore = async () => {
     await restoreEmployee(employee.id)
     load()
   }
 
-  const askDetachSim = (sim) =>
-    setConfirm({
-      title: 'Открепить SIM-карту?',
-      message: `SIM-карта ${sim.phone_number} будет откреплена и станет свободной.`,
-      onConfirm: () => onDetachSim(sim.id),
-    })
-
-  const askDetachPass = (pass) =>
-    setConfirm({
-      title: 'Открепить пропуск?',
-      message: `Пропуск «${pass.name || pass.account_number || `#${pass.id}`}» будет откреплён и станет свободным.`,
-      onConfirm: () => onDetachPass(pass.id),
-    })
+  // Открепление из карточки сотрудника — через выбор действия (открепить /
+  // утилизировать / передать арендодателю), как и на карточке объекта.
+  const askDetachSim = (sim) => setDisposeSim(sim)
+  const askDetachPass = (pass) => setDisposePass(pass)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -255,13 +241,13 @@ export function EmployeeCardPage() {
 
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <div style={{ fontSize: 16, fontWeight: 600 }}>Пропуска</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>Средства доступа</div>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
               {employee.passes.length}
             </span>
           </div>
           {employee.passes.length === 0 ? (
-            <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено пропусков.</div>
+            <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено средств доступа.</div>
           ) : (
             employee.passes.map((pass) => (
               <div key={pass.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
@@ -292,7 +278,7 @@ export function EmployeeCardPage() {
           {employee.is_employed ? (
             <Can perm="canManageEmployees">
               <Button variant="secondary" fullWidth style={{ marginTop: employee.passes.length ? 4 : 12 }} onClick={() => setPassAttach(true)}>
-                + Добавить пропуск
+                + Добавить средство доступа
               </Button>
             </Can>
           ) : null}
@@ -350,6 +336,28 @@ export function EmployeeCardPage() {
           onClose={() => setPassModal(null)}
           onDone={() => {
             setPassModal(null)
+            load()
+          }}
+        />
+      ) : null}
+
+      {disposeSim ? (
+        <SimDisposeModal
+          sim={disposeSim}
+          onClose={() => setDisposeSim(null)}
+          onDone={() => {
+            setDisposeSim(null)
+            load()
+          }}
+        />
+      ) : null}
+
+      {disposePass ? (
+        <PassDisposeModal
+          pass={disposePass}
+          onClose={() => setDisposePass(null)}
+          onDone={() => {
+            setDisposePass(null)
             load()
           }}
         />

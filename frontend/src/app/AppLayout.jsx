@@ -1,12 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
 import { useCompany } from './CompanyContext.jsx'
 import { navSectionsForRole } from './navSections.js'
-import { HelpIcon, MoreIcon } from './navIcons.jsx'
+import { HelpIcon, MenuIcon } from './navIcons.jsx'
 import { roleLabel } from '../shared/roles.js'
 import { nameInitials } from '../shared/employeeName.js'
-import { Button, Modal } from '../shared/ui'
 import './AppLayout.css'
 
 export function AppLayout() {
@@ -14,18 +13,18 @@ export function AppLayout() {
   const company = useCompany()
   const sections = navSectionsForRole(user.role)
   const employeeName = user.employee ? user.employee.full_name : null
-  // Настройки — только у Администратора и в мобильной нижней навигации их нет
-  // (там первые 3 раздела + Профиль). Тап по «Профиль» на мобиле открывает
-  // меню: у всех — Профиль/Руководство, у админа между ними ещё Настройки.
-  const isAdmin = user.role === 'admin'
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
-  const goTo = (to, close) => {
-    close(false)
-    navigate(to)
-  }
+
+  // Верхняя панель скрывается на страницах создания/редактирования объектов
+  // (маршруты …/new и …/edit) — чтобы не отвлекать при заполнении формы.
+  const isFormPage = /\/(new|edit)\/?$/.test(location.pathname)
+
+  // Закрываем выезжающее меню при переходе на другую страницу.
+  useEffect(() => {
+    setDrawerOpen(false)
+  }, [location.pathname])
 
   const avatar = (size, fontSize) => (
     <span className="ele-rail__avatar" style={{ width: size, height: size, fontSize, overflow: 'hidden' }}>
@@ -40,12 +39,13 @@ export function AppLayout() {
   // идут сверху в порядке навигации.
   const topSections = sections.filter((s) => !s.bottom)
   const bottomSections = sections.filter((s) => s.bottom)
-  // Мобильная нижняя навигация: первые два раздела — напрямую, остальные
-  // прячем в меню «Ещё» (иначе не помещаются, а разделов у admin/accountant
-  // теперь больше — добавились «Помещения»).
-  const mobilePrimary = topSections.slice(0, 2)
-  const mobileMore = topSections.slice(2)
-  const isMoreActive = mobileMore.some((s) => (s.to === '/' ? location.pathname === '/' : location.pathname.startsWith(s.to)))
+  // Мобильное меню (drawer) — все разделы как на десктопе + Настройки (у админа)
+  // и Руководство.
+  const drawerSections = [
+    ...topSections,
+    ...bottomSections,
+    { key: 'guide', to: '/guide', label: 'Руководство', icon: HelpIcon },
+  ]
 
   return (
     <div className="ele-shell">
@@ -131,77 +131,51 @@ export function AppLayout() {
         </NavLink>
       </aside>
 
-      <main className="ele-content">
+      {/* Мобильная верхняя панель: профиль слева, лого ELE по центру, меню
+          справа. Скрыта на десктопе (там rail) и на страницах форм. */}
+      {!isFormPage ? (
+        <header className="ele-topbar">
+          <button type="button" className="ele-topbar__profile" aria-label="Профиль" onClick={() => navigate('/profile')}>
+            {avatar(34, 12)}
+          </button>
+          <img className="ele-topbar__logo" src="/brand/ele-full.svg" alt="ELE" />
+          <button type="button" className="ele-topbar__menu" aria-label="Меню" aria-haspopup="menu" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}>
+            <MenuIcon />
+          </button>
+        </header>
+      ) : null}
+
+      <main className={`ele-content${!isFormPage ? ' ele-content--with-topbar' : ''}`}>
         <div className="ele-content__inner">
           <Outlet />
         </div>
       </main>
 
-      <nav className="ele-bottom-nav">
-        {mobilePrimary.map(({ key, to, label, icon: Icon }) => (
-          <NavLink
-            key={key}
-            to={to}
-            end={to === '/'}
-            className={({ isActive }) => `ele-bottom-nav__item${isActive ? ' ele-bottom-nav__item--active' : ''}`}
-          >
-            <Icon />
-            <span>{label}</span>
-          </NavLink>
-        ))}
-        {mobileMore.length > 0 ? (
-          <button
-            type="button"
-            className={`ele-bottom-nav__item${moreMenuOpen || isMoreActive ? ' ele-bottom-nav__item--active' : ''}`}
-            aria-haspopup="menu"
-            aria-expanded={moreMenuOpen}
-            onClick={() => setMoreMenuOpen((v) => !v)}
-          >
-            <MoreIcon />
-            <span>Ещё</span>
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className={`ele-bottom-nav__item${profileMenuOpen ? ' ele-bottom-nav__item--active' : ''}`}
-          aria-haspopup="menu"
-          aria-expanded={profileMenuOpen}
-          onClick={() => setProfileMenuOpen((v) => !v)}
-        >
-          {avatar(22, 9)}
-          <span>Профиль</span>
-        </button>
+      {/* Выезжающее справа меню (поверх страницы) со всеми разделами. */}
+      {drawerOpen ? <div className="ele-drawer__backdrop" onClick={() => setDrawerOpen(false)} /> : null}
+      <nav className={`ele-drawer${drawerOpen ? ' ele-drawer--open' : ''}`} aria-hidden={!drawerOpen}>
+        <NavLink to="/profile" className="ele-drawer__user" onClick={() => setDrawerOpen(false)}>
+          {avatar(40, 14)}
+          <span className="ele-drawer__user-text">
+            <span className="ele-drawer__user-name">{employeeName || user.email}</span>
+            <span className="ele-drawer__user-role">{roleLabel(user.role)}</span>
+          </span>
+        </NavLink>
+        <div className="ele-drawer__items">
+          {drawerSections.map(({ key, to, label, icon: Icon }) => (
+            <NavLink
+              key={key}
+              to={to}
+              end={to === '/'}
+              className={({ isActive }) => `ele-drawer__item${isActive ? ' ele-drawer__item--active' : ''}`}
+              onClick={() => setDrawerOpen(false)}
+            >
+              <span className="ele-drawer__item-icon"><Icon /></span>
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </div>
       </nav>
-
-      {moreMenuOpen ? (
-        <Modal open onClose={() => setMoreMenuOpen(false)} title="Выберите пункт меню">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
-            {mobileMore.map(({ key, to, label }) => (
-              <Button key={key} variant="secondary" fullWidth onClick={() => goTo(to, setMoreMenuOpen)}>
-                {label}
-              </Button>
-            ))}
-          </div>
-        </Modal>
-      ) : null}
-
-      {profileMenuOpen ? (
-        <Modal open onClose={() => setProfileMenuOpen(false)} title="Выберите пункт меню">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
-            <Button variant="secondary" fullWidth onClick={() => goTo('/profile', setProfileMenuOpen)}>
-              Профиль
-            </Button>
-            {isAdmin ? (
-              <Button variant="secondary" fullWidth onClick={() => goTo('/settings', setProfileMenuOpen)}>
-                Настройки
-              </Button>
-            ) : null}
-            <Button variant="secondary" fullWidth onClick={() => goTo('/guide', setProfileMenuOpen)}>
-              Руководство
-            </Button>
-          </div>
-        </Modal>
-      ) : null}
     </div>
   )
 }

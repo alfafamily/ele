@@ -4,15 +4,23 @@ import { Can, usePermissions } from '../../app/usePermissions.js'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, BackButton, Button, Card, ConfirmModal, Modal, Spinner } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, Modal, Spinner } from '../../shared/ui'
 import {
   attachPass,
   deletePass,
-  detachPass,
   getPass,
   getPassHistoryPath,
 } from '../employees/employeesApi.js'
 import { PassModal } from '../employees/PassModal.jsx'
+import { PassDisposeModal } from '../employees/PassDisposeModal.jsx'
+
+// У ключа ровно один объект: одно помещение (с указанием здания) либо здание.
+function keyTargetText(pass) {
+  const b = (pass.buildings || [])[0]
+  const r = (pass.rooms || [])[0]
+  if (!b) return '—'
+  return r ? `${r.name} (${b.name})` : b.name
+}
 
 export function PassCardPage() {
   const { id } = useParams()
@@ -22,7 +30,7 @@ export function PassCardPage() {
   const [loadError, setLoadError] = useState(false)
   const [editModal, setEditModal] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
-  const [confirmDetach, setConfirmDetach] = useState(false)
+  const [disposeModal, setDisposeModal] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const load = useCallback(() => {
@@ -34,7 +42,7 @@ export function PassCardPage() {
   if (loadError) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 60, textAlign: 'center' }}>
-        <div style={{ fontSize: 16, fontWeight: 600 }}>Не удалось открыть пропуск</div>
+        <div style={{ fontSize: 16, fontWeight: 600 }}>Не удалось открыть средство доступа</div>
         <Link to="/passes"><Button variant="secondary">К списку</Button></Link>
       </div>
     )
@@ -43,17 +51,19 @@ export function PassCardPage() {
     return <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner /></div>
   }
 
-  const title = pass.name || (pass.account_number && pass.account_number.trim() ? `№ ${pass.account_number}` : 'Пропуск')
+  const isKey = pass.object_type === 'key'
+  const title = isKey
+    ? `Ключ · ${keyTargetText(pass)}`
+    : `Пропуск · ${pass.name || (pass.account_number && pass.account_number.trim() ? `№ ${pass.account_number}` : 'без названия')}`
   const types = [pass.type_vehicle && 'Авто', pass.type_pedestrian && 'Пеший'].filter(Boolean).join(', ')
   const rooms = pass.rooms || []
+  const statusText = pass.is_utilized
+    ? (pass.utilization_reason_display ? `Утилизирован (${pass.utilization_reason_display})` : 'Утилизирован')
+    : pass.is_deactivated ? 'Не используется' : 'Активен'
 
   const onAttach = async (employee) => {
     await attachPass(pass.id, employee.id)
     setShowPicker(false)
-    load()
-  }
-  const onDetach = async () => {
-    await detachPass(pass.id)
     load()
   }
   const onDelete = async () => {
@@ -61,10 +71,25 @@ export function PassCardPage() {
     navigate('/passes')
   }
 
+  // Наборы действий: активный → открепить (с выбором утилизации); свободный →
+  // утилизировать или удалить; утилизированный → только удалить.
+  const actions = []
+  if (perms.canManageEmployees && !pass.is_utilized) {
+    actions.push({ label: 'Редактировать', onClick: () => setEditModal(true) })
+    if (pass.employee) {
+      actions.push({ label: 'Открепить', danger: true, onClick: () => setDisposeModal(true) })
+    } else {
+      actions.push({ label: 'Утилизировать', danger: true, onClick: () => setDisposeModal(true) })
+      actions.push({ label: 'Удалить', danger: true, onClick: () => setConfirmDelete(true) })
+    }
+  } else if (perms.canManageEmployees && pass.is_utilized) {
+    actions.push({ label: 'Удалить', danger: true, onClick: () => setConfirmDelete(true) })
+  }
+
   return (
     <div>
       <div className="ele-only-desktop" style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 10 }}>
-        <Link to="/passes" style={{ color: 'var(--color-text-muted)' }}>Пропуска</Link> / {title}
+        <Link to="/passes" style={{ color: 'var(--color-text-muted)' }}>Средства доступа</Link> / {title}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
@@ -72,25 +97,15 @@ export function PassCardPage() {
           <BackButton />
           <h1 className="ele-card-title">{title}</h1>
         </div>
-        {perms.canManageEmployees ? (
+        {actions.length ? (
           <>
             <div className="ele-card-actions-desktop">
-              <Button variant="secondary" onClick={() => setEditModal(true)}>Редактировать</Button>
-              {pass.is_deactivated ? (
-                <Button variant="danger" onClick={() => setConfirmDelete(true)}>Удалить</Button>
-              ) : (
-                <Button variant="danger" onClick={() => setConfirmDetach(true)}>Открепить</Button>
-              )}
+              {actions.map((a) => (
+                <Button key={a.label} variant={a.danger ? 'danger' : 'secondary'} onClick={a.onClick}>{a.label}</Button>
+              ))}
             </div>
             <div className="ele-card-actions-mobile">
-              <ActionMenu
-                items={[
-                  { label: 'Редактировать', onClick: () => setEditModal(true) },
-                  pass.is_deactivated
-                    ? { label: 'Удалить', danger: true, onClick: () => setConfirmDelete(true) }
-                    : { label: 'Открепить', danger: true, onClick: () => setConfirmDetach(true) },
-                ]}
-              />
+              <ActionMenu items={actions} />
             </div>
           </>
         ) : null}
@@ -101,10 +116,11 @@ export function PassCardPage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div className="ele-field-grid">
-              <Field label="Название" value={pass.name} />
+              <Field label="Тип объекта" value={pass.object_type_display || (isKey ? 'Ключ' : 'Пропуск СКУД')} />
+              {!isKey ? <Field label="Название" value={pass.name} /> : null}
               <Field label="Учётный номер" value={pass.account_number} mono />
-              <Field label="Тип пропуска" value={types} />
-              <Field label="Статус" value={pass.is_deactivated ? 'Деактивирован' : 'Активен'} />
+              {!isKey ? <Field label="Тип пропуска" value={types} /> : null}
+              <Field label="Статус" value={statusText} />
             </div>
           </Card>
 
@@ -112,6 +128,11 @@ export function PassCardPage() {
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Доступ в</div>
             {(pass.buildings || []).length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>Здания не указаны.</div>
+            ) : isKey ? (
+              <div style={{ fontSize: 13.5 }}>
+                <span style={{ fontWeight: 600 }}>Ключ</span>
+                <span style={{ color: 'var(--color-text-placeholder)' }}> · {keyTargetText(pass)}</span>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {pass.buildings.map((b) => {
@@ -130,7 +151,9 @@ export function PassCardPage() {
 
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Закреплено за</div>
-            {pass.employee ? (
+            {pass.is_utilized ? (
+              <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>{statusText}</div>
+            ) : pass.employee ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600 }}>
                   {nameInitials(pass.employee_name)}
@@ -139,7 +162,7 @@ export function PassCardPage() {
                   {pass.employee_name}
                 </Link>
                 <Can perm="canManageEmployees">
-                  <Button variant="secondary" style={{ marginLeft: 'auto' }} onClick={() => setConfirmDetach(true)}>Открепить</Button>
+                  <Button variant="secondary" style={{ marginLeft: 'auto' }} onClick={() => setDisposeModal(true)}>Открепить</Button>
                 </Can>
               </div>
             ) : showPicker ? (
@@ -171,19 +194,21 @@ export function PassCardPage() {
         />
       ) : null}
 
-      {confirmDetach ? (
-        <ConfirmModal
-          title="Открепить пропуск?"
-          message={`Пропуск «${title}» будет откреплён от сотрудника ${pass.employee_name} и станет свободным.`}
-          onConfirm={onDetach}
-          onClose={() => setConfirmDetach(false)}
+      {disposeModal ? (
+        <PassDisposeModal
+          pass={pass}
+          onClose={() => setDisposeModal(false)}
+          onDone={() => {
+            setDisposeModal(false)
+            load()
+          }}
         />
       ) : null}
 
       {confirmDelete ? (
-        <Modal open onClose={() => setConfirmDelete(false)} title="Удалить пропуск?">
+        <Modal open onClose={() => setConfirmDelete(false)} title={isKey ? 'Удалить ключ?' : 'Удалить пропуск?'}>
           <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: '4px 0 20px' }}>
-            Пропуск {title} будет удалён безвозвратно вместе с историей.
+            {title} будет удалён безвозвратно вместе с историей.
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <Button variant="danger" fullWidth onClick={onDelete}>Удалить</Button>

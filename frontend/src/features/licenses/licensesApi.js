@@ -6,7 +6,7 @@ export const getLicenseTypes = () => apiGet('/api/license-types/')
 export const getLicense = (id) => apiGet(`/api/licenses/${id}/`)
 export const createLicense = (payload) => apiPost('/api/licenses/', payload)
 export const updateLicense = (id, payload) => apiPatch(`/api/licenses/${id}/`, payload)
-export const utilizeLicense = (id) => apiPost(`/api/licenses/${id}/utilize/`)
+export const utilizeLicense = (id, comment) => apiPost(`/api/licenses/${id}/utilize/`, comment ? { comment } : {})
 export const attachLicenseToEquipment = (id, equipmentId) => apiPatch(`/api/licenses/${id}/`, { equipment: equipmentId })
 export const detachLicenseFromEquipment = (id) => apiPatch(`/api/licenses/${id}/`, { equipment: null })
 export const getLicenseHistoryPath = (id) => `/api/licenses/${id}/history/`

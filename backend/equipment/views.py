@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.eav import count_missing_for_field
+from core.mixins import CreationCommentMixin
 from core.pagination import ELECursorPagination
 from core.permissions import EquipmentAccessPermission, IsAdminOrAccountant
 from employees.models import Employee
@@ -81,7 +82,7 @@ class EquipmentTypeFieldImpactView(APIView):
         return Response({"affected_count": affected})
 
 
-class EquipmentViewSet(viewsets.ModelViewSet):
+class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     """Удаления нет — только списание (write_off)."""
 
     serializer_class = EquipmentSerializer
@@ -165,6 +166,9 @@ class EquipmentViewSet(viewsets.ModelViewSet):
         equipment.employee = None
         equipment.is_written_off = True
         equipment.written_off_at = timezone.now()
+        comment = (request.data.get("comment") or "").strip()
+        if comment:
+            equipment._change_reason = comment
         equipment.save(update_fields=["employee", "is_written_off", "written_off_at"])
         return Response(EquipmentSerializer(equipment).data)
 
@@ -205,11 +209,10 @@ class EquipmentViewSet(viewsets.ModelViewSet):
 
         field_specs = {
             "inventory_number": {"label": "Учётный номер"},
-            "employee": {"label": "Закреплённый сотрудник", "format": fmt_employee},
-            "is_written_off": {"label": "Признак списания", "format": lambda v: "Да" if v else "Нет"},
+            "employee": {"label": "Закреплённый сотрудник", "format": fmt_employee, "in_created": False},
+            "is_written_off": {"label": "Признак списания", "format": lambda v: "Да" if v else "Нет", "in_created": False},
             "equipment_type": {"label": "Тип оборудования", "format": fmt_type},
         }
-        rows = build_history_rows(eq, field_specs)
 
         # Реквизиты Типа (Параметры оборудования)
         type_fields = {}
@@ -234,11 +237,17 @@ class EquipmentViewSet(viewsets.ModelViewSet):
                 return StoredFile.objects.filter(pk=rec.value_file_id).values_list("original_filename", flat=True).first() or "файл"
             return rec.value_text
 
-        rows += build_related_history_rows(
+        related_rows = []
+        created_extra = []
+
+        req_rows, req_created = build_related_history_rows(
             EquipmentFieldValue.history.filter(equipment_id=eq.id),
             label_fn=lambda rec: (field_of(rec).name if field_of(rec) else "Реквизит"),
             value_fn=fv_value,
+            created_at=eq.created_at,
         )
+        related_rows += req_rows
+        created_extra += req_created
 
         # Файлы реквизитов «Несколько файлов» — добавление/удаление отдельных
         # файлов (хранятся в EquipmentFieldFile, не в value_file).
@@ -256,18 +265,36 @@ class EquipmentViewSet(viewsets.ModelViewSet):
                     or "файл"
                 )
 
-            rows += build_related_history_rows(
+            file_rows, file_created = build_related_history_rows(
                 EquipmentFieldFile.history.filter(field_value_id__in=list(fv_field_name)),
                 label_fn=lambda rec: fv_field_name.get(rec.field_value_id, "Файл реквизита"),
                 value_fn=file_value,
+                created_at=eq.created_at,
             )
+            related_rows += file_rows
+            created_extra += file_created
 
         # Дополнительные поля
-        rows += build_related_history_rows(
+        cf_rows, cf_created = build_related_history_rows(
             EquipmentCustomField.history.filter(equipment_id=eq.id),
             label_fn=lambda rec: rec.name,
             value_fn=lambda rec: rec.value,
+            created_at=eq.created_at,
         )
+        related_rows += cf_rows
+        created_extra += cf_created
+
+        rows = build_history_rows(
+            eq, field_specs,
+            movement_fields={"employee"},
+            movement_events=[{
+                "trigger": "is_written_off", "to": True,
+                "consume": ["is_written_off", "written_off_at", "employee"],
+                "label": "Списано",
+            }],
+            created_extra_lines=created_extra,
+        )
+        rows += related_rows
 
         rows.sort(key=lambda r: r["date"], reverse=True)
         return Response(rows)

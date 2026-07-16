@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.eav import count_missing_for_field
+from core.mixins import CreationCommentMixin
 from core.pagination import ELECursorPagination
 from core.permissions import IsAdminOrAccountant
 from storage.service import delete_stored_file, store_uploaded_file
@@ -82,7 +83,7 @@ class LicenseTypeFieldImpactView(APIView):
         return Response({"affected_count": affected})
 
 
-class LicenseViewSet(viewsets.ModelViewSet):
+class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     """Раздел целиком недоступен роли «Сотрудник» — свои лицензии видны
     только в карточке привязанного Оборудования. Удаления нет — только
     утилизация (utilize)."""
@@ -148,6 +149,9 @@ class LicenseViewSet(viewsets.ModelViewSet):
         license_obj.is_retired = True
         license_obj.retired_at = timezone.now()
         license_obj.equipment = None
+        comment = (request.data.get("comment") or "").strip()
+        if comment:
+            license_obj._change_reason = comment
         license_obj.save(update_fields=["is_retired", "retired_at", "equipment"])
         return Response(LicenseSerializer(license_obj).data)
 
@@ -171,11 +175,10 @@ class LicenseViewSet(viewsets.ModelViewSet):
 
         field_specs = {
             "name": {"label": "Наименование"},
-            "equipment": {"label": "Оборудование", "format": fmt_equipment},
-            "is_retired": {"label": "Признак утилизации", "format": lambda v: "Да" if v else "Нет"},
+            "equipment": {"label": "Оборудование", "format": fmt_equipment, "in_created": False},
+            "is_retired": {"label": "Признак утилизации", "format": lambda v: "Да" if v else "Нет", "in_created": False},
             "license_type": {"label": "Тип лицензии", "format": fmt_type},
         }
-        rows = build_history_rows(lic, field_specs)
 
         # Реквизиты Типа (Параметры лицензии), включая маскируемый «Номер/ключ»
         type_fields = {}
@@ -206,12 +209,18 @@ class LicenseViewSet(viewsets.ModelViewSet):
             f = field_of(rec)
             return bool(f and f.is_locked)
 
-        rows += build_related_history_rows(
+        related_rows = []
+        created_extra = []
+
+        req_rows, req_created = build_related_history_rows(
             LicenseFieldValue.history.filter(license_id=lic.id),
             label_fn=lambda rec: (field_of(rec).name if field_of(rec) else "Реквизит"),
             value_fn=fv_value,
             secret_fn=fv_secret,
+            created_at=lic.created_at,
         )
+        related_rows += req_rows
+        created_extra += req_created
 
         # Файлы реквизитов «Несколько файлов» — добавление/удаление отдельных файлов.
         fv_field_name = dict(
@@ -228,17 +237,35 @@ class LicenseViewSet(viewsets.ModelViewSet):
                     or "файл"
                 )
 
-            rows += build_related_history_rows(
+            file_rows, file_created = build_related_history_rows(
                 LicenseFieldFile.history.filter(field_value_id__in=list(fv_field_name)),
                 label_fn=lambda rec: fv_field_name.get(rec.field_value_id, "Файл реквизита"),
                 value_fn=file_value,
+                created_at=lic.created_at,
             )
+            related_rows += file_rows
+            created_extra += file_created
 
-        rows += build_related_history_rows(
+        cf_rows, cf_created = build_related_history_rows(
             LicenseCustomField.history.filter(license_id=lic.id),
             label_fn=lambda rec: rec.name,
             value_fn=lambda rec: rec.value,
+            created_at=lic.created_at,
         )
+        related_rows += cf_rows
+        created_extra += cf_created
+
+        rows = build_history_rows(
+            lic, field_specs,
+            movement_fields={"equipment"},
+            movement_events=[{
+                "trigger": "is_retired", "to": True,
+                "consume": ["is_retired", "retired_at", "equipment"],
+                "label": "Утилизирована",
+            }],
+            created_extra_lines=created_extra,
+        )
+        rows += related_rows
 
         rows.sort(key=lambda r: r["date"], reverse=True)
         return Response(rows)

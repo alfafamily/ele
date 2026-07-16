@@ -10,6 +10,8 @@ export function Input({
   helperText,
   type = 'text',
   showToggle = false,
+  multiline = false,
+  rows = 3,
   className = '',
   id,
   ...rest
@@ -38,21 +40,39 @@ export function Input({
               {label} {required ? <span className="ele-field__required">*</span> : null}
             </label>
           ) : null}
-          <input
-            id={inputId}
-            className="ele-field__input"
-            type={resolvedType}
-            aria-invalid={Boolean(errorText)}
-            {...rest}
-            onFocus={(e) => {
-              setFocused(true)
-              rest.onFocus?.(e)
-            }}
-            onBlur={(e) => {
-              setFocused(false)
-              rest.onBlur?.(e)
-            }}
-          />
+          {multiline ? (
+            <textarea
+              id={inputId}
+              className="ele-field__input ele-field__input--multiline"
+              rows={rows}
+              aria-invalid={Boolean(errorText)}
+              {...rest}
+              onFocus={(e) => {
+                setFocused(true)
+                rest.onFocus?.(e)
+              }}
+              onBlur={(e) => {
+                setFocused(false)
+                rest.onBlur?.(e)
+              }}
+            />
+          ) : (
+            <input
+              id={inputId}
+              className="ele-field__input"
+              type={resolvedType}
+              aria-invalid={Boolean(errorText)}
+              {...rest}
+              onFocus={(e) => {
+                setFocused(true)
+                rest.onFocus?.(e)
+              }}
+              onBlur={(e) => {
+                setFocused(false)
+                rest.onBlur?.(e)
+              }}
+            />
+          )}
         </div>
         {showToggle ? (
           <button

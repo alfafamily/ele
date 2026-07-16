@@ -302,9 +302,130 @@
   padding: 24px 30px;
 }
 
-/* Нижняя навигация ниже брейкпоинта ~768px — rail скрывается. */
-.ele-bottom-nav {
+/* Верхняя панель (мобилка) вместо нижнего таббара: профиль · лого · меню.
+   На десктопе скрыта (там rail). */
+.ele-topbar {
   display: none;
+}
+
+.ele-topbar__profile,
+.ele-topbar__menu {
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ele-topbar__menu {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+.ele-topbar__menu:active {
+  background: var(--color-fill-active-tint);
+}
+
+.ele-topbar__logo {
+  height: 22px;
+  width: auto;
+}
+
+/* Выезжающее справа меню + затемняющая подложка. */
+.ele-drawer__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 25, 0.4);
+  z-index: 60;
+}
+
+.ele-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(300px, 82vw);
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  box-shadow: -12px 0 30px -14px rgba(28, 28, 33, 0.35);
+  z-index: 61;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+  overflow-y: auto;
+}
+
+.ele-drawer--open {
+  transform: translateX(0);
+}
+
+.ele-drawer__user {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  color: inherit;
+  margin-bottom: 6px;
+}
+
+.ele-drawer__user-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ele-drawer__user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ele-drawer__user-role {
+  font-size: 11.5px;
+  color: var(--color-text-placeholder);
+}
+
+.ele-drawer__items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ele-drawer__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 46px;
+  padding: 0 12px;
+  border-radius: 10px;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.ele-drawer__item--active {
+  background: var(--color-fill-active-tint);
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.ele-drawer__item-icon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @media (max-width: 768px) {
@@ -314,89 +435,32 @@
 
   .ele-content {
     margin-left: 0;
-    padding-bottom: 66px;
     /* Мобильные списки с фиксированными ширинами колонок скроллятся внутри
        своей карточки (.ele-table__scroll) — страница по горизонтали не едет. */
     overflow-x: hidden;
+  }
+
+  /* Отступ сверху под фиксированную верхнюю панель (когда она показана). */
+  .ele-content--with-topbar {
+    padding-top: 54px;
   }
 
   .ele-content__inner {
     padding: 16px;
   }
 
-  .ele-bottom-nav {
+  .ele-topbar {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-around;
+    align-items: center;
+    justify-content: space-between;
     position: fixed;
+    top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
-    height: 66px;
-    padding-top: 10px;
+    height: 54px;
+    padding: 0 14px;
     background: var(--color-surface);
-    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
     z-index: 40;
   }
-
-  .ele-bottom-nav__item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    color: var(--color-text-placeholder);
-    text-decoration: none;
-    font-size: 10px;
-  }
-
-  .ele-bottom-nav__item--active {
-    color: var(--color-text-primary);
-    font-weight: 600;
-  }
-
-  /* Пункт «Профиль» у админа — <button> с меню; сбрасываем стили кнопки. */
-  button.ele-bottom-nav__item {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-family: inherit;
-    padding: 0;
-  }
-}
-
-/* Мобильное меню профиля (Профиль/Настройки) — всплывает над нижней навигацией.
-   Показывается только на мобиле: открыть его можно лишь кнопкой в .ele-bottom-nav,
-   которая на десктопе скрыта. */
-.ele-profile-menu__backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 45;
-}
-
-.ele-profile-menu {
-  position: fixed;
-  right: 12px;
-  bottom: 74px;
-  z-index: 46;
-  min-width: 180px;
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-block);
-}
-
-.ele-profile-menu__item {
-  padding: 11px 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-primary);
-  text-decoration: none;
-}
-
-.ele-profile-menu__item:active {
-  background: var(--color-fill-active-tint);
 }

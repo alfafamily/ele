@@ -14,7 +14,8 @@ const CACHE_KEY = 'sim-list'
 
 const TABS = [
   { value: 'active', label: 'Активные' },
-  { value: 'deactivated', label: 'Деактивированные' },
+  { value: 'deactivated', label: 'Неиспользуемые' },
+  { value: 'utilized', label: 'Утилизировано' },
 ]
 
 const DESKTOP_COLUMNS = [
@@ -96,13 +97,15 @@ export function SimListPage() {
         </div>
       ) : items.length === 0 ? (
         <EmptyState
-          title={search ? 'Ничего не найдено' : tab === 'deactivated' ? 'Нет деактивированных' : 'Пока пусто'}
+          title={search ? 'Ничего не найдено' : tab === 'utilized' ? 'Нет утилизированных' : tab === 'deactivated' ? 'Нет неиспользуемых' : 'Пока пусто'}
           description={
             search
               ? `По запросу «${search}» SIM-карты не найдены.`
-              : tab === 'deactivated'
-                ? 'Отвязанные от сотрудников SIM-карты будут отображаться здесь.'
-                : 'Когда вы добавите SIM-карту, она будет отображаться здесь.'
+              : tab === 'utilized'
+                ? 'Утилизированные SIM-карты будут отображаться здесь.'
+                : tab === 'deactivated'
+                  ? 'Отвязанные от сотрудников SIM-карты будут отображаться здесь.'
+                  : 'Когда вы добавите SIM-карту, она будет отображаться здесь.'
           }
           action={search ? <Button variant="secondary" onClick={() => setSearch('')}>Сбросить фильтры</Button> : undefined}
         />

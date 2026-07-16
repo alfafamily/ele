@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Banner, Button, Modal } from '../../shared/ui'
+import { Banner, Button, Input, Modal } from '../../shared/ui'
 import { writeOffEquipment } from './equipmentApi.js'
 
 // D3 — списание: блокируется при непогашенных лицензиях, система
 // предлагает «Отвязать и списать» вместо жёсткого отказа.
 export function WriteOffModal({ equipment, onClose, onDone }) {
   const [conflictLicenses, setConflictLicenses] = useState(null) // null=ещё не проверяли, []=нет конфликта
+  const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
@@ -13,7 +14,7 @@ export function WriteOffModal({ equipment, onClose, onDone }) {
     setSubmitting(true)
     setError(null)
     try {
-      const updated = await writeOffEquipment(equipment.id, detach)
+      const updated = await writeOffEquipment(equipment.id, detach, comment.trim() || undefined)
       onDone(updated)
     } catch (err) {
       if (err.status === 409 && err.data.licenses) {
@@ -62,6 +63,15 @@ export function WriteOffModal({ equipment, onClose, onDone }) {
             Объект <b style={{ color: 'var(--color-text-primary)' }}>{equipment.type_and_model}</b> будет перемещён в
             архив. Восстановление из архива через интерфейс не предусмотрено.
           </p>
+          <div style={{ marginTop: 16 }}>
+            <Input
+              label="Комментарий (необязательно)"
+              multiline
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Отобразится в истории движений"
+            />
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}>
             <Button variant="danger-solid" fullWidth loading={submitting} onClick={() => attempt(false)}>
               Списать

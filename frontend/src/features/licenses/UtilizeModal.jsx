@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Banner, Button, Modal } from '../../shared/ui'
+import { Banner, Button, Input, Modal } from '../../shared/ui'
 import { utilizeLicense } from './licensesApi.js'
 
 // L4 — утилизация: отвязывает от оборудования и переводит в архив,
 // без варианта отмены из интерфейса .
 export function UtilizeModal({ license, onClose, onDone }) {
+  const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
@@ -12,7 +13,7 @@ export function UtilizeModal({ license, onClose, onDone }) {
     setSubmitting(true)
     setError(null)
     try {
-      const updated = await utilizeLicense(license.id)
+      const updated = await utilizeLicense(license.id, comment.trim() || undefined)
       onDone(updated)
     } catch (err) {
       setError(err.detail || 'Не удалось утилизировать лицензию.')
@@ -28,6 +29,15 @@ export function UtilizeModal({ license, onClose, onDone }) {
         Лицензия <b style={{ color: 'var(--color-text-primary)' }}>{license.name}</b> будет отвязана от оборудования и
         перемещена в архив. Восстановление из интерфейса не предусмотрено.
       </p>
+      <div style={{ marginTop: 16 }}>
+        <Input
+          label="Комментарий (необязательно)"
+          multiline
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Отобразится в истории движений"
+        />
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
         <Button variant="danger-solid" fullWidth loading={submitting} onClick={submit}>
           Утилизировать

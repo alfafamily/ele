@@ -4,15 +4,15 @@ import { Can, usePermissions } from '../../app/usePermissions.js'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, BackButton, Button, Card, ConfirmModal, Modal, Spinner } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, Modal, Spinner } from '../../shared/ui'
 import {
   attachSimCard,
   deleteSimCard,
-  detachSimCard,
   getSimCard,
   getSimHistoryPath,
 } from '../employees/employeesApi.js'
 import { SimCardModal } from '../employees/SimCardModal.jsx'
+import { SimDisposeModal } from '../employees/SimDisposeModal.jsx'
 
 export function SimCardPage() {
   const { id } = useParams()
@@ -22,7 +22,7 @@ export function SimCardPage() {
   const [loadError, setLoadError] = useState(false)
   const [editModal, setEditModal] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
-  const [confirmDetach, setConfirmDetach] = useState(false)
+  const [disposeModal, setDisposeModal] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const load = useCallback(() => {
@@ -43,18 +43,31 @@ export function SimCardPage() {
     return <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner /></div>
   }
 
+  const statusText = sim.is_utilized ? 'Утилизирована' : sim.is_deactivated ? 'Не используется' : 'Активна'
+
   const onAttach = async (employee) => {
     await attachSimCard(sim.id, employee.id)
     setShowPicker(false)
     load()
   }
-  const onDetach = async () => {
-    await detachSimCard(sim.id)
-    load()
-  }
   const onDelete = async () => {
     await deleteSimCard(sim.id)
     navigate('/sim-cards')
+  }
+
+  // Активная → открепить/утилизировать; свободная → утилизировать или удалить;
+  // утилизированная → только удалить.
+  const actions = []
+  if (perms.canManageEmployees && !sim.is_utilized) {
+    actions.push({ label: 'Редактировать', onClick: () => setEditModal(true) })
+    if (sim.employee) {
+      actions.push({ label: 'Открепить', danger: true, onClick: () => setDisposeModal(true) })
+    } else {
+      actions.push({ label: 'Утилизировать', danger: true, onClick: () => setDisposeModal(true) })
+      actions.push({ label: 'Удалить', danger: true, onClick: () => setConfirmDelete(true) })
+    }
+  } else if (perms.canManageEmployees && sim.is_utilized) {
+    actions.push({ label: 'Удалить', danger: true, onClick: () => setConfirmDelete(true) })
   }
 
   return (
@@ -68,25 +81,15 @@ export function SimCardPage() {
           <BackButton />
           <h1 className="ele-card-title" style={{ fontFamily: 'var(--font-mono)' }}>{sim.phone_number}</h1>
         </div>
-        {perms.canManageEmployees ? (
+        {actions.length ? (
           <>
             <div className="ele-card-actions-desktop">
-              <Button variant="secondary" onClick={() => setEditModal(true)}>Редактировать</Button>
-              {sim.is_deactivated ? (
-                <Button variant="danger" onClick={() => setConfirmDelete(true)}>Удалить</Button>
-              ) : (
-                <Button variant="danger" onClick={() => setConfirmDetach(true)}>Открепить</Button>
-              )}
+              {actions.map((a) => (
+                <Button key={a.label} variant={a.danger ? 'danger' : 'secondary'} onClick={a.onClick}>{a.label}</Button>
+              ))}
             </div>
             <div className="ele-card-actions-mobile">
-              <ActionMenu
-                items={[
-                  { label: 'Редактировать', onClick: () => setEditModal(true) },
-                  sim.is_deactivated
-                    ? { label: 'Удалить', danger: true, onClick: () => setConfirmDelete(true) }
-                    : { label: 'Открепить', danger: true, onClick: () => setConfirmDetach(true) },
-                ]}
-              />
+              <ActionMenu items={actions} />
             </div>
           </>
         ) : null}
@@ -101,13 +104,15 @@ export function SimCardPage() {
               <Field label="Тип" value={sim.sim_type_display} />
               <Field label="Оператор" value={sim.network_operator} />
               <Field label="Поставщик услуг связи" value={sim.provider} />
-              <Field label="Статус" value={sim.is_deactivated ? 'Деактивирована' : 'Активна'} />
+              <Field label="Статус" value={statusText} />
             </div>
           </Card>
 
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Закреплено за</div>
-            {sim.employee ? (
+            {sim.is_utilized ? (
+              <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>{statusText}</div>
+            ) : sim.employee ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600 }}>
                   {nameInitials(sim.employee_name)}
@@ -116,7 +121,7 @@ export function SimCardPage() {
                   {sim.employee_name}
                 </Link>
                 <Can perm="canManageEmployees">
-                  <Button variant="secondary" style={{ marginLeft: 'auto' }} onClick={() => setConfirmDetach(true)}>Открепить</Button>
+                  <Button variant="secondary" style={{ marginLeft: 'auto' }} onClick={() => setDisposeModal(true)}>Открепить</Button>
                 </Can>
               </div>
             ) : showPicker ? (
@@ -148,12 +153,14 @@ export function SimCardPage() {
         />
       ) : null}
 
-      {confirmDetach ? (
-        <ConfirmModal
-          title="Открепить SIM-карту?"
-          message={`SIM-карта ${sim.phone_number} будет откреплена от сотрудника ${sim.employee_name} и станет свободной.`}
-          onConfirm={onDetach}
-          onClose={() => setConfirmDetach(false)}
+      {disposeModal ? (
+        <SimDisposeModal
+          sim={sim}
+          onClose={() => setDisposeModal(false)}
+          onDone={() => {
+            setDisposeModal(false)
+            load()
+          }}
         />
       ) : null}
 

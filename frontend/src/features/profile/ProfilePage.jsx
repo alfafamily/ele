@@ -207,9 +207,9 @@ export function ProfilePage() {
 
         {employee ? (
           <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Пропуска</div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Средства доступа</div>
             {passes.length === 0 ? (
-              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено пропусков.</div>
+              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено средств доступа.</div>
             ) : (
               passes.map((pass) => (
                 <div key={pass.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>

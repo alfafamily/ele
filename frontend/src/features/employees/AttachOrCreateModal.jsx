@@ -20,15 +20,23 @@ const CONFIG = {
       [o.phone_number, o.network_operator, o.provider].some((v) => (v || '').toLowerCase().includes(q)),
   },
   pass: {
-    title: 'Привязать пропуск',
+    title: 'Привязать средство доступа',
     path: '/api/access-passes/?tab=deactivated',
     placeholder: 'Поиск по названию или учётному номеру',
-    empty: 'Нет свободных пропусков',
-    emptyHint: 'Все пропуска закреплены за сотрудниками. Создайте новый.',
-    createLabel: '+ Создать пропуск',
+    empty: 'Нет свободных средств доступа',
+    emptyHint: 'Все пропуска и ключи закреплены за сотрудниками. Создайте новое.',
+    createLabel: '+ Создать средство доступа',
     attach: attachPass,
     match: (o, q) => [o.name, o.account_number].some((v) => (v || '').toLowerCase().includes(q)),
   },
+}
+
+// У ключа ровно один объект: одно помещение (с указанием здания) либо здание.
+function keyTargetText(pass) {
+  const b = (pass.buildings || [])[0]
+  const r = (pass.rooms || [])[0]
+  if (!b) return '—'
+  return r ? `${r.name} (${b.name})` : b.name
 }
 
 function SimRow({ item }) {
@@ -46,10 +54,13 @@ function SimRow({ item }) {
 }
 
 function PassRow({ item }) {
-  const types = [item.type_vehicle && 'Авто', item.type_pedestrian && 'Пеший'].filter(Boolean).join(', ')
+  const isKey = item.object_type === 'key'
+  const types = isKey ? 'Ключ' : [item.type_vehicle && 'Авто', item.type_pedestrian && 'Пеший'].filter(Boolean).join(', ')
   return (
     <span style={{ minWidth: 0, flex: 1 }}>
-      <div style={{ fontSize: 13.5, fontWeight: 600 }}>{item.name || 'Без названия'}</div>
+      <div style={{ fontSize: 13.5, fontWeight: 600 }}>
+        {isKey ? `Ключ · ${keyTargetText(item)}` : `Пропуск · ${item.name || 'без названия'}`}
+      </div>
       <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
         № {item.account_number && item.account_number.trim() ? item.account_number : 'б/н'}{types ? ` · ${types}` : ''}
       </div>
