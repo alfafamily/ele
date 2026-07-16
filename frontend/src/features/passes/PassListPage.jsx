@@ -6,7 +6,7 @@ import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
-import { Button, EmptyState, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { Badge, Button, EmptyState, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 import { PassModal } from '../employees/PassModal.jsx'
 
 const CACHE_KEY = 'pass-list'
@@ -21,8 +21,6 @@ const COLUMNS = [
   { key: 'access', label: 'Доступ в', width: 'minmax(0, 1.3fr)' },
   { key: 'chevron', label: '', width: '30px' },
 ]
-
-const typeBadgeStyle = { fontSize: 10.5, fontWeight: 700, color: 'var(--color-text-secondary)', background: 'var(--color-fill-active-tint)', padding: '1px 6px', borderRadius: 5, whiteSpace: 'nowrap' }
 
 // Строки «Доступ в»: по строке на здание с перечнем помещений (или «все
 // помещения»). Тот же принцип, что и в PassInfo.
@@ -114,8 +112,8 @@ export function PassListPage() {
                   </div>
                   {row.type_vehicle || row.type_pedestrian ? (
                     <div style={{ display: 'flex', gap: 5, marginTop: 5 }}>
-                      {row.type_vehicle ? <span style={typeBadgeStyle}>Авто</span> : null}
-                      {row.type_pedestrian ? <span style={typeBadgeStyle}>Пеший</span> : null}
+                      {row.type_vehicle ? <Badge>Авто</Badge> : null}
+                      {row.type_pedestrian ? <Badge>Пеший</Badge> : null}
                     </div>
                   ) : null}
                 </div>

@@ -1,20 +1,15 @@
+import { Badge } from '../../shared/ui'
+
 // Левая (информационная) часть строки Пропуска — общая для карточки Сотрудника
 // и Профиля. Показывается только за сотрудником (значит, всегда активен),
 // поэтому плашки статуса нет. Сверху: Название · Учётный номер. Ниже — плашки
 // типа (Авто/Пеший) отдельной строкой, затем по строке на каждое здание с
 // перечнем помещений (или «все помещения», если для здания ничего не выбрано).
+// Плашки типа — штатный Badge (контрастен к серой подложке блока), не свой
+// низкоконтрастный tint.
 export function PassInfo({ pass }) {
   const buildings = pass.buildings || []
   const rooms = pass.rooms || []
-  const typeBadgeStyle = {
-    fontSize: 11,
-    fontWeight: 700,
-    color: 'var(--color-text-secondary)',
-    background: 'var(--color-fill-active-tint)',
-    padding: '1px 7px',
-    borderRadius: 5,
-    whiteSpace: 'nowrap',
-  }
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -27,8 +22,8 @@ export function PassInfo({ pass }) {
       </div>
       {pass.type_vehicle || pass.type_pedestrian ? (
         <div style={{ display: 'flex', gap: 6, marginTop: 5 }}>
-          {pass.type_vehicle ? <span style={typeBadgeStyle}>Авто</span> : null}
-          {pass.type_pedestrian ? <span style={typeBadgeStyle}>Пеший</span> : null}
+          {pass.type_vehicle ? <Badge>Авто</Badge> : null}
+          {pass.type_pedestrian ? <Badge>Пеший</Badge> : null}
         </div>
       ) : null}
       <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
