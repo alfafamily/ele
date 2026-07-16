@@ -6,11 +6,11 @@ import { Icon } from '../shared/ui/Icon/Icon.jsx'
 const nav = (name) => () => <Icon name={name} size={22} strokeWidth={1.7} />
 
 export const EquipmentIcon = nav('tag')
-export const LicensesIcon = nav('key-round')
+export const LicensesIcon = nav('scroll-text')
 export const PremisesIcon = nav('building-2')
 export const EmployeesIcon = nav('users')
-export const SimIcon = nav('smartphone')
-export const PassesIcon = nav('id-card')
+export const SimIcon = nav('radio-tower')
+export const PassesIcon = nav('key-square')
 export const SettingsIcon = nav('settings')
 export const HelpIcon = nav('library-big')
 export const MoreIcon = nav('blocks')
