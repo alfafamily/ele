@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { apiPatch } from '../../shared/api/client'
 import { Can, usePermissions } from '../../app/usePermissions.js'
-import { ActionMenu, BackButton, Button, Card, Spinner, StatusPill } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, Icon, Spinner, StatusPill } from '../../shared/ui'
 import { nameInitials } from '../../shared/employeeName.js'
 import { deactivatePass, deactivateSimCard, getEmployee, uploadEmployeeAvatar } from './employeesApi.js'
 import { PassInfo } from './PassInfo.jsx'
@@ -163,9 +163,7 @@ export function EmployeeCardPage() {
                   </Button>
                 </Can>
                 <Link to={`/equipment/${eq.id}`} style={{ width: 28, height: 28, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C7C9D4" strokeWidth="2">
-                    <path d="M9 6l6 6-6 6" />
-                  </svg>
+                  <Icon name="chevron-right" size={16} strokeWidth={2} style={{ color: '#C7C9D4' }} />
                 </Link>
               </div>
             ))

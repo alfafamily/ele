@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, BackButton, Button, Card, Spinner } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
 import { AttachEquipmentModal } from './AttachEquipmentModal.jsx'
 import { detachLicenseFromEquipment, getLicense, getLicenseHistoryPath } from './licensesApi.js'
 import { MaskedKeyField } from './MaskedKeyField.jsx'
@@ -171,9 +171,7 @@ export function LicenseCardPage() {
                   <div className="ele-clamp-2" style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>{license.equipment_detail.type_and_model}</div>
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', overflowWrap: 'anywhere' }}>{license.equipment_detail.inventory_number}</div>
                 </div>
-                <svg style={{ flex: 'none' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C7C9D4" strokeWidth="2">
-                  <path d="M9 6l6 6-6 6" />
-                </svg>
+                <Icon name="chevron-right" size={16} strokeWidth={2} style={{ flex: 'none', color: '#C7C9D4' }} />
               </Link>
               {!license.is_retired ? (
                 <Can perm="canManageLicenses">

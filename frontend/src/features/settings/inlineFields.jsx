@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Input } from '../../shared/ui'
+import { Icon, Input } from '../../shared/ui'
 
 // Ширина полей ввода/просмотра — под ~20 символов, не на всю ширину блока.
 export const FIELD_W = 'min(100%, 220px)'
@@ -7,29 +7,7 @@ export const FIELD_W = 'min(100%, 220px)'
 export const fieldError = (e) =>
   e.errors ? Object.values(e.errors).flat().join(' ') : e.detail || 'Не удалось сохранить.'
 
-function iconPaths(kind) {
-  switch (kind) {
-    case 'edit':
-      return (
-        <>
-          <path d="M12 20h9" />
-          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
-        </>
-      )
-    case 'delete':
-      return (
-        <>
-          <path d="M4 7h16" />
-          <path d="M9 7V5h6v2" />
-          <path d="M6 7l1 13h10l1-13" />
-        </>
-      )
-    case 'apply':
-      return <path d="M5 12l5 5L20 6" />
-    default: // cancel
-      return <path d="M18 6L6 18M6 6l12 12" />
-  }
-}
+const ICON_BY_KIND = { edit: 'square-pen', delete: 'trash-2', apply: 'check', cancel: 'x' }
 
 // Иконочная кнопка действия. Плоская (в режиме просмотра — рядом с полем) или
 // outlined — полноценная кнопка в высоту инпута с контуром (как «…» в списках),
@@ -42,9 +20,7 @@ export function IconBtn({ kind, title, onClick, disabled, outlined }) {
     : { ...base, background: 'none', padding: 6 }
   return (
     <button type="button" title={title} aria-label={title} onClick={onClick} disabled={disabled} style={style}>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        {iconPaths(kind)}
-      </svg>
+      <Icon name={ICON_BY_KIND[kind] || 'x'} size={18} />
     </button>
   )
 }

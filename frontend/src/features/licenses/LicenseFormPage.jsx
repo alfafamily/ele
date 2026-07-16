@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { apiPost } from '../../shared/api/client'
 import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
-import { Banner, Button, Card, Input, Select, Spinner } from '../../shared/ui'
+import { Banner, Button, Card, Icon, Input, Select, Spinner } from '../../shared/ui'
 import {
   createLicense,
   deleteLicenseFieldFilePath,
@@ -129,15 +129,11 @@ export function LicenseFormPage() {
           <div style={{ display: 'flex', gap: 10, flex: 'none' }}>
             <Button variant="secondary" onClick={() => navigate(-1)} aria-label="Отмена">
               <span className="ele-only-desktop">Отмена</span>
-              <svg className="ele-only-mobile" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
+              <Icon className="ele-only-mobile" name="x" size={18} strokeWidth={2} />
             </Button>
             <Button loading={submitting} onClick={submit} aria-label="Сохранить">
               <span className="ele-only-desktop">Сохранить</span>
-              <svg className="ele-only-mobile" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12l5 5L20 6" />
-              </svg>
+              <Icon className="ele-only-mobile" name="check" size={18} strokeWidth={2.2} />
             </Button>
           </div>
         </div>

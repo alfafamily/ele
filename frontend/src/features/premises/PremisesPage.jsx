@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
-import { ActionMenu, Badge, Banner, Button, Modal, Spinner } from '../../shared/ui'
+import { ActionMenu, Badge, Banner, Button, Icon, Modal, Spinner } from '../../shared/ui'
 import { BuildingModal } from './BuildingModal.jsx'
 import { PlaceModal } from './PlaceModal.jsx'
 import { RoomModal } from './RoomModal.jsx'
@@ -356,9 +356,7 @@ function RoomRow({ room, buildingArchived, open, onToggle, canManage, onEdit, on
         style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 13px', cursor: expandable ? 'pointer' : 'default' }}
       >
         {expandable ? (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-placeholder)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .16s' }}>
-            <path d="M9 6l6 6-6 6" />
-          </svg>
+          <Icon name="chevron-right" size={16} strokeWidth={2.2} style={{ flex: 'none', color: 'var(--color-text-placeholder)', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .16s' }} />
         ) : (
           <span style={{ width: 16, flex: 'none' }} />
         )}
@@ -489,10 +487,5 @@ const toggleBtnStyle = {
 }
 
 function BuildingGlyph() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 21h18M6 21V6l7-3v18M18 21V10l-5-2" />
-      <path d="M9 9h.01M9 12h.01M9 15h.01" />
-    </svg>
-  )
+  return <Icon name="building-2" size={18} strokeWidth={1.7} />
 }

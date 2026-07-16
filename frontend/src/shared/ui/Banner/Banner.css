@@ -9,16 +9,11 @@
 }
 
 .ele-banner__icon {
-  width: 18px;
-  height: 18px;
   flex: none;
-  border-radius: 50%;
-  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
+  margin-top: 1px;
 }
 
 .ele-banner--error {
@@ -26,7 +21,7 @@
   color: #c0392b;
 }
 .ele-banner--error .ele-banner__icon {
-  background: var(--color-error);
+  color: var(--color-error);
 }
 
 .ele-banner--warning {
@@ -34,7 +29,7 @@
   color: #8a5a12;
 }
 .ele-banner--warning .ele-banner__icon {
-  background: var(--color-warning);
+  color: var(--color-warning);
 }
 
 .ele-banner--success {
@@ -42,7 +37,7 @@
   color: #1c7a44;
 }
 .ele-banner--success .ele-banner__icon {
-  background: var(--color-success);
+  color: var(--color-success);
 }
 
 .ele-banner--info {
@@ -50,5 +45,5 @@
   color: #1f56c4;
 }
 .ele-banner--info .ele-banner__icon {
-  background: var(--color-info);
+  color: var(--color-info);
 }

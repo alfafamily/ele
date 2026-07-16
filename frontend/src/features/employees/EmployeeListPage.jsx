@@ -8,7 +8,7 @@ import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { nameInitials } from '../../shared/employeeName.js'
-import { Button, EmptyState, SearchInput, Skeleton, StatusPill, Table, TableRow } from '../../shared/ui'
+import { Button, EmptyState, Icon, SearchInput, Skeleton, StatusPill, Table, TableRow } from '../../shared/ui'
 
 const CACHE_KEY = 'employee-list'
 
@@ -154,9 +154,7 @@ export function EmployeeListPage() {
                       <StatusPill variant={row.is_employed ? 'assigned' : 'archived'}>{row.is_employed ? 'Работает' : 'Уволен'}</StatusPill>
                     </div>
                     <div style={{ textAlign: 'right', color: 'var(--color-border-strong)' }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M9 6l6 6-6 6" />
-                      </svg>
+                      <Icon name="chevron-right" size={18} strokeWidth={2} />
                     </div>
                   </>
                 )}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Icon } from '../ui/Icon/Icon.jsx'
 import './FilePreviewModal.css'
 
 // Определяем, можно ли показать файл во встроенном просмотрщике, по MIME-типу
@@ -50,7 +51,7 @@ export function FilePreviewModal({ file, onClose }) {
               Скачать
             </a>
             <button type="button" className="ele-filepreview__close" onClick={onClose} aria-label="Закрыть">
-              ✕
+              <Icon name="x" size={17} strokeWidth={2} />
             </button>
           </div>
         </div>
@@ -66,10 +67,7 @@ export function FilePreviewModal({ file, onClose }) {
           ) : (
             <div className="ele-filepreview__fallback">
               <div className="ele-filepreview__fallback-icon">
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-                  <path d="M14 3v5h5" />
-                </svg>
+                <Icon name="file-text" size={30} strokeWidth={1.7} />
               </div>
               <div className="ele-filepreview__fallback-title">Предпросмотр недоступен</div>
               <div className="ele-filepreview__fallback-text">

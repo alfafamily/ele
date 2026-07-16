@@ -3,7 +3,7 @@ import { InfiniteScrollSentinel } from '../../shared/InfiniteScrollSentinel.jsx'
 import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { roleLabel } from '../../shared/roles.js'
 import { nameInitials } from '../../shared/employeeName.js'
-import { Banner, Button, Skeleton, StatusPill, Table, TableRow } from '../../shared/ui'
+import { Banner, Button, Icon, Skeleton, StatusPill, Table, TableRow } from '../../shared/ui'
 import { DeactivateUserModal } from './DeactivateUserModal.jsx'
 import { EditUserModal } from './EditUserModal.jsx'
 import { InviteModal } from './InviteModal.jsx'
@@ -132,10 +132,7 @@ export function UsersTab() {
                     aria-label="Деактивировать пользователя"
                   >
                     {/* Иконка «power» (вкл/выкл) — понятнее, чем «…»: действие именно деактивация */}
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 4v8" />
-                      <path d="M7.5 7a7 7 0 1 0 9 0" />
-                    </svg>
+                    <Icon name="power" size={18} />
                   </button>
                 ) : (
                   <button
@@ -154,10 +151,7 @@ export function UsersTab() {
                     aria-label="Активировать пользователя"
                   >
                     {/* Та же «power»-иконка, но в success-цвете — обратное действие: включить */}
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 4v8" />
-                      <path d="M7.5 7a7 7 0 1 0 9 0" />
-                    </svg>
+                    <Icon name="power" size={18} />
                   </button>
                 )}
               </div>

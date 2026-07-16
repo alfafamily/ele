@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { Icon } from '../Icon/Icon.jsx'
 import './Modal.css'
 
 // Один компонент, две раскладки по CSS-медиа-запросу: модалка по
@@ -23,7 +24,7 @@ export function Modal({ open, onClose, title, children }) {
         <div className="ele-modal__grabber" aria-hidden />
         {onClose ? (
           <button type="button" className="ele-modal__close" onClick={onClose} aria-label="Закрыть">
-            ✕
+            <Icon name="x" size={17} strokeWidth={2} />
           </button>
         ) : null}
         {title ? <div className="ele-modal__title">{title}</div> : null}

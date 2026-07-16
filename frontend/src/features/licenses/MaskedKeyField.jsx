@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Icon } from '../../shared/ui'
 
 // «Номер/ключ» — маскирован по умолчанию, раскрывается по кнопке-
 // «глаз», копирование доступно только в раскрытом виде. fv.name === 'Номер/ключ'
@@ -26,32 +27,17 @@ export function MaskedKeyField({ fv }) {
           onClick={() => setRevealed((r) => !r)}
           style={iconBtnStyle}
         >
-          {revealed ? (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#757784" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-              <path d="M4 4l16 16" />
-            </svg>
-          ) : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#757784" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          )}
+          <Icon name={revealed ? 'eye-off' : 'eye'} size={16} style={{ color: '#757784' }} />
         </button>
         {revealed ? (
           <button type="button" title="Копировать" onClick={copy} style={iconBtnStyle}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#757784" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="9" y="9" width="11" height="11" rx="2" />
-              <path d="M5 15V5a2 2 0 0 1 2-2h10" />
-            </svg>
+            <Icon name="copy" size={15} style={{ color: '#757784' }} />
           </button>
         ) : null}
       </div>
       {copied ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: 'var(--color-success)', marginTop: 7 }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12l5 5L20 6" />
-          </svg>
+          <Icon name="check" size={13} strokeWidth={2.4} />
           Скопировано
         </div>
       ) : null}
@@ -84,17 +70,7 @@ export function InlineMaskedKey({ value }) {
         onClick={toggle}
         style={{ width: 22, height: 22, flex: 'none', borderRadius: 6, background: 'transparent', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
       >
-        {revealed ? (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#757784" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-            <path d="M4 4l16 16" />
-          </svg>
-        ) : (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#757784" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-        )}
+        <Icon name={revealed ? 'eye-off' : 'eye'} size={14} style={{ color: '#757784' }} />
       </button>
     </div>
   )

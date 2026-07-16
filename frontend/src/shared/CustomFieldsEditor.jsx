@@ -1,4 +1,5 @@
 import { Button, Input } from './ui'
+import { Icon } from './ui/Icon/Icon.jsx'
 
 // «Дополнительные поля» — произвольные текстовые пары
 // имя/значение, создаются пользователем для конкретного объекта, не через
@@ -39,7 +40,7 @@ export function CustomFieldsEditor({ items, onChange }) {
             }}
             aria-label="Удалить поле"
           >
-            ✕
+            <Icon name="x" size={16} strokeWidth={2} />
           </button>
         </div>
       ))}

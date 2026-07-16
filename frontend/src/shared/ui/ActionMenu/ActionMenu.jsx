@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useMediaQuery } from '../../hooks/useMediaQuery.js'
 import { Button } from '../Button/Button.jsx'
 import { Modal } from '../Modal/Modal.jsx'
+import { Icon } from '../Icon/Icon.jsx'
 import './ActionMenu.css'
 
 // Кнопка «…» с меню действий. На desktop — выпадающий список; на мобильных
@@ -37,11 +38,7 @@ export function ActionMenu({ items, label = 'Действия', title = 'Выб�
       aria-haspopup="menu"
       aria-expanded={open}
     >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-        <circle cx="5" cy="12" r="1.4" />
-        <circle cx="12" cy="12" r="1.4" />
-        <circle cx="19" cy="12" r="1.4" />
-      </svg>
+      <Icon name="ellipsis" size={20} strokeWidth={2} />
     </button>
   )
 

@@ -6,7 +6,7 @@ import { FieldValueDisplay } from '../../shared/eav'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, BackButton, Button, Card, Spinner } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
 import { AttachLicenseModal } from './AttachLicenseModal.jsx'
 import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
 import { assignEmployee, getEquipment, getEquipmentHistoryPath, unassignEmployee } from './equipmentApi.js'
@@ -238,9 +238,9 @@ export function EquipmentCardPage() {
                     type="button"
                     title="Отвязать"
                     onClick={() => onDetachLicense(lic.id)}
-                    style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                    style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
-                    ✕
+                    <Icon name="x" size={16} strokeWidth={2} />
                   </button>
                 </Can>
               ) : null}

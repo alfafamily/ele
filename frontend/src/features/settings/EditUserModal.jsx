@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
-import { Banner, Button, Checkbox, Modal, Select } from '../../shared/ui'
+import { Banner, Button, Checkbox, Icon, Modal, Select } from '../../shared/ui'
 import { updateUser } from './settingsApi.js'
 
 const ROLE_OPTIONS = [
@@ -142,10 +142,7 @@ export function EditUserModal({ user, onClose, onSaved }) {
                   justifyContent: 'center',
                 }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C7C9D4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="8" r="3.4" />
-                  <path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6" />
-                </svg>
+                <Icon name="user" size={20} style={{ color: '#C7C9D4' }} />
               </span>
               Не связан — выбрать сотрудника
             </button>

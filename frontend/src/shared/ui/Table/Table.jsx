@@ -1,3 +1,4 @@
+import { Icon } from '../Icon/Icon.jsx'
 import './Table.css'
 
 // Один и тот же grid-паттерн колонок повторяется во всех списках спеки
@@ -66,17 +67,8 @@ export function TableRow({ columns, children, style, ...rest }) {
 
 function SortIcon({ active, dir }) {
   if (!active) {
-    return (
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#C7C9D4" strokeWidth="2">
-        <path d="M8 9l4-4 4 4M8 15l4 4 4-4" />
-      </svg>
-    )
+    return <Icon name="chevrons-up-down" size={12} strokeWidth={2} style={{ color: '#C7C9D4' }} />
   }
-  const path = dir === 'asc' ? 'M6 13l6 6 6-6' : 'M6 11l6-6 6 6'
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1C1C21" strokeWidth="2.4">
-      <path d={`M12 5v14${dir === 'asc' ? '' : ''}`} />
-      <path d={path} />
-    </svg>
-  )
+  // asc — стрелка вниз, desc — стрелка вверх (сохраняем прежнее направление).
+  return <Icon name={dir === 'asc' ? 'arrow-down' : 'arrow-up'} size={12} strokeWidth={2.4} style={{ color: '#1C1C21' }} />
 }

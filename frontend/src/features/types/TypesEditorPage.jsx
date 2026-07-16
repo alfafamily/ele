@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { VALUE_TYPE_LABELS } from '../../shared/eav'
-import { ActionMenu, Badge, Banner, BackButton, Button, Card, Spinner } from '../../shared/ui'
+import { ActionMenu, Badge, Banner, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
 import { DeleteTypeModal } from './DeleteTypeModal.jsx'
 import { FieldFormModal } from './FieldFormModal.jsx'
 import { NewTypeModal } from './NewTypeModal.jsx'
@@ -140,10 +140,7 @@ export function TypesEditorPage({ domain, title }) {
 
             {selected.objects_count > 0 && !selected.is_locked ? (
               <div style={{ fontSize: 11, color: 'var(--color-text-placeholder)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="5" y="11" width="14" height="9" rx="2" />
-                  <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-                </svg>
+                <Icon name="lock" size={13} strokeWidth={2} />
                 Удаление недоступно: к типу привязаны объекты. Доступно архивирование (в меню списка слева).
               </div>
             ) : null}

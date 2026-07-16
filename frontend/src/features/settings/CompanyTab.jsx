@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useCompany, useRefreshCompany } from '../../app/CompanyContext.jsx'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
-import { Banner, Card, Spinner } from '../../shared/ui'
+import { Banner, Card, Icon, Spinner } from '../../shared/ui'
 import { fieldError, InlineField } from './inlineFields.jsx'
 import { deleteCompanyLogo, getCompanySettings, updateCompanySettings, uploadCompanyLogo } from './settingsApi.js'
 
@@ -155,9 +155,7 @@ export function CompanyTab() {
           onClick={pickLogo}
           style={{ width: TILE, height: TILE, borderRadius: 16, border: '1.5px dashed var(--color-border-strong)', background: 'var(--color-fill-active-tint)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'var(--color-text-muted)', fontFamily: 'inherit' }}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
+          <Icon name="plus" size={22} strokeWidth={1.8} />
           <span style={{ fontSize: 11 }}>Логотип</span>
         </button>
       )}

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { Icon } from '../Icon/Icon.jsx'
 import './BackButton.css'
 
 // Кнопка-иконка «Назад» в шапках вложенных экранов (карточки объектов,
@@ -17,9 +18,7 @@ export function BackButton({ onClick, className = '', ...rest }) {
       className={['ele-back-btn', className].filter(Boolean).join(' ')}
       {...rest}
     >
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M15 18l-6-6 6-6" />
-      </svg>
+      <Icon name="chevron-left" size={32} strokeWidth={2.2} />
     </button>
   )
 }

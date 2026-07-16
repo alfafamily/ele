@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Banner, Card, Skeleton } from '../../shared/ui'
+import { Banner, Card, Icon, Skeleton } from '../../shared/ui'
 import { getUpdateInfo } from './settingsApi.js'
 
 // Команда обновления — из docs/INSTALL.md («Обновление версии»). Каталог
@@ -68,8 +68,9 @@ export function UpdateTab() {
 
           {info.update_available ? (
             <>
-              <a href={info.release_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
-                Показать изменения ↗
+              <a href={info.release_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'none' }}>
+                Показать изменения
+                <Icon name="external-link" size={14} strokeWidth={1.9} />
               </a>
               <div>
                 <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 6 }}>
@@ -102,16 +103,7 @@ export function UpdateTab() {
                       appearance: 'none',
                     }}
                   >
-                    {copied ? (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M20 6 9 17l-5-5" />
-                      </svg>
-                    ) : (
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="9" y="9" width="13" height="13" rx="2" />
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                      </svg>
-                    )}
+                    {copied ? <Icon name="check" size={16} strokeWidth={2} /> : <Icon name="copy" size={15} strokeWidth={1.8} />}
                   </button>
                 </div>
               </div>

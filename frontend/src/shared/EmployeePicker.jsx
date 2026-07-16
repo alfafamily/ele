@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { apiGet } from './api/client'
 import { nameInitials } from './employeeName'
 import { useDebouncedValue } from './hooks/useDebouncedValue'
+import { Icon } from './ui/Icon/Icon.jsx'
 
 // Подбор Сотрудника с поиском (C2 «Закрепить сотрудника», форма Оборудования,
 // модалка приглашения) — общий для всех мест, где нужен именно Сотрудник
@@ -42,10 +43,7 @@ export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40 }) {
           padding: '0 12px',
         }}
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#757784" strokeWidth="1.8">
-          <circle cx="11" cy="11" r="7" />
-          <path d="M20 20l-3.5-3.5" />
-        </svg>
+        <Icon name="search" size={16} style={{ color: '#757784' }} />
         <input
           autoFocus={autoFocus}
           value={query}

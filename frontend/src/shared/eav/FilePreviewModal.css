@@ -78,7 +78,9 @@
   border: none;
   color: var(--color-text-muted);
   cursor: pointer;
-  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ele-filepreview__body {

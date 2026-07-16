@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { SmartCaptcha } from '../auth/SmartCaptcha.jsx'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
-import { Banner, Button, Card, Input, Spinner } from '../../shared/ui'
+import { Banner, Button, Card, Icon, Input, Spinner } from '../../shared/ui'
 import { FieldView, fieldError, FIELD_W, IconBtn, InlineField } from './inlineFields.jsx'
 import {
   checkCaptcha,
@@ -23,14 +23,16 @@ const checkRow = { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wr
 
 const normalizeIps = (list) => (list || []).map((e) => ({ ip: e.ip || '', note: e.note || '' }))
 
-// Индикатор результата проверки рядом с кнопкой: зелёный кружок с галочкой при
-// успехе; красный кружок с крестиком и текстом ошибки при неудаче.
+// Индикатор результата проверки рядом с кнопкой: зелёная галочка-в-круге при
+// успехе; красный крестик-в-круге и текст ошибки при неудаче.
 function StatusDot({ ok }) {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" style={{ flex: 'none' }} aria-hidden>
-      <circle cx="12" cy="12" r="10" fill={ok ? 'var(--color-success)' : 'var(--color-error)'} />
-      <path d={ok ? 'M7 12.5l3 3 7-7' : 'M8.5 8.5l7 7M15.5 8.5l-7 7'} fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <Icon
+      name={ok ? 'circle-check' : 'circle-x'}
+      size={20}
+      strokeWidth={2}
+      style={{ flex: 'none', color: ok ? 'var(--color-success)' : 'var(--color-error)' }}
+    />
   )
 }
 function CheckResult({ result }) {

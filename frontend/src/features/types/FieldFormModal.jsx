@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { VALUE_TYPE_OPTIONS } from '../../shared/eav'
-import { Banner, Button, Checkbox, Input, Modal, Select } from '../../shared/ui'
+import { Banner, Button, Checkbox, Icon, Input, Modal, Select } from '../../shared/ui'
 
 // Добавление/редактирование реквизита Типа . Смена value_type
 // у существующего реквизита не предусмотрена спекой — при редактировании
@@ -69,9 +69,7 @@ export function FieldFormModal({ field, checkImpact, onClose, onSave }) {
     return (
       <Modal open onClose={onClose}>
         <div style={{ width: 48, height: 48, borderRadius: 13, background: 'var(--color-warning-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 9v4M12 17h.01M10.3 3.9L2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
-          </svg>
+          <Icon name="triangle-alert" size={24} strokeWidth={1.9} style={{ color: 'var(--color-warning)' }} />
         </div>
         <div style={{ fontSize: 19, fontWeight: 600, marginBottom: 8 }}>Сделать реквизит обязательным?</div>
         <p style={{ fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
@@ -135,9 +133,7 @@ export function FieldFormModal({ field, checkImpact, onClose, onSave }) {
                     onClick={() => setOptions((prev) => prev.filter((_, j) => j !== i))}
                     style={{ flex: 'none', width: 34, height: 34, borderRadius: 8, background: 'var(--color-fill-input)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M18 6L6 18M6 6l12 12" />
-                    </svg>
+                    <Icon name="x" size={15} strokeWidth={2} style={{ color: 'var(--color-text-muted)' }} />
                   </button>
                 </div>
               ))}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiPost } from '../../shared/api/client'
-import { Button, Input } from '../../shared/ui'
+import { Button, Icon, Input } from '../../shared/ui'
 import { AuthShell } from './AuthShell.jsx'
 
 const RESEND_COOLDOWN = 60
@@ -36,10 +36,7 @@ export function PasswordResetRequestPage() {
     return (
       <AuthShell>
         <div className="ele-auth-icon-circle" style={{ background: 'var(--color-success-bg)' }}>
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="5" width="18" height="14" rx="2" />
-            <path d="M3 7l9 6 9-6" />
-          </svg>
+          <Icon name="mail" size={30} strokeWidth={1.8} style={{ color: 'var(--color-success)' }} />
         </div>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 20, fontWeight: 600 }}>Проверьте почту</div>

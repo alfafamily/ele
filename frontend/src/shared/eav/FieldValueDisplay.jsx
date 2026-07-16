@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { FilePreviewModal } from './FilePreviewModal.jsx'
+import { Icon } from '../ui/Icon/Icon.jsx'
 
 // Read-only отображение значения реквизита в блоке «Параметры оборудования»/
 // «Параметры лицензии» карточки . fv — элемент field_values
@@ -36,10 +37,7 @@ export function FieldValueDisplay({ fv }) {
               textAlign: 'left',
             }}
           >
-            <svg style={{ flex: 'none' }} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-              <path d="M14 3v5h5" />
-            </svg>
+            <Icon name="file-text" size={15} style={{ flex: 'none' }} />
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.original_filename}</span>
           </button>
         ))}

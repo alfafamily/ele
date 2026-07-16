@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { apiPost } from '../../shared/api/client'
-import { Spinner } from '../../shared/ui'
+import { Icon, Spinner } from '../../shared/ui'
 import { AuthShell } from './AuthShell.jsx'
 
 // Переход по ссылке из письма «Подтверждение email».
@@ -42,14 +42,9 @@ export function ConfirmEmailTokenPage() {
     <AuthShell>
       <div className="ele-auth-icon-circle" style={{ background: ok ? 'var(--color-success-bg)' : 'var(--color-error-bg)' }}>
         {ok ? (
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12l5 5L20 6" />
-          </svg>
+          <Icon name="check" size={30} strokeWidth={2.2} style={{ color: 'var(--color-success)' }} />
         ) : (
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--color-error)" strokeWidth="2" strokeLinecap="round">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 8v5M12 16h.01" />
-          </svg>
+          <Icon name="circle-alert" size={30} strokeWidth={2} style={{ color: 'var(--color-error)' }} />
         )}
       </div>
       <div style={{ textAlign: 'center' }}>

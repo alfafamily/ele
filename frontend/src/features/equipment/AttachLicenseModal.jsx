@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { apiPatch } from '../../shared/api/client'
 import { fetchAllPages } from '../../shared/api/fetchAll'
-import { Button, EmptyState, Modal } from '../../shared/ui'
+import { Button, EmptyState, Icon, Modal } from '../../shared/ui'
 import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
 
 // D4 — привязка лицензии к оборудованию. При заявленном масштабе дешевле один
@@ -124,11 +124,7 @@ export function AttachLicenseModal({ equipment, onClose, onAttached }) {
                         justifyContent: 'center',
                       }}
                     >
-                      {checked ? (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M5 12l5 5L20 6" />
-                        </svg>
-                      ) : null}
+                      {checked ? <Icon name="check" size={12} strokeWidth={3} style={{ color: '#fff' }} /> : null}
                     </span>
                     <span style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 600 }}>{lic.name}</div>

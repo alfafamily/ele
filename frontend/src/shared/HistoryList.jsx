@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from './api/client'
 import { Skeleton } from './ui'
+import { Icon } from './ui/Icon/Icon.jsx'
 import './HistoryList.css'
 
 function formatDate(iso) {
@@ -23,17 +24,7 @@ function HistoryValue({ row }) {
       <span className="ele-history__new">{next}</span>
       {row.secret ? (
         <button type="button" className="ele-history__eye" onClick={() => setRevealed((r) => !r)} title={revealed ? 'Скрыть' : 'Показать'} aria-label={revealed ? 'Скрыть' : 'Показать'}>
-          {revealed ? (
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-              <path d="M4 4l16 16" />
-            </svg>
-          ) : (
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          )}
+          <Icon name={revealed ? 'eye-off' : 'eye'} size={15} />
         </button>
       ) : null}
     </span>
@@ -68,9 +59,7 @@ export function HistoryList({ path }) {
     <div>
       <button type="button" className="ele-history__toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className="ele-history__toggle-title">История изменений</span>
-        <svg className={'ele-history__chevron' + (open ? ' ele-history__chevron--open' : '')} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 6l6 6-6 6" />
-        </svg>
+        <Icon name="chevron-right" size={18} strokeWidth={2} className={'ele-history__chevron' + (open ? ' ele-history__chevron--open' : '')} />
       </button>
 
       {open ? (

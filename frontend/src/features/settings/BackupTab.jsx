@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
-import { Banner, Button, Card, Checkbox, Input, Skeleton } from '../../shared/ui'
+import { Banner, Button, Card, Checkbox, Icon, Input, Skeleton } from '../../shared/ui'
 import { backupDownloadUrl, createBackup, getBackupSettings, updateBackupSettings } from './settingsApi.js'
 
 function formatSize(bytes) {
@@ -151,9 +151,7 @@ export function BackupTab() {
                 <div style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>{TYPE_LABEL[b.backup_type]}</div>
                 <div style={{ textAlign: 'right' }}>
                   <a href={backupDownloadUrl(b.id)} title="Скачать">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#757784" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
-                    </svg>
+                    <Icon name="download" size={18} style={{ color: '#757784' }} />
                   </a>
                 </div>
               </div>

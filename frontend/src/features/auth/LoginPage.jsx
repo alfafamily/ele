@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext.jsx'
-import { Banner, Button, Input } from '../../shared/ui'
+import { Banner, Button, Icon, Input } from '../../shared/ui'
 import { AuthShell } from './AuthShell.jsx'
 import { SmartCaptcha } from './SmartCaptcha.jsx'
 
@@ -70,10 +70,7 @@ export function LoginPage() {
     return (
       <AuthShell title="Вход в систему">
         <div className="ele-auth-icon-circle" style={{ background: 'var(--color-fill-active-tint)' }}>
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 7v5l3 3" />
-          </svg>
+          <Icon name="clock" size={26} strokeWidth={2} style={{ color: 'var(--color-text-muted)' }} />
         </div>
         <div className="ele-auth-centered-text">
           <div style={{ fontWeight: 600, fontSize: 17, color: 'var(--color-text-primary)', marginBottom: 8 }}>

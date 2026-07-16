@@ -1,3 +1,5 @@
+import { Icon } from '../../../shared/ui'
+
 const STEPS = [
   { n: 1, label: 'Администратор' },
   { n: 2, label: 'Компания' },
@@ -16,13 +18,7 @@ export function StepIndicator({ current }) {
                 (step.n < current ? ' ele-wizard-step__circle--done' : step.n === current ? ' ele-wizard-step__circle--active' : '')
               }
             >
-              {step.n < current ? (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12l5 5L20 6" />
-                </svg>
-              ) : (
-                step.n
-              )}
+              {step.n < current ? <Icon name="check" size={15} strokeWidth={3} style={{ color: '#fff' }} /> : step.n}
             </div>
             <span className={'ele-wizard-step__label' + (step.n === current ? ' ele-wizard-step__label--active' : '')}>
               {step.label}
