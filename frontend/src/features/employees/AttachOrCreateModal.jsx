@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchAllPages } from '../../shared/api/fetchAll'
 import { Button, EmptyState, Icon, Modal } from '../../shared/ui'
+import { KeyTarget } from '../../shared/keyTarget.jsx'
 import { attachPass, attachSimCard } from './employeesApi.js'
 
 // Привязка к сотруднику переиспользуемых объектов (SIM/пропуск): показываем
@@ -11,7 +12,7 @@ const CONFIG = {
   sim: {
     title: 'Привязать SIM-карту',
     path: '/api/sim-cards/?tab=deactivated',
-    placeholder: 'Поиск по номеру, оператору или поставщику',
+    placeholder: 'Поиск',
     empty: 'Нет свободных SIM-карт',
     emptyHint: 'Все SIM-карты закреплены за сотрудниками. Создайте новую.',
     createLabel: '+ Создать SIM-карту',
@@ -22,21 +23,13 @@ const CONFIG = {
   pass: {
     title: 'Привязать средство доступа',
     path: '/api/access-passes/?tab=deactivated',
-    placeholder: 'Поиск по названию или учётному номеру',
+    placeholder: 'Поиск',
     empty: 'Нет свободных средств доступа',
     emptyHint: 'Все пропуска и ключи закреплены за сотрудниками. Создайте новое.',
     createLabel: '+ Создать средство доступа',
     attach: attachPass,
     match: (o, q) => [o.name, o.account_number].some((v) => (v || '').toLowerCase().includes(q)),
   },
-}
-
-// У ключа ровно один объект: одно помещение (с указанием здания) либо здание.
-function keyTargetText(pass) {
-  const b = (pass.buildings || [])[0]
-  const r = (pass.rooms || [])[0]
-  if (!b) return '—'
-  return r ? `${r.name} (${b.name})` : b.name
 }
 
 function SimRow({ item }) {
@@ -59,7 +52,7 @@ function PassRow({ item }) {
   return (
     <span style={{ minWidth: 0, flex: 1 }}>
       <div style={{ fontSize: 13.5, fontWeight: 600 }}>
-        {isKey ? `Ключ · ${keyTargetText(item)}` : `Пропуск · ${item.name || 'без названия'}`}
+        {isKey ? <>Ключ · <KeyTarget pass={item} /></> : `Пропуск · ${item.name || 'без названия'}`}
       </div>
       <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
         № {item.account_number && item.account_number.trim() ? item.account_number : 'б/н'}{types ? ` · ${types}` : ''}

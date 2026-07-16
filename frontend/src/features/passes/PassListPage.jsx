@@ -7,6 +7,7 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Badge, Button, EmptyState, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { KeyTarget } from '../../shared/keyTarget.jsx'
 import { PassModal } from '../employees/PassModal.jsx'
 
 const CACHE_KEY = 'pass-list'
@@ -34,14 +35,6 @@ function accessLines(pass) {
   })
 }
 
-// У ключа ровно один объект: одно помещение (с указанием здания) либо здание
-// целиком.
-function keyTargetText(pass) {
-  const b = (pass.buildings || [])[0]
-  const r = (pass.rooms || [])[0]
-  if (!b) return '—'
-  return r ? `${r.name} (${b.name})` : b.name
-}
 
 export function PassListPage() {
   const isPop = useNavigationType() === 'POP'
@@ -87,7 +80,7 @@ export function PassListPage() {
       <TabBar options={TABS} value={tab} onChange={setTab} />
 
       <div style={{ display: 'flex' }}>
-        <SearchInput value={search} onChange={setSearch} placeholder="Поиск по названию или учётному номеру" />
+        <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
       </div>
 
       {error ? (
@@ -119,7 +112,7 @@ export function PassListPage() {
               <TableRow columns={COLUMNS}>
                 <div style={{ minWidth: 0 }}>
                   <div className="ele-clamp-2" style={{ fontWeight: 600 }}>
-                    {row.object_type === 'key' ? `Ключ · ${keyTargetText(row)}` : `Пропуск · ${row.name || 'Без названия'}`}
+                    {row.object_type === 'key' ? <>Ключ · <KeyTarget pass={row} /></> : `Пропуск · ${row.name || 'Без названия'}`}
                   </div>
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>
                     № {row.account_number && row.account_number.trim() ? row.account_number : 'б/н'}
@@ -138,7 +131,7 @@ export function PassListPage() {
                 <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {row.object_type === 'key' ? (
                     <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', fontWeight: 600 }}>
-                      {keyTargetText(row)}
+                      <KeyTarget pass={row} />
                     </div>
                   ) : accessLines(row).length === 0 ? (
                     <span style={{ color: 'var(--color-text-placeholder)', fontSize: 13 }}>—</span>

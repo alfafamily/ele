@@ -10,16 +10,9 @@ import {
   getPass,
   getPassHistoryPath,
 } from '../employees/employeesApi.js'
+import { KeyTarget } from '../../shared/keyTarget.jsx'
 import { PassModal } from '../employees/PassModal.jsx'
 import { PassDisposeModal } from '../employees/PassDisposeModal.jsx'
-
-// У ключа ровно один объект: одно помещение (с указанием здания) либо здание.
-function keyTargetText(pass) {
-  const b = (pass.buildings || [])[0]
-  const r = (pass.rooms || [])[0]
-  if (!b) return '—'
-  return r ? `${r.name} (${b.name})` : b.name
-}
 
 export function PassCardPage() {
   const { id } = useParams()
@@ -50,7 +43,7 @@ export function PassCardPage() {
 
   const isKey = pass.object_type === 'key'
   const title = isKey
-    ? `Ключ · ${keyTargetText(pass)}`
+    ? <>Ключ · <KeyTarget pass={pass} /></>
     : `Пропуск · ${pass.name || (pass.account_number && pass.account_number.trim() ? `№ ${pass.account_number}` : 'без названия')}`
   const types = [pass.type_vehicle && 'Авто', pass.type_pedestrian && 'Пеший'].filter(Boolean).join(', ')
   const rooms = pass.rooms || []
@@ -120,7 +113,7 @@ export function PassCardPage() {
             {(pass.buildings || []).length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>Здания не указаны.</div>
             ) : isKey ? (
-              <div style={{ fontSize: 13.5, fontWeight: 600 }}>{keyTargetText(pass)}</div>
+              <div style={{ fontSize: 13.5, fontWeight: 600 }}><KeyTarget pass={pass} /></div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {pass.buildings.map((b) => {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { apiGet } from './api/client'
-import { Skeleton } from './ui'
+import { Skeleton, TabBar } from './ui'
 import { Icon } from './ui/Icon/Icon.jsx'
 import './HistoryList.css'
 
@@ -66,9 +66,9 @@ function HistoryEventRow({ row }) {
 }
 
 const FILTERS = [
-  { key: 'all', label: 'Все' },
-  { key: 'movement', label: 'Движения' },
-  { key: 'change', label: 'Изменения' },
+  { value: 'all', label: 'Все' },
+  { value: 'movement', label: 'Движения' },
+  { value: 'change', label: 'Изменения' },
 ]
 
 // «История изменений» — сворачиваемый блок для карточек. Данные грузятся лениво
@@ -123,19 +123,8 @@ export function HistoryList({ path }) {
           <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginTop: 12 }}>Изменений пока нет.</div>
         ) : (
           <>
-            <div className="ele-history__filter" role="tablist">
-              {FILTERS.map((f) => (
-                <button
-                  key={f.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={filter === f.key}
-                  className={'ele-history__filter-btn' + (filter === f.key ? ' ele-history__filter-btn--active' : '')}
-                  onClick={() => setFilter(f.key)}
-                >
-                  {f.label}
-                </button>
-              ))}
+            <div className="ele-history__filter">
+              <TabBar options={FILTERS} value={filter} onChange={setFilter} size="control" variant="filter" />
             </div>
             {filtered.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginTop: 12 }}>

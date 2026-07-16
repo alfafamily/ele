@@ -84,7 +84,7 @@ export function SimListPage() {
       <TabBar options={TABS} value={tab} onChange={setTab} />
 
       <div style={{ display: 'flex' }}>
-        <SearchInput value={search} onChange={setSearch} placeholder="Поиск по номеру, оператору или поставщику" />
+        <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
       </div>
 
       {error ? (

@@ -27,31 +27,11 @@
   transform: rotate(90deg);
 }
 
-/* Сегментированный фильтр истории: Все / Движения / Изменения. */
+/* Фильтр истории (Все / Движения / Изменения) — вид фильтра-чипов, как на
+   страницах списков. На мобильном растягивается на всю ширину (см. TabBar). */
 .ele-history__filter {
-  display: inline-flex;
-  gap: 2px;
   margin-top: 14px;
-  padding: 2px;
-  background: var(--color-fill-input);
-  border-radius: 9px;
-}
-
-.ele-history__filter-btn {
-  appearance: none;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font: 500 13px inherit;
-  color: var(--color-text-muted);
-  padding: 5px 14px;
-  border-radius: 7px;
-}
-
-.ele-history__filter-btn--active {
-  background: var(--color-fill-surface);
-  color: var(--color-text-primary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  display: flex;
 }
 
 .ele-history {

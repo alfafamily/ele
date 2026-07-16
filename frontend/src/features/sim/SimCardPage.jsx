@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, BackButton, Button, Card, Modal, Spinner } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, Spinner } from '../../shared/ui'
 import {
   attachSimCard,
-  deleteSimCard,
   getSimCard,
   getSimHistoryPath,
 } from '../employees/employeesApi.js'
@@ -16,14 +15,12 @@ import { SimDisposeModal } from '../employees/SimDisposeModal.jsx'
 
 export function SimCardPage() {
   const { id } = useParams()
-  const navigate = useNavigate()
   const perms = usePermissions()
   const [sim, setSim] = useState(null)
   const [loadError, setLoadError] = useState(false)
   const [editModal, setEditModal] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [disposeModal, setDisposeModal] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const load = useCallback(() => {
     setLoadError(false)
@@ -50,13 +47,9 @@ export function SimCardPage() {
     setShowPicker(false)
     load()
   }
-  const onDelete = async () => {
-    await deleteSimCard(sim.id)
-    navigate('/sim-cards')
-  }
 
-  // Активная → открепить/утилизировать; свободная → утилизировать или удалить;
-  // утилизированная → только удалить.
+  // Активная → открепить/утилизировать; свободная → редактировать/утилизировать;
+  // утилизированная → без действий (терминальный статус, удаления из системы нет).
   const actions = []
   if (perms.canManageEmployees && !sim.is_utilized) {
     actions.push({ label: 'Редактировать', onClick: () => setEditModal(true) })
@@ -64,10 +57,7 @@ export function SimCardPage() {
       actions.push({ label: 'Открепить', danger: true, onClick: () => setDisposeModal(true) })
     } else {
       actions.push({ label: 'Утилизировать', danger: true, onClick: () => setDisposeModal(true) })
-      actions.push({ label: 'Удалить', danger: true, onClick: () => setConfirmDelete(true) })
     }
-  } else if (perms.canManageEmployees && sim.is_utilized) {
-    actions.push({ label: 'Удалить', danger: true, onClick: () => setConfirmDelete(true) })
   }
 
   return (
@@ -162,18 +152,6 @@ export function SimCardPage() {
             load()
           }}
         />
-      ) : null}
-
-      {confirmDelete ? (
-        <Modal open onClose={() => setConfirmDelete(false)} title="Удалить SIM-карту?">
-          <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: '4px 0 20px' }}>
-            SIM-карта {sim.phone_number} будет удалена безвозвратно вместе с историей.
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <Button variant="danger" fullWidth onClick={onDelete}>Удалить</Button>
-            <Button variant="secondary" fullWidth onClick={() => setConfirmDelete(false)}>Отмена</Button>
-          </div>
-        </Modal>
       ) : null}
     </div>
   )

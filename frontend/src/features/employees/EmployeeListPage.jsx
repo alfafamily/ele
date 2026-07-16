@@ -105,7 +105,7 @@ export function EmployeeListPage() {
       <TabBar options={TABS} value={tab} onChange={setTab} />
 
       <div style={{ display: 'flex' }}>
-        <SearchInput value={search} onChange={setSearch} placeholder="Поиск по ФИО" />
+        <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
       </div>
 
       {error ? (

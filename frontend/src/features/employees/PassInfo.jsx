@@ -1,4 +1,5 @@
 import { Badge } from '../../shared/ui'
+import { KeyTarget } from '../../shared/keyTarget.jsx'
 
 // Левая (информационная) часть строки Пропуска — общая для карточки Сотрудника
 // и Профиля. Показывается только за сотрудником (значит, всегда активен),
@@ -11,14 +12,11 @@ export function PassInfo({ pass }) {
   const buildings = pass.buildings || []
   const rooms = pass.rooms || []
   const isKey = pass.object_type === 'key'
-  const b0 = buildings[0]
-  const r0 = rooms[0]
-  const keyTarget = b0 ? (r0 ? `${r0.name} (${b0.name})` : b0.name) : '—'
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-          {isKey ? `Ключ · ${keyTarget}` : pass.name ? pass.name : 'Пропуск'}
+          {isKey ? <>Ключ · <KeyTarget pass={pass} /></> : pass.name ? pass.name : 'Пропуск'}
         </span>
         <span style={{ font: '600 13px var(--font-mono)', color: 'var(--color-text-muted)' }}>
           № {pass.account_number && pass.account_number.trim() ? pass.account_number : 'б/н'}

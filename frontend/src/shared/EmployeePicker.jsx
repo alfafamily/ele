@@ -48,7 +48,7 @@ export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40 }) {
           autoFocus={autoFocus}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Поиск сотрудника"
+          placeholder="Поиск"
           style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13.5, fontFamily: 'inherit' }}
         />
       </div>

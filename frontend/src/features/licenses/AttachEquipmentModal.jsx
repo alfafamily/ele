@@ -49,7 +49,7 @@ export function AttachEquipmentModal({ license, onClose, onAttached }) {
         autoFocus
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Поиск по номеру, сотруднику или модели"
+        placeholder="Поиск"
         style={{
           width: '100%',
           height: 42,
