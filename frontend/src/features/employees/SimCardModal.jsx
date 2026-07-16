@@ -27,12 +27,13 @@ export function SimCardModal({ employeeId, sim, onClose, onDone }) {
     setError(null)
     setFieldErrors({})
     const payload = {
-      employee: employeeId,
       sim_type: simType,
       phone_number: phoneNumber,
       network_operator: networkOperator,
       provider,
     }
+    // Из карточки сотрудника создаём сразу привязанной; из раздела — свободной.
+    if (!isEdit && employeeId) payload.employee = employeeId
     try {
       const saved = isEdit ? await updateSimCard(sim.id, payload) : await createSimCard(payload)
       onDone(saved)

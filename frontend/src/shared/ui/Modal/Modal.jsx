@@ -22,12 +22,17 @@ export function Modal({ open, onClose, title, children }) {
     <div className="ele-modal-overlay" onClick={onClose}>
       <div className="ele-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="ele-modal__grabber" aria-hidden />
-        {onClose ? (
-          <button type="button" className="ele-modal__close" onClick={onClose} aria-label="Закрыть">
-            <Icon name="x" size={17} strokeWidth={2} />
-          </button>
+        {title || onClose ? (
+          <div className="ele-modal__header">
+            {title ? <div className="ele-modal__title">{title}</div> : <span style={{ flex: 1 }} />}
+            {onClose ? (
+              <button type="button" className="ele-modal__close" onClick={onClose} aria-label="Закрыть">
+                {/* Высота крестика ≈ высоте заглавной буквы заголовка. */}
+                <Icon name="x" size={15} strokeWidth={2.2} />
+              </button>
+            ) : null}
+          </div>
         ) : null}
-        {title ? <div className="ele-modal__title">{title}</div> : null}
         {children}
       </div>
     </div>,

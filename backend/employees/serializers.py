@@ -10,28 +10,44 @@ from .models import AccessPass, Employee, SimCard
 
 class SimCardSerializer(serializers.ModelSerializer):
     sim_type_display = serializers.CharField(source="get_sim_type_display", read_only=True)
+    # Статус вычисляется по привязке: отвязана (employee=NULL) ⇒ деактивирована.
+    is_deactivated = serializers.BooleanField(read_only=True)
+    employee_name = serializers.SerializerMethodField()
+    # Объявлено явно, чтобы уникальность проверялась своим сообщением
+    # (validate_phone_number), а не авто-валидатором DRF по UniqueConstraint.
+    phone_number = serializers.CharField(max_length=32)
 
     class Meta:
         model = SimCard
         fields = [
             "id",
             "employee",
+            "employee_name",
             "sim_type",
             "sim_type_display",
             "phone_number",
             "network_operator",
             "provider",
             "is_deactivated",
-            "deactivated_at",
             "created_at",
         ]
-        # Деактивация — только через отдельный action, не через запись поля.
-        read_only_fields = ["is_deactivated", "deactivated_at", "created_at"]
+        # employee можно задать при создании (сразу привязать) или через
+        # action attach/detach; статус is_deactivated — вычисляемый.
+        read_only_fields = ["created_at"]
+
+    def get_employee_name(self, obj):
+        return str(obj.employee) if obj.employee_id else None
 
     def validate_phone_number(self, value):
         value = value.strip()
         if not value:
             raise serializers.ValidationError("Укажите номер телефона.")
+        # Уникальность по всем SIM (активным и деактивированным).
+        qs = SimCard.objects.filter(phone_number=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("SIM-карта с таким номером уже есть.")
         return value
 
 
@@ -54,23 +70,45 @@ class AccessPassSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
     )
+    is_deactivated = serializers.BooleanField(read_only=True)
+    employee_name = serializers.SerializerMethodField()
+    # Явно — чтобы уникальность непустого номера проверялась своим сообщением.
+    account_number = serializers.CharField(max_length=64, required=False, allow_blank=True)
 
     class Meta:
         model = AccessPass
         fields = [
             "id",
             "employee",
+            "employee_name",
+            "name",
             "account_number",
+            "type_vehicle",
+            "type_pedestrian",
             "buildings",
             "building_ids",
             "rooms",
             "room_ids",
             "is_deactivated",
-            "deactivated_at",
             "created_at",
         ]
-        # Деактивация — только через отдельный action, не записью поля.
-        read_only_fields = ["is_deactivated", "deactivated_at", "created_at"]
+        # employee можно задать при создании (сразу привязать) или через
+        # action attach/detach; статус is_deactivated — вычисляемый.
+        read_only_fields = ["created_at"]
+
+    def get_employee_name(self, obj):
+        return str(obj.employee) if obj.employee_id else None
+
+    def validate_account_number(self, value):
+        value = value.strip()
+        # Уникальность — только среди непустых учётных номеров.
+        if value:
+            qs = AccessPass.objects.filter(account_number=value)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError("Пропуск с таким учётным номером уже есть.")
+        return value
 
     def validate(self, attrs):
         # Каждое выбранное помещение должно принадлежать одному из выбранных зданий.

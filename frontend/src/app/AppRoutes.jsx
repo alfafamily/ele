@@ -15,6 +15,10 @@ import { LicenseListPage } from '../features/licenses/LicenseListPage.jsx'
 import { EmployeeCardPage } from '../features/employees/EmployeeCardPage.jsx'
 import { EmployeeFormPage } from '../features/employees/EmployeeFormPage.jsx'
 import { EmployeeListPage } from '../features/employees/EmployeeListPage.jsx'
+import { SimListPage } from '../features/sim/SimListPage.jsx'
+import { SimCardPage } from '../features/sim/SimCardPage.jsx'
+import { PassListPage } from '../features/passes/PassListPage.jsx'
+import { PassCardPage } from '../features/passes/PassCardPage.jsx'
 import { PremisesPage } from '../features/premises/PremisesPage.jsx'
 import { TypesEditorPage } from '../features/types/TypesEditorPage.jsx'
 import { SettingsPage } from '../features/settings/SettingsPage.jsx'
@@ -162,6 +166,38 @@ export function AppRoutes() {
           element={
             <RequireStaff>
               <EmployeeFormPage />
+            </RequireStaff>
+          }
+        />
+        <Route
+          path="/sim-cards"
+          element={
+            <RequireStaff>
+              <SimListPage />
+            </RequireStaff>
+          }
+        />
+        <Route
+          path="/sim-cards/:id"
+          element={
+            <RequireStaff>
+              <SimCardPage />
+            </RequireStaff>
+          }
+        />
+        <Route
+          path="/passes"
+          element={
+            <RequireStaff>
+              <PassListPage />
+            </RequireStaff>
+          }
+        />
+        <Route
+          path="/passes/:id"
+          element={
+            <RequireStaff>
+              <PassCardPage />
             </RequireStaff>
           }
         />

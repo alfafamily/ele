@@ -23,17 +23,23 @@
   display: none;
 }
 
+/* Заголовок и крестик — в одну строку; крестик выровнен по центру строки
+   заголовка, высота иконки ≈ высоте заглавной буквы. */
+.ele-modal__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
 .ele-modal__close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-chip);
-  background: var(--color-fill-input);
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
   border: none;
+  background: none;
   color: var(--color-text-muted);
-  font-size: 15px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -41,10 +47,11 @@
 }
 
 .ele-modal__title {
+  flex: 1;
+  min-width: 0;
   font-size: 20px;
   font-weight: 600;
-  margin-bottom: 12px;
-  padding-right: 30px;
+  line-height: 1.2;
 }
 
 /* Bottom-sheet ниже брейкпоинта ~768px. */

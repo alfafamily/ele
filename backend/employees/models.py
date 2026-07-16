@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from simple_history.models import HistoricalRecords
 
 
@@ -28,13 +29,12 @@ class Employee(models.Model):
 
 
 class SimCard(models.Model):
-    """Корпоративная SIM/E-SIM, закреплённая за Сотрудником.
+    """Корпоративная SIM/E-SIM — самостоятельный переиспользуемый объект.
 
-    Отдельного справочника номеров нет: номер деактивируется при увольнении и
-    не передаётся другому сотруднику, поэтому список ведётся прямо в карточке
-    Сотрудника (FK). Деактивированные (архивные) симки не открепляются, а
-    остаются для истории «кому какой номер выдавали» — в отличие от
-    Оборудования, которое при увольнении открепляется (см. terminate).
+    Номер телефона уникален по всем записям: один объект передаётся от
+    сотрудника к сотруднику через привязку/отвязку (employee). Статус
+    вычисляется по привязке: закреплена за сотрудником ⇒ активна, отвязана
+    (employee=NULL) ⇒ деактивирована. Отдельного флага нет.
     """
 
     class SimType(models.TextChoices):
@@ -42,7 +42,8 @@ class SimCard(models.Model):
         ESIM = "esim", "E-SIM"
 
     employee = models.ForeignKey(
-        Employee, verbose_name="Сотрудник", on_delete=models.CASCADE, related_name="sim_cards",
+        Employee, verbose_name="Сотрудник", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="sim_cards",
     )
     sim_type = models.CharField("Тип", max_length=8, choices=SimType.choices, default=SimType.SIM)
     phone_number = models.CharField("Номер телефона", max_length=32)
@@ -53,40 +54,53 @@ class SimCard(models.Model):
     # Поставщик услуг связи — через кого управление номером (пополнение, смена
     # тарифа, договор). Не всегда совпадает с Оператором (MVNO/дилер).
     provider = models.CharField("Поставщик услуг связи", max_length=255, blank=True)
-    # Признак деактивации (архивная симка). Проставляется вручную или
-    # автоматически при увольнении Сотрудника. По образцу is_written_off у
-    # Оборудования / is_retired у Лицензий.
-    is_deactivated = models.BooleanField("Деактивирована", default=False)
-    deactivated_at = models.DateTimeField("Дата деактивации", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     history = HistoricalRecords()
 
     class Meta:
         verbose_name = "SIM-карта"
         verbose_name_plural = "SIM-карты"
-        # Активные выше архивных, внутри группы — новые выше.
-        ordering = ["is_deactivated", "-created_at"]
+        ordering = ["-created_at"]
+        constraints = [
+            # Номер уникален по всем SIM (активным и деактивированным).
+            models.UniqueConstraint(fields=["phone_number"], name="uniq_sim_phone"),
+        ]
+
+    @property
+    def is_deactivated(self):
+        return self.employee_id is None
 
     def __str__(self):
         return self.phone_number
 
 
 class AccessPass(models.Model):
-    """Физический пропуск СКУД, закреплённый за Сотрудником.
+    """Физический пропуск СКУД — самостоятельный переиспользуемый объект.
 
-    Механика 1:1 как у SimCard: выдаётся admin/accountant, деактивируется
-    (архивная запись), при увольнении деактивируется, но остаётся закреплённым
-    за сотрудником для истории (кому какой пропуск выдавали). Пропуск всегда
-    привязан к Зданию; набор Помещений — необязательный: если ни одного не
+    Механика 1:1 как у SimCard: выдаётся admin/accountant, привязывается к
+    сотруднику (активен) и отвязывается (деактивирован, employee=NULL). Учётный
+    номер необязательный: если пустой — уникальность не проверяется (может быть
+    N пропусков без номера), если заполнен — уникален. Пропуск действует в одном
+    или нескольких зданиях; набор Помещений — необязательный: если ни одного не
     выбрано, пропуск действует на все помещения здания.
     """
 
+    class PassType(models.TextChoices):
+        VEHICLE = "vehicle", "Авто"
+        PEDESTRIAN = "pedestrian", "Пеший"
+
     employee = models.ForeignKey(
-        Employee, verbose_name="Сотрудник", on_delete=models.CASCADE, related_name="passes",
+        Employee, verbose_name="Сотрудник", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="passes",
     )
+    # Название пропуска — необязательное.
+    name = models.CharField("Название", max_length=255, blank=True)
     # Учётный номер физической карточки — необязательный (карту могли выдать
     # без нанесённого номера).
     account_number = models.CharField("Учётный номер", max_length=64, blank=True)
+    # Тип пропуска: Авто и/или Пеший, можно оба, можно ни одного.
+    type_vehicle = models.BooleanField("Авто", default=False)
+    type_pedestrian = models.BooleanField("Пеший", default=False)
     # Один пропуск может действовать сразу в нескольких зданиях.
     buildings = models.ManyToManyField(
         "locations.Building", verbose_name="Здания", related_name="+",
@@ -97,16 +111,25 @@ class AccessPass(models.Model):
     rooms = models.ManyToManyField(
         "locations.Room", verbose_name="Помещения/зоны", blank=True, related_name="+",
     )
-    is_deactivated = models.BooleanField("Деактивирован", default=False)
-    deactivated_at = models.DateTimeField("Дата деактивации", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     history = HistoricalRecords(m2m_fields=[buildings, rooms])
 
     class Meta:
         verbose_name = "Пропуск"
         verbose_name_plural = "Пропуска"
-        # Активные выше деактивированных, внутри группы — новые выше.
-        ordering = ["is_deactivated", "-created_at"]
+        ordering = ["-created_at"]
+        constraints = [
+            # Учётный номер уникален, но только среди непустых (частичный индекс).
+            models.UniqueConstraint(
+                fields=["account_number"],
+                condition=~Q(account_number=""),
+                name="uniq_pass_account",
+            ),
+        ]
+
+    @property
+    def is_deactivated(self):
+        return self.employee_id is None
 
     def __str__(self):
-        return self.account_number or f"Пропуск #{self.pk}"
+        return self.name or self.account_number or f"Пропуск #{self.pk}"

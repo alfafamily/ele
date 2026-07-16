@@ -10,7 +10,10 @@ import { createPass, updatePass } from './employeesApi.js'
 export function PassModal({ employeeId, pass, onClose, onDone }) {
   const isEdit = Boolean(pass)
   const [buildings, setBuildings] = useState(null)
+  const [name, setName] = useState(pass?.name || '')
   const [accountNumber, setAccountNumber] = useState(pass?.account_number || '')
+  const [typeVehicle, setTypeVehicle] = useState(pass?.type_vehicle || false)
+  const [typePedestrian, setTypePedestrian] = useState(pass?.type_pedestrian || false)
   const [selBuildings, setSelBuildings] = useState(() => new Set((pass?.buildings || []).map((b) => b.id)))
   const [selRooms, setSelRooms] = useState(() => new Set((pass?.rooms || []).map((r) => r.id)))
   const [submitting, setSubmitting] = useState(false)
@@ -51,11 +54,15 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
     setError(null)
     setFieldErrors({})
     const payload = {
-      employee: employeeId,
+      name,
       account_number: accountNumber,
+      type_vehicle: typeVehicle,
+      type_pedestrian: typePedestrian,
       building_ids: [...selBuildings],
       room_ids: [...selRooms],
     }
+    // Из карточки сотрудника создаём сразу привязанным; из раздела — свободным.
+    if (!isEdit && employeeId) payload.employee = employeeId
     try {
       const saved = isEdit ? await updatePass(pass.id, payload) : await createPass(payload)
       onDone(saved)
@@ -81,11 +88,25 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
         <>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, margin: '4px 0 20px' }}>
             <Input
+              label="Название"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              error={fieldErrors.name}
+            />
+            <Input
               label="Учётный номер"
               value={accountNumber}
               onChange={(e) => setAccountNumber(e.target.value)}
               error={fieldErrors.account_number}
             />
+
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>Тип пропуска</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <TypeToggle label="Авто" checked={typeVehicle} onChange={setTypeVehicle} />
+                <TypeToggle label="Пеший" checked={typePedestrian} onChange={setTypePedestrian} />
+              </div>
+            </div>
 
             <div>
               <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>Здания и помещения</div>
@@ -145,6 +166,25 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
         </>
       )}
     </Modal>
+  )
+}
+
+// Тумблер-чип типа пропуска (Авто / Пеший). Можно включить оба или ни одного.
+function TypeToggle({ label, checked, onChange }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      style={{
+        flex: 1, padding: '9px 14px', borderRadius: 'var(--radius-control)', border: 'none',
+        fontSize: 13.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+        background: checked ? 'var(--color-primary)' : 'var(--color-surface)',
+        color: checked ? '#fff' : 'var(--color-text-secondary)',
+        boxShadow: checked ? 'none' : 'inset 0 0 0 1px var(--color-border-strong)',
+      }}
+    >
+      {label}
+    </button>
   )
 }
 

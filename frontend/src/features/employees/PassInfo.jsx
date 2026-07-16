@@ -1,6 +1,7 @@
 // Левая (информационная) часть строки Пропуска — общая для карточки Сотрудника
-// и Профиля. Сверху: статус · Учётный номер. Ниже — по строке на каждое здание
-// с перечнем помещений (или «все помещения», если для здания ничего не выбрано).
+// и Профиля. Сверху: статус · плашки типа (Авто/Пеший) · Название. Ниже —
+// Учётный номер и по строке на каждое здание с перечнем помещений (или «все
+// помещения», если для здания ничего не выбрано).
 export function PassInfo({ pass }) {
   const buildings = pass.buildings || []
   const rooms = pass.rooms || []
@@ -13,10 +14,24 @@ export function PassInfo({ pass }) {
     borderRadius: 5,
     whiteSpace: 'nowrap',
   }
+  const typeBadgeStyle = {
+    fontSize: 11,
+    fontWeight: 700,
+    color: 'var(--color-text-secondary)',
+    background: 'var(--color-fill-active-tint)',
+    padding: '1px 7px',
+    borderRadius: 5,
+    whiteSpace: 'nowrap',
+  }
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={badgeStyle}>{pass.is_deactivated ? 'Деактивирован' : 'Активен'}</span>
+        {pass.type_vehicle ? <span style={typeBadgeStyle}>Авто</span> : null}
+        {pass.type_pedestrian ? <span style={typeBadgeStyle}>Пеший</span> : null}
+        {pass.name ? (
+          <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{pass.name}</span>
+        ) : null}
         <span style={{ font: '600 13px var(--font-mono)', color: 'var(--color-text-muted)' }}>
           № {pass.account_number && pass.account_number.trim() ? pass.account_number : 'б/н'}
         </span>

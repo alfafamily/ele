@@ -1,6 +1,5 @@
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import BasePermission
@@ -39,6 +38,12 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             "passes__buildings",
             "passes__rooms",
         )
+        # Вкладки списка: Работают / Уволены.
+        employment = self.request.query_params.get("employment")
+        if employment == "working":
+            qs = qs.filter(is_employed=True)
+        elif employment == "terminated":
+            qs = qs.filter(is_employed=False)
         search = self.request.query_params.get("search")
         if search:
             # Поиск по Имени, Фамилии и Должности.
@@ -67,23 +72,18 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             eq.employee = None
             eq.save(update_fields=["employee"])
 
-        now = timezone.now()
-
-        # SIM-карты не открепляем (номер не передаётся другому) — помечаем
-        # деактивированными, чтобы напомнить оператору погасить их у поставщика.
-        active_sims = list(employee.sim_cards.filter(is_deactivated=False))
+        # SIM-карты и пропуска — переиспользуемые объекты: при увольнении
+        # отвязываем (employee=NULL ⇒ деактивированы, освобождаются для выдачи
+        # другому). По одной, не bulk — иначе не сработает история.
+        active_sims = list(employee.sim_cards.all())
         for sim in active_sims:
-            sim.is_deactivated = True
-            sim.deactivated_at = now
-            sim.save(update_fields=["is_deactivated", "deactivated_at"])
+            sim.employee = None
+            sim.save(update_fields=["employee"])
 
-        # Пропуска тоже не открепляем — деактивируем (напоминание отключить
-        # карту в СКУД), но оставляем закреплёнными для истории.
-        active_passes = list(employee.passes.filter(is_deactivated=False))
+        active_passes = list(employee.passes.all())
         for ap in active_passes:
-            ap.is_deactivated = True
-            ap.deactivated_at = now
-            ap.save(update_fields=["is_deactivated", "deactivated_at"])
+            ap.employee = None
+            ap.save(update_fields=["employee"])
 
         employee.is_employed = False
         employee.save(update_fields=["is_employed"])
@@ -102,6 +102,16 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         data["deactivated_user"] = deactivated_user
         return Response(data)
 
+    @action(detail=True, methods=["post"])
+    def restore(self, request, pk=None):
+        """Восстановление уволенного сотрудника: снова «Работает». Привязки
+        SIM/оборудования/пропусков при увольнении были сняты — не возвращаем."""
+        employee = self.get_object()
+        if not employee.is_employed:
+            employee.is_employed = True
+            employee.save(update_fields=["is_employed"])
+        return Response(EmployeeSerializer(employee).data)
+
     @action(detail=False, methods=["get"])
     def departments(self, request):
         # Автоподсказка по уже встречавшимся значениям — без отдельного справочника.
@@ -115,17 +125,20 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
 
 class SimCardViewSet(viewsets.ModelViewSet):
-    """Корпоративные SIM/E-SIM сотрудников. Управление — из карточки Сотрудника
-    (admin/accountant); Сотрудник (в т.ч. Наблюдатель) видит только свои номера
-    в Профиле (read-only). В отличие от Оборудования, у SIM нет страницы-списка,
-    поэтому «Наблюдатель видит всё» здесь не действует. См. SimCardAccessPermission."""
+    """Корпоративные SIM/E-SIM — самостоятельный раздел (admin/accountant).
+    Сотрудник видит только свои номера в Профиле (read-only). Статус — по
+    привязке: закреплена ⇒ активна, отвязана ⇒ деактивирована.
+    См. SimCardAccessPermission."""
 
     permission_classes = [SimCardAccessPermission]
     serializer_class = SimCardSerializer
-    pagination_class = None
+    pagination_class = ELECursorPagination
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ["phone_number", "network_operator", "provider", "created_at"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
-        qs = SimCard.objects.all()
+        qs = SimCard.objects.select_related("employee").all()
         user = self.request.user
         if user.role == "employee":
             # Только свои номера (Наблюдатель не расширяет доступ к SIM);
@@ -134,17 +147,67 @@ class SimCardViewSet(viewsets.ModelViewSet):
         employee = self.request.query_params.get("employee")
         if employee:
             qs = qs.filter(employee_id=employee)
+
+        if self.action == "list":
+            # Вкладки раздела: Активные (привязаны) / Деактивированные (отвязаны).
+            tab = self.request.query_params.get("tab")
+            if tab == "active":
+                qs = qs.filter(employee__isnull=False)
+            elif tab == "deactivated":
+                qs = qs.filter(employee__isnull=True)
+            search = self.request.query_params.get("search")
+            if search:
+                qs = qs.filter(
+                    Q(phone_number__icontains=search)
+                    | Q(network_operator__icontains=search)
+                    | Q(provider__icontains=search)
+                )
         return qs
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
-    def deactivate(self, request, pk=None):
-        """Деактивация номера (архив). Симка остаётся в карточке для истории."""
+    def detach(self, request, pk=None):
+        """Отвязать от сотрудника (деактивировать). Объект остаётся для истории
+        и повторной выдачи."""
         sim = self.get_object()
-        if not sim.is_deactivated:
-            sim.is_deactivated = True
-            sim.deactivated_at = timezone.now()
-            sim.save(update_fields=["is_deactivated", "deactivated_at"])
+        if sim.employee_id is not None:
+            sim.employee = None
+            sim.save(update_fields=["employee"])
         return Response(SimCardSerializer(sim).data)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
+    def attach(self, request, pk=None):
+        """Привязать к сотруднику (активировать)."""
+        sim = self.get_object()
+        employee = get_object_or_404(Employee, pk=request.data.get("employee"))
+        sim.employee = employee
+        sim.save(update_fields=["employee"])
+        return Response(SimCardSerializer(sim).data)
+
+    @action(detail=True, methods=["get"], url_path="history")
+    def history_list(self, request, pk=None):
+        from core.history import build_history_rows
+
+        sim = self.get_object()
+
+        def fmt_employee(v):
+            if not v:
+                return "Не закреплена"
+            emp = Employee.objects.filter(pk=v).first()
+            return str(emp) if emp else "—"
+
+        def fmt_sim_type(v):
+            return dict(SimCard.SimType.choices).get(v, v or "—")
+
+        field_specs = {
+            "phone_number": {"label": "Номер телефона"},
+            "sim_type": {"label": "Тип", "format": fmt_sim_type},
+            "network_operator": {"label": "Оператор"},
+            "provider": {"label": "Поставщик услуг связи"},
+            "employee": {"label": "Закреплена за", "format": fmt_employee},
+        }
+        rows = build_history_rows(sim, field_specs)
+        rows.sort(key=lambda r: r["date"], reverse=True)
+        return Response(rows)
 
     @action(detail=False, methods=["get"], permission_classes=[IsAdminOrAccountant])
     def operators(self, request):
@@ -170,16 +233,19 @@ class SimCardViewSet(viewsets.ModelViewSet):
 
 
 class AccessPassViewSet(viewsets.ModelViewSet):
-    """Пропуска СКУД сотрудников. Управление — из карточки Сотрудника
-    (admin/accountant); Сотрудник видит только свои пропуска в Профиле
-    (read-only). Механика 1:1 как у SimCardViewSet. См. AccessPassAccessPermission."""
+    """Пропуска СКУД — самостоятельный раздел (admin/accountant). Сотрудник видит
+    только свои пропуска в Профиле (read-only). Статус — по привязке.
+    Механика 1:1 как у SimCardViewSet. См. AccessPassAccessPermission."""
 
     permission_classes = [AccessPassAccessPermission]
     serializer_class = AccessPassSerializer
-    pagination_class = None
+    pagination_class = ELECursorPagination
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ["name", "account_number", "created_at"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
-        qs = AccessPass.objects.all().prefetch_related("buildings", "rooms")
+        qs = AccessPass.objects.select_related("employee").prefetch_related("buildings", "rooms")
         user = self.request.user
         if user.role == "employee":
             # Только свои пропуска; не привязан к Сотруднику — не видит ничего.
@@ -187,17 +253,62 @@ class AccessPassViewSet(viewsets.ModelViewSet):
         employee = self.request.query_params.get("employee")
         if employee:
             qs = qs.filter(employee_id=employee)
+
+        if self.action == "list":
+            tab = self.request.query_params.get("tab")
+            if tab == "active":
+                qs = qs.filter(employee__isnull=False)
+            elif tab == "deactivated":
+                qs = qs.filter(employee__isnull=True)
+            search = self.request.query_params.get("search")
+            if search:
+                qs = qs.filter(
+                    Q(name__icontains=search) | Q(account_number__icontains=search)
+                )
         return qs
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
-    def deactivate(self, request, pk=None):
-        """Деактивация пропуска (архив). Остаётся в карточке для истории."""
+    def detach(self, request, pk=None):
+        """Отвязать от сотрудника (деактивировать). Остаётся для истории и
+        повторной выдачи."""
         access_pass = self.get_object()
-        if not access_pass.is_deactivated:
-            access_pass.is_deactivated = True
-            access_pass.deactivated_at = timezone.now()
-            access_pass.save(update_fields=["is_deactivated", "deactivated_at"])
+        if access_pass.employee_id is not None:
+            access_pass.employee = None
+            access_pass.save(update_fields=["employee"])
         return Response(AccessPassSerializer(access_pass).data)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
+    def attach(self, request, pk=None):
+        """Привязать к сотруднику (активировать)."""
+        access_pass = self.get_object()
+        employee = get_object_or_404(Employee, pk=request.data.get("employee"))
+        access_pass.employee = employee
+        access_pass.save(update_fields=["employee"])
+        return Response(AccessPassSerializer(access_pass).data)
+
+    @action(detail=True, methods=["get"], url_path="history")
+    def history_list(self, request, pk=None):
+        from core.history import build_history_rows
+
+        access_pass = self.get_object()
+
+        def fmt_employee(v):
+            if not v:
+                return "Не закреплён"
+            emp = Employee.objects.filter(pk=v).first()
+            return str(emp) if emp else "—"
+
+        yes_no = lambda v: "Да" if v else "Нет"
+        field_specs = {
+            "name": {"label": "Название"},
+            "account_number": {"label": "Учётный номер"},
+            "type_vehicle": {"label": "Тип «Авто»", "format": yes_no},
+            "type_pedestrian": {"label": "Тип «Пеший»", "format": yes_no},
+            "employee": {"label": "Закреплён за", "format": fmt_employee},
+        }
+        rows = build_history_rows(access_pass, field_specs)
+        rows.sort(key=lambda r: r["date"], reverse=True)
+        return Response(rows)
 
 
 class _CanEditAvatar(BasePermission):

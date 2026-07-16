@@ -8,9 +8,14 @@ import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { nameInitials } from '../../shared/employeeName.js'
-import { Button, EmptyState, Icon, SearchInput, Skeleton, StatusPill, Table, TableRow } from '../../shared/ui'
+import { Button, EmptyState, Icon, SearchInput, Skeleton, StatusPill, Table, TabBar, TableRow } from '../../shared/ui'
 
 const CACHE_KEY = 'employee-list'
+
+const TABS = [
+  { value: 'working', label: 'Работают' },
+  { value: 'terminated', label: 'Уволены' },
+]
 
 // Desktop — отдельные колонки ФИО/Должность/Отдел; на мобильных они схлопываются
 // в одну колонку «Сотрудник» (ФИО + Должность + Отдел), остальные — как есть.
@@ -56,6 +61,7 @@ export function EmployeeListPage() {
   // сотрудника; при заходе через меню (PUSH) открываем заново.
   const isPop = useNavigationType() === 'POP'
   const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
+  const [tab, setTab] = useState(() => savedUi?.tab ?? 'working')
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
   const [sortDir, setSortDir] = useState(() => savedUi?.sortDir ?? 'asc')
@@ -63,13 +69,14 @@ export function EmployeeListPage() {
   const columns = isMobile ? MOBILE_COLUMNS : DESKTOP_COLUMNS
 
   useEffect(() => {
-    writeListCache(CACHE_KEY, { ui: { search, sortDir } })
-  }, [search, sortDir])
+    writeListCache(CACHE_KEY, { ui: { tab, search, sortDir } })
+  }, [tab, search, sortDir])
 
   const ordering = sortDir === 'desc' ? '-last_name' : 'last_name'
   const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList(
     '/api/employees/',
     {
+      employment: tab,
       search: debouncedSearch || undefined,
       ordering,
     },
@@ -95,6 +102,8 @@ export function EmployeeListPage() {
         </Can>
       </div>
 
+      <TabBar options={TABS} value={tab} onChange={setTab} />
+
       <div style={{ display: 'flex' }}>
         <SearchInput value={search} onChange={setSearch} placeholder="Поиск по ФИО" />
       </div>
@@ -109,8 +118,14 @@ export function EmployeeListPage() {
         </div>
       ) : items.length === 0 ? (
         <EmptyState
-          title={search ? 'Ничего не найдено' : 'Пока пусто'}
-          description={search ? `По запросу «${search}» сотрудники не найдены.` : 'Когда вы добавите сотрудника, он будет отображаться здесь.'}
+          title={search ? 'Ничего не найдено' : tab === 'terminated' ? 'Нет уволенных' : 'Пока пусто'}
+          description={
+            search
+              ? `По запросу «${search}» сотрудники не найдены.`
+              : tab === 'terminated'
+                ? 'Уволенные сотрудники будут отображаться здесь.'
+                : 'Когда вы добавите сотрудника, он будет отображаться здесь.'
+          }
           action={
             search ? (
               <Button variant="secondary" onClick={() => setSearch('')}>

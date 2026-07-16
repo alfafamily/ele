@@ -4,6 +4,7 @@ import { ActionMenu, Badge, Banner, BackButton, Button, Card, Spinner } from '..
 import { DeleteTypeModal } from './DeleteTypeModal.jsx'
 import { FieldFormModal } from './FieldFormModal.jsx'
 import { NewTypeModal } from './NewTypeModal.jsx'
+import { RenameTypeModal } from './RenameTypeModal.jsx'
 import { makeTypesApi } from './typesApi.js'
 
 // Склонение «объект» по числу + примечание, почему удаление типа заблокировано.
@@ -28,6 +29,7 @@ export function TypesEditorPage({ domain, title }) {
   const [types, setTypes] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [showNewType, setShowNewType] = useState(false)
+  const [renameTarget, setRenameTarget] = useState(null) // тип, который переименовываем
   const [deleteTarget, setDeleteTarget] = useState(null) // тип, который удаляем
   const [fieldModal, setFieldModal] = useState(null) // null | 'new' | field object
   const [error, setError] = useState(null)
@@ -87,7 +89,10 @@ export function TypesEditorPage({ domain, title }) {
   }
 
   const typeMenu = (t) => {
-    const items = [{ label: t.is_archived ? 'Вернуть из архива' : 'Архивировать', onClick: () => toggleArchive(t) }]
+    const items = [
+      { label: 'Переименовать', onClick: () => setRenameTarget(t) },
+      { label: t.is_archived ? 'Вернуть из архива' : 'Архивировать', onClick: () => toggleArchive(t) },
+    ]
     // Удаление — только если к типу не привязаны объекты. Иначе пункт остаётся
     // видимым, но заблокирован (замочек) + примечание почему (см. note ниже).
     if (t.objects_count === 0) {
@@ -117,6 +122,11 @@ export function TypesEditorPage({ domain, title }) {
 
       <div className="ele-sidebar-layout" style={{ gridTemplateColumns: selected ? '300px 1fr' : '300px' }}>
         <div style={{ background: 'var(--color-surface)', borderRadius: 16, padding: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div style={{ padding: '6px 8px 8px' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--color-text-placeholder)' }}>
+              Типы
+            </span>
+          </div>
           {types.length === 0 ? (
             <div style={{ fontSize: 13, color: 'var(--color-text-muted)', padding: '8px 10px' }}>Типы пока не созданы</div>
           ) : null}
@@ -205,6 +215,18 @@ export function TypesEditorPage({ domain, title }) {
             const created = await api.createType(name)
             setShowNewType(false)
             setSelectedId(created.id)
+            load()
+          }}
+        />
+      ) : null}
+
+      {renameTarget ? (
+        <RenameTypeModal
+          type={renameTarget}
+          onClose={() => setRenameTarget(null)}
+          onRename={async (name) => {
+            await api.updateType(renameTarget.id, { name })
+            setRenameTarget(null)
             load()
           }}
         />

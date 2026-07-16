@@ -4,7 +4,8 @@ import { apiPatch } from '../../shared/api/client'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { ActionMenu, BackButton, Button, Card, Icon, Spinner, StatusPill } from '../../shared/ui'
 import { nameInitials } from '../../shared/employeeName.js'
-import { deactivatePass, deactivateSimCard, getEmployee, uploadEmployeeAvatar } from './employeesApi.js'
+import { detachPass, detachSimCard, getEmployee, restoreEmployee, uploadEmployeeAvatar } from './employeesApi.js'
+import { AttachOrCreateModal } from './AttachOrCreateModal.jsx'
 import { PassInfo } from './PassInfo.jsx'
 import { PassModal } from './PassModal.jsx'
 import { SimCardInfo } from './SimCardInfo.jsx'
@@ -17,10 +18,13 @@ export function EmployeeCardPage() {
   const perms = usePermissions()
   const [employee, setEmployee] = useState(null)
   const [showTerminate, setShowTerminate] = useState(false)
-  // null — модалка закрыта; 'new' — добавление; объект SIM — редактирование.
+  // null — закрыто; 'new' — создание новой (сразу привязанной); объект SIM —
+  // редактирование. simAttach — модалка выбора свободной для привязки.
   const [simModal, setSimModal] = useState(null)
+  const [simAttach, setSimAttach] = useState(false)
   // Аналогично для пропусков.
   const [passModal, setPassModal] = useState(null)
+  const [passAttach, setPassAttach] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const fileInputRef = useRef(null)
 
@@ -56,13 +60,18 @@ export function EmployeeCardPage() {
     load()
   }
 
-  const onDeactivateSim = async (simId) => {
-    await deactivateSimCard(simId)
+  const onDetachSim = async (simId) => {
+    await detachSimCard(simId)
     load()
   }
 
-  const onDeactivatePass = async (passId) => {
-    await deactivatePass(passId)
+  const onDetachPass = async (passId) => {
+    await detachPass(passId)
+    load()
+  }
+
+  const onRestore = async () => {
+    await restoreEmployee(employee.id)
     load()
   }
 
@@ -122,7 +131,11 @@ export function EmployeeCardPage() {
                 />
               </div>
             </Can>
-          ) : null}
+          ) : (
+            <Can perm="canManageEmployees">
+              <Button variant="secondary" onClick={onRestore}>Восстановить</Button>
+            </Can>
+          )}
         </div>
 
         <Card>
@@ -183,21 +196,21 @@ export function EmployeeCardPage() {
             employee.sim_cards.map((sim) => (
               <div key={sim.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
                 <SimCardInfo sim={sim} />
-                {employee.is_employed && !sim.is_deactivated ? (
+                {employee.is_employed ? (
                   <Can perm="canManageEmployees">
                     <div className="ele-card-actions-desktop">
                       <Button variant="secondary" onClick={() => setSimModal(sim)}>
                         Изменить
                       </Button>
-                      <Button variant="secondary" onClick={() => onDeactivateSim(sim.id)}>
-                        Деактивировать
+                      <Button variant="secondary" onClick={() => onDetachSim(sim.id)}>
+                        Открепить
                       </Button>
                     </div>
                     <div className="ele-card-actions-mobile">
                       <ActionMenu
                         items={[
                           { label: 'Изменить', onClick: () => setSimModal(sim) },
-                          { label: 'Деактивировать', onClick: () => onDeactivateSim(sim.id) },
+                          { label: 'Открепить', onClick: () => onDetachSim(sim.id) },
                         ]}
                       />
                     </div>
@@ -208,7 +221,7 @@ export function EmployeeCardPage() {
           )}
           {employee.is_employed ? (
             <Can perm="canManageEmployees">
-              <Button variant="secondary" fullWidth style={{ marginTop: employee.sim_cards.length ? 4 : 12 }} onClick={() => setSimModal('new')}>
+              <Button variant="secondary" fullWidth style={{ marginTop: employee.sim_cards.length ? 4 : 12 }} onClick={() => setSimAttach(true)}>
                 + Добавить SIM-карту
               </Button>
             </Can>
@@ -228,21 +241,21 @@ export function EmployeeCardPage() {
             employee.passes.map((pass) => (
               <div key={pass.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
                 <PassInfo pass={pass} />
-                {employee.is_employed && !pass.is_deactivated ? (
+                {employee.is_employed ? (
                   <Can perm="canManageEmployees">
                     <div className="ele-card-actions-desktop">
                       <Button variant="secondary" onClick={() => setPassModal(pass)}>
                         Изменить
                       </Button>
-                      <Button variant="secondary" onClick={() => onDeactivatePass(pass.id)}>
-                        Деактивировать
+                      <Button variant="secondary" onClick={() => onDetachPass(pass.id)}>
+                        Открепить
                       </Button>
                     </div>
                     <div className="ele-card-actions-mobile">
                       <ActionMenu
                         items={[
                           { label: 'Изменить', onClick: () => setPassModal(pass) },
-                          { label: 'Деактивировать', onClick: () => onDeactivatePass(pass.id) },
+                          { label: 'Открепить', onClick: () => onDetachPass(pass.id) },
                         ]}
                       />
                     </div>
@@ -253,13 +266,29 @@ export function EmployeeCardPage() {
           )}
           {employee.is_employed ? (
             <Can perm="canManageEmployees">
-              <Button variant="secondary" fullWidth style={{ marginTop: employee.passes.length ? 4 : 12 }} onClick={() => setPassModal('new')}>
+              <Button variant="secondary" fullWidth style={{ marginTop: employee.passes.length ? 4 : 12 }} onClick={() => setPassAttach(true)}>
                 + Добавить пропуск
               </Button>
             </Can>
           ) : null}
         </Card>
       </div>
+
+      {simAttach ? (
+        <AttachOrCreateModal
+          kind="sim"
+          employeeId={employee.id}
+          onClose={() => setSimAttach(false)}
+          onAttached={() => {
+            setSimAttach(false)
+            load()
+          }}
+          onCreateNew={() => {
+            setSimAttach(false)
+            setSimModal('new')
+          }}
+        />
+      ) : null}
 
       {simModal ? (
         <SimCardModal
@@ -269,6 +298,22 @@ export function EmployeeCardPage() {
           onDone={() => {
             setSimModal(null)
             load()
+          }}
+        />
+      ) : null}
+
+      {passAttach ? (
+        <AttachOrCreateModal
+          kind="pass"
+          employeeId={employee.id}
+          onClose={() => setPassAttach(false)}
+          onAttached={() => {
+            setPassAttach(false)
+            load()
+          }}
+          onCreateNew={() => {
+            setPassAttach(false)
+            setPassModal('new')
           }}
         />
       ) : null}

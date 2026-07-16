@@ -13,13 +13,13 @@ class EmployeeAdmin(admin.ModelAdmin):
 @admin.register(SimCard)
 class SimCardAdmin(admin.ModelAdmin):
     list_display = ("phone_number", "sim_type", "network_operator", "provider", "employee", "is_deactivated")
-    list_filter = ("sim_type", "is_deactivated", "network_operator", "provider")
+    list_filter = ("sim_type", "network_operator", "provider")
     search_fields = ("phone_number", "employee__last_name", "employee__first_name")
 
 
 @admin.register(AccessPass)
 class AccessPassAdmin(admin.ModelAdmin):
-    list_display = ("account_number", "employee", "is_deactivated")
-    list_filter = ("is_deactivated", "buildings")
-    search_fields = ("account_number", "employee__last_name", "employee__first_name")
+    list_display = ("name", "account_number", "employee", "is_deactivated")
+    list_filter = ("type_vehicle", "type_pedestrian", "buildings")
+    search_fields = ("name", "account_number", "employee__last_name", "employee__first_name")
     filter_horizontal = ("buildings", "rooms")

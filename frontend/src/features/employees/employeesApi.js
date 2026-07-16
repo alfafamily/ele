@@ -6,19 +6,27 @@ export const updateEmployee = (id, payload) => apiPatch(`/api/employees/${id}/`,
 export const terminateEmployee = (id, deactivateUser) =>
   apiPost(`/api/employees/${id}/terminate/`, deactivateUser ? { deactivate_user: true } : {})
 export const getDepartments = () => apiGet('/api/employees/departments/')
+export const restoreEmployee = (id) => apiPost(`/api/employees/${id}/restore/`, {})
 
-// Корпоративные SIM/E-SIM — работа только из карточки Сотрудника.
+// Корпоративные SIM/E-SIM — самостоятельный раздел + привязка из карточки Сотрудника.
+export const getSimCard = (id) => apiGet(`/api/sim-cards/${id}/`)
 export const createSimCard = (payload) => apiPost('/api/sim-cards/', payload)
 export const updateSimCard = (id, payload) => apiPatch(`/api/sim-cards/${id}/`, payload)
 export const deleteSimCard = (id) => apiRequest(`/api/sim-cards/${id}/`, { method: 'DELETE' })
-export const deactivateSimCard = (id) => apiPost(`/api/sim-cards/${id}/deactivate/`, {})
+export const attachSimCard = (id, employeeId) => apiPost(`/api/sim-cards/${id}/attach/`, { employee: employeeId })
+export const detachSimCard = (id) => apiPost(`/api/sim-cards/${id}/detach/`, {})
+export const getSimHistoryPath = (id) => `/api/sim-cards/${id}/history/`
 export const getSimOperators = () => apiGet('/api/sim-cards/operators/')
 export const getSimProviders = () => apiGet('/api/sim-cards/providers/')
 
-// Пропуска СКУД — работа только из карточки Сотрудника (admin/accountant).
+// Пропуска СКУД — самостоятельный раздел + привязка из карточки Сотрудника.
+export const getPass = (id) => apiGet(`/api/access-passes/${id}/`)
 export const createPass = (payload) => apiPost('/api/access-passes/', payload)
 export const updatePass = (id, payload) => apiPatch(`/api/access-passes/${id}/`, payload)
-export const deactivatePass = (id) => apiPost(`/api/access-passes/${id}/deactivate/`, {})
+export const deletePass = (id) => apiRequest(`/api/access-passes/${id}/`, { method: 'DELETE' })
+export const attachPass = (id, employeeId) => apiPost(`/api/access-passes/${id}/attach/`, { employee: employeeId })
+export const detachPass = (id) => apiPost(`/api/access-passes/${id}/detach/`, {})
+export const getPassHistoryPath = (id) => `/api/access-passes/${id}/history/`
 export const uploadEmployeeAvatar = (id, file) => {
   const formData = new FormData()
   formData.append('file', file)

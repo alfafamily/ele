@@ -10,7 +10,9 @@ from rest_framework.test import APITestCase
 
 from storage import backends as storage_backends
 
-from .models import Employee, SimCard
+from locations.models import Building
+
+from .models import AccessPass, Employee, SimCard
 
 _TEST_MEDIA_ROOT = tempfile.mkdtemp(prefix="ele-employee-tests-")
 
@@ -85,7 +87,9 @@ class EmployeeTerminateTests(APITestCase):
         user.refresh_from_db()
         self.assertTrue(user.is_active)
 
-    def test_terminate_deactivates_sim_cards_but_keeps_them(self):
+    def test_terminate_detaches_sim_cards(self):
+        # SIM — переиспользуемые объекты: при увольнении отвязываются
+        # (деактивируются) и освобождаются для повторной выдачи.
         sim1 = SimCard.objects.create(employee=self.employee, phone_number="+79001112233")
         sim2 = SimCard.objects.create(employee=self.employee, phone_number="+79004445566")
         resp = self.client.post(f"/api/employees/{self.employee.id}/terminate/", format="json")
@@ -94,9 +98,14 @@ class EmployeeTerminateTests(APITestCase):
         for sim in (sim1, sim2):
             sim.refresh_from_db()
             self.assertTrue(sim.is_deactivated)
-            self.assertIsNotNone(sim.deactivated_at)
-            # Номер остаётся закреплён за сотрудником — для истории.
-            self.assertEqual(sim.employee_id, self.employee.id)
+            self.assertIsNone(sim.employee_id)
+
+    def test_restore_marks_employed_again(self):
+        self.client.post(f"/api/employees/{self.employee.id}/terminate/", format="json")
+        resp = self.client.post(f"/api/employees/{self.employee.id}/restore/", format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.employee.refresh_from_db()
+        self.assertTrue(self.employee.is_employed)
 
 
 class SimCardTests(APITestCase):
@@ -129,13 +138,38 @@ class SimCardTests(APITestCase):
         )
         self.assertEqual(resp.status_code, 400)
 
-    def test_deactivate_action_keeps_record(self):
+    def test_duplicate_phone_number_rejected(self):
+        SimCard.objects.create(phone_number="+79001112233")
+        resp = self.client.post(
+            "/api/sim-cards/", {"phone_number": "+79001112233"}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("phone_number", resp.data["errors"])
+
+    def test_detach_then_attach(self):
         sim = SimCard.objects.create(employee=self.employee, phone_number="+79001112233")
-        resp = self.client.post(f"/api/sim-cards/{sim.id}/deactivate/", format="json")
+        resp = self.client.post(f"/api/sim-cards/{sim.id}/detach/", format="json")
         self.assertEqual(resp.status_code, 200, resp.data)
         sim.refresh_from_db()
         self.assertTrue(sim.is_deactivated)
-        self.assertIsNotNone(sim.deactivated_at)
+        self.assertIsNone(sim.employee_id)
+
+        other = Employee.objects.create(first_name="Пётр", last_name="Сидоров")
+        resp = self.client.post(
+            f"/api/sim-cards/{sim.id}/attach/", {"employee": other.id}, format="json"
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        sim.refresh_from_db()
+        self.assertFalse(sim.is_deactivated)
+        self.assertEqual(sim.employee_id, other.id)
+
+    def test_tab_filters_active_and_deactivated(self):
+        SimCard.objects.create(employee=self.employee, phone_number="+79001112233")
+        SimCard.objects.create(phone_number="+79004445566")  # свободна
+        active = self.client.get("/api/sim-cards/?tab=active")
+        self.assertEqual([s["phone_number"] for s in active.data["results"]], ["+79001112233"])
+        deact = self.client.get("/api/sim-cards/?tab=deactivated")
+        self.assertEqual([s["phone_number"] for s in deact.data["results"]], ["+79004445566"])
 
     def test_filter_by_employee(self):
         other = Employee.objects.create(first_name="Пётр", last_name="Сидоров")
@@ -143,17 +177,16 @@ class SimCardTests(APITestCase):
         SimCard.objects.create(employee=other, phone_number="+79004445566")
         resp = self.client.get(f"/api/sim-cards/?employee={self.employee.id}")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(len(resp.data), 1)
-        self.assertEqual(resp.data[0]["phone_number"], "+79001112233")
+        self.assertEqual(len(resp.data["results"]), 1)
+        self.assertEqual(resp.data["results"][0]["phone_number"], "+79001112233")
 
-    def test_embedded_in_employee_card_active_and_archived(self):
+    def test_employee_card_shows_only_active(self):
+        # Активная (привязана) видна в карточке; отвязанная (employee=NULL) — нет.
         SimCard.objects.create(employee=self.employee, phone_number="+79001112233")
-        SimCard.objects.create(
-            employee=self.employee, phone_number="+79004445566", is_deactivated=True
-        )
+        SimCard.objects.create(phone_number="+79004445566")
         resp = self.client.get(f"/api/employees/{self.employee.id}/")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(len(resp.data["sim_cards"]), 2)
+        self.assertEqual(len(resp.data["sim_cards"]), 1)
 
     def test_operators_and_providers_autocomplete(self):
         SimCard.objects.create(
@@ -185,7 +218,7 @@ class SimCardAccessTests(APITestCase):
         self.client.force_authenticate(user=self.emp_user)
         resp = self.client.get(f"/api/sim-cards/?employee={self.other.id}")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual([s["phone_number"] for s in resp.data], ["+79001112233"])
+        self.assertEqual([s["phone_number"] for s in resp.data["results"]], ["+79001112233"])
 
     def test_employee_cannot_retrieve_foreign_sim(self):
         self.client.force_authenticate(user=self.emp_user)
@@ -199,9 +232,9 @@ class SimCardAccessTests(APITestCase):
         )
         self.assertEqual(resp.status_code, 403)
 
-    def test_employee_cannot_deactivate(self):
+    def test_employee_cannot_detach(self):
         self.client.force_authenticate(user=self.emp_user)
-        resp = self.client.post(f"/api/sim-cards/{self.my_sim.id}/deactivate/", format="json")
+        resp = self.client.post(f"/api/sim-cards/{self.my_sim.id}/detach/", format="json")
         self.assertEqual(resp.status_code, 403)
 
     def test_employee_cannot_use_autocomplete(self):
@@ -217,7 +250,7 @@ class SimCardAccessTests(APITestCase):
         self.client.force_authenticate(user=self.emp_user)
         resp = self.client.get("/api/sim-cards/")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual([s["phone_number"] for s in resp.data], ["+79001112233"])
+        self.assertEqual([s["phone_number"] for s in resp.data["results"]], ["+79001112233"])
 
     def test_observer_cannot_retrieve_foreign_sim(self):
         self.emp_user.is_observer = True
@@ -231,7 +264,52 @@ class SimCardAccessTests(APITestCase):
         self.client.force_authenticate(user=orphan)
         resp = self.client.get("/api/sim-cards/")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(len(resp.data), 0)
+        self.assertEqual(len(resp.data["results"]), 0)
+
+
+class AccessPassTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.employee = Employee.objects.create(first_name="Иван", last_name="Прозоров")
+        self.building = Building.objects.create(name="Главный офис")
+
+    def _create(self, **extra):
+        payload = {"building_ids": [self.building.id], **extra}
+        return self.client.post("/api/access-passes/", payload, format="json")
+
+    def test_create_with_name_and_types(self):
+        resp = self._create(
+            employee=self.employee.id, name="Синий брелок", account_number="A-100",
+            type_vehicle=True, type_pedestrian=True,
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(resp.data["name"], "Синий брелок")
+        self.assertTrue(resp.data["type_vehicle"])
+        self.assertTrue(resp.data["type_pedestrian"])
+        self.assertFalse(resp.data["is_deactivated"])
+
+    def test_multiple_passes_without_account_number_allowed(self):
+        self.assertEqual(self._create().status_code, 201)
+        self.assertEqual(self._create().status_code, 201)
+
+    def test_duplicate_account_number_rejected(self):
+        self.assertEqual(self._create(account_number="A-1").status_code, 201)
+        resp = self._create(account_number="A-1")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("account_number", resp.data["errors"])
+
+    def test_detach_then_attach(self):
+        created = self._create(employee=self.employee.id)
+        pass_id = created.data["id"]
+        resp = self.client.post(f"/api/access-passes/{pass_id}/detach/", format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertTrue(resp.data["is_deactivated"])
+        resp = self.client.post(
+            f"/api/access-passes/{pass_id}/attach/", {"employee": self.employee.id}, format="json"
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertFalse(resp.data["is_deactivated"])
 
 
 @override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)

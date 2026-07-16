@@ -12,7 +12,7 @@ const CACHE_KEY = 'equipment-list'
 
 const TABS = [
   { value: 'active', label: 'Активные' },
-  { value: 'archive', label: 'Архив' },
+  { value: 'archive', label: 'Списанное' },
 ]
 const FILTERS = [
   { value: 'all', label: 'Все' },
@@ -114,7 +114,7 @@ export function EquipmentListPage() {
         </div>
       ) : items.length === 0 ? (
         <EmptyState
-          title={search ? 'Ничего не найдено' : tab === 'archive' ? 'В архиве пусто' : 'Пока пусто'}
+          title={search ? 'Ничего не найдено' : tab === 'archive' ? 'Списанного нет' : 'Пока пусто'}
           description={
             search
               ? `По запросу «${search}» оборудование не найдено. Попробуйте изменить запрос или сбросить фильтры.`
