@@ -201,8 +201,10 @@ class LicenseViewSet(viewsets.ModelViewSet):
             return rec.value_text
 
         def fv_secret(rec):
+            # Зафиксированные реквизиты-ключи («Номер/ключ», «Номер/ID/Serial
+            # токена») маскируются и в истории.
             f = field_of(rec)
-            return bool(f and f.name == "Номер/ключ")
+            return bool(f and f.is_locked)
 
         rows += build_related_history_rows(
             LicenseFieldValue.history.filter(license_id=lic.id),

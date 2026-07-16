@@ -16,14 +16,16 @@ from .models import (
 )
 
 
-# «Номер/ключ» — зафиксированный (is_locked) реквизит базового Типа
-# «Программная», никогда не переименовывается. Значение хранится в value_text.
+# Зафиксированные (is_locked) реквизиты-ключи базовых Типов: «Номер/ключ»
+# у «Программной» и «Номер/ID/Serial токена» у «Аппаратной». Оба — секретные
+# (маскируются, скрыты в списках), обязательные, уникальные. Значение в value_text.
 LICENSE_KEY_FIELD_NAME = "Номер/ключ"
 
 
 def _license_key_value(license_obj):
+    # У лицензии не более одного зафиксированного реквизита-ключа (свой у Типа).
     for fv in license_obj.field_values.all():
-        if fv.field.name == LICENSE_KEY_FIELD_NAME:
+        if fv.field.is_locked:
             return fv.value_text
     return None
 
@@ -111,13 +113,15 @@ class LicenseFieldValueOutSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="field.name", read_only=True)
     value_type = serializers.CharField(source="field.value_type", read_only=True)
     allow_multiple = serializers.BooleanField(source="field.allow_multiple", read_only=True)
+    # Секретный реквизит-ключ (маскируется на карточке) — по зафиксированности.
+    is_locked = serializers.BooleanField(source="field.is_locked", read_only=True)
     value = serializers.SerializerMethodField()
     value_file = StoredFileSerializer(read_only=True)
     value_files = LicenseFieldFileSerializer(source="files", many=True, read_only=True)
 
     class Meta:
         model = LicenseFieldValue
-        fields = ["field", "name", "value_type", "allow_multiple", "value", "value_file", "value_files"]
+        fields = ["field", "name", "value_type", "allow_multiple", "is_locked", "value", "value_file", "value_files"]
 
     def get_value(self, obj):
         vt = obj.field.value_type
@@ -180,10 +184,11 @@ class LicenseSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {"field_values": [f"Реквизит «{item['field'].name}» не относится к выбранному Типу."]}
                     )
-                # Уникальность «Номер/ключ» (зафиксированный реквизит Программной
-                # лицензии): двух лицензий с одинаковым ключом быть не может.
+                # Уникальность зафиксированного реквизита-ключа («Номер/ключ» у
+                # Программной, «Номер/ID/Serial токена» у Аппаратной): двух
+                # лицензий с одинаковым ключом/серийником быть не может.
                 field = item["field"]
-                if field.is_locked and field.name == LICENSE_KEY_FIELD_NAME:
+                if field.is_locked:
                     value = item.get("value")
                     value = None if value is None else str(value)
                     if value:
@@ -192,7 +197,7 @@ class LicenseSerializer(serializers.ModelSerializer):
                             dup = dup.exclude(license_id=self.instance.pk)
                         if dup.exists():
                             raise serializers.ValidationError(
-                                {"field_values": ["Лицензия с таким «Номер/ключ» уже есть."]}
+                                {"field_values": [f"Лицензия с таким «{field.name}» уже есть."]}
                             )
         return attrs
 

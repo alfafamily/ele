@@ -59,6 +59,8 @@ class LicenseKeyMaskingTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         self.software = LicenseType.objects.get(name="Программная")
         self.key_field = self.software.fields.get(is_locked=True)
+        self.hardware = LicenseType.objects.get(name="Аппаратная")
+        self.token_field = self.hardware.fields.get(is_locked=True)
 
     def test_key_absent_from_list_present_in_detail(self):
         resp = self.client.post(
@@ -82,16 +84,36 @@ class LicenseKeyMaskingTests(APITestCase):
         values = {fv["field"]: fv["value"] for fv in resp.data["field_values"]}
         self.assertEqual(values[self.key_field.id], "XXXX-YYYY-ZZZZ")
 
-    def test_key_optional_allows_creation_without_key(self):
-        # «Номер/ключ» необязателен: лицензий без ключа может быть несколько.
-        r1 = self.client.post(
-            "/api/licenses/", {"name": "Без ключа 1", "license_type": self.software.id}, format="json"
+    def test_missing_required_key_blocks_creation(self):
+        resp = self.client.post(
+            "/api/licenses/", {"name": "Без ключа", "license_type": self.software.id}, format="json"
         )
-        r2 = self.client.post(
-            "/api/licenses/", {"name": "Без ключа 2", "license_type": self.software.id}, format="json"
-        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(License.objects.filter(name="Без ключа").exists())
+
+    def test_hardware_token_required_masked_and_unique(self):
+        # Аналог «Номер/ключ» у Аппаратной: обязателен, маскируется в списке,
+        # уникален.
+        base = {"name": "Токен PKI", "license_type": self.hardware.id}
+        # Без серийника — обязательный реквизит не заполнен.
+        self.assertEqual(self.client.post("/api/licenses/", base, format="json").status_code, 400)
+
+        payload = {**base, "field_values_input": [{"field": self.token_field.id, "value": "SN-777"}]}
+        r1 = self.client.post("/api/licenses/", payload, format="json")
         self.assertEqual(r1.status_code, 201, r1.data)
-        self.assertEqual(r2.status_code, 201, r2.data)
+
+        # В списке серийник не светится.
+        listing = self.client.get("/api/licenses/")
+        self.assertNotIn("SN-777", str(listing.data))
+
+        # Дубликат серийника — отклонён.
+        dup = self.client.post(
+            "/api/licenses/",
+            {"name": "Токен 2", "license_type": self.hardware.id, "field_values_input": [{"field": self.token_field.id, "value": "SN-777"}]},
+            format="json",
+        )
+        self.assertEqual(dup.status_code, 400)
+        self.assertIn("field_values", dup.data["errors"])
 
     def _create(self, name, key):
         return self.client.post(
