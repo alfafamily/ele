@@ -99,8 +99,11 @@ export function TypesEditorPage({ domain, title }) {
         </div>
       ) : null}
 
-      <div className="ele-sidebar-layout" style={{ gridTemplateColumns: '300px 1fr' }}>
+      <div className="ele-sidebar-layout" style={{ gridTemplateColumns: selected ? '300px 1fr' : '300px' }}>
         <div style={{ background: 'var(--color-surface)', borderRadius: 16, padding: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {types.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', padding: '8px 10px' }}>Типы пока не созданы</div>
+          ) : null}
           {types.map((t) => (
             <div
               key={t.id}
@@ -186,11 +189,7 @@ export function TypesEditorPage({ domain, title }) {
               ＋ Добавить реквизит
             </Button>
           </Card>
-        ) : (
-          <Card style={{ flex: 1 }}>
-            <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Типов пока нет.</div>
-          </Card>
-        )}
+        ) : null}
       </div>
 
       {showNewType ? (

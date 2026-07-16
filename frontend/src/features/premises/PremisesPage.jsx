@@ -151,7 +151,7 @@ export function PremisesPage() {
         </div>
       ) : null}
 
-      <div className="ele-sidebar-layout" style={{ gridTemplateColumns: '344px 1fr' }}>
+      <div className="ele-sidebar-layout" style={{ gridTemplateColumns: selected ? '344px 1fr' : '344px' }}>
         {/* ЛЕВАЯ КОЛОНКА — здания */}
         <div style={{ background: 'var(--color-surface)', borderRadius: 16, padding: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 8px 8px' }}>
@@ -166,7 +166,7 @@ export function PremisesPage() {
           </div>
 
           {buildings.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', padding: '8px 10px' }}>Зданий пока нет.</div>
+            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', padding: '8px 10px' }}>Здания пока не созданы</div>
           ) : (
             buildings.map((b) => (
               <div
@@ -202,7 +202,8 @@ export function PremisesPage() {
           )}
         </div>
 
-        {/* ПРАВАЯ КОЛОНКА — детали здания */}
+        {/* ПРАВАЯ КОЛОНКА — детали здания. В пустом состоянии (зданий нет)
+            не рендерим вовсе — остаётся только левый список. */}
         {selected ? (
           <div style={{ background: 'var(--color-surface)', borderRadius: 16, padding: 22, minWidth: 0 }}>
             <div style={{ minWidth: 0 }}>
@@ -274,11 +275,7 @@ export function PremisesPage() {
               </Can>
             ) : null}
           </div>
-        ) : (
-          <div style={{ background: 'var(--color-surface)', borderRadius: 16, padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>
-            Зданий пока нет. {perms.canManagePremises ? 'Создайте первое здание.' : ''}
-          </div>
-        )}
+        ) : null}
       </div>
 
       {buildingModal ? (
