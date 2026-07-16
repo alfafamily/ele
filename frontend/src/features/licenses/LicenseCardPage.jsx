@@ -55,7 +55,9 @@ export function LicenseCardPage() {
 
   return (
     <div>
-      <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 10 }}>
+      {/* Хлебные крошки — только desktop: на мобильных вложенности глубже двух
+          уровней нет, назад решает кнопка «Назад». */}
+      <div className="ele-only-desktop" style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 10 }}>
         <Link to="/licenses" style={{ color: 'var(--color-text-muted)' }}>
           Лицензии
         </Link>{' '}
@@ -99,18 +101,38 @@ export function LicenseCardPage() {
           </div>
         </Card>
 
-        <Card>
-          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Параметры лицензии</div>
-          {license.field_values.length === 0 ? (
-            <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>У этого Типа нет реквизитов.</div>
-          ) : (
-            <div className="ele-field-grid">
-              {license.field_values.map((fv) =>
-                fv.name === 'Номер/ключ' ? <MaskedKeyField key={fv.field} fv={fv} /> : <FieldValueDisplay key={fv.field} fv={fv} />
-              )}
-            </div>
-          )}
-        </Card>
+        {(() => {
+          // Файловые реквизиты выносим в отдельный блок «Файлы» под параметрами.
+          const paramValues = license.field_values.filter((fv) => fv.value_type !== 'file')
+          const fileValues = license.field_values.filter((fv) => fv.value_type === 'file')
+          return (
+            <>
+              <Card>
+                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Параметры лицензии</div>
+                {paramValues.length === 0 ? (
+                  <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>У этого Типа нет реквизитов.</div>
+                ) : (
+                  <div className="ele-field-grid">
+                    {paramValues.map((fv) =>
+                      fv.name === 'Номер/ключ' ? <MaskedKeyField key={fv.field} fv={fv} /> : <FieldValueDisplay key={fv.field} fv={fv} />
+                    )}
+                  </div>
+                )}
+              </Card>
+
+              {fileValues.length > 0 ? (
+                <Card>
+                  <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Файлы</div>
+                  <div className="ele-field-grid">
+                    {fileValues.map((fv) => (
+                      <FieldValueDisplay key={fv.field} fv={fv} />
+                    ))}
+                  </div>
+                </Card>
+              ) : null}
+            </>
+          )
+        })()}
 
         <Card>
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Дополнительные поля</div>

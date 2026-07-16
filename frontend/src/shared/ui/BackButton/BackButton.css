@@ -1,25 +1,27 @@
 .ele-back-btn {
-  width: 36px;
-  height: 36px;
   flex: none;
   padding: 0;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
+  border: none;
+  background: none;
+  /* Приглушённый цвет — как у заголовков архивных зданий, чтобы стрелка была
+     менее акцентной, чем заголовок экрана. */
   color: var(--color-text-muted);
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* Высота = высоте строки заголовка карточки (26px × ~1.2). В шапке карточки
+     используется align-items: flex-start (заголовок бывает в 2 строки), поэтому
+     фиксированная высота с центрированной иконкой ставит стрелку по центру
+     ПЕРВОЙ строки — вровень с первой буквой. */
+  height: 31px;
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  transition: color 0.12s ease;
+}
+
+.ele-back-btn svg {
+  display: block;
 }
 
 .ele-back-btn:hover {
-  background: var(--color-fill-active-tint);
   color: var(--color-text-primary);
-  border-color: var(--color-border-strong);
-}
-
-.ele-back-btn:active {
-  transform: translateY(0.5px);
 }

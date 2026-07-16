@@ -1,11 +1,16 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigationType } from 'react-router-dom'
 import { Can } from '../../app/usePermissions.js'
 import { InfiniteScrollSentinel } from '../../shared/InfiniteScrollSentinel.jsx'
 import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
+import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
+import { readListCache, writeListCache } from '../../shared/listCache.js'
+import { nameInitials } from '../../shared/employeeName.js'
 import { Button, EmptyState, SearchInput, Skeleton, StatusPill, Table, TableRow } from '../../shared/ui'
+
+const CACHE_KEY = 'employee-list'
 
 // Desktop — отдельные колонки ФИО/Должность/Отдел; на мобильных они схлопываются
 // в одну колонку «Сотрудник» (ФИО + Должность + Отдел), остальные — как есть.
@@ -40,27 +45,37 @@ function avatarNode(row) {
         overflow: 'hidden',
       }}
     >
-      {row.avatar ? <img src={row.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials(row.full_name)}
+      {row.avatar ? <img src={row.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : nameInitials(row.full_name)}
     </span>
   )
 }
 
-function initials(name) {
-  return (name || '?').slice(0, 2).toUpperCase()
-}
-
 export function EmployeeListPage() {
-  const [search, setSearch] = useState('')
+  // Восстанавливаем состояние списка (поиск/сортировка, подгруженные страницы,
+  // прокрутку) только при переходе «назад» (POP) — например, с карточки
+  // сотрудника; при заходе через меню (PUSH) открываем заново.
+  const isPop = useNavigationType() === 'POP'
+  const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
+  const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
-  const [sortDir, setSortDir] = useState('asc')
+  const [sortDir, setSortDir] = useState(() => savedUi?.sortDir ?? 'asc')
   const isMobile = useMediaQuery('(max-width: 768px)')
   const columns = isMobile ? MOBILE_COLUMNS : DESKTOP_COLUMNS
 
+  useEffect(() => {
+    writeListCache(CACHE_KEY, { ui: { search, sortDir } })
+  }, [search, sortDir])
+
   const ordering = sortDir === 'desc' ? '-last_name' : 'last_name'
-  const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList('/api/employees/', {
-    search: debouncedSearch || undefined,
-    ordering,
-  })
+  const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList(
+    '/api/employees/',
+    {
+      search: debouncedSearch || undefined,
+      ordering,
+    },
+    { cacheKey: CACHE_KEY, restore: isPop },
+  )
+  useScrollRestoration(CACHE_KEY, isPop && !loading)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

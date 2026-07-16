@@ -15,7 +15,11 @@ import './FileFieldSlot.css'
 //   одиночный — зона видна только когда файлов нет (замена через «Удалить»).
 // Удаление: legacy value_file (single: true) — field-level эндпоинтом, дочерние
 // — по id через makeDeleteFilePath.
-export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFilePath, onChange, disabled }) {
+//
+// deferred — режим формы создания: объекта ещё нет, поэтому файлы не грузятся
+// сразу, а копятся локально (fv.pendingFiles — массив File) и отправляются
+// родителем уже после создания объекта.
+export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFilePath, onChange, disabled, deferred }) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -23,6 +27,10 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
     ...(fv?.value_file ? [{ key: 'single', file: fv.value_file, single: true }] : []),
     ...(fv?.value_files || []).map((f) => ({ key: f.id, id: f.id, file: f.file, single: false })),
   ]
+  const pendingFiles = fv?.pendingFiles || []
+
+  const removePending = (idx) =>
+    onChange({ ...(fv || {}), pendingFiles: pendingFiles.filter((_, i) => i !== idx) })
 
   const handleDeleteSingle = async () => {
     setUploading(true)
@@ -62,6 +70,14 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
       e.target.value = ''
       return
     }
+    // Форма создания: объекта ещё нет — копим файлы локально, отправит родитель.
+    if (deferred) {
+      setError(null)
+      const next = multiple ? [...pendingFiles, ...selected] : selected.slice(0, 1)
+      onChange({ ...(fv || {}), pendingFiles: next })
+      e.target.value = ''
+      return
+    }
     setUploading(true)
     setError(null)
     // Множественный реквизит грузит все выбранные файлы одним запросом
@@ -81,7 +97,7 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
 
   // Одиночный реквизит показывает зону загрузки только когда файлов нет;
   // множественный — всегда (пока не заблокирован до первого сохранения).
-  const showDropzone = !disabled && (multiple || displayFiles.length === 0)
+  const showDropzone = !disabled && (multiple || displayFiles.length + pendingFiles.length === 0)
 
   return (
     <div>
@@ -108,6 +124,26 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
                   Удалить
                 </button>
               ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Отложенные (ещё не загруженные) файлы формы создания. */}
+      {pendingFiles.length ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, marginBottom: showDropzone ? 10 : 0 }}>
+          {pendingFiles.map((file, idx) => (
+            <div key={idx} className="ele-file-slot__current">
+              <span style={{ fontWeight: 500, fontSize: 13.5 }}>{file.name}</span>
+              <span style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{Math.round(file.size / 1024)} КБ</span>
+              <button
+                type="button"
+                onClick={() => removePending(idx)}
+                disabled={uploading}
+                style={{ border: 'none', background: 'none', color: 'var(--color-error)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: uploading ? 'default' : 'pointer', padding: 4 }}
+              >
+                Удалить
+              </button>
             </div>
           ))}
         </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { apiPost } from '../../shared/api/client'
 import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
@@ -88,14 +89,32 @@ export function EquipmentFormPage() {
     try {
       if (isEdit) {
         await updateEquipment(id, payload)
-        navigate(`/equipment/${id}`)
+        // Возврат к карточке, откуда пришли в редактирование (не push новой
+        // записи в историю) — тогда «Назад» с карточки ведёт в список, а не
+        // снова в форму редактирования.
+        navigate(-1)
       } else {
         const created = await createEquipment(payload)
-        // Файловые реквизиты можно приложить только после создания объекта —
-        // ведём на форму редактирования, где слоты активны (иначе обязательный
-        // файл прикрепить негде).
-        const hasFileFields = typeFields.some((f) => f.value_type === 'file')
-        navigate(hasFileFields ? `/equipment/${created.id}/edit` : `/equipment/${created.id}`)
+        // Файловые реквизиты нельзя приложить в основном payload (нужен id
+        // объекта) — грузим прикреплённые на форме файлы сразу после создания.
+        // Если загрузка какого-то файла упала — ведём на форму редактирования,
+        // где слоты активны и файл можно приложить повторно.
+        const fileFields = typeFields.filter((f) => f.value_type === 'file')
+        let uploadFailed = false
+        for (const f of fileFields) {
+          const pending = fileValues[f.id]?.pendingFiles
+          if (!pending?.length) continue
+          const formData = new FormData()
+          for (const file of pending) formData.append('file', file)
+          try {
+            await apiPost(uploadEquipmentFieldFile(created.id, f.id), formData)
+          } catch {
+            uploadFailed = true
+          }
+        }
+        // replace — чтобы форма создания не оставалась в истории: с карточки
+        // нового объекта «Назад» ведёт в список, а не обратно в форму.
+        navigate(uploadFailed ? `/equipment/${created.id}/edit` : `/equipment/${created.id}`, { replace: true })
       }
     } catch (err) {
       if (err.errors) {
@@ -195,7 +214,7 @@ export function EquipmentFormPage() {
             </div>
           </Card>
 
-          {selectedType ? (
+          {selectedType && typeFields.some((f) => f.value_type !== 'file') ? (
             <Card>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Параметры оборудования</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -209,6 +228,14 @@ export function EquipmentFormPage() {
                       onChange={(v) => setValues((prev) => ({ ...prev, [f.id]: v }))}
                     />
                   ))}
+              </div>
+            </Card>
+          ) : null}
+
+          {selectedType && typeFields.some((f) => f.value_type === 'file') ? (
+            <Card>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Файлы</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {typeFields
                   .filter((f) => f.value_type === 'file')
                   .map((f) => (
@@ -217,7 +244,7 @@ export function EquipmentFormPage() {
                       field={f}
                       fv={fileValues[f.id]}
                       multiple={f.allow_multiple}
-                      disabled={!isEdit}
+                      deferred={!isEdit}
                       uploadPath={isEdit ? uploadEquipmentFieldFile(id, f.id) : undefined}
                       makeDeleteFilePath={isEdit ? (fileId) => deleteEquipmentFieldFilePath(id, f.id, fileId) : undefined}
                       onChange={(data) => setFileValues((prev) => ({ ...prev, [f.id]: data }))}

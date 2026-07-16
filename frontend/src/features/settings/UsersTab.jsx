@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { InfiniteScrollSentinel } from '../../shared/InfiniteScrollSentinel.jsx'
 import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { roleLabel } from '../../shared/roles.js'
+import { nameInitials } from '../../shared/employeeName.js'
 import { Banner, Button, Skeleton, StatusPill, Table, TableRow } from '../../shared/ui'
 import { DeactivateUserModal } from './DeactivateUserModal.jsx'
 import { EditUserModal } from './EditUserModal.jsx'
@@ -91,7 +92,7 @@ export function UsersTab() {
                       {u.employee_avatar ? (
                         <img src={u.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
-                        u.employee_name.slice(0, 2).toUpperCase()
+                        nameInitials(u.employee_name)
                       )}
                     </span>
                     <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.employee_name}</span>

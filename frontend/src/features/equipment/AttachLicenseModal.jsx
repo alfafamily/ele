@@ -13,7 +13,7 @@ import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
 export function AttachLicenseModal({ equipment, onClose, onAttached }) {
   const [all, setAll] = useState(null)
   const [query, setQuery] = useState('')
-  const [selectedId, setSelectedId] = useState(null)
+  const [selectedIds, setSelectedIds] = useState([])
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -25,10 +25,17 @@ export function AttachLicenseModal({ equipment, onClose, onAttached }) {
     (lic) => lic.name.toLowerCase().includes(q) || (lic.key || '').toLowerCase().includes(q),
   )
 
+  const toggle = (id) =>
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+
   const attach = async () => {
     setSubmitting(true)
     try {
-      await apiPatch(`/api/licenses/${selectedId}/`, { equipment: equipment.id })
+      // К одному оборудованию можно привязать несколько лицензий за раз —
+      // патчим каждую выбранную по очереди.
+      for (const licenseId of selectedIds) {
+        await apiPatch(`/api/licenses/${licenseId}/`, { equipment: equipment.id })
+      }
       onAttached()
     } finally {
       setSubmitting(false)
@@ -70,70 +77,75 @@ export function AttachLicenseModal({ equipment, onClose, onAttached }) {
               marginBottom: 12,
             }}
           />
-          <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden', maxHeight: 260, overflowY: 'auto', marginBottom: 16 }}>
-            {/* Строка — div, а не button: внутри «глазик» «Номера/ключа» —
-                вложенные button недопустимы. Клик по строке выбирает лицензию. */}
-            {filtered.map((lic, i) => (
-              <div
-                key={lic.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => setSelectedId(lic.id)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    setSelectedId(lic.id)
-                  }
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 11,
-                  width: '100%',
-                  padding: '11px 13px',
-                  borderTop: i === 0 ? 'none' : '1px solid var(--color-border-hairline)',
-                  background: selectedId === lic.id ? 'var(--color-info-bg)' : 'transparent',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontFamily: 'inherit',
-                }}
-              >
-                <span
-                  style={{
-                    width: 20,
-                    height: 20,
-                    flex: 'none',
-                    borderRadius: 6,
-                    background: selectedId === lic.id ? 'var(--color-primary)' : 'transparent',
-                    boxShadow: selectedId === lic.id ? 'none' : 'inset 0 0 0 1.5px var(--color-border-strong)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {selectedId === lic.id ? (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M5 12l5 5L20 6" />
-                    </svg>
-                  ) : null}
-                </span>
-                <span style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{lic.name}</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>{lic.license_type_name} · свободна</div>
-                  {lic.key ? <div style={{ marginTop: 4 }}><InlineMaskedKey value={lic.key} /></div> : null}
-                </span>
-              </div>
-            ))}
-            {filtered.length === 0 ? (
-              <div style={{ padding: 14, fontSize: 13, color: 'var(--color-text-placeholder)' }}>Ничего не найдено</div>
-            ) : null}
-          </div>
+          {filtered.length === 0 ? (
+            <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)', marginBottom: 16 }}>Ничего не найдено</div>
+          ) : (
+            <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden', maxHeight: 260, overflowY: 'auto', marginBottom: 16 }}>
+              {/* Строка — div, а не button: внутри «глазик» «Номера/ключа» —
+                  вложенные button недопустимы. Клик по строке переключает выбор
+                  (можно выбрать несколько лицензий за раз). */}
+              {filtered.map((lic, i) => {
+                const checked = selectedIds.includes(lic.id)
+                return (
+                  <div
+                    key={lic.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => toggle(lic.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        toggle(lic.id)
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 11,
+                      width: '100%',
+                      padding: '11px 13px',
+                      borderTop: i === 0 ? 'none' : '1px solid var(--color-border-hairline)',
+                      background: checked ? 'var(--color-info-bg)' : 'transparent',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 20,
+                        height: 20,
+                        flex: 'none',
+                        borderRadius: 6,
+                        background: checked ? 'var(--color-primary)' : 'transparent',
+                        boxShadow: checked ? 'none' : 'inset 0 0 0 1.5px var(--color-border-strong)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {checked ? (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M5 12l5 5L20 6" />
+                        </svg>
+                      ) : null}
+                    </span>
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600 }}>{lic.name}</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>{lic.license_type_name} · свободна</div>
+                      {lic.key ? <div style={{ marginTop: 4 }}><InlineMaskedKey value={lic.key} /></div> : null}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 10 }}>
             <Button variant="secondary" fullWidth onClick={onClose}>
               Отмена
             </Button>
-            <Button fullWidth disabled={!selectedId} loading={submitting} onClick={attach}>
-              Привязать
+            <Button fullWidth disabled={selectedIds.length === 0} loading={submitting} onClick={attach}>
+              Привязать{selectedIds.length > 1 ? ` (${selectedIds.length})` : ''}
             </Button>
           </div>
         </>

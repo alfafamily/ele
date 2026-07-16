@@ -50,10 +50,15 @@ export function EmployeeFormPage() {
     try {
       if (isEdit) {
         await updateEmployee(id, payload)
-        navigate(`/employees/${id}`)
+        // Возврат к карточке, откуда пришли в редактирование (не push новой
+        // записи в историю) — тогда «Назад» с карточки ведёт в список, а не
+        // снова в форму редактирования.
+        navigate(-1)
       } else {
         const created = await createEmployee(payload)
-        navigate(`/employees/${created.id}`)
+        // replace — чтобы форма создания не оставалась в истории: с карточки
+        // нового объекта «Назад» ведёт в список, а не обратно в форму.
+        navigate(`/employees/${created.id}`, { replace: true })
       }
     } catch (err) {
       if (err.errors) {
@@ -93,8 +98,8 @@ export function EmployeeFormPage() {
           <Card>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <Input label="Имя" required value={firstName} onChange={(e) => setFirstName(e.target.value)} error={fieldErrors.first_name} />
                 <Input label="Фамилия" required value={lastName} onChange={(e) => setLastName(e.target.value)} error={fieldErrors.last_name} />
+                <Input label="Имя" required value={firstName} onChange={(e) => setFirstName(e.target.value)} error={fieldErrors.first_name} />
               </div>
               <Input label="Должность" value={position} onChange={(e) => setPosition(e.target.value)} error={fieldErrors.position} />
               <div>

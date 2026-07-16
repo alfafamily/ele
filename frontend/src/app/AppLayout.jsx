@@ -5,12 +5,9 @@ import { useCompany } from './CompanyContext.jsx'
 import { navSectionsForRole } from './navSections.js'
 import { HelpIcon, MoreIcon } from './navIcons.jsx'
 import { roleLabel } from '../shared/roles.js'
+import { nameInitials } from '../shared/employeeName.js'
 import { Button, Modal } from '../shared/ui'
 import './AppLayout.css'
-
-function initials(email) {
-  return (email || '?').slice(0, 2).toUpperCase()
-}
 
 export function AppLayout() {
   const { user } = useAuth()
@@ -35,7 +32,7 @@ export function AppLayout() {
       {user.employee?.avatar ? (
         <img src={user.employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
-        initials(employeeName || user.email)
+        nameInitials(employeeName || user.email)
       )}
     </span>
   )
@@ -80,7 +77,7 @@ export function AppLayout() {
             {user.employee?.avatar ? (
               <img src={user.employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              initials(employeeName || user.email)
+              nameInitials(employeeName || user.email)
             )}
           </span>
           <span className="ele-rail__user-text">

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext.jsx'
 import { roleLabel } from '../../shared/roles.js'
+import { nameInitials } from '../../shared/employeeName.js'
 import { Button, Card, Spinner } from '../../shared/ui'
 import { deleteEmployeeAvatar, uploadEmployeeAvatar } from '../employees/employeesApi.js'
 import { PassInfo } from '../employees/PassInfo.jsx'
@@ -10,9 +11,6 @@ import { ChangeEmailModal } from './ChangeEmailModal.jsx'
 import { ChangePasswordModal } from './ChangePasswordModal.jsx'
 import { getMyPasses, getMySimCards } from './profileApi.js'
 
-function initials(name) {
-  return (name || '?').slice(0, 2).toUpperCase()
-}
 function formatDate(iso) {
   if (!iso) return 'ещё не менялся'
   return new Date(iso).toLocaleDateString('ru-RU')
@@ -116,7 +114,7 @@ export function ProfilePage() {
               aria-haspopup={employee?.avatar ? 'menu' : undefined}
               aria-expanded={employee?.avatar ? avatarMenu : undefined}
             >
-              {employee?.avatar ? <img src={employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials(displayName)}
+              {employee?.avatar ? <img src={employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : nameInitials(displayName)}
               {uploadingAvatar ? <Spinner size={20} /> : null}
             </span>
             {avatarMenu && employee?.avatar ? (

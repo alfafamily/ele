@@ -3,16 +3,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { apiPatch } from '../../shared/api/client'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { ActionMenu, BackButton, Button, Card, Spinner, StatusPill } from '../../shared/ui'
+import { nameInitials } from '../../shared/employeeName.js'
 import { deactivatePass, deactivateSimCard, getEmployee, uploadEmployeeAvatar } from './employeesApi.js'
 import { PassInfo } from './PassInfo.jsx'
 import { PassModal } from './PassModal.jsx'
 import { SimCardInfo } from './SimCardInfo.jsx'
 import { SimCardModal } from './SimCardModal.jsx'
 import { TerminateModal } from './TerminateModal.jsx'
-
-function initials(name) {
-  return (name || '?').slice(0, 2).toUpperCase()
-}
 
 export function EmployeeCardPage() {
   const { id } = useParams()
@@ -95,7 +92,7 @@ export function EmployeeCardPage() {
               onClick={() => perms.canManageEmployees && fileInputRef.current?.click()}
               title={perms.canManageEmployees ? 'Изменить фото' : undefined}
             >
-              {employee.avatar ? <img src={employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials(employee.full_name)}
+              {employee.avatar ? <img src={employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : nameInitials(employee.full_name)}
               {uploadingAvatar ? <Spinner size={20} /> : null}
             </span>
             {perms.canManageEmployees ? (

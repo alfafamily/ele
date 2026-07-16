@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
+import { nameInitials } from '../../shared/employeeName.js'
 import { Banner, Button, Checkbox, Modal, Select } from '../../shared/ui'
 import { updateUser } from './settingsApi.js'
 
@@ -88,7 +89,7 @@ export function EditUserModal({ user, onClose, onSaved }) {
                 {employee.avatar ? (
                   <img src={employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  employee.full_name?.slice(0, 2).toUpperCase()
+                  nameInitials(employee.full_name)
                 )}
               </span>
               <Link to={`/employees/${employee.id}`} style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>

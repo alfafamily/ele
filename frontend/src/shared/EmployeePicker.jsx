@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from './api/client'
+import { nameInitials } from './employeeName'
 import { useDebouncedValue } from './hooks/useDebouncedValue'
-
-function initials(employee) {
-  return `${employee.first_name?.[0] || ''}${employee.last_name?.[0] || ''}`.toUpperCase()
-}
 
 // Подбор Сотрудника с поиском (C2 «Закрепить сотрудника», форма Оборудования,
 // модалка приглашения) — общий для всех мест, где нужен именно Сотрудник
@@ -57,13 +54,13 @@ export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40 }) {
           style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13.5, fontFamily: 'inherit' }}
         />
       </div>
-      <div style={{ marginTop: 8, border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', maxHeight: 260, overflowY: 'auto' }}>
-        {loading && results.length === 0 ? (
-          <div style={{ padding: 14, fontSize: 13, color: 'var(--color-text-placeholder)' }}>Загрузка…</div>
-        ) : results.length === 0 ? (
-          <div style={{ padding: 14, fontSize: 13, color: 'var(--color-text-placeholder)' }}>Никого не найдено</div>
-        ) : (
-          results.map((emp, i) => (
+      {loading && results.length === 0 ? (
+        <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Загрузка…</div>
+      ) : results.length === 0 ? (
+        <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Никого не найдено</div>
+      ) : (
+        <div style={{ marginTop: 8, border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', maxHeight: 260, overflowY: 'auto' }}>
+          {results.map((emp, i) => (
             <button
               key={emp.id}
               type="button"
@@ -101,7 +98,7 @@ export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40 }) {
                 {emp.avatar ? (
                   <img src={emp.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  initials(emp)
+                  nameInitials(emp.full_name)
                 )}
               </span>
               <span style={{ minWidth: 0 }}>
@@ -111,9 +108,9 @@ export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40 }) {
                 </div>
               </span>
             </button>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

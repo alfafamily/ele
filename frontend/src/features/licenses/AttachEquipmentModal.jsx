@@ -62,13 +62,13 @@ export function AttachEquipmentModal({ license, onClose, onAttached }) {
           marginBottom: 12,
         }}
       />
-      <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden', maxHeight: 260, overflowY: 'auto', marginBottom: 16 }}>
-        {loading && results.length === 0 ? (
-          <div style={{ padding: 14, fontSize: 13, color: 'var(--color-text-placeholder)' }}>Загрузка…</div>
-        ) : results.length === 0 ? (
-          <div style={{ padding: 14, fontSize: 13, color: 'var(--color-text-placeholder)' }}>Ничего не найдено</div>
-        ) : (
-          results.map((eq, i) => (
+      {loading && results.length === 0 ? (
+        <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)', marginBottom: 16 }}>Загрузка…</div>
+      ) : results.length === 0 ? (
+        <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)', marginBottom: 16 }}>Ничего не найдено</div>
+      ) : (
+        <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden', maxHeight: 260, overflowY: 'auto', marginBottom: 16 }}>
+          {results.map((eq, i) => (
             <button
               key={eq.id}
               type="button"
@@ -92,9 +92,9 @@ export function AttachEquipmentModal({ license, onClose, onAttached }) {
                 <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', fontFamily: 'var(--font-mono)' }}>{eq.inventory_number}</div>
               </span>
             </button>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 10 }}>
         <Button variant="secondary" fullWidth onClick={onClose}>
           Отмена

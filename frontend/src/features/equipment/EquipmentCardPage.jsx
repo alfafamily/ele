@@ -4,6 +4,7 @@ import { apiPatch } from '../../shared/api/client'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
+import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, Spinner } from '../../shared/ui'
 import { AttachLicenseModal } from './AttachLicenseModal.jsx'
@@ -67,7 +68,9 @@ export function EquipmentCardPage() {
 
   return (
     <div>
-      <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 10 }}>
+      {/* Хлебные крошки — только desktop: на мобильных вложенности глубже двух
+          уровней нет, назад решает кнопка «Назад». */}
+      <div className="ele-only-desktop" style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 10 }}>
         <Link to="/" style={{ color: 'var(--color-text-muted)' }}>
           Оборудование
         </Link>{' '}
@@ -112,18 +115,38 @@ export function EquipmentCardPage() {
             </div>
           </Card>
 
-          <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Параметры оборудования</div>
-            {equipment.field_values.length === 0 ? (
-              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>У этого Типа нет реквизитов.</div>
-            ) : (
-              <div className="ele-field-grid">
-                {equipment.field_values.map((fv) => (
-                  <FieldValueDisplay key={fv.field} fv={fv} />
-                ))}
-              </div>
-            )}
-          </Card>
+          {(() => {
+            // Файловые реквизиты выносим в отдельный блок «Файлы» под параметрами.
+            const paramValues = equipment.field_values.filter((fv) => fv.value_type !== 'file')
+            const fileValues = equipment.field_values.filter((fv) => fv.value_type === 'file')
+            return (
+              <>
+                <Card>
+                  <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Параметры оборудования</div>
+                  {paramValues.length === 0 ? (
+                    <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>У этого Типа нет реквизитов.</div>
+                  ) : (
+                    <div className="ele-field-grid">
+                      {paramValues.map((fv) => (
+                        <FieldValueDisplay key={fv.field} fv={fv} />
+                      ))}
+                    </div>
+                  )}
+                </Card>
+
+                {fileValues.length > 0 ? (
+                  <Card>
+                    <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Файлы</div>
+                    <div className="ele-field-grid">
+                      {fileValues.map((fv) => (
+                        <FieldValueDisplay key={fv.field} fv={fv} />
+                      ))}
+                    </div>
+                  </Card>
+                ) : null}
+              </>
+            )
+          })()}
 
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Дополнительные поля</div>
@@ -152,7 +175,7 @@ export function EquipmentCardPage() {
                   {equipment.employee_avatar ? (
                     <img src={equipment.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    equipment.employee_name?.slice(0, 2).toUpperCase()
+                    nameInitials(equipment.employee_name)
                   )}
                 </span>
                 <div style={{ minWidth: 0 }}>

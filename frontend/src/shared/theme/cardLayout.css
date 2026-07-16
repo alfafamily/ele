@@ -96,6 +96,9 @@
   font-size: 26px;
   font-weight: 600;
   letter-spacing: -0.4px;
+  /* Фиксируем высоту строки (≈31px) — под неё подогнана высота кнопки «Назад»,
+     чтобы стрелка стояла вровень с первой строкой заголовка. */
+  line-height: 1.2;
   flex: 1;
   min-width: 0;
   display: -webkit-box;

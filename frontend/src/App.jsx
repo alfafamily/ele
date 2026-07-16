@@ -3,6 +3,7 @@ import { AppRoutes } from './app/AppRoutes.jsx'
 import { AuthProvider, useAuth } from './app/AuthContext.jsx'
 import { CompanyProvider } from './app/CompanyContext.jsx'
 import { ErrorBoundary } from './app/ErrorBoundary.jsx'
+import { ScrollManager } from './app/ScrollManager.jsx'
 import { Spinner } from './shared/ui'
 
 function BootstrapGate({ children }) {
@@ -24,6 +25,7 @@ function App() {
         <BootstrapGate>
           <CompanyProvider>
             <BrowserRouter>
+              <ScrollManager />
               <AppRoutes />
             </BrowserRouter>
           </CompanyProvider>

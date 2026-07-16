@@ -1,10 +1,14 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigationType } from 'react-router-dom'
 import { Can } from '../../app/usePermissions.js'
 import { InfiniteScrollSentinel } from '../../shared/InfiniteScrollSentinel.jsx'
 import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
+import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
+import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+
+const CACHE_KEY = 'equipment-list'
 
 const TABS = [
   { value: 'active', label: 'Активные' },
@@ -33,19 +37,33 @@ function formatDate(iso) {
 }
 
 export function EquipmentListPage() {
-  const [tab, setTab] = useState('active')
-  const [status, setStatus] = useState('all')
-  const [search, setSearch] = useState('')
+  // Восстанавливаем состояние списка (фильтры/сортировка/поиск, подгруженные
+  // страницы, прокрутку) только при переходе «назад» (POP) — например, с
+  // карточки объекта. При заходе в раздел через меню (PUSH) открываем заново.
+  const isPop = useNavigationType() === 'POP'
+  const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
+  const [tab, setTab] = useState(() => savedUi?.tab ?? 'active')
+  const [status, setStatus] = useState(() => savedUi?.status ?? 'all')
+  const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
-  const [sort, setSort] = useState({ key: 'created_at', dir: 'desc' })
+  const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
+
+  useEffect(() => {
+    writeListCache(CACHE_KEY, { ui: { tab, status, search, sort } })
+  }, [tab, status, search, sort])
 
   const ordering = sort.dir === 'desc' ? `-${sort.key}` : sort.key
-  const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList('/api/equipment/', {
-    tab,
-    status: tab === 'active' ? status : undefined,
-    search: debouncedSearch || undefined,
-    ordering,
-  })
+  const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList(
+    '/api/equipment/',
+    {
+      tab,
+      status: tab === 'active' ? status : undefined,
+      search: debouncedSearch || undefined,
+      ordering,
+    },
+    { cacheKey: CACHE_KEY, restore: isPop },
+  )
+  useScrollRestoration(CACHE_KEY, isPop && !loading)
 
   const columns = tab === 'active' ? ACTIVE_COLUMNS : ARCHIVE_COLUMNS
 
