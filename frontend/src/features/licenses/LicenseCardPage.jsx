@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { AttachEquipmentModal } from './AttachEquipmentModal.jsx'
 import { detachLicenseFromEquipment, getLicense, getLicenseHistoryPath } from './licensesApi.js'
 import { MaskedKeyField } from './MaskedKeyField.jsx'
@@ -18,6 +18,7 @@ export function LicenseCardPage() {
   const [loadError, setLoadError] = useState(false)
   const [showUtilize, setShowUtilize] = useState(false)
   const [showAttach, setShowAttach] = useState(false)
+  const [confirmDetach, setConfirmDetach] = useState(false)
 
   const load = useCallback(() => {
     setLoadError(false)
@@ -175,7 +176,7 @@ export function LicenseCardPage() {
               </Link>
               {!license.is_retired ? (
                 <Can perm="canManageLicenses">
-                  <Button variant="secondary" fullWidth style={{ marginTop: 10 }} onClick={onDetach}>
+                  <Button variant="secondary" fullWidth style={{ marginTop: 10 }} onClick={() => setConfirmDetach(true)}>
                     Отвязать
                   </Button>
                 </Can>
@@ -211,6 +212,16 @@ export function LicenseCardPage() {
           <HistoryList path={getLicenseHistoryPath(license.id)} />
         </Card>
       </div>
+
+      {confirmDetach && license.equipment_detail ? (
+        <ConfirmModal
+          title="Отвязать от оборудования?"
+          message={`Лицензия «${license.name}» будет отвязана от «${license.equipment_detail.type_and_model}».`}
+          confirmLabel="Отвязать"
+          onConfirm={onDetach}
+          onClose={() => setConfirmDetach(false)}
+        />
+      ) : null}
 
       {showUtilize ? (
         <UtilizeModal

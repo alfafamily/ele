@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { apiPatch } from '../../shared/api/client'
 import { Can, usePermissions } from '../../app/usePermissions.js'
-import { ActionMenu, BackButton, Button, Card, Icon, Spinner, StatusPill } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner, StatusPill } from '../../shared/ui'
 import { nameInitials } from '../../shared/employeeName.js'
 import { detachPass, detachSimCard, getEmployee, restoreEmployee, uploadEmployeeAvatar } from './employeesApi.js'
 import { AttachOrCreateModal } from './AttachOrCreateModal.jsx'
@@ -25,6 +25,8 @@ export function EmployeeCardPage() {
   // Аналогично для пропусков.
   const [passModal, setPassModal] = useState(null)
   const [passAttach, setPassAttach] = useState(false)
+  // Подтверждение открепления: { title, message, onConfirm }.
+  const [confirm, setConfirm] = useState(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const fileInputRef = useRef(null)
 
@@ -74,6 +76,20 @@ export function EmployeeCardPage() {
     await restoreEmployee(employee.id)
     load()
   }
+
+  const askDetachSim = (sim) =>
+    setConfirm({
+      title: 'Открепить SIM-карту?',
+      message: `SIM-карта ${sim.phone_number} будет откреплена и станет свободной.`,
+      onConfirm: () => onDetachSim(sim.id),
+    })
+
+  const askDetachPass = (pass) =>
+    setConfirm({
+      title: 'Открепить пропуск?',
+      message: `Пропуск «${pass.name || pass.account_number || `#${pass.id}`}» будет откреплён и станет свободным.`,
+      onConfirm: () => onDetachPass(pass.id),
+    })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -171,7 +187,16 @@ export function EmployeeCardPage() {
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</div>
                 </Link>
                 <Can perm="canManageEquipment">
-                  <Button variant="secondary" onClick={() => onDetachEquipment(eq.id)}>
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      setConfirm({
+                        title: 'Открепить оборудование?',
+                        message: `«${eq.type_and_model}» больше не будет закреплено за сотрудником ${employee.full_name}.`,
+                        onConfirm: () => onDetachEquipment(eq.id),
+                      })
+                    }
+                  >
                     Открепить
                   </Button>
                 </Can>
@@ -202,7 +227,7 @@ export function EmployeeCardPage() {
                       <Button variant="secondary" onClick={() => setSimModal(sim)}>
                         Изменить
                       </Button>
-                      <Button variant="secondary" onClick={() => onDetachSim(sim.id)}>
+                      <Button variant="secondary" onClick={() => askDetachSim(sim)}>
                         Открепить
                       </Button>
                     </div>
@@ -210,7 +235,7 @@ export function EmployeeCardPage() {
                       <ActionMenu
                         items={[
                           { label: 'Изменить', onClick: () => setSimModal(sim) },
-                          { label: 'Открепить', onClick: () => onDetachSim(sim.id) },
+                          { label: 'Открепить', onClick: () => askDetachSim(sim) },
                         ]}
                       />
                     </div>
@@ -247,7 +272,7 @@ export function EmployeeCardPage() {
                       <Button variant="secondary" onClick={() => setPassModal(pass)}>
                         Изменить
                       </Button>
-                      <Button variant="secondary" onClick={() => onDetachPass(pass.id)}>
+                      <Button variant="secondary" onClick={() => askDetachPass(pass)}>
                         Открепить
                       </Button>
                     </div>
@@ -255,7 +280,7 @@ export function EmployeeCardPage() {
                       <ActionMenu
                         items={[
                           { label: 'Изменить', onClick: () => setPassModal(pass) },
-                          { label: 'Открепить', onClick: () => onDetachPass(pass.id) },
+                          { label: 'Открепить', onClick: () => askDetachPass(pass) },
                         ]}
                       />
                     </div>
@@ -327,6 +352,15 @@ export function EmployeeCardPage() {
             setPassModal(null)
             load()
           }}
+        />
+      ) : null}
+
+      {confirm ? (
+        <ConfirmModal
+          title={confirm.title}
+          message={confirm.message}
+          onConfirm={confirm.onConfirm}
+          onClose={() => setConfirm(null)}
         />
       ) : null}
 

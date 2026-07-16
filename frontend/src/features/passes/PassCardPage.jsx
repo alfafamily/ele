@@ -4,7 +4,7 @@ import { Can, usePermissions } from '../../app/usePermissions.js'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, BackButton, Button, Card, Modal, Spinner } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, ConfirmModal, Modal, Spinner } from '../../shared/ui'
 import {
   attachPass,
   deletePass,
@@ -22,6 +22,7 @@ export function PassCardPage() {
   const [loadError, setLoadError] = useState(false)
   const [editModal, setEditModal] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
+  const [confirmDetach, setConfirmDetach] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const load = useCallback(() => {
@@ -78,7 +79,7 @@ export function PassCardPage() {
               {pass.is_deactivated ? (
                 <Button variant="danger" onClick={() => setConfirmDelete(true)}>Удалить</Button>
               ) : (
-                <Button variant="danger" onClick={onDetach}>Открепить</Button>
+                <Button variant="danger" onClick={() => setConfirmDetach(true)}>Открепить</Button>
               )}
             </div>
             <div className="ele-card-actions-mobile">
@@ -87,7 +88,7 @@ export function PassCardPage() {
                   { label: 'Редактировать', onClick: () => setEditModal(true) },
                   pass.is_deactivated
                     ? { label: 'Удалить', danger: true, onClick: () => setConfirmDelete(true) }
-                    : { label: 'Открепить', danger: true, onClick: onDetach },
+                    : { label: 'Открепить', danger: true, onClick: () => setConfirmDetach(true) },
                 ]}
               />
             </div>
@@ -138,7 +139,7 @@ export function PassCardPage() {
                   {pass.employee_name}
                 </Link>
                 <Can perm="canManageEmployees">
-                  <Button variant="secondary" style={{ marginLeft: 'auto' }} onClick={onDetach}>Открепить</Button>
+                  <Button variant="secondary" style={{ marginLeft: 'auto' }} onClick={() => setConfirmDetach(true)}>Открепить</Button>
                 </Can>
               </div>
             ) : showPicker ? (
@@ -167,6 +168,15 @@ export function PassCardPage() {
             setEditModal(false)
             load()
           }}
+        />
+      ) : null}
+
+      {confirmDetach ? (
+        <ConfirmModal
+          title="Открепить пропуск?"
+          message={`Пропуск «${title}» будет откреплён от сотрудника ${pass.employee_name} и станет свободным.`}
+          onConfirm={onDetach}
+          onClose={() => setConfirmDetach(false)}
         />
       ) : null}
 

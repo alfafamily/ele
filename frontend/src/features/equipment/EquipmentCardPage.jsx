@@ -6,7 +6,7 @@ import { FieldValueDisplay } from '../../shared/eav'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { AttachLicenseModal } from './AttachLicenseModal.jsx'
 import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
 import { assignEmployee, getEquipment, getEquipmentHistoryPath, unassignEmployee } from './equipmentApi.js'
@@ -22,6 +22,8 @@ export function EquipmentCardPage() {
   const [showWriteOff, setShowWriteOff] = useState(false)
   const [showAssignPicker, setShowAssignPicker] = useState(false)
   const [showAttachLicense, setShowAttachLicense] = useState(false)
+  // Подтверждение открепления/отвязки: { title, message, confirmLabel, onConfirm }.
+  const [confirm, setConfirm] = useState(null)
 
   const load = useCallback(() => {
     setLoadError(false)
@@ -187,7 +189,19 @@ export function EquipmentCardPage() {
               </div>
               {!equipment.is_written_off ? (
                 <Can perm="canManageEquipment">
-                  <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={onUnassign}>
+                  <Button
+                    variant="secondary"
+                    fullWidth
+                    style={{ marginTop: 14 }}
+                    onClick={() =>
+                      setConfirm({
+                        title: 'Открепить сотрудника?',
+                        message: `«${equipment.type_and_model}» больше не будет закреплено за ${equipment.employee_name}.`,
+                        confirmLabel: 'Открепить',
+                        onConfirm: onUnassign,
+                      })
+                    }
+                  >
                     Открепить
                   </Button>
                 </Can>
@@ -237,7 +251,14 @@ export function EquipmentCardPage() {
                   <button
                     type="button"
                     title="Отвязать"
-                    onClick={() => onDetachLicense(lic.id)}
+                    onClick={() =>
+                      setConfirm({
+                        title: 'Отвязать лицензию?',
+                        message: `Лицензия «${lic.name}» будет отвязана от «${equipment.type_and_model}».`,
+                        confirmLabel: 'Отвязать',
+                        onConfirm: () => onDetachLicense(lic.id),
+                      })
+                    }
                     style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
                     <Icon name="x" size={16} strokeWidth={2} />
@@ -260,6 +281,16 @@ export function EquipmentCardPage() {
           <HistoryList path={getEquipmentHistoryPath(equipment.id)} />
         </Card>
       </div>
+
+      {confirm ? (
+        <ConfirmModal
+          title={confirm.title}
+          message={confirm.message}
+          confirmLabel={confirm.confirmLabel}
+          onConfirm={confirm.onConfirm}
+          onClose={() => setConfirm(null)}
+        />
+      ) : null}
 
       {showWriteOff ? (
         <WriteOffModal

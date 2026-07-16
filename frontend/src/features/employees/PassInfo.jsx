@@ -1,19 +1,11 @@
 // Левая (информационная) часть строки Пропуска — общая для карточки Сотрудника
-// и Профиля. Сверху: статус · плашки типа (Авто/Пеший) · Название. Ниже —
-// Учётный номер и по строке на каждое здание с перечнем помещений (или «все
+// и Профиля. Показывается только за сотрудником (значит, всегда активен),
+// поэтому плашки статуса нет. Сверху: плашки типа (Авто/Пеший) · Название. Ниже
+// — Учётный номер и по строке на каждое здание с перечнем помещений (или «все
 // помещения», если для здания ничего не выбрано).
 export function PassInfo({ pass }) {
   const buildings = pass.buildings || []
   const rooms = pass.rooms || []
-  const badgeStyle = {
-    fontSize: 11,
-    fontWeight: 700,
-    color: '#fff',
-    background: pass.is_deactivated ? 'var(--color-text-muted)' : 'var(--color-text-primary)',
-    padding: '1px 7px',
-    borderRadius: 5,
-    whiteSpace: 'nowrap',
-  }
   const typeBadgeStyle = {
     fontSize: 11,
     fontWeight: 700,
@@ -26,7 +18,6 @@ export function PassInfo({ pass }) {
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={badgeStyle}>{pass.is_deactivated ? 'Деактивирован' : 'Активен'}</span>
         {pass.type_vehicle ? <span style={typeBadgeStyle}>Авто</span> : null}
         {pass.type_pedestrian ? <span style={typeBadgeStyle}>Пеший</span> : null}
         {pass.name ? (
