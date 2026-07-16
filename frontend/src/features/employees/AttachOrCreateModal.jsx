@@ -39,7 +39,7 @@ function SimRow({ item }) {
         <span style={{ font: '600 13.5px var(--font-mono)' }}>{item.phone_number}</span>
       </div>
       <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
-        {[item.network_operator, item.provider].filter(Boolean).join(' / ') || 'без оператора'}
+        {[item.network_operator, item.provider].filter(Boolean).join(' / ') || 'без поставщика и оператора'}
       </div>
     </span>
   )

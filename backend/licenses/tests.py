@@ -89,6 +89,34 @@ class LicenseKeyMaskingTests(APITestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertFalse(License.objects.filter(name="Без ключа").exists())
 
+    def _create(self, name, key):
+        return self.client.post(
+            "/api/licenses/",
+            {
+                "name": name,
+                "license_type": self.software.id,
+                "field_values_input": [{"field": self.key_field.id, "value": key}],
+            },
+            format="json",
+        )
+
+    def test_duplicate_key_rejected(self):
+        self.assertEqual(self._create("Лицензия A", "KEY-123").status_code, 201)
+        resp = self._create("Лицензия B", "KEY-123")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("field_values", resp.data["errors"])
+        self.assertFalse(License.objects.filter(name="Лицензия B").exists())
+
+    def test_same_license_can_keep_its_key_on_update(self):
+        created = self._create("Лицензия A", "KEY-123")
+        license_id = created.data["id"]
+        resp = self.client.patch(
+            f"/api/licenses/{license_id}/",
+            {"name": "Лицензия A (ред.)", "field_values_input": [{"field": self.key_field.id, "value": "KEY-123"}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+
 
 class LicenseHardcodedTypesTests(APITestCase):
     def setUp(self):

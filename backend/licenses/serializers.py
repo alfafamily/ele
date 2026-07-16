@@ -180,6 +180,20 @@ class LicenseSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {"field_values": [f"Реквизит «{item['field'].name}» не относится к выбранному Типу."]}
                     )
+                # Уникальность «Номер/ключ» (зафиксированный реквизит Программной
+                # лицензии): двух лицензий с одинаковым ключом быть не может.
+                field = item["field"]
+                if field.is_locked and field.name == LICENSE_KEY_FIELD_NAME:
+                    value = item.get("value")
+                    value = None if value is None else str(value)
+                    if value:
+                        dup = LicenseFieldValue.objects.filter(field_id=field.pk, value_text=value)
+                        if self.instance:
+                            dup = dup.exclude(license_id=self.instance.pk)
+                        if dup.exists():
+                            raise serializers.ValidationError(
+                                {"field_values": ["Лицензия с таким «Номер/ключ» уже есть."]}
+                            )
         return attrs
 
     @transaction.atomic
