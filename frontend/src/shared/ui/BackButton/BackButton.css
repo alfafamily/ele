@@ -18,6 +18,14 @@
   transition: color 0.12s ease;
 }
 
+/* На мобильных строка заголовка вложенного экрана = 44px (см. .ele-card-title),
+   поэтому стрелка «Назад» тоже 44px — стоит вровень с первой строкой. */
+@media (max-width: 768px) {
+  .ele-back-btn {
+    height: 44px;
+  }
+}
+
 .ele-back-btn svg {
   display: block;
 }

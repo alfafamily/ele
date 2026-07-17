@@ -74,8 +74,8 @@ export function EmployeeFormPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div style={{ width: '100%', maxWidth: 600 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 20 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.4px', minWidth: 0, overflowWrap: 'break-word' }}>{isEdit ? 'Редактирование сотрудника' : 'Новый сотрудник'}</h1>
+        <div className="ele-form-head">
+          <h1 className="ele-form-head__title">{isEdit ? 'Редактирование сотрудника' : 'Новый сотрудник'}</h1>
           <div style={{ display: 'flex', gap: 10, flex: 'none' }}>
             <Button variant="secondary" onClick={() => navigate(-1)} aria-label="Отмена">
               <span className="ele-only-desktop">Отмена</span>

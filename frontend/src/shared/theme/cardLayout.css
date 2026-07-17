@@ -109,6 +109,47 @@
   overflow-wrap: anywhere;
 }
 
+/* На мобильных заголовок вложенного экрана крупнее, а высота его строки = высоте
+   кнопок шапки (44px). Тогда кнопки («…», «Назад», Сохранить/Отмена) при
+   align-items:flex-start встают вровень с ПЕРВОЙ строкой заголовка (по заглавной
+   букве), а не свисают ниже; при переносе на 2 строки — тоже по первой строке. */
+@media (max-width: 768px) {
+  .ele-card-title {
+    font-size: 30px;
+    line-height: 44px;
+  }
+}
+
+/* Шапка формы (создание/редактирование объекта): заголовок + Отмена/Сохранить.
+   На мобильных — как у карточек: крупный заголовок, строка = высоте кнопок,
+   кнопки по первой строке заголовка. */
+.ele-form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.ele-form-head__title {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 768px) {
+  .ele-form-head {
+    align-items: flex-start;
+  }
+
+  .ele-form-head__title {
+    font-size: 30px;
+    line-height: 44px;
+  }
+}
+
 /* Кнопки действий в шапке карточки: на desktop — обычные кнопки, на мобильных
    — одно меню «…» вместо них. */
 .ele-card-actions-desktop {
