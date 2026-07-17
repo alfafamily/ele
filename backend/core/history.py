@@ -53,7 +53,7 @@ def _created_lines(record, field_specs):
     return lines
 
 
-def build_history_rows(instance, field_specs, *, movement_fields=(), movement_events=(), created_extra_lines=None):
+def build_history_rows(instance, field_specs, *, movement_fields=(), movement_events=(), created_extra_lines=None, m2m_specs=None):
     """Строки истории базового объекта (новые сверху).
 
     movement_fields — поля, чьи изменения считаются движением (напр. employee).
@@ -65,9 +65,20 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
       }.
     created_extra_lines — доп. строки полей (напр. реквизиты Типа) для записи
       «Объект создан».
+    m2m_specs — dict имя_m2m_менеджера_историчной_записи -> {
+        "id_attr": имя поля id в through-историчной записи (напр. "building_id"),
+        "label": str,
+        "format": callable(list_ids)->str,     # человекочитаемое перечисление
+      }. Изменения M2M-набора между соседними версиями показываются строкой
+      «изменено». Переходы внутри «окна создания» (M2M проставляется сразу после
+      создания объекта) не показываем — они уже в записи «Объект создан».
     """
     movement_fields = set(movement_fields)
+    m2m_specs = m2m_specs or {}
     history = list(instance.history.all())  # новые сверху
+    # Конец «окна создания» — чтобы не дублировать M2M, проставленный при создании.
+    creation = next((r for r in history if r.history_type == "+"), None)
+    creation_window_end = (creation.history_date + CREATION_WINDOW) if creation else None
     rows = []
     for i, record in enumerate(history):
         author = record.history_user.email if record.history_user_id else None
@@ -122,6 +133,21 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
                 "secret": False,
                 "comment": reason if (category == "movement" and reason) else None,
             })
+
+        # Изменения M2M-наборов (здания/помещения/места пропуска). Пропускаем
+        # переходы внутри «окна создания» — они уже отражены в «Объект создан».
+        if m2m_specs and (creation_window_end is None or record.history_date > creation_window_end):
+            for attr, spec in m2m_specs.items():
+                new_ids = sorted(getattr(x, spec["id_attr"]) for x in getattr(record, attr).all())
+                old_ids = sorted(getattr(x, spec["id_attr"]) for x in getattr(older, attr).all())
+                if new_ids == old_ids:
+                    continue
+                rows.append({
+                    "date": date, "author": author, "kind": "changed", "category": "change",
+                    "label": spec["label"],
+                    "old": spec["format"](old_ids) or "—", "new": spec["format"](new_ids) or "—",
+                    "secret": False, "comment": None,
+                })
     return rows
 
 

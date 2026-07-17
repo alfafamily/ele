@@ -204,6 +204,27 @@ class HistoryTests(APITestCase):
         # Место показывается с помещением-родителем.
         self.assertEqual(labels.get("Места"), "Сейф (К-101)")
 
+    def test_m2m_access_change_appears_in_history(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        b2 = Building.objects.create(name="Корпус Б")
+        resp = self.client.post("/api/access-passes/", {
+            "object_type": "pass", "building_ids": [self.b1.id],
+        }, format="json")
+        pid = resp.data["id"]
+        ap = AccessPass.objects.get(pk=pid)
+        # Отодвигаем создание в прошлое, чтобы правка не попала в «окно создания».
+        ap.history.all().update(history_date=timezone.now() - timedelta(minutes=5))
+        # Меняем набор зданий (добавляем второе).
+        self.client.patch(f"/api/access-passes/{pid}/", {"building_ids": [self.b1.id, b2.id]}, format="json")
+        rows = self.client.get(f"/api/access-passes/{pid}/history/").data
+        changed = [r for r in rows if r["kind"] == "changed" and r["label"] == "Здания"]
+        self.assertTrue(changed, rows)
+        self.assertEqual(changed[0]["old"], "Корпус А")
+        self.assertIn("Корпус Б", changed[0]["new"])
+
     def test_utilize_is_movement_with_reason_label(self):
         ap = AccessPass.objects.create(object_type="pass")
         ap.buildings.add(self.b1)

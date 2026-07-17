@@ -411,6 +411,21 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
         access_pass = self.get_object()
 
+        # Форматирование набора доступа (M2M) по списку id — с сохранением
+        # порядка id. Место показываем с помещением-родителем.
+        def _ordered(qs, ids):
+            by_id = {o.id: o for o in qs.filter(id__in=ids)}
+            return [by_id[i] for i in ids if i in by_id]
+
+        def fmt_buildings(ids):
+            return ", ".join(b.name for b in _ordered(Building.objects, ids))
+
+        def fmt_rooms(ids):
+            return ", ".join(r.name for r in _ordered(Room.objects, ids))
+
+        def fmt_places(ids):
+            return ", ".join(f"{p.name} ({p.room.name})" for p in _ordered(Place.objects.select_related("room"), ids))
+
         # Набор зданий/помещений/мест — M2M, задаётся сразу после создания объекта
         # (отдельными историческими записями в ту же секунду). Реконструируем
         # состояние на конец «окна создания» и показываем его в записи «Объект
@@ -427,22 +442,22 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             )
             if snap is None:
                 return []
-
-            def ordered(qs, ids):
-                by_id = {o.id: o for o in qs.filter(id__in=ids)}
-                return [by_id[i] for i in ids if i in by_id]
-
-            buildings = ordered(Building.objects, [x.building_id for x in snap.buildings.all()])
-            rooms = ordered(Room.objects, [x.room_id for x in snap.rooms.all()])
-            places = ordered(Place.objects.select_related("room"), [x.place_id for x in snap.places.all()])
             lines = []
-            if buildings:
-                lines.append({"label": "Здания", "value": ", ".join(b.name for b in buildings)})
-            if rooms:
-                lines.append({"label": "Помещения", "value": ", ".join(r.name for r in rooms)})
-            if places:
-                lines.append({"label": "Места", "value": ", ".join(f"{p.name} ({p.room.name})" for p in places)})
+            for label, fmt, ids in (
+                ("Здания", fmt_buildings, [x.building_id for x in snap.buildings.all()]),
+                ("Помещения", fmt_rooms, [x.room_id for x in snap.rooms.all()]),
+                ("Места", fmt_places, [x.place_id for x in snap.places.all()]),
+            ):
+                value = fmt(ids)
+                if value:
+                    lines.append({"label": label, "value": value})
             return lines
+
+        m2m_specs = {
+            "buildings": {"id_attr": "building_id", "label": "Здания", "format": fmt_buildings},
+            "rooms": {"id_attr": "room_id", "label": "Помещения", "format": fmt_rooms},
+            "places": {"id_attr": "place_id", "label": "Места", "format": fmt_places},
+        }
 
         def fmt_employee(v):
             if not v:
@@ -473,6 +488,7 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 "label": utilize_label,
             }],
             created_extra_lines=_created_access_lines(),
+            m2m_specs=m2m_specs,
         )
         rows.sort(key=lambda r: r["date"], reverse=True)
         return Response(rows)
