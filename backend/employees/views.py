@@ -403,9 +403,46 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="history")
     def history_list(self, request, pk=None):
-        from core.history import build_history_rows
+        from datetime import timedelta
+
+        from locations.models import Building, Place, Room
+
+        from core.history import CREATION_WINDOW, build_history_rows
 
         access_pass = self.get_object()
+
+        # Набор зданий/помещений/мест — M2M, задаётся сразу после создания объекта
+        # (отдельными историческими записями в ту же секунду). Реконструируем
+        # состояние на конец «окна создания» и показываем его в записи «Объект
+        # создан» — как учётный номер и прочие поля.
+        def _created_access_lines():
+            creation = access_pass.history.filter(history_type="+").order_by("history_date").first()
+            if creation is None:
+                return []
+            window_end = creation.history_date + CREATION_WINDOW
+            snap = (
+                access_pass.history.filter(history_date__lte=window_end)
+                .order_by("-history_date", "-history_id")
+                .first()
+            )
+            if snap is None:
+                return []
+
+            def ordered(qs, ids):
+                by_id = {o.id: o for o in qs.filter(id__in=ids)}
+                return [by_id[i] for i in ids if i in by_id]
+
+            buildings = ordered(Building.objects, [x.building_id for x in snap.buildings.all()])
+            rooms = ordered(Room.objects, [x.room_id for x in snap.rooms.all()])
+            places = ordered(Place.objects.select_related("room"), [x.place_id for x in snap.places.all()])
+            lines = []
+            if buildings:
+                lines.append({"label": "Здания", "value": ", ".join(b.name for b in buildings)})
+            if rooms:
+                lines.append({"label": "Помещения", "value": ", ".join(r.name for r in rooms)})
+            if places:
+                lines.append({"label": "Места", "value": ", ".join(f"{p.name} ({p.room.name})" for p in places)})
+            return lines
 
         def fmt_employee(v):
             if not v:
@@ -435,6 +472,7 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 "consume": ["is_utilized", "utilized_at", "utilization_reason", "employee"],
                 "label": utilize_label,
             }],
+            created_extra_lines=_created_access_lines(),
         )
         rows.sort(key=lambda r: r["date"], reverse=True)
         return Response(rows)

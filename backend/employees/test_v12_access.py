@@ -185,6 +185,24 @@ class HistoryTests(APITestCase):
         self.assertEqual(created[0]["comment"], "получен на складе")
         labels = {ln["label"]: ln["value"] for ln in created[0]["lines"]}
         self.assertEqual(labels.get("Учётный номер"), "AP-1")
+        # Набор доступа (здания/помещения/места) — в записи создания.
+        self.assertEqual(labels.get("Здания"), "Корпус А")
+
+    def test_created_history_lists_rooms_and_places(self):
+        room = Room.objects.create(building=self.b1, name="К-101")
+        place = Place.objects.create(room=room, name="Сейф", requires_pass=True)
+        resp = self.client.post("/api/access-passes/", {
+            "object_type": "key",
+            "building_ids": [self.b1.id],
+            "place_ids": [place.id],
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        rows = self.client.get(f"/api/access-passes/{resp.data['id']}/history/").data
+        created = [r for r in rows if r["kind"] == "created"][0]
+        labels = {ln["label"]: ln["value"] for ln in created["lines"]}
+        self.assertEqual(labels.get("Здания"), "Корпус А")
+        # Место показывается с помещением-родителем.
+        self.assertEqual(labels.get("Места"), "Сейф (К-101)")
 
     def test_utilize_is_movement_with_reason_label(self):
         ap = AccessPass.objects.create(object_type="pass")
