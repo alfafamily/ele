@@ -155,7 +155,19 @@ export function AppLayout() {
           <button type="button" className="ele-topbar__profile" aria-label="Профиль" onClick={() => navigate('/profile')}>
             {avatar(34, 12)}
           </button>
-          <img className="ele-topbar__logo" src="/brand/ele-full.svg" alt="ELE" />
+          {/* Лого по той же логике, что и развёрнутый rail: при загруженном лого
+              компании — лого компании + разделитель + знак ELE, иначе только ELE. */}
+          <div className="ele-topbar__brand">
+            {company?.logo ? (
+              <>
+                <img className="ele-topbar__company-logo" src={company.logo.url} alt="" />
+                <div className="ele-topbar__brand-divider" />
+                <img className="ele-topbar__logo" src="/brand/ele-full.svg" alt="ELE" />
+              </>
+            ) : (
+              <img className="ele-topbar__logo" src="/brand/ele-full.svg" alt="ELE" />
+            )}
+          </div>
           <button type="button" className="ele-topbar__menu" aria-label="Меню" aria-haspopup="menu" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}>
             <MenuIcon />
           </button>

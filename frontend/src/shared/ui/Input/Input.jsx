@@ -23,6 +23,15 @@ export function Input({
   const errorText = Array.isArray(error) ? error[0] : error
   const resolvedType = showToggle ? (revealed ? 'text' : 'password') : type
 
+  // Плавающий лейбл: в пустом поле лейбл стоит как плейсхолдер, при фокусе/вводе
+  // уезжает наверх. Механика опирается на :placeholder-shown, поэтому включаем её
+  // только для текстовых полей (у time/date/color/range нет плейсхолдера) и только
+  // при наличии лейбла. Для этого полю всегда нужен placeholder — если свой не
+  // задан, ставим пробел (невидимый, но включает :placeholder-shown).
+  const NON_FLOATING = new Set(['time', 'date', 'datetime-local', 'month', 'week', 'color', 'range', 'file'])
+  const floating = Boolean(label) && (multiline || !NON_FLOATING.has(resolvedType))
+  const placeholder = rest.placeholder ?? (floating ? ' ' : undefined)
+
   const boxClasses = [
     'ele-field__box',
     errorText ? 'ele-field__box--error' : '',
@@ -32,7 +41,7 @@ export function Input({
     .join(' ')
 
   return (
-    <div className={['ele-field', className].filter(Boolean).join(' ')}>
+    <div className={['ele-field', floating ? 'ele-field--floating' : '', className].filter(Boolean).join(' ')}>
       <div className={boxClasses}>
         <div className="ele-field__inner">
           {label ? (
@@ -47,6 +56,7 @@ export function Input({
               rows={rows}
               aria-invalid={Boolean(errorText)}
               {...rest}
+              placeholder={placeholder}
               onFocus={(e) => {
                 setFocused(true)
                 rest.onFocus?.(e)
@@ -63,6 +73,7 @@ export function Input({
               type={resolvedType}
               aria-invalid={Boolean(errorText)}
               {...rest}
+              placeholder={placeholder}
               onFocus={(e) => {
                 setFocused(true)
                 rest.onFocus?.(e)

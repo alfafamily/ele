@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
-import { ActionMenu, Badge, Banner, Button, Icon, Modal, Spinner } from '../../shared/ui'
+import { ActionMenu, Badge, Banner, Button, Icon, Modal, SearchInput, Spinner } from '../../shared/ui'
 import { BuildingModal } from './BuildingModal.jsx'
 import { PlaceModal } from './PlaceModal.jsx'
 import { RoomModal } from './RoomModal.jsx'
@@ -25,6 +25,8 @@ export function PremisesPage() {
   const [selectedId, setSelectedId] = useState(null)
   const [showArchived, setShowArchived] = useState(false)
   const [showArchivedRooms, setShowArchivedRooms] = useState(false)
+  const [buildingSearch, setBuildingSearch] = useState('')
+  const [roomSearch, setRoomSearch] = useState('')
   const [expanded, setExpanded] = useState(() => new Set())
   const [buildingModal, setBuildingModal] = useState(null) // null | 'new' | building
   const [roomModal, setRoomModal] = useState(null) // null | { room, buildingId }
@@ -46,9 +48,11 @@ export function PremisesPage() {
     load()
   }, [load])
 
-  // Переключатель «архивные помещения» сбрасываем при смене здания.
+  // Переключатель «архивные помещения» и поиск по помещениям сбрасываем при
+  // смене здания.
   useEffect(() => {
     setShowArchivedRooms(false)
+    setRoomSearch('')
   }, [selectedId])
 
   if (allBuildings === null) {
@@ -60,7 +64,10 @@ export function PremisesPage() {
   }
 
   const hasArchived = allBuildings.some((b) => b.is_archived)
-  const buildings = showArchived ? allBuildings : allBuildings.filter((b) => !b.is_archived)
+  const bq = buildingSearch.trim().toLowerCase()
+  const buildings = (showArchived ? allBuildings : allBuildings.filter((b) => !b.is_archived)).filter(
+    (b) => !bq || b.name.toLowerCase().includes(bq) || (b.address || '').toLowerCase().includes(bq)
+  )
   const selected = allBuildings.find((b) => b.id === selectedId) || null
 
   const toggleRoom = (roomId) => {
@@ -128,6 +135,8 @@ export function PremisesPage() {
       visibleRooms = showArchivedRooms ? selected.rooms : selected.rooms.filter((r) => !r.is_archived)
       roomCounter = selected.rooms.filter((r) => !r.is_archived).length
     }
+    const rq = roomSearch.trim().toLowerCase()
+    if (rq) visibleRooms = visibleRooms.filter((r) => r.name.toLowerCase().includes(rq))
   }
 
   return (
@@ -165,8 +174,16 @@ export function PremisesPage() {
             ) : null}
           </div>
 
+          {allBuildings.length > 0 ? (
+            <div style={{ padding: '0 4px 8px' }}>
+              <SearchInput value={buildingSearch} onChange={setBuildingSearch} placeholder="Поиск по названию, адресу" />
+            </div>
+          ) : null}
+
           {buildings.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', padding: '8px 10px' }}>Здания пока не созданы</div>
+            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', padding: '8px 10px' }}>
+              {bq ? 'Ничего не найдено' : 'Здания пока не созданы'}
+            </div>
           ) : (
             buildings.map((b) => (
               <div
@@ -231,9 +248,24 @@ export function PremisesPage() {
               ) : null}
             </div>
 
+            {/* Кнопка добавления — над поиском (замечание по стенду). */}
+            {!selected.is_archived ? (
+              <Can perm="canManagePremises">
+                <Button variant="secondary" fullWidth style={{ marginBottom: 12 }} onClick={() => setRoomModal({ room: null, buildingId: selected.id })}>
+                  ＋ Добавить помещение / зону
+                </Button>
+              </Can>
+            ) : null}
+
+            {selected.rooms.length > 0 ? (
+              <div style={{ marginBottom: 12 }}>
+                <SearchInput value={roomSearch} onChange={setRoomSearch} placeholder="Поиск по названию / номеру" />
+              </div>
+            ) : null}
+
             {visibleRooms.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', padding: '2px 0 14px' }}>
-                В здании пока нет помещений.
+                {roomSearch.trim() ? 'Ничего не найдено.' : 'В здании пока нет помещений.'}
               </div>
             ) : (
               visibleRooms.map((room) => (
@@ -266,14 +298,6 @@ export function PremisesPage() {
                 />
               ))
             )}
-
-            {!selected.is_archived ? (
-              <Can perm="canManagePremises">
-                <Button variant="secondary" fullWidth style={{ marginTop: visibleRooms.length ? 4 : 0 }} onClick={() => setRoomModal({ room: null, buildingId: selected.id })}>
-                  ＋ Добавить помещение / зону
-                </Button>
-              </Can>
-            ) : null}
           </div>
         ) : null}
       </div>

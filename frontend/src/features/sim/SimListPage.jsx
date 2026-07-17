@@ -7,15 +7,20 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
-import { Button, EmptyState, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 import { SimCardModal } from '../employees/SimCardModal.jsx'
 
 const CACHE_KEY = 'sim-list'
 
 const TABS = [
   { value: 'active', label: 'Активные' },
-  { value: 'deactivated', label: 'Неиспользуемые' },
   { value: 'utilized', label: 'Утилизировано' },
+]
+// Фильтр статуса внутри «Активных»: за сотрудником / свободные.
+const FILTERS = [
+  { value: 'all', label: 'Все' },
+  { value: 'attached', label: 'Активные' },
+  { value: 'free', label: 'Неактивные' },
 ]
 
 const DESKTOP_COLUMNS = [
@@ -42,6 +47,7 @@ export function SimListPage() {
   const isPop = useNavigationType() === 'POP'
   const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
   const [tab, setTab] = useState(() => savedUi?.tab ?? 'active')
+  const [status, setStatus] = useState(() => savedUi?.status ?? 'all')
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
@@ -50,13 +56,13 @@ export function SimListPage() {
   const columns = isMobile ? MOBILE_COLUMNS : DESKTOP_COLUMNS
 
   useEffect(() => {
-    writeListCache(CACHE_KEY, { ui: { tab, search, sort } })
-  }, [tab, search, sort])
+    writeListCache(CACHE_KEY, { ui: { tab, status, search, sort } })
+  }, [tab, status, search, sort])
 
   const ordering = sort.dir === 'desc' ? `-${sort.key}` : sort.key
   const { items, loading, loadingMore, hasMore, loadMore, error, refetch } = useCursorList(
     '/api/sim-cards/',
-    { tab, search: debouncedSearch || undefined, ordering },
+    { tab, status: tab === 'active' ? status : undefined, search: debouncedSearch || undefined, ordering },
     { cacheKey: CACHE_KEY, restore: isPop },
   )
   useScrollRestoration(CACHE_KEY, isPop && !loading)
@@ -83,8 +89,9 @@ export function SimListPage() {
 
       <TabBar options={TABS} value={tab} onChange={setTab} />
 
-      <div style={{ display: 'flex' }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
+        {tab === 'active' ? <FilterButton options={FILTERS} value={status} onChange={setStatus} /> : null}
       </div>
 
       {error ? (
@@ -97,15 +104,13 @@ export function SimListPage() {
         </div>
       ) : items.length === 0 ? (
         <EmptyState
-          title={search ? 'Ничего не найдено' : tab === 'utilized' ? 'Нет утилизированных' : tab === 'deactivated' ? 'Нет неиспользуемых' : 'Пока пусто'}
+          title={search ? 'Ничего не найдено' : tab === 'utilized' ? 'Нет утилизированных' : 'Пока пусто'}
           description={
             search
               ? `По запросу «${search}» SIM-карты не найдены.`
               : tab === 'utilized'
                 ? 'Утилизированные SIM-карты будут отображаться здесь.'
-                : tab === 'deactivated'
-                  ? 'Отвязанные от сотрудников SIM-карты будут отображаться здесь.'
-                  : 'Когда вы добавите SIM-карту, она будет отображаться здесь.'
+                : 'Когда вы добавите SIM-карту, она будет отображаться здесь.'
           }
           action={search ? <Button variant="secondary" onClick={() => setSearch('')}>Сбросить фильтры</Button> : undefined}
         />
@@ -141,12 +146,10 @@ export function SimListPage() {
       {modal ? (
         <SimCardModal
           onClose={() => setModal(null)}
-          onDone={(saved) => {
+          onDone={() => {
             setModal(null)
-            // Новая SIM без сотрудника попадёт в «Деактивированные» — переключим
-            // вкладку, чтобы результат был виден.
-            if (saved?.is_deactivated && tab !== 'deactivated') setTab('deactivated')
-            else refetch()
+            // Новая SIM (и привязанная, и свободная) видна во вкладке «Активные».
+            refetch()
           }}
         />
       ) : null}

@@ -1,10 +1,13 @@
-import { Card } from '../../shared/ui'
+import { useEffect, useRef, useState } from 'react'
+import { Button, Card, Icon } from '../../shared/ui'
+import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { GUIDE_SECTIONS, GUIDE_INTRO } from './guideContent.jsx'
 import './GuidePage.css'
 
 // Раздел «Руководство» — статичная инструкция пользователя. Контент вынесен
-// в guideContent.jsx (обновляется при выпуске новых фич); здесь только
-// рендер: оглавление слева (липкое на desktop) + секции-карточки справа.
+// в guideContent.jsx (обновляется при выпуске новых фич). Desktop: оглавление
+// слева (липкое) + все секции-карточки справа. Mobile: по одному разделу за раз
+// с переключением свайпом/кнопками и селектом-оглавлением сверху.
 
 // Инлайновое форматирование: **жирный** внутри строки контента.
 function renderInline(text) {
@@ -75,12 +78,150 @@ function Block({ block }) {
   }
 }
 
+// Карточка одного раздела: номер + заголовок + блоки контента.
+function SectionCard({ section, num, id }) {
+  return (
+    <Card id={id} className="ele-guide__section">
+      <h2 className="ele-guide__h2">
+        <span className="ele-guide__section-num">{num}</span>
+        {section.title}
+      </h2>
+      {section.blocks.map((b, bi) => (
+        <Block key={bi} block={b} />
+      ))}
+    </Card>
+  )
+}
+
+// Мобильный селект-оглавление: белая плашка с номером и названием активного
+// раздела; по тапу раскрывается список всех разделов.
+function GuideSelect({ sections, index, onPick }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const active = sections[index]
+  return (
+    <div className="ele-guide-m__select" ref={ref}>
+      <button type="button" className="ele-guide-m__select-trigger" onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open}>
+        <span className="ele-guide__toc-num">{index + 1}</span>
+        <span className="ele-guide-m__select-title">{active.title}</span>
+        <Icon name="chevrons-up-down" size={18} strokeWidth={2} style={{ flex: 'none', color: 'var(--color-text-placeholder)' }} />
+      </button>
+      {open ? (
+        <div className="ele-guide-m__select-list" role="listbox">
+          {sections.map((s, i) => (
+            <button
+              key={s.id}
+              type="button"
+              role="option"
+              aria-selected={i === index}
+              className={'ele-guide-m__select-item' + (i === index ? ' ele-guide-m__select-item--active' : '')}
+              onClick={() => {
+                onPick(i)
+                setOpen(false)
+              }}
+            >
+              <span className="ele-guide__toc-num">{i + 1}</span>
+              <span>{s.title}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+// Порог свайпа: горизонтальное смещение должно заметно превышать вертикальное,
+// чтобы обычная прокрутка страницы не переключала разделы.
+const SWIPE_MIN = 50
+
+function GuideMobile() {
+  const [index, setIndex] = useState(0)
+  const last = GUIDE_SECTIONS.length - 1
+  const touch = useRef(null)
+
+  const go = (i) => {
+    setIndex(Math.max(0, Math.min(last, i)))
+    window.scrollTo({ top: 0 })
+  }
+
+  const onTouchStart = (e) => {
+    const t = e.touches[0]
+    touch.current = { x: t.clientX, y: t.clientY }
+  }
+  const onTouchEnd = (e) => {
+    if (!touch.current) return
+    const t = e.changedTouches[0]
+    const dx = t.clientX - touch.current.x
+    const dy = t.clientY - touch.current.y
+    touch.current = null
+    if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) < Math.abs(dy)) return
+    if (dx < 0) go(index + 1) // свайп влево — дальше
+    else go(index - 1) // свайп вправо — назад
+  }
+
+  return (
+    <div className="ele-guide">
+      <h1 className="ele-guide__h1">Руководство пользователя</h1>
+      <div className="ele-guide-m">
+        <GuideSelect sections={GUIDE_SECTIONS} index={index} onPick={go} />
+
+        <div className="ele-guide-m__stage" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+          {index === 0 ? (
+            <Card className="ele-guide__intro">
+              {GUIDE_INTRO.map((text, i) => (
+                <p key={i} className="ele-guide__p">
+                  {renderInline(text)}
+                </p>
+              ))}
+            </Card>
+          ) : null}
+          <SectionCard section={GUIDE_SECTIONS[index]} num={index + 1} />
+        </div>
+
+        <div className="ele-guide-m__nav">
+          {index > 0 ? (
+            <Button variant="secondary" fullWidth onClick={() => go(index - 1)}>
+              ← Назад
+            </Button>
+          ) : null}
+          {index < last ? (
+            <Button fullWidth onClick={() => go(index + 1)}>
+              Дальше →
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function GuidePage() {
+  const isMobile = useMediaQuery('(max-width: 768px)')
+
   const scrollTo = (id) => {
     // Без behavior:'smooth' — в части окружений (в т.ч. при prefers-reduced-motion)
     // плавный скролл становится no-op; мгновенный переход надёжен везде.
     document.getElementById(id)?.scrollIntoView({ block: 'start' })
   }
+
+  if (isMobile) return <GuideMobile />
 
   return (
     <div className="ele-guide">
@@ -106,15 +247,7 @@ export function GuidePage() {
           </Card>
 
           {GUIDE_SECTIONS.map((s, i) => (
-            <Card key={s.id} id={s.id} className="ele-guide__section">
-              <h2 className="ele-guide__h2">
-                <span className="ele-guide__section-num">{i + 1}</span>
-                {s.title}
-              </h2>
-              {s.blocks.map((b, bi) => (
-                <Block key={bi} block={b} />
-              ))}
-            </Card>
+            <SectionCard key={s.id} section={s} num={i + 1} id={s.id} />
           ))}
         </div>
       </div>

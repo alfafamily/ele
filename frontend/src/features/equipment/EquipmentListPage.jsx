@@ -6,12 +6,12 @@ import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
-import { Button, EmptyState, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 
 const CACHE_KEY = 'equipment-list'
 
 const TABS = [
-  { value: 'active', label: 'Активные' },
+  { value: 'active', label: 'Активное' },
   { value: 'archive', label: 'Списанное' },
 ]
 const FILTERS = [
@@ -99,9 +99,9 @@ export function EquipmentListPage() {
 
       <TabBar options={TABS} value={tab} onChange={setTab} />
 
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
-        {tab === 'active' ? <TabBar options={FILTERS} value={status} onChange={setStatus} size="control" variant="filter" /> : null}
+        {tab === 'active' ? <FilterButton options={FILTERS} value={status} onChange={setStatus} /> : null}
       </div>
 
       {error ? (

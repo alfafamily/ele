@@ -6,7 +6,7 @@ import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
-import { Badge, Button, EmptyState, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { Badge, Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 import { KeyTarget } from '../../shared/keyTarget.jsx'
 import { PassModal } from '../employees/PassModal.jsx'
 
@@ -14,8 +14,13 @@ const CACHE_KEY = 'pass-list'
 
 const TABS = [
   { value: 'active', label: 'Активные' },
-  { value: 'deactivated', label: 'Неиспользуемые' },
   { value: 'utilized', label: 'Утилизировано' },
+]
+// Фильтр статуса внутри «Активных»: выданы сотруднику / свободные.
+const FILTERS = [
+  { value: 'all', label: 'Все' },
+  { value: 'attached', label: 'Выданные' },
+  { value: 'free', label: 'Неиспользуемые' },
 ]
 
 const COLUMNS = [
@@ -40,19 +45,20 @@ export function PassListPage() {
   const isPop = useNavigationType() === 'POP'
   const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
   const [tab, setTab] = useState(() => savedUi?.tab ?? 'active')
+  const [status, setStatus] = useState(() => savedUi?.status ?? 'all')
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
   const [modal, setModal] = useState(null) // null | 'new'
 
   useEffect(() => {
-    writeListCache(CACHE_KEY, { ui: { tab, search, sort } })
-  }, [tab, search, sort])
+    writeListCache(CACHE_KEY, { ui: { tab, status, search, sort } })
+  }, [tab, status, search, sort])
 
   const ordering = sort.dir === 'desc' ? `-${sort.key}` : sort.key
   const { items, loading, loadingMore, hasMore, loadMore, error, refetch } = useCursorList(
     '/api/access-passes/',
-    { tab, search: debouncedSearch || undefined, ordering },
+    { tab, status: tab === 'active' ? status : undefined, search: debouncedSearch || undefined, ordering },
     { cacheKey: CACHE_KEY, restore: isPop },
   )
   useScrollRestoration(CACHE_KEY, isPop && !loading)
@@ -79,8 +85,9 @@ export function PassListPage() {
 
       <TabBar options={TABS} value={tab} onChange={setTab} />
 
-      <div style={{ display: 'flex' }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
+        {tab === 'active' ? <FilterButton options={FILTERS} value={status} onChange={setStatus} /> : null}
       </div>
 
       {error ? (
@@ -93,15 +100,13 @@ export function PassListPage() {
         </div>
       ) : items.length === 0 ? (
         <EmptyState
-          title={search ? 'Ничего не найдено' : tab === 'utilized' ? 'Нет утилизированных' : tab === 'deactivated' ? 'Нет неиспользуемых' : 'Пока пусто'}
+          title={search ? 'Ничего не найдено' : tab === 'utilized' ? 'Нет утилизированных' : 'Пока пусто'}
           description={
             search
               ? `По запросу «${search}» ничего не найдено.`
               : tab === 'utilized'
                 ? 'Утилизированные пропуска и ключи будут отображаться здесь.'
-                : tab === 'deactivated'
-                  ? 'Отвязанные от сотрудников пропуска и ключи будут отображаться здесь.'
-                  : 'Когда вы добавите пропуск или ключ, он будет отображаться здесь.'
+                : 'Когда вы добавите пропуск или ключ, он будет отображаться здесь.'
           }
           action={search ? <Button variant="secondary" onClick={() => setSearch('')}>Сбросить фильтры</Button> : undefined}
         />
@@ -156,10 +161,10 @@ export function PassListPage() {
       {modal ? (
         <PassModal
           onClose={() => setModal(null)}
-          onDone={(saved) => {
+          onDone={() => {
             setModal(null)
-            if (saved?.is_deactivated && tab !== 'deactivated') setTab('deactivated')
-            else refetch()
+            // Новый пропуск/ключ (выданный или свободный) виден во вкладке «Активные».
+            refetch()
           }}
         />
       ) : null}

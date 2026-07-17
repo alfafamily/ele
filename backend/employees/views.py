@@ -185,11 +185,19 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             qs = qs.filter(employee_id=employee)
 
         if self.action == "list":
-            # Вкладки раздела: Активные (привязаны) / Неиспользуемые (отвязаны, не
-            # утилизированы) / Утилизировано (необратимо).
+            # Вкладки раздела: Активные (все неутилизированные — и привязанные, и
+            # отвязанные) / Утилизировано (необратимо). Внутри «Активных» доступен
+            # фильтр status: attached (Активные — за сотрудником) / free
+            # (Неактивные — без сотрудника). Значение tab=deactivated сохранено
+            # для подбора свободных SIM при привязке (AttachOrCreateModal).
             tab = self.request.query_params.get("tab")
             if tab == "active":
-                qs = qs.filter(employee__isnull=False, is_utilized=False)
+                qs = qs.filter(is_utilized=False)
+                status = self.request.query_params.get("status")
+                if status == "attached":
+                    qs = qs.filter(employee__isnull=False)
+                elif status == "free":
+                    qs = qs.filter(employee__isnull=True)
             elif tab == "deactivated":
                 qs = qs.filter(employee__isnull=True, is_utilized=False)
             elif tab == "utilized":
@@ -320,10 +328,18 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             qs = qs.filter(employee_id=employee)
 
         if self.action == "list":
-            # Активные / Неиспользуемые (отвязаны, не утилизированы) / Утилизировано.
+            # Активные (все неутилизированные) / Утилизировано. Внутри «Активных»
+            # фильтр status: attached (Выданные — за сотрудником) / free
+            # (Неиспользуемые — без сотрудника). tab=deactivated сохранён для
+            # подбора свободных пропусков при привязке (AttachOrCreateModal).
             tab = self.request.query_params.get("tab")
             if tab == "active":
-                qs = qs.filter(employee__isnull=False, is_utilized=False)
+                qs = qs.filter(is_utilized=False)
+                status = self.request.query_params.get("status")
+                if status == "attached":
+                    qs = qs.filter(employee__isnull=False)
+                elif status == "free":
+                    qs = qs.filter(employee__isnull=True)
             elif tab == "deactivated":
                 qs = qs.filter(employee__isnull=True, is_utilized=False)
             elif tab == "utilized":

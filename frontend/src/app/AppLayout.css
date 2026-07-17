@@ -336,6 +336,32 @@
   width: auto;
 }
 
+/* Бренд по центру верхней панели — лого компании + разделитель + знак ELE
+   (как в развёрнутом rail). min-width:0 + overflow позволяют длинному лого
+   компании ужаться, не распирая панель. */
+.ele-topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ele-topbar__company-logo {
+  height: 28px;
+  width: 28px;
+  flex: none;
+  border-radius: 7px;
+  object-fit: cover;
+}
+
+.ele-topbar__brand-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+  flex: none;
+}
+
 /* Выезжающее справа меню + затемняющая подложка. */
 .ele-drawer__backdrop {
   position: fixed;

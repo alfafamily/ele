@@ -13,7 +13,7 @@ import { Button, EmptyState, Icon, SearchInput, Skeleton, StatusPill, Table, Tab
 const CACHE_KEY = 'employee-list'
 
 const TABS = [
-  { value: 'working', label: 'Работают' },
+  { value: 'working', label: 'Трудоустроены' },
   { value: 'terminated', label: 'Уволены' },
 ]
 

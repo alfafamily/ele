@@ -64,6 +64,49 @@
   color: var(--color-text-placeholder);
 }
 
+/* Плавающий лейбл (только текстовые поля с лейблом, класс ele-field--floating).
+   Пустое поле: лейбл стоит на месте значения и выглядит как плейсхолдер — вместо
+   пустой строки под мелким лейблом. Фокус/заполнение (:not(:placeholder-shown)):
+   лейбл уезжает наверх и уменьшается. */
+.ele-field--floating .ele-field__inner {
+  position: relative;
+  padding-top: 15px;
+}
+
+.ele-field--floating .ele-field__label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-field-value);
+  line-height: 1.3;
+  color: var(--color-text-placeholder);
+  pointer-events: none;
+  transform: translateY(15px);
+  transform-origin: left top;
+  transition: transform 0.14s ease, font-size 0.14s ease;
+}
+
+.ele-field--floating .ele-field__inner:has(.ele-field__input:focus) .ele-field__label,
+.ele-field--floating .ele-field__inner:has(.ele-field__input:not(:placeholder-shown)) .ele-field__label {
+  transform: translateY(0);
+  font-size: var(--font-size-field-label);
+}
+
+/* Свой плейсхолдер (если задан) показываем только в фокусе — иначе он наложится
+   на лейбл-плейсхолдер в пустом поле. */
+.ele-field--floating .ele-field__input:not(:focus)::placeholder {
+  color: transparent;
+}
+
+/* Ошибка перекрывает цвет лейбла-плейсхолдера. */
+.ele-field--floating .ele-field__box--error .ele-field__label {
+  color: var(--color-error);
+}
+
 .ele-field__input--multiline {
   resize: vertical;
   min-height: 66px;
