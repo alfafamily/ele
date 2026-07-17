@@ -47,7 +47,7 @@ function accessLines(pass) {
   return (pass.buildings || []).map((b) => {
     const parts = [
       ...rooms.filter((r) => r.building === b.id).map((r) => r.name),
-      ...places.filter((p) => p.building === b.id).map((p) => p.name),
+      ...places.filter((p) => p.building === b.id).map((p) => (p.room_name ? `${p.room_name} / ${p.name}` : p.name)),
     ]
     const roomsText = parts.length === 0 ? 'все помещения' : parts.join(', ')
     return { id: b.id, name: b.name, roomsText }

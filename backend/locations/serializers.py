@@ -80,10 +80,12 @@ class RoomMiniSerializer(serializers.ModelSerializer):
 
 
 class PlaceMiniSerializer(serializers.ModelSerializer):
-    """Место в карточке пропуска (room/building — для группировки)."""
+    """Место в карточке пропуска (room/building — для группировки, room_name —
+    чтобы показывать «здание — помещение» для объекта-места)."""
 
     building = serializers.IntegerField(source="room.building_id", read_only=True)
+    room_name = serializers.CharField(source="room.name", read_only=True)
 
     class Meta:
         model = Place
-        fields = ["id", "room", "building", "name", "is_archived"]
+        fields = ["id", "room", "room_name", "building", "name", "is_archived"]
