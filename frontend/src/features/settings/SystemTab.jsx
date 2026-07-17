@@ -256,13 +256,6 @@ export function SystemTab() {
 
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 19, fontWeight: 600 }}>Системные</div>
-        <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
-          Хранилище, доступ и проверка интеграций
-        </div>
-      </div>
-
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Хранилище файлов */}
         <Card>

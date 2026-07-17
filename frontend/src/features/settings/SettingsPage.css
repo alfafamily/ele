@@ -1,7 +1,7 @@
 /* Раскладка настроек — как у десктопного «Руководства»: боковое меню слева
-   (липкое), контент справа. */
+   (липкое), контент справа. Пункт меню = название раздела + подтекст под ним. */
 .ele-settings__layout {
-  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-columns: 260px minmax(0, 1fr);
 }
 
 .ele-settings__nav {
@@ -17,7 +17,9 @@
 }
 
 .ele-settings__nav-item {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   width: 100%;
   text-align: left;
   padding: 10px 12px;
@@ -25,9 +27,6 @@
   background: transparent;
   border-radius: 10px;
   font-family: inherit;
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
   cursor: pointer;
 }
 
@@ -37,11 +36,26 @@
 
 .ele-settings__nav-item--active {
   background: var(--color-fill-active-tint);
+}
+
+.ele-settings__nav-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.ele-settings__nav-item--active .ele-settings__nav-label {
   color: var(--color-text-primary);
   font-weight: 600;
 }
 
-/* Мобильный селект раздела — как в мобильном «Руководстве». */
+.ele-settings__nav-desc {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--color-text-placeholder);
+}
+
+/* Мобильный селект раздела — как в мобильном «Руководстве»: название + подтекст. */
 .ele-settings__select {
   position: relative;
 }
@@ -51,7 +65,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 14px;
+  padding: 10px 14px;
   background: var(--color-surface);
   box-shadow: inset 0 0 0 1px var(--color-border);
   border: none;
@@ -61,12 +75,26 @@
   text-align: left;
 }
 
-.ele-settings__select-title {
+.ele-settings__select-text {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ele-settings__select-title {
   font-size: 14.5px;
   font-weight: 600;
   color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ele-settings__select-desc {
+  font-size: 12px;
+  color: var(--color-text-placeholder);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -90,22 +118,32 @@
 }
 
 .ele-settings__select-item {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   width: 100%;
-  padding: 11px 12px;
+  padding: 10px 12px;
   border: none;
   background: transparent;
   border-radius: 10px;
   font-family: inherit;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
   text-align: left;
   cursor: pointer;
 }
 
+.ele-settings__select-item:hover {
+  background: var(--color-fill-active-tint);
+}
+
 .ele-settings__select-item--active {
   background: var(--color-fill-active-tint);
+}
+
+/* В списке подтекст переносится (место есть), в триггере — обрезается в строку. */
+.ele-settings__select-item .ele-settings__select-desc {
+  white-space: normal;
+}
+
+.ele-settings__select-item .ele-settings__select-title {
   color: var(--color-text-primary);
-  font-weight: 600;
 }

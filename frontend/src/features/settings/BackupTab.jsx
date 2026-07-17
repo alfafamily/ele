@@ -52,23 +52,21 @@ export function BackupTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div>
-        <div style={{ fontSize: 19, fontWeight: 600 }}>Резервное копирование</div>
-        <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 6, lineHeight: 1.5, maxWidth: 760 }}>
-          Система создает файл, который можно скачать с объектами в системе: оборудование, лицензии, сотрудники,
-          пользователи (с хэшами паролей), типы, ссылки на файлы. Файлы необходимо выгрузить из хранилища
-          самостоятельно, по ссылкам указанным в объектах файла экспорта.
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 8, lineHeight: 1.5, maxWidth: 760 }}>
-          Файл содержит чувствительные данные — храните и передавайте его только по защищённым каналам.
-        </div>
-      </div>
-
       {error ? <Banner variant="error">{error}</Banner> : null}
 
-      {/* Создать копию и Автокопирование — друг под другом (первым — «Создать
-          резервную копию»). */}
+      {/* Пояснение об экспорте, создание копии и автокопирование — друг под другом. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Card>
+          <div style={{ fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            Система создает файл, который можно скачать с объектами в системе: оборудование, лицензии, сотрудники,
+            пользователи (с хэшами паролей), типы, ссылки на файлы. Файлы необходимо выгрузить из хранилища
+            самостоятельно, по ссылкам указанным в объектах файла экспорта.
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 8, lineHeight: 1.5 }}>
+            Файл содержит чувствительные данные — храните и передавайте его только по защищённым каналам.
+          </div>
+        </Card>
+
         <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 15, fontWeight: 600 }}>Создать резервную копию сейчас</div>

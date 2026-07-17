@@ -165,11 +165,6 @@ export function CompanyTab() {
 
   return (
     <div>
-      <div style={{ fontSize: 19, fontWeight: 600 }}>Компания</div>
-      <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginTop: 2, marginBottom: 16 }}>
-        Реквизиты организации и логотип
-      </div>
-
       {logoError ? (
         <div style={{ marginBottom: 14 }}>
           <Banner variant="error">{logoError}</Banner>

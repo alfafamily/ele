@@ -35,8 +35,6 @@ export function UpdateTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ fontSize: 19, fontWeight: 600 }}>Обновление</div>
-
       {error ? <Banner variant="error">{error}</Banner> : null}
 
       {!info && !error ? (

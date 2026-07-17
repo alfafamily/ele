@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Can, usePermissions } from '../../app/usePermissions.js'
-import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { ActionMenu, Badge, Banner, Button, Icon, Modal, SearchInput, Spinner } from '../../shared/ui'
 import { BuildingModal } from './BuildingModal.jsx'
 import { PlaceModal } from './PlaceModal.jsx'
@@ -20,7 +19,6 @@ import {
 // Местами. Удаления нет — только архивирование (каскадное вниз).
 export function PremisesPage() {
   const perms = usePermissions()
-  const isMobile = useMediaQuery('(max-width: 768px)')
   const [allBuildings, setAllBuildings] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [showArchived, setShowArchived] = useState(false)
@@ -141,14 +139,15 @@ export function PremisesPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div className="ele-page-head" style={{ marginBottom: 16 }}>
         <h1 style={{ fontSize: 'var(--font-size-h1)', fontWeight: 600, letterSpacing: 'var(--font-h1-letter-spacing)', margin: 0 }}>
           Помещения
         </h1>
         <Can perm="canManagePremises">
-          <div style={{ width: isMobile ? '100%' : 'auto' }}>
-            <Button fullWidth={isMobile} onClick={() => setBuildingModal('new')}>
-              ＋ Новое здание
+          <div className="ele-page-head__actions">
+            <Button onClick={() => setBuildingModal('new')} title="Новое здание" aria-label="Новое здание">
+              <span className="ele-only-desktop">＋ Новое здание</span>
+              <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
             </Button>
           </div>
         </Can>

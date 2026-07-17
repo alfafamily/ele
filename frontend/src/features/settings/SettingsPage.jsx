@@ -9,11 +9,11 @@ import { UsersTab } from './UsersTab.jsx'
 import './SettingsPage.css'
 
 const SECTIONS = [
-  { value: 'company', label: 'Компания', Component: CompanyTab },
-  { value: 'users', label: 'Пользователи', Component: UsersTab },
-  { value: 'system', label: 'Системные', Component: SystemTab },
-  { value: 'backup', label: 'Резервное копирование', Component: BackupTab },
-  { value: 'update', label: 'Обновление', Component: UpdateTab },
+  { value: 'company', label: 'Компания', desc: 'Реквизиты организации и логотип', Component: CompanyTab },
+  { value: 'users', label: 'Пользователи', desc: 'Доступ к системе и роли', Component: UsersTab },
+  { value: 'system', label: 'Системные', desc: 'Хранилище, доступ и проверка интеграций', Component: SystemTab },
+  { value: 'backup', label: 'Резервное копирование', desc: 'Настройки резервного копирования', Component: BackupTab },
+  { value: 'update', label: 'Обновление', desc: 'Версия и обновление системы', Component: UpdateTab },
 ]
 
 // Мобильный селект раздела — белая плашка с названием активного раздела; по
@@ -42,7 +42,10 @@ function SectionSelect({ sections, value, onChange }) {
   return (
     <div className="ele-settings__select" ref={ref}>
       <button type="button" className="ele-settings__select-trigger" onClick={() => setOpen((o) => !o)} aria-haspopup="listbox" aria-expanded={open}>
-        <span className="ele-settings__select-title">{active?.label}</span>
+        <span className="ele-settings__select-text">
+          <span className="ele-settings__select-title">{active?.label}</span>
+          {active?.desc ? <span className="ele-settings__select-desc">{active.desc}</span> : null}
+        </span>
         <Icon name="chevrons-up-down" size={18} strokeWidth={2} style={{ flex: 'none', color: 'var(--color-text-placeholder)' }} />
       </button>
       {open ? (
@@ -59,7 +62,8 @@ function SectionSelect({ sections, value, onChange }) {
                 setOpen(false)
               }}
             >
-              {s.label}
+              <span className="ele-settings__select-title">{s.label}</span>
+              {s.desc ? <span className="ele-settings__select-desc">{s.desc}</span> : null}
             </button>
           ))}
         </div>
@@ -99,7 +103,8 @@ export function SettingsPage() {
                 className={'ele-settings__nav-item' + (s.value === section ? ' ele-settings__nav-item--active' : '')}
                 onClick={() => setSection(s.value)}
               >
-                {s.label}
+                <span className="ele-settings__nav-label">{s.label}</span>
+                {s.desc ? <span className="ele-settings__nav-desc">{s.desc}</span> : null}
               </button>
             ))}
           </nav>

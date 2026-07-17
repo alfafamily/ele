@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { VALUE_TYPE_LABELS } from '../../shared/eav'
-import { ActionMenu, Badge, Banner, BackButton, Button, Card, ConfirmModal, Spinner } from '../../shared/ui'
+import { ActionMenu, Badge, Banner, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { DeleteTypeModal } from './DeleteTypeModal.jsx'
 import { FieldFormModal } from './FieldFormModal.jsx'
 import { NewTypeModal } from './NewTypeModal.jsx'
@@ -116,14 +116,19 @@ export function TypesEditorPage({ domain, title }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="ele-page-head" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <BackButton />
-          <h1 style={{ fontSize: 'var(--font-size-h1)', fontWeight: 600, letterSpacing: 'var(--font-h1-letter-spacing)', margin: 0 }}>
+          <h1 style={{ fontSize: 'var(--font-size-h1)', fontWeight: 600, letterSpacing: 'var(--font-h1-letter-spacing)', margin: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             Типы {title}
           </h1>
         </div>
-        <Button onClick={() => setShowNewType(true)}>＋ Новый тип</Button>
+        <div className="ele-page-head__actions">
+          <Button onClick={() => setShowNewType(true)} title="Новый тип" aria-label="Новый тип">
+            <span className="ele-only-desktop">＋ Новый тип</span>
+            <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
+          </Button>
+        </div>
       </div>
       {error ? (
         <div style={{ marginBottom: 14 }}>
