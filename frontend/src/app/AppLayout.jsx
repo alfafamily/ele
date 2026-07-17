@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
 import { useCompany } from './CompanyContext.jsx'
 import { navSectionsForRole } from './navSections.js'
-import { HelpIcon, MenuIcon } from './navIcons.jsx'
+import { HelpIcon, MenuIcon, SettingsIcon } from './navIcons.jsx'
 import { roleLabel } from '../shared/roles.js'
 import { nameInitials } from '../shared/employeeName.js'
 import './AppLayout.css'
@@ -15,7 +15,6 @@ export function AppLayout() {
   const employeeName = user.employee ? user.employee.full_name : null
   const [drawerOpen, setDrawerOpen] = useState(false)
   const location = useLocation()
-  const navigate = useNavigate()
 
   // Закрываем выезжающее меню при переходе на другую страницу.
   useEffect(() => {
@@ -48,15 +47,10 @@ export function AppLayout() {
   // идут сверху в порядке навигации.
   const topSections = sections.filter((s) => !s.bottom)
   const bottomSections = sections.filter((s) => s.bottom)
-  // Мобильное меню (drawer) — все разделы как на десктопе + Настройки (у админа)
-  // и Руководство. Профиль в меню не дублируем — он в нижнем таб-баре.
-  const drawerSections = [
-    ...topSections,
-    ...bottomSections,
-    { key: 'guide', to: '/guide', label: 'Руководство', icon: HelpIcon },
-  ]
-
-  const isProfileActive = location.pathname === '/profile'
+  const isAdmin = user.role === 'admin'
+  // Мобильное выезжающее меню (drawer) — только основные разделы. Руководство,
+  // Настройки, Профиль вынесены в нижний таб-бар, поэтому в меню не дублируются.
+  const drawerSections = topSections
 
   return (
     <div className="ele-shell">
@@ -148,9 +142,25 @@ export function AppLayout() {
         </div>
       </main>
 
-      {/* Мобильный нижний таб-бар: Меню (открывает выезжающее меню) и Профиль
-          (страница профиля). На десктопе скрыт (там rail). */}
+      {/* Мобильный нижний таб-бар: Руководство · Настройки (админ) · Меню
+          (открывает выезжающее меню) · Профиль. На десктопе скрыт (там rail). */}
       <nav className="ele-bottom-nav">
+        <NavLink
+          to="/guide"
+          className={({ isActive }) => `ele-bottom-nav__item${isActive ? ' ele-bottom-nav__item--active' : ''}`}
+        >
+          <HelpIcon />
+          <span>Руководство</span>
+        </NavLink>
+        {isAdmin ? (
+          <NavLink
+            to="/settings"
+            className={({ isActive }) => `ele-bottom-nav__item${isActive ? ' ele-bottom-nav__item--active' : ''}`}
+          >
+            <SettingsIcon />
+            <span>Настройки</span>
+          </NavLink>
+        ) : null}
         <button
           type="button"
           className={`ele-bottom-nav__item${drawerOpen ? ' ele-bottom-nav__item--active' : ''}`}
@@ -161,14 +171,13 @@ export function AppLayout() {
           <MenuIcon />
           <span>Меню</span>
         </button>
-        <button
-          type="button"
-          className={`ele-bottom-nav__item${isProfileActive ? ' ele-bottom-nav__item--active' : ''}`}
-          onClick={() => navigate('/profile')}
+        <NavLink
+          to="/profile"
+          className={({ isActive }) => `ele-bottom-nav__item${isActive ? ' ele-bottom-nav__item--active' : ''}`}
         >
           {avatar(24, 10)}
           <span>Профиль</span>
-        </button>
+        </NavLink>
       </nav>
 
       {/* Выезжающее справа меню (поверх страницы) со всеми разделами. */}

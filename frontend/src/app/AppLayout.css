@@ -447,6 +447,7 @@
     font-family: inherit;
     font-size: 10px;
     padding: 0;
+    text-decoration: none;
   }
 
   .ele-bottom-nav__item--active {

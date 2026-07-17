@@ -235,7 +235,7 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
                 multiline
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="Отобразится в истории движений при создании"
+                placeholder="Например: приобретено по договору или изготовлено у мастера (для ключей)"
               />
             ) : null}
           </div>

@@ -100,9 +100,11 @@
   font-size: var(--font-size-field-value);
 }
 
-/* Свой плейсхолдер (если задан) показываем только в фокусе — иначе он наложится
-   на лейбл-плейсхолдер в пустом поле. */
-.ele-field--floating .ele-field__input:not(:focus)::placeholder {
+/* Свой плейсхолдер однострочного поля показываем только в фокусе — иначе он
+   наложится на лейбл-плейсхолдер в пустом поле. Для многострочных (textarea)
+   лейбл стоит сверху и не пересекается с плейсхолдером, поэтому его видно
+   всегда. */
+.ele-field--floating .ele-field__input:not(.ele-field__input--multiline):not(:focus)::placeholder {
   color: transparent;
 }
 

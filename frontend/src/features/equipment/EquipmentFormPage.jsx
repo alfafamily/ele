@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { apiPost } from '../../shared/api/client'
 import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
-import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { Banner, Button, Card, Icon, Input, Select, Spinner } from '../../shared/ui'
 import {
   createEquipment,
@@ -31,8 +30,6 @@ export function EquipmentFormPage() {
   const [equipment, setEquipment] = useState(null)
   const [typeId, setTypeId] = useState('')
   const [inventoryNumber, setInventoryNumber] = useState('')
-  const [employee, setEmployee] = useState(null)
-  const [showEmployeePicker, setShowEmployeePicker] = useState(false)
   const [values, setValues] = useState({})
   const [fileValues, setFileValues] = useState({}) // fieldId -> {field values entry}
   const [customFields, setCustomFields] = useState([])
@@ -50,7 +47,6 @@ export function EquipmentFormPage() {
       setEquipment(data)
       setTypeId(String(data.equipment_type))
       setInventoryNumber(data.inventory_number)
-      setEmployee(data.employee ? { id: data.employee, full_name: data.employee_name } : null)
       setValues(buildValueMap(data.field_values))
       const fMap = {}
       for (const fv of data.field_values) if (fv.value_type === 'file') fMap[fv.field] = fv
@@ -83,7 +79,6 @@ export function EquipmentFormPage() {
     const payload = {
       inventory_number: inventoryNumber,
       equipment_type: Number(typeId),
-      employee: employee?.id ?? null,
       field_values_input: typeFields.filter((f) => f.value_type !== 'file').map((f) => ({ field: f.id, value: values[f.id] ?? null })),
       custom_fields: customFields.filter((f) => f.name.trim()),
     }
@@ -164,51 +159,15 @@ export function EquipmentFormPage() {
                     </option>
                   ))}
               </Select>
-              <div className="ele-form-2col">
-                <Input
-                  label="Учётный номер"
-                  required
-                  value={inventoryNumber}
-                  onChange={(e) => setInventoryNumber(e.target.value)}
-                  style={{ fontFamily: 'var(--font-mono)' }}
-                />
-                {/* Тот же паттерн поля, что и Input (label внутри box), но
-                    комбобокс подбора Сотрудника. Значение — в одну строку с «…»
-                    (иначе на мобильных длинное ФИО переносилось на вторую). */}
-                <div className="ele-field">
-                  {showEmployeePicker ? (
-                    <EmployeePicker
-                      autoFocus
-                      onSelect={(emp) => {
-                        setEmployee(emp)
-                        setShowEmployeePicker(false)
-                      }}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      className="ele-field__box"
-                      onClick={() => setShowEmployeePicker(true)}
-                      style={{ width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-                    >
-                      <div className="ele-field__inner">
-                        <span className="ele-field__label">Сотрудник</span>
-                        <div
-                          className="ele-field__input"
-                          style={{
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            color: employee ? 'var(--color-text-primary)' : 'var(--color-text-placeholder)',
-                          }}
-                        >
-                          {employee?.full_name || 'Не закреплено'}
-                        </div>
-                      </div>
-                    </button>
-                  )}
-                </div>
-              </div>
+              {/* Закрепление сотрудника здесь не задаётся — оно выполняется на
+                  карточке оборудования (кнопка «Закрепить сотрудника»). */}
+              <Input
+                label="Учётный номер"
+                required
+                value={inventoryNumber}
+                onChange={(e) => setInventoryNumber(e.target.value)}
+                style={{ fontFamily: 'var(--font-mono)' }}
+              />
             </div>
           </Card>
 

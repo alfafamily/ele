@@ -62,7 +62,7 @@ export function SimDisposeModal({ sim, onClose, onDone }) {
             multiline
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Отобразится в истории движений"
+            placeholder="Например: утилизировано по акту №…"
           />
         </div>
       ) : null}

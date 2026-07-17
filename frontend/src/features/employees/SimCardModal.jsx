@@ -99,7 +99,7 @@ export function SimCardModal({ employeeId, sim, onClose, onDone }) {
             multiline
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Отобразится в истории движений при создании"
+            placeholder="Например: регистрация номера по договору услуг-связи"
           />
         ) : null}
       </div>

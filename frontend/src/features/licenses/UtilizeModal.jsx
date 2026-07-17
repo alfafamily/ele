@@ -35,7 +35,7 @@ export function UtilizeModal({ license, onClose, onDone }) {
           multiline
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          placeholder="Отобразится в истории движений"
+          placeholder="Например: утилизировано по акту №…"
         />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>

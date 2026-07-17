@@ -69,7 +69,7 @@ export function WriteOffModal({ equipment, onClose, onDone }) {
               multiline
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Отобразится в истории движений"
+              placeholder="Например: списано по акту №… (причина списания)"
             />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}>
