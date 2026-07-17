@@ -4,7 +4,7 @@ import { Icon } from '../../shared/ui'
 // «Номер/ключ» — маскирован по умолчанию, раскрывается по кнопке-
 // «глаз», копирование доступно только в раскрытом виде. fv.name === 'Номер/ключ'
 // однозначно определяет реквизит: он зафиксирован и никогда не переименовывается.
-export function MaskedKeyField({ fv }) {
+export function MaskedKeyField({ fv, canReveal = true }) {
   const [revealed, setRevealed] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -12,6 +12,17 @@ export function MaskedKeyField({ fv }) {
     await navigator.clipboard.writeText(fv.value || '')
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
+  }
+
+  // Наблюдателю (canReveal=false) секрет не показываем: маска без кнопок,
+  // значение бэкенд и не присылает.
+  if (!canReveal) {
+    return (
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fv.name}</div>
+        <div style={{ font: '500 14px var(--font-mono)', letterSpacing: 2 }}>•••• •••• •••• ••••</div>
+      </div>
+    )
   }
 
   return (

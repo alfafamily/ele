@@ -242,22 +242,35 @@ class SimCardAccessTests(APITestCase):
         self.assertEqual(self.client.get("/api/sim-cards/operators/").status_code, 403)
         self.assertEqual(self.client.get("/api/sim-cards/providers/").status_code, 403)
 
-    def test_observer_sees_only_own_not_all(self):
-        # У SIM нет страницы-списка, поэтому «Наблюдатель» доступ не расширяет —
-        # видит только свои номера, как обычный Сотрудник.
+    def test_observer_sees_all_sim(self):
+        # «Наблюдатель» видит раздел «Корпоративная связь» целиком (все номера),
+        # а не только свои — но строго на просмотр.
         self.emp_user.is_observer = True
         self.emp_user.save(update_fields=["is_observer"])
         self.client.force_authenticate(user=self.emp_user)
-        resp = self.client.get("/api/sim-cards/")
+        resp = self.client.get("/api/sim-cards/?tab=active")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual([s["phone_number"] for s in resp.data["results"]], ["+79001112233"])
+        self.assertEqual(
+            sorted(s["phone_number"] for s in resp.data["results"]),
+            ["+79001112233", "+79004445566"],
+        )
 
-    def test_observer_cannot_retrieve_foreign_sim(self):
+    def test_observer_can_retrieve_foreign_sim(self):
         self.emp_user.is_observer = True
         self.emp_user.save(update_fields=["is_observer"])
         self.client.force_authenticate(user=self.emp_user)
         resp = self.client.get(f"/api/sim-cards/{self.other_sim.id}/")
-        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.status_code, 200)
+
+    def test_observer_cannot_create_sim(self):
+        # Просмотр — да, но никаких действий: создание запрещено.
+        self.emp_user.is_observer = True
+        self.emp_user.save(update_fields=["is_observer"])
+        self.client.force_authenticate(user=self.emp_user)
+        resp = self.client.post(
+            "/api/sim-cards/", {"employee": self.emp.id, "phone_number": "+70000000000"}, format="json"
+        )
+        self.assertEqual(resp.status_code, 403)
 
     def test_unlinked_employee_sees_nothing(self):
         orphan = User.objects.create_user(email="orphan@example.com", password="Str0ng!Pass1")

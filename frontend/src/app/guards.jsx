@@ -33,12 +33,22 @@ export function RequireAdmin({ children }) {
   return children
 }
 
-// Лицензии/Сотрудники/Типы — Admin/Accountant. Сотрудник (в т.ч.
-// Наблюдатель) видит из бизнес-разделов только Оборудование — без этого
-// гейта прямой переход по URL показал бы сломанный экран вместо редиректа
-// (бэкенд и так отклонит запросы, это гейт только для UX).
+// Управление объектами и редактор Типов — только Admin/Accountant. Наблюдатель
+// и обычный «Сотрудник» сюда не попадают: их отправляем на «/» (там сработает
+// RequireViewer и уведёт обычного сотрудника в Профиль). Бэкенд и так отклонит
+// запросы — гейт нужен только ради UX (не показывать сломанный экран).
 export function RequireStaff({ children }) {
   const { user } = useAuth()
   if (user.role !== 'admin' && user.role !== 'accountant') return <Navigate to="/" replace />
+  return children
+}
+
+// Просмотр бизнес-разделов (Оборудование/Лицензии/Сотрудники/Связь/Средства
+// доступа/Помещения) — Admin/Accountant или Наблюдатель. Обычному «Сотруднику»
+// (без признака) бизнес-разделы недоступны — его посадочная страница Профиль.
+export function RequireViewer({ children }) {
+  const { user } = useAuth()
+  const canView = user.role === 'admin' || user.role === 'accountant' || (user.role === 'employee' && user.is_observer)
+  if (!canView) return <Navigate to="/profile" replace />
   return children
 }

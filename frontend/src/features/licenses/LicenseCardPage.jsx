@@ -119,7 +119,11 @@ export function LicenseCardPage() {
                 ) : (
                   <div className="ele-field-grid">
                     {paramValues.map((fv) =>
-                      fv.is_locked ? <MaskedKeyField key={fv.field} fv={fv} /> : <FieldValueDisplay key={fv.field} fv={fv} />
+                      fv.is_locked ? (
+                        <MaskedKeyField key={fv.field} fv={fv} canReveal={perms.canRevealSecrets} />
+                      ) : (
+                        <FieldValueDisplay key={fv.field} fv={fv} />
+                      )
                     )}
                   </div>
                 )}

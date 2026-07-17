@@ -11,7 +11,7 @@ import './AppLayout.css'
 export function AppLayout() {
   const { user } = useAuth()
   const company = useCompany()
-  const sections = navSectionsForRole(user.role)
+  const sections = navSectionsForRole(user.role, user.is_observer)
   const employeeName = user.employee ? user.employee.full_name : null
   const [drawerOpen, setDrawerOpen] = useState(false)
   const location = useLocation()
@@ -161,16 +161,18 @@ export function AppLayout() {
             <span>Настройки</span>
           </NavLink>
         ) : null}
-        <button
-          type="button"
-          className={`ele-bottom-nav__item${drawerOpen ? ' ele-bottom-nav__item--active' : ''}`}
-          aria-haspopup="menu"
-          aria-expanded={drawerOpen}
-          onClick={() => setDrawerOpen(true)}
-        >
-          <MenuIcon />
-          <span>Меню</span>
-        </button>
+        {drawerSections.length > 0 ? (
+          <button
+            type="button"
+            className={`ele-bottom-nav__item${drawerOpen ? ' ele-bottom-nav__item--active' : ''}`}
+            aria-haspopup="menu"
+            aria-expanded={drawerOpen}
+            onClick={() => setDrawerOpen(true)}
+          >
+            <MenuIcon />
+            <span>Меню</span>
+          </button>
+        ) : null}
         <NavLink
           to="/profile"
           className={({ isActive }) => `ele-bottom-nav__item${isActive ? ' ele-bottom-nav__item--active' : ''}`}

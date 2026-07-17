@@ -2,20 +2,20 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from core.permissions import IsAdminOrAccountant
+from core.permissions import IsAdminOrAccountantOrReadOnlyObserver
 
 from . import service
 from .models import Building, Place, Room
 from .serializers import BuildingSerializer, PlaceSerializer, RoomSerializer
 
-# Раздел «Помещения» — справочник зданий/помещений/мест. Управление и
-# просмотр только admin/accountant. Физического удаления нет: сущности
-# архивируются (каскадно вниз), поэтому destroy заблокирован во всех вьюхах.
+# Раздел «Помещения» — справочник зданий/помещений/мест. Управление —
+# admin/accountant; Наблюдатель видит справочник на просмотр. Физического
+# удаления нет: сущности архивируются (каскадно вниз), destroy заблокирован.
 _NO_DELETE = {"detail": "Удаление недоступно — используйте архивирование."}
 
 
 class _NoDeleteViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAdminOrAccountant]
+    permission_classes = [IsAdminOrAccountantOrReadOnlyObserver]
     pagination_class = None
 
     def destroy(self, request, *args, **kwargs):

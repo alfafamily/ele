@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from core.eav import count_missing_for_field
 from core.mixins import CreationCommentMixin
 from core.pagination import ELECursorPagination
-from core.permissions import IsAdminOrAccountant
+from core.permissions import IsAdminOrAccountant, IsAdminOrAccountantOrReadOnlyObserver
 from storage.service import delete_stored_file, store_uploaded_file
 
 from .models import (
@@ -84,11 +84,12 @@ class LicenseTypeFieldImpactView(APIView):
 
 
 class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
-    """Раздел целиком недоступен роли «Сотрудник» — свои лицензии видны
-    только в карточке привязанного Оборудования. Удаления нет — только
-    утилизация (utilize)."""
+    """Обычному «Сотруднику» раздел недоступен — свои лицензии видны только в
+    карточке привязанного Оборудования. Наблюдатель видит раздел на просмотр,
+    но без «Номера/ключа» (см. get_serializer_context). Управление и удаление —
+    admin/accountant; удаления нет — только утилизация (utilize)."""
 
-    permission_classes = [IsAdminOrAccountant]
+    permission_classes = [IsAdminOrAccountantOrReadOnlyObserver]
     pagination_class = ELECursorPagination
     # DELETE разрешён только ради экшена удаления файла реквизита (ниже);
     # удаление самой Лицензии запрещено — destroy() отдаёт 405 (только
@@ -106,11 +107,12 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        # Раздел «Лицензии» доступен только Admin/Accountant (permission_classes),
-        # поэтому «Номер/ключ» можно вернуть в списке по явному запросу
-        # (?include_key=1 — форма подбора лицензии на карточке Оборудования).
-        # На фронте он всё равно маскируется за «глазиком».
-        context["include_key"] = self.request.query_params.get("include_key") in ("1", "true")
+        # «Номер/ключ» — только Admin/Accountant. Наблюдатель видит раздел, но
+        # секрет ему не отдаём ни в карточке (can_reveal_key → get_value
+        # маскирует зафиксированный реквизит), ни в списке (include_key).
+        is_staff = getattr(self.request.user, "role", None) in ("admin", "accountant")
+        context["can_reveal_key"] = is_staff
+        context["include_key"] = is_staff and self.request.query_params.get("include_key") in ("1", "true")
         return context
 
     def get_queryset(self):

@@ -10,6 +10,11 @@ export const getMySimCards = (employeeId) =>
 export const getMyPasses = (employeeId) =>
   apiGet(`/api/access-passes/?employee=${employeeId}`).then((d) => d.results)
 
+// Своё закреплённое оборудование (read-only). Для роли «Сотрудник» список и так
+// сужен бэкендом до своего; параметр employee — чтобы staff видел именно своё.
+export const getMyEquipment = (employeeId) =>
+  apiGet(`/api/equipment/?employee=${employeeId}&tab=active`).then((d) => d.results)
+
 export const changePassword = (payload) => apiPost('/api/auth/change-password/', payload)
 export const requestEmailChange = (newEmail) => apiPost('/api/auth/change-email/', { new_email: newEmail })
 export const confirmEmailChange = (token) => apiPost('/api/auth/change-email/confirm/', { token })

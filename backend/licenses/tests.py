@@ -280,3 +280,45 @@ class LicenseKeyExposureTests(APITestCase):
         resp = self.client.get(f"/api/equipment/{self.eq.id}/")
         self.assertEqual(resp.status_code, 200, resp.data)
         self.assertIsNone(resp.data["licenses"][0]["key"])
+
+    def _make_observer(self, email):
+        from employees.models import Employee
+
+        emp = Employee.objects.create(first_name="Наб", last_name="Людатель")
+        observer = User.objects.create_user(email=email, password="Str0ng!Pass1", employee=emp)
+        observer.is_observer = True
+        observer.save(update_fields=["is_observer"])
+        return observer
+
+    def test_observer_views_licenses_but_key_stays_hidden(self):
+        self.client.force_authenticate(user=self._make_observer("obs1@example.com"))
+        # Раздел «Лицензии» открыт Наблюдателю на просмотр.
+        resp = self.client.get("/api/licenses/?tab=active")
+        self.assertEqual(resp.status_code, 200)
+        # include_key игнорируется — ключ не отдаётся в списке.
+        resp = self.client.get("/api/licenses/?include_key=1")
+        row = next(r for r in resp.data["results"] if r["id"] == self.lic_id)
+        self.assertIsNone(row.get("key"))
+        # На карточке значение зафиксированного реквизита-ключа маскируется (None).
+        resp = self.client.get(f"/api/licenses/{self.lic_id}/")
+        self.assertEqual(resp.status_code, 200)
+        locked = [fv for fv in resp.data["field_values"] if fv["is_locked"]]
+        self.assertTrue(locked)
+        self.assertIsNone(locked[0]["value"])
+
+    def test_observer_cannot_create_license(self):
+        self.client.force_authenticate(user=self._make_observer("obs2@example.com"))
+        resp = self.client.post(
+            "/api/licenses/",
+            {"name": "X", "license_type": self.soft_type.id},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_plain_employee_has_no_licenses_section(self):
+        from employees.models import Employee
+
+        emp = Employee.objects.create(first_name="Обычный", last_name="Сотрудник")
+        worker = User.objects.create_user(email="plain@example.com", password="Str0ng!Pass1", employee=emp)
+        self.client.force_authenticate(user=worker)
+        self.assertEqual(self.client.get("/api/licenses/?tab=active").status_code, 403)

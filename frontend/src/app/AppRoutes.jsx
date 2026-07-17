@@ -27,7 +27,7 @@ import { ProfilePage } from '../features/profile/ProfilePage.jsx'
 import { GuidePage } from '../features/guide/GuidePage.jsx'
 import { AppLayout } from './AppLayout.jsx'
 import { NotFoundPage } from './NotFoundPage.jsx'
-import { RequireAdmin, RequireAuth, RequireGuest, RequireSetupPending, RequireStaff } from './guards.jsx'
+import { RequireAdmin, RequireAuth, RequireGuest, RequireSetupPending, RequireStaff, RequireViewer } from './guards.jsx'
 
 export function AppRoutes() {
   return (
@@ -85,10 +85,38 @@ export function AppRoutes() {
           </RequireAuth>
         }
       >
-        <Route path="/" element={<EquipmentListPage />} />
-        <Route path="/equipment/new" element={<EquipmentFormPage />} />
-        <Route path="/equipment/:id" element={<EquipmentCardPage />} />
-        <Route path="/equipment/:id/edit" element={<EquipmentFormPage />} />
+        <Route
+          path="/"
+          element={
+            <RequireViewer>
+              <EquipmentListPage />
+            </RequireViewer>
+          }
+        />
+        <Route
+          path="/equipment/new"
+          element={
+            <RequireStaff>
+              <EquipmentFormPage />
+            </RequireStaff>
+          }
+        />
+        <Route
+          path="/equipment/:id"
+          element={
+            <RequireViewer>
+              <EquipmentCardPage />
+            </RequireViewer>
+          }
+        />
+        <Route
+          path="/equipment/:id/edit"
+          element={
+            <RequireStaff>
+              <EquipmentFormPage />
+            </RequireStaff>
+          }
+        />
         <Route
           path="/equipment-types"
           element={
@@ -100,9 +128,9 @@ export function AppRoutes() {
         <Route
           path="/licenses"
           element={
-            <RequireStaff>
+            <RequireViewer>
               <LicenseListPage />
-            </RequireStaff>
+            </RequireViewer>
           }
         />
         <Route
@@ -116,9 +144,9 @@ export function AppRoutes() {
         <Route
           path="/licenses/:id"
           element={
-            <RequireStaff>
+            <RequireViewer>
               <LicenseCardPage />
-            </RequireStaff>
+            </RequireViewer>
           }
         />
         <Route
@@ -140,9 +168,9 @@ export function AppRoutes() {
         <Route
           path="/employees"
           element={
-            <RequireStaff>
+            <RequireViewer>
               <EmployeeListPage />
-            </RequireStaff>
+            </RequireViewer>
           }
         />
         <Route
@@ -156,9 +184,9 @@ export function AppRoutes() {
         <Route
           path="/employees/:id"
           element={
-            <RequireStaff>
+            <RequireViewer>
               <EmployeeCardPage />
-            </RequireStaff>
+            </RequireViewer>
           }
         />
         <Route
@@ -172,41 +200,41 @@ export function AppRoutes() {
         <Route
           path="/sim-cards"
           element={
-            <RequireStaff>
+            <RequireViewer>
               <SimListPage />
-            </RequireStaff>
+            </RequireViewer>
           }
         />
         <Route
           path="/sim-cards/:id"
           element={
-            <RequireStaff>
+            <RequireViewer>
               <SimCardPage />
-            </RequireStaff>
+            </RequireViewer>
           }
         />
         <Route
           path="/passes"
           element={
-            <RequireStaff>
+            <RequireViewer>
               <PassListPage />
-            </RequireStaff>
+            </RequireViewer>
           }
         />
         <Route
           path="/passes/:id"
           element={
-            <RequireStaff>
+            <RequireViewer>
               <PassCardPage />
-            </RequireStaff>
+            </RequireViewer>
           }
         />
         <Route
           path="/premises"
           element={
-            <RequireStaff>
+            <RequireViewer>
               <PremisesPage />
-            </RequireStaff>
+            </RequireViewer>
           }
         />
         <Route

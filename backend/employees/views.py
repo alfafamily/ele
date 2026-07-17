@@ -8,7 +8,12 @@ from rest_framework.views import APIView
 
 from core.mixins import CreationCommentMixin
 from core.pagination import ELECursorPagination
-from core.permissions import AccessPassAccessPermission, IsAdminOrAccountant, SimCardAccessPermission
+from core.permissions import (
+    AccessPassAccessPermission,
+    IsAdminOrAccountant,
+    IsAdminOrAccountantOrReadOnlyObserver,
+    SimCardAccessPermission,
+)
 from storage.service import delete_stored_file, store_uploaded_file
 from storage.validators import validate_image_max_dimensions
 
@@ -22,7 +27,9 @@ from .serializers import (
 
 
 class EmployeeViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAdminOrAccountant]
+    # Наблюдатель видит раздел «Сотрудники» на просмотр; управление и служебные
+    # экшены (departments/positions/avatar/terminate/restore) — admin/accountant.
+    permission_classes = [IsAdminOrAccountantOrReadOnlyObserver]
     pagination_class = ELECursorPagination
     filter_backends = [filters.OrderingFilter]
     ordering_fields = ["last_name"]
@@ -176,9 +183,9 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         qs = SimCard.objects.select_related("employee").all()
         user = self.request.user
-        if user.role == "employee":
-            # Только свои номера (Наблюдатель не расширяет доступ к SIM);
-            # не привязан к Сотруднику — не видит ничего.
+        if user.role == "employee" and not user.is_observer:
+            # Обычный «Сотрудник» — только свои номера (в Профиле); не привязан к
+            # Сотруднику — не видит ничего. Наблюдатель видит весь раздел (ниже).
             return qs.filter(employee_id=user.employee_id) if user.employee_id else qs.none()
         employee = self.request.query_params.get("employee")
         if employee:
@@ -320,8 +327,9 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         qs = AccessPass.objects.select_related("employee").prefetch_related("buildings", "rooms")
         user = self.request.user
-        if user.role == "employee":
-            # Только свои пропуска; не привязан к Сотруднику — не видит ничего.
+        if user.role == "employee" and not user.is_observer:
+            # Обычный «Сотрудник» — только свои пропуска (в Профиле); не привязан
+            # к Сотруднику — не видит ничего. Наблюдатель видит весь раздел (ниже).
             return qs.filter(employee_id=user.employee_id) if user.employee_id else qs.none()
         employee = self.request.query_params.get("employee")
         if employee:

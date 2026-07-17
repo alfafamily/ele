@@ -119,6 +119,12 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         tab = self.request.query_params.get("tab", "active")
         qs = qs.filter(is_written_off=(tab == "archive"))
 
+        # Фильтр по сотруднику — блок «Закреплённое оборудование» в Профиле.
+        # Для роли «Сотрудник» список и так сужен до своего (см. выше).
+        employee = self.request.query_params.get("employee")
+        if employee:
+            qs = qs.filter(employee_id=employee)
+
         status_param = self.request.query_params.get("status", "all")
         if status_param == "assigned":
             qs = qs.exclude(employee__isnull=True)

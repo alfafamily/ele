@@ -9,7 +9,7 @@ import { PassInfo } from '../employees/PassInfo.jsx'
 import { SimCardInfo } from '../employees/SimCardInfo.jsx'
 import { ChangeEmailModal } from './ChangeEmailModal.jsx'
 import { ChangePasswordModal } from './ChangePasswordModal.jsx'
-import { getMyPasses, getMySimCards } from './profileApi.js'
+import { getMyEquipment, getMyPasses, getMySimCards } from './profileApi.js'
 
 function formatDate(iso) {
   if (!iso) return 'ещё не менялся'
@@ -38,6 +38,7 @@ export function ProfilePage() {
   const [avatarMenu, setAvatarMenu] = useState(false)
   const [simCards, setSimCards] = useState([])
   const [passes, setPasses] = useState([])
+  const [equipment, setEquipment] = useState([])
   const fileInputRef = useRef(null)
 
   // При открытии профиля перечитываем пользователя — ФИО/аватар связанного
@@ -52,6 +53,7 @@ export function ProfilePage() {
     if (employee?.id) {
       getMySimCards(employee.id).then(setSimCards)
       getMyPasses(employee.id).then(setPasses)
+      getMyEquipment(employee.id).then(setEquipment)
     }
   }, [employee?.id])
   const displayName = employee?.full_name || user.email
@@ -187,6 +189,22 @@ export function ProfilePage() {
               <Field label="Отдел" value={employee.department} />
               <Field label="Должность" value={employee.position} />
             </div>
+          </Card>
+        ) : null}
+
+        {employee ? (
+          <Card>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Закреплённое оборудование</div>
+            {equipment.length === 0 ? (
+              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено оборудования.</div>
+            ) : (
+              equipment.map((eq) => (
+                <div key={eq.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{eq.type_and_model}</div>
+                  <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{eq.inventory_number}</div>
+                </div>
+              ))
+            )}
           </Card>
         ) : null}
 

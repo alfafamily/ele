@@ -127,6 +127,11 @@ class LicenseFieldValueOutSerializer(serializers.ModelSerializer):
         vt = obj.field.value_type
         if vt == "file":
             return None
+        # Зафиксированный реквизит-ключ («Номер/ключ», токен) отдаём только тем,
+        # кому разрешён секрет (Admin/Accountant). Наблюдателю — null: на карточке
+        # поле остаётся, но раскрыть его нечем.
+        if obj.field.is_locked and not self.context.get("can_reveal_key", True):
+            return None
         if vt == "list":
             return obj.value_text
         return getattr(obj, f"value_{vt}")

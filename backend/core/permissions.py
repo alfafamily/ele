@@ -1,8 +1,9 @@
 """Права доступа по матрице. Роль живёт на request.user (accounts.User),
 здесь — только проверки, без импорта модели (избегаем цикла core<->accounts).
 
-Наблюдатель расширяет видимость только раздела Оборудование — своя
-проверка появится вместе с EquipmentViewSet (Фаза 4), здесь — общие роли.
+Наблюдатель (employee + is_observer) — сквозной просмотр всех бизнес-разделов
+(кроме «Настроек» и редактора Типов), строго read-only. Обычный «Сотрудник»
+(без признака) видит только свой Профиль и свои объекты в нём.
 """
 from rest_framework.permissions import BasePermission
 
@@ -10,6 +11,11 @@ from rest_framework.permissions import BasePermission
 def _role(request):
     user = request.user
     return getattr(user, "role", None) if user and user.is_authenticated else None
+
+
+def _is_observer(request):
+    user = request.user
+    return _role(request) == "employee" and getattr(user, "is_observer", False)
 
 
 class IsAdmin(BasePermission):
@@ -27,6 +33,17 @@ class IsAdminOrAccountant(BasePermission):
 
 
 _SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
+
+
+class IsAdminOrAccountantOrReadOnlyObserver(BasePermission):
+    """Admin/Accountant — полный доступ; Наблюдатель — только чтение
+    (SAFE_METHODS). Прочие роли к разделу не допускаются. Управляющие действия
+    вьюсета остаются за своими permission_classes=[IsAdminOrAccountant]."""
+
+    def has_permission(self, request, view):
+        if _role(request) in ("admin", "accountant"):
+            return True
+        return _is_observer(request) and request.method in _SAFE_METHODS
 
 
 class EquipmentAccessPermission(BasePermission):
@@ -52,10 +69,9 @@ class EquipmentAccessPermission(BasePermission):
 
 
 class SimCardAccessPermission(BasePermission):
-    """SIM-карты: Сотрудник видит только свои номера (в Профиле, read-only);
-    управление — admin/accountant. В отличие от Оборудования, признак
-    «Наблюдатель» доступ к SIM НЕ расширяет (у SIM нет страницы-списка).
-    Фильтрация под «только своё» — в SimCardViewSet.get_queryset()."""
+    """SIM-карты: управление — admin/accountant. Наблюдатель — просмотр всех
+    номеров (раздел «Корпоративная связь»); обычный «Сотрудник» — только свои
+    номера в Профиле. Фильтрация — в SimCardViewSet.get_queryset()."""
 
     def has_permission(self, request, view):
         role = _role(request)
@@ -69,13 +85,14 @@ class SimCardAccessPermission(BasePermission):
             return True
         if role != "employee" or request.method not in _SAFE_METHODS:
             return False
-        return obj.employee_id == request.user.employee_id
+        # Наблюдатель видит любую карту; обычный сотрудник — только свою.
+        return request.user.is_observer or obj.employee_id == request.user.employee_id
 
 
 class AccessPassAccessPermission(BasePermission):
-    """Пропуска СКУД: как и SIM-карты — сотрудник видит только свои (в Профиле,
-    read-only), управление — admin/accountant. Признак «Наблюдатель» доступ
-    не расширяет. Фильтрация под «только своё» — в AccessPassViewSet.get_queryset()."""
+    """Пропуска СКУД: управление — admin/accountant. Наблюдатель — просмотр всех
+    средств доступа (раздел «Средства доступа»); обычный «Сотрудник» — только
+    свои в Профиле. Фильтрация — в AccessPassViewSet.get_queryset()."""
 
     def has_permission(self, request, view):
         role = _role(request)
@@ -89,4 +106,5 @@ class AccessPassAccessPermission(BasePermission):
             return True
         if role != "employee" or request.method not in _SAFE_METHODS:
             return False
-        return obj.employee_id == request.user.employee_id
+        # Наблюдатель видит любой пропуск; обычный сотрудник — только свой.
+        return request.user.is_observer or obj.employee_id == request.user.employee_id
