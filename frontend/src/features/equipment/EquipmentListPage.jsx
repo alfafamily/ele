@@ -80,17 +80,15 @@ export function EquipmentListPage() {
         <Can perm="canManageEquipment">
           <div className="ele-page-head__actions">
             <Link to="/equipment-types">
-              {/* height:auto + перенос текста — «Настроить типы» переносится на
-                  две строки, если не влезает рядом с «Добавить»; обе кнопки
-                  тянутся до равной высоты (align-items: stretch у ряда). */}
-              <Button variant="secondary" style={{ whiteSpace: 'normal', height: 'auto', minHeight: 'var(--control-height)', lineHeight: 1.15, padding: '6px 20px' }}>
-                Настроить типы
+              <Button variant="secondary" title="Настроить типы" aria-label="Настроить типы">
+                <span className="ele-only-desktop">Настроить типы</span>
+                <Icon className="ele-only-mobile" name="columns-3-cog" size={20} strokeWidth={1.9} />
               </Button>
             </Link>
             <Link to="/equipment/new">
-              <Button style={{ height: 'auto', minHeight: 'var(--control-height)' }}>
+              <Button title="Добавить оборудование" aria-label="Добавить оборудование">
                 <span className="ele-only-desktop">+ Добавить оборудование</span>
-                <span className="ele-only-mobile">+ Добавить</span>
+                <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
               </Button>
             </Link>
           </div>

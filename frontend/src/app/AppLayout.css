@@ -284,19 +284,22 @@
 }
 
 @media (max-width: 768px) {
-  .ele-page-head__actions {
-    width: 100%;
-  }
-
-  .ele-page-head__actions > a,
-  .ele-page-head__actions > button {
-    flex: 1;
-    display: flex;
+  /* Заголовок ужимается/переносится, освобождая место кнопкам-иконкам. */
+  .ele-page-head > h1 {
     min-width: 0;
   }
 
-  .ele-page-head__actions > a > .ele-btn {
-    width: 100%;
+  /* Действия остаются в строке заголовка квадратными кнопками-иконками
+     (текстовые подписи скрыты через .ele-only-desktop), а не уезжают под него. */
+  .ele-page-head__actions {
+    gap: 8px;
+    flex: none;
+  }
+
+  .ele-page-head__actions .ele-btn {
+    width: var(--control-height);
+    min-width: var(--control-height);
+    padding: 0;
   }
 }
 

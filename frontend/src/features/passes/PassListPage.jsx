@@ -75,9 +75,9 @@ export function PassListPage() {
         </h1>
         <Can perm="canManageEmployees">
           <div className="ele-page-head__actions">
-            <Button onClick={() => setModal('new')}>
+            <Button onClick={() => setModal('new')} title="Добавить средство доступа" aria-label="Добавить средство доступа">
               <span className="ele-only-desktop">+ Добавить средство доступа</span>
-              <span className="ele-only-mobile">+ Добавить</span>
+              <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
             </Button>
           </div>
         </Can>

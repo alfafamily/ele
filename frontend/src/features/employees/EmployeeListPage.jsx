@@ -93,9 +93,9 @@ export function EmployeeListPage() {
         <Can perm="canManageEmployees">
           <div className="ele-page-head__actions">
             <Link to="/employees/new">
-              <Button>
+              <Button title="Добавить сотрудника" aria-label="Добавить сотрудника">
                 <span className="ele-only-desktop">+ Добавить сотрудника</span>
-                <span className="ele-only-mobile">+ Добавить</span>
+                <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
               </Button>
             </Link>
           </div>

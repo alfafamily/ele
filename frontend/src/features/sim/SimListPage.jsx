@@ -79,9 +79,9 @@ export function SimListPage() {
         </h1>
         <Can perm="canManageEmployees">
           <div className="ele-page-head__actions">
-            <Button onClick={() => setModal('new')}>
+            <Button onClick={() => setModal('new')} title="Добавить SIM-карту" aria-label="Добавить SIM-карту">
               <span className="ele-only-desktop">+ Добавить SIM-карту</span>
-              <span className="ele-only-mobile">+ Добавить</span>
+              <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
             </Button>
           </div>
         </Can>
