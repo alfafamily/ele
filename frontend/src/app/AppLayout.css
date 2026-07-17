@@ -250,6 +250,39 @@
   gap: 10px;
 }
 
+/* Строка управления списком: вкладки (Активное/Архив…) + поиск + кнопка
+   «Фильтры». Desktop — в один ряд: вкладки, поиск (тянется), фильтры. Mobile —
+   поиск с фильтрами сверху, вкладки переносятся под них на всю ширину. */
+.ele-list-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ele-list-controls__search {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .ele-list-controls {
+    flex-wrap: wrap;
+  }
+
+  .ele-list-controls__search {
+    order: 1;
+  }
+
+  .ele-list-controls__filter {
+    order: 2;
+  }
+
+  .ele-list-controls__tabs {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
 @media (max-width: 768px) {
   .ele-page-head__actions {
     width: 100%;

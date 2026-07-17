@@ -102,10 +102,13 @@ export function EmployeeListPage() {
         </Can>
       </div>
 
-      <TabBar options={TABS} value={tab} onChange={setTab} />
-
-      <div style={{ display: 'flex' }}>
-        <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
+      <div className="ele-list-controls">
+        <div className="ele-list-controls__tabs">
+          <TabBar options={TABS} value={tab} onChange={setTab} />
+        </div>
+        <div className="ele-list-controls__search">
+          <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
+        </div>
       </div>
 
       {error ? (

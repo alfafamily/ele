@@ -97,11 +97,18 @@ export function EquipmentListPage() {
         </Can>
       </div>
 
-      <TabBar options={TABS} value={tab} onChange={setTab} />
-
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-        <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
-        {tab === 'active' ? <FilterButton options={FILTERS} value={status} onChange={setStatus} /> : null}
+      <div className="ele-list-controls">
+        <div className="ele-list-controls__tabs">
+          <TabBar options={TABS} value={tab} onChange={setTab} />
+        </div>
+        <div className="ele-list-controls__search">
+          <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
+        </div>
+        {tab === 'active' ? (
+          <div className="ele-list-controls__filter">
+            <FilterButton options={FILTERS} value={status} onChange={setStatus} />
+          </div>
+        ) : null}
       </div>
 
       {error ? (
