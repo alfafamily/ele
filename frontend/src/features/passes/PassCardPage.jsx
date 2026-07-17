@@ -4,7 +4,7 @@ import { Can, usePermissions } from '../../app/usePermissions.js'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, BackButton, Button, Card, Spinner } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
 import {
   attachPass,
   getPass,
@@ -50,9 +50,10 @@ export function PassCardPage() {
   const isKey = pass.object_type === 'key'
   const title = isKey
     ? <>Ключ · <KeyTarget pass={pass} /></>
-    : `Пропуск · ${pass.name || (pass.account_number && pass.account_number.trim() ? `№ ${pass.account_number}` : 'без названия')}`
+    : `Пропуск${pass.account_number && pass.account_number.trim() ? ` · № ${pass.account_number}` : ''}`
   const types = [pass.type_vehicle && 'Авто', pass.type_pedestrian && 'Пеший'].filter(Boolean).join(', ')
   const rooms = pass.rooms || []
+  const places = pass.places || []
   const statusText = pass.is_utilized
     ? (pass.utilization_reason_display ? `Утилизирован (${pass.utilization_reason_display})` : 'Утилизирован')
     : pass.is_deactivated ? 'Не используется' : 'Активен'
@@ -101,13 +102,12 @@ export function PassCardPage() {
         ) : null}
       </div>
 
-      <div className="ele-obj-layout ele-obj-layout--no-side">
+      <div className={'ele-obj-layout' + (pass.is_utilized ? ' ele-obj-layout--no-side' : '')}>
         <div className="ele-obj-layout__main">
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div className="ele-field-grid">
               <Field label="Тип объекта" value={pass.object_type_display || (isKey ? 'Ключ' : 'Пропуск СКУД')} />
-              {!isKey ? <Field label="Название" value={pass.name} /> : null}
               <Field label="Учётный номер" value={pass.account_number} mono />
               {!isKey ? <Field label="Тип пропуска" value={types} /> : null}
               <Field label="Статус" value={statusText} />
@@ -123,8 +123,11 @@ export function PassCardPage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {pass.buildings.map((b) => {
-                  const bRooms = rooms.filter((r) => r.building === b.id)
-                  const roomsText = bRooms.length === 0 ? 'все помещения' : bRooms.map((r) => r.name).join(', ')
+                  const parts = [
+                    ...rooms.filter((r) => r.building === b.id).map((r) => r.name),
+                    ...places.filter((p) => p.building === b.id).map((p) => p.name),
+                  ]
+                  const roomsText = parts.length === 0 ? 'все помещения' : parts.join(', ')
                   return (
                     <div key={b.id} style={{ fontSize: 13.5 }}>
                       <span style={{ fontWeight: 600 }}>{b.name}</span>
@@ -135,35 +138,37 @@ export function PassCardPage() {
               </div>
             )}
           </Card>
-
-          <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Закреплено за</div>
-            {pass.is_utilized ? (
-              <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>{statusText}</div>
-            ) : pass.employee ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600 }}>
-                  {nameInitials(pass.employee_name)}
-                </span>
-                <Link to={`/employees/${pass.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                  {pass.employee_name}
-                </Link>
-                <Can perm="canManageEmployees">
-                  <Button variant="secondary" style={{ marginLeft: 'auto' }} onClick={() => setDisposeModal(true)}>Открепить</Button>
-                </Can>
-              </div>
-            ) : showPicker ? (
-              <EmployeePicker autoFocus onSelect={onAttach} />
-            ) : (
-              <>
-                <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не закреплён</div>
-                <Can perm="canManageEmployees">
-                  <Button fullWidth style={{ marginTop: 14 }} onClick={() => setShowPicker(true)}>+ Привязать сотрудника</Button>
-                </Can>
-              </>
-            )}
-          </Card>
         </div>
+
+        {/* Боковой блок «Закреплено за». У утилизированного средства доступа
+            (терминальный статус) всегда пуст — не показываем (одна колонка). */}
+        {!pass.is_utilized ? (
+        <Card className="ele-obj-layout__side ele-card-sticky">
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Закреплено за</div>
+          {pass.employee ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600 }}>
+                {nameInitials(pass.employee_name)}
+              </span>
+              <Link to={`/employees/${pass.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                {pass.employee_name}
+              </Link>
+              <Can perm="canManageEmployees">
+                <Button variant="secondary" style={{ marginLeft: 'auto' }} onClick={() => setDisposeModal(true)}>Открепить</Button>
+              </Can>
+            </div>
+          ) : showPicker ? (
+            <EmployeePicker autoFocus onSelect={onAttach} />
+          ) : (
+            <>
+              <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не закреплён</div>
+              <Can perm="canManageEmployees">
+                <Button fullWidth style={{ marginTop: 14 }} onClick={() => setShowPicker(true)}><Icon name="plus" size={18} strokeWidth={2.2} />Привязать сотрудника</Button>
+              </Can>
+            </>
+          )}
+        </Card>
+        ) : null}
 
         <Card className="ele-obj-layout__history">
           <HistoryList path={getPassHistoryPath(pass.id)} reloadKey={historyKey} />

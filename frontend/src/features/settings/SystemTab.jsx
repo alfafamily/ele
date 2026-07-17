@@ -341,7 +341,8 @@ export function SystemTab() {
             ) : (
               <div>
                 <Button type="button" variant="secondary" onClick={() => { setIpDraft({ ip: '', note: '' }); setIpError(null); setAddingIp(true) }}>
-                  + Добавить IP
+                  <Icon name="plus" size={18} strokeWidth={2.2} />
+                  Добавить IP
                 </Button>
               </div>
             )}

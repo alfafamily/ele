@@ -45,6 +45,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             "sim_cards",
             "passes__buildings",
             "passes__rooms",
+            "passes__places__room",
         )
         # Вкладки списка: Работают / Уволены.
         employment = self.request.query_params.get("employment")
@@ -177,7 +178,7 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     serializer_class = SimCardSerializer
     pagination_class = ELECursorPagination
     filter_backends = [filters.OrderingFilter]
-    ordering_fields = ["phone_number", "network_operator", "provider", "created_at"]
+    ordering_fields = ["phone_number", "network_operator", "provider", "employee__last_name", "created_at"]
     ordering = ["-created_at"]
 
     def get_queryset(self):
@@ -321,11 +322,11 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     serializer_class = AccessPassSerializer
     pagination_class = ELECursorPagination
     filter_backends = [filters.OrderingFilter]
-    ordering_fields = ["name", "account_number", "created_at"]
+    ordering_fields = ["account_number", "employee__last_name", "created_at"]
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        qs = AccessPass.objects.select_related("employee").prefetch_related("buildings", "rooms")
+        qs = AccessPass.objects.select_related("employee").prefetch_related("buildings", "rooms", "places__room")
         user = self.request.user
         if user.role == "employee" and not user.is_observer:
             # Обычный «Сотрудник» — только свои пропуска (в Профиле); не привязан
@@ -354,9 +355,7 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 qs = qs.filter(is_utilized=True)
             search = self.request.query_params.get("search")
             if search:
-                qs = qs.filter(
-                    Q(name__icontains=search) | Q(account_number__icontains=search)
-                )
+                qs = qs.filter(Q(account_number__icontains=search))
         return qs
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
@@ -423,7 +422,6 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
         field_specs = {
             "object_type": {"label": "Тип объекта", "format": fmt_object_type},
-            "name": {"label": "Название"},
             "account_number": {"label": "Учётный номер"},
             "type_vehicle": {"label": "Тип «Авто»", "format": yes_no},
             "type_pedestrian": {"label": "Тип «Пеший»", "format": yes_no},

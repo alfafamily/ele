@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Banner, Button, Input, Modal } from '../../shared/ui'
+import { Banner, Button, Checkbox, Input, Modal } from '../../shared/ui'
 import { createPlace, updatePlace } from './premisesApi.js'
 
 // Создание/редактирование Места внутри помещения.
 export function PlaceModal({ roomId, place, onClose, onDone }) {
   const isEdit = Boolean(place)
   const [name, setName] = useState(place?.name || '')
+  const [requiresPass, setRequiresPass] = useState(place?.requires_pass || false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
@@ -14,7 +15,7 @@ export function PlaceModal({ roomId, place, onClose, onDone }) {
     setSubmitting(true)
     setError(null)
     setFieldErrors({})
-    const payload = { room: roomId, name }
+    const payload = { room: roomId, name, requires_pass: requiresPass }
     try {
       const saved = isEdit ? await updatePlace(place.id, payload) : await createPlace(payload)
       onDone(saved)
@@ -39,6 +40,11 @@ export function PlaceModal({ roomId, place, onClose, onDone }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           error={fieldErrors.name}
+        />
+        <Checkbox
+          label="Требуется ключ/пропуск"
+          checked={requiresPass}
+          onChange={setRequiresPass}
         />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

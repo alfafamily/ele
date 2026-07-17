@@ -220,7 +220,8 @@ export function EquipmentCardPage() {
               {!equipment.is_written_off ? (
                 <Can perm="canManageEquipment">
                   <Button fullWidth style={{ marginTop: 14 }} onClick={() => setShowAssignPicker(true)}>
-                    + Закрепить сотрудника
+                    <Icon name="plus" size={18} strokeWidth={2.2} />
+                    Закрепить сотрудника
                   </Button>
                 </Can>
               ) : null}
@@ -275,7 +276,8 @@ export function EquipmentCardPage() {
           {!equipment.is_written_off ? (
             <Can perm="canManageLicenses">
               <Button variant="secondary" fullWidth onClick={() => setShowAttachLicense(true)}>
-                + Привязать лицензию
+                <Icon name="plus" size={18} strokeWidth={2.2} />
+                Привязать лицензию
               </Button>
             </Can>
           ) : null}

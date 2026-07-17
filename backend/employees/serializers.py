@@ -1,8 +1,8 @@
 from rest_framework import serializers
 
 from equipment.serializers import EquipmentMiniSerializer
-from locations.models import Building, Room
-from locations.serializers import BuildingMiniSerializer, RoomMiniSerializer
+from locations.models import Building, Place, Room
+from locations.serializers import BuildingMiniSerializer, PlaceMiniSerializer, RoomMiniSerializer
 from storage.serializers import StoredFileSerializer
 
 from .models import AccessPass, Employee, SimCard
@@ -74,6 +74,15 @@ class AccessPassSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False,
     )
+    # Места-объекты доступа: выбрать можно только места с флагом requires_pass.
+    places = PlaceMiniSerializer(many=True, read_only=True)
+    place_ids = serializers.PrimaryKeyRelatedField(
+        source="places",
+        queryset=Place.objects.filter(is_archived=False, requires_pass=True),
+        many=True,
+        write_only=True,
+        required=False,
+    )
     is_deactivated = serializers.BooleanField(read_only=True)
     object_type_display = serializers.CharField(source="get_object_type_display", read_only=True)
     utilization_reason_display = serializers.CharField(source="get_utilization_reason_display", read_only=True)
@@ -89,7 +98,6 @@ class AccessPassSerializer(serializers.ModelSerializer):
             "object_type_display",
             "employee",
             "employee_name",
-            "name",
             "account_number",
             "type_vehicle",
             "type_pedestrian",
@@ -97,6 +105,8 @@ class AccessPassSerializer(serializers.ModelSerializer):
             "building_ids",
             "rooms",
             "room_ids",
+            "places",
+            "place_ids",
             "is_deactivated",
             "is_utilized",
             "utilized_at",
@@ -131,14 +141,22 @@ class AccessPassSerializer(serializers.ModelSerializer):
         rooms = attrs.get("rooms")
         if rooms is None:
             rooms = list(self.instance.rooms.all()) if self.instance else []
+        places = attrs.get("places")
+        if places is None:
+            places = list(self.instance.places.all()) if self.instance else []
         building_ids = {b.id for b in buildings}
         if rooms and any(r.building_id not in building_ids for r in rooms):
             raise serializers.ValidationError(
                 {"room_ids": "Помещения должны относиться к выбранным зданиям."}
             )
+        # Место должно относиться к одному из выбранных зданий (через своё помещение).
+        if places and any(p.room.building_id not in building_ids for p in places):
+            raise serializers.ValidationError(
+                {"place_ids": "Места должны относиться к выбранным зданиям."}
+            )
 
-        # Ключ — строго один объект доступа: одно здание ИЛИ одно помещение.
-        # Название у ключа не используется.
+        # Ключ — строго один объект доступа: одно здание ИЛИ одно помещение ИЛИ
+        # одно место. Название у ключа не используется.
         object_type = attrs.get("object_type")
         if object_type is None:
             object_type = self.instance.object_type if self.instance else AccessPass.ObjectType.PASS
@@ -147,11 +165,10 @@ class AccessPassSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"building_ids": "У ключа должно быть выбрано ровно одно здание."}
                 )
-            if len(rooms) > 1:
+            if len(rooms) + len(places) > 1:
                 raise serializers.ValidationError(
-                    {"room_ids": "У ключа можно выбрать только одно помещение."}
+                    {"room_ids": "У ключа можно выбрать только один объект: помещение или место."}
                 )
-            attrs["name"] = ""
         return attrs
 
 

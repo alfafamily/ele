@@ -121,8 +121,6 @@ class AccessPass(models.Model):
     utilization_reason = models.CharField(
         "Причина утилизации", max_length=8, choices=UtilizationReason.choices, blank=True
     )
-    # Название пропуска — необязательное (у ключа не используется).
-    name = models.CharField("Название", max_length=255, blank=True)
     # Учётный номер физической карточки — необязательный (карту могли выдать
     # без нанесённого номера).
     account_number = models.CharField("Учётный номер", max_length=64, blank=True)
@@ -139,8 +137,14 @@ class AccessPass(models.Model):
     rooms = models.ManyToManyField(
         "locations.Room", verbose_name="Помещения/зоны", blank=True, related_name="+",
     )
+    # Конкретные места (точки) — самый узкий объект доступа. Выбираются только
+    # среди мест с флагом requires_pass; место относится к выбранному помещению
+    # своего здания. У ключа объект доступа один: здание ИЛИ помещение ИЛИ место.
+    places = models.ManyToManyField(
+        "locations.Place", verbose_name="Места", blank=True, related_name="+",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
-    history = HistoricalRecords(m2m_fields=[buildings, rooms])
+    history = HistoricalRecords(m2m_fields=[buildings, rooms, places])
 
     class Meta:
         verbose_name = "Пропуск"
@@ -163,4 +167,4 @@ class AccessPass(models.Model):
     def __str__(self):
         if self.object_type == self.ObjectType.KEY:
             return self.account_number or f"Ключ #{self.pk}"
-        return self.name or self.account_number or f"Пропуск #{self.pk}"
+        return self.account_number or f"Пропуск #{self.pk}"

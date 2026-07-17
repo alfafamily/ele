@@ -8,11 +8,9 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from core.utils.email import html_to_plain_text
+from core.utils.email import attach_ele_logo, html_to_plain_text
 
 from .tokens import make_email_change_token, make_email_confirmation_token, make_set_password_link
-
-_LOGO_URL = f"{settings.SITE_URL}{settings.STATIC_URL}email/ele-logo.svg"
 
 # Тема письма задаётся явно (не парсится из HTML <title>);
 # шаблоны писем — backend/templates/email/*.html.
@@ -31,11 +29,12 @@ def _company_name() -> str:
 
 
 def _send(kind: str, template: str, to: list[str], context: dict):
-    context = {"ele_logo_url": _LOGO_URL, "company_name": _company_name(), **context}
+    context = {"company_name": _company_name(), **context}
     subject = _SUBJECTS[kind].format(**context)
     html_body = render_to_string(f"email/{template}", context)
     message = EmailMultiAlternatives(subject, html_to_plain_text(html_body), settings.DEFAULT_FROM_EMAIL, to)
     message.attach_alternative(html_body, "text/html")
+    attach_ele_logo(message)
     message.send()
 
 

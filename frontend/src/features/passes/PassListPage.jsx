@@ -23,19 +23,33 @@ const FILTERS = [
   { value: 'free', label: 'Неиспользуемые' },
 ]
 
-const COLUMNS = [
-  { key: 'name', label: 'Название', sortable: true, width: 'minmax(0, 1.2fr)' },
-  { key: 'access', label: 'Доступ в', width: 'minmax(0, 1.3fr)' },
+const ACTIVE_COLUMNS = [
+  { key: 'access', label: 'Название', width: 'minmax(0, 1.7fr)' },
+  { key: 'employee__last_name', label: 'Закреплено за', sortable: true, width: 'minmax(0, 1fr)' },
   { key: 'chevron', label: '', width: '30px' },
 ]
+const UTILIZED_COLUMNS = [
+  { key: 'access', label: 'Название', width: 'minmax(0, 1.7fr)' },
+  { key: 'utilized_at', label: 'Дата утилизации', width: '170px' },
+  { key: 'chevron', label: '', width: '30px' },
+]
+
+function formatDate(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('ru-RU')
+}
 
 // Строки «Доступ в» для пропуска: по строке на здание с перечнем помещений (или
 // «все помещения»). Тот же принцип, что и в PassInfo.
 function accessLines(pass) {
   const rooms = pass.rooms || []
+  const places = pass.places || []
   return (pass.buildings || []).map((b) => {
-    const bRooms = rooms.filter((r) => r.building === b.id)
-    const roomsText = bRooms.length === 0 ? 'все помещения' : bRooms.map((r) => r.name).join(', ')
+    const parts = [
+      ...rooms.filter((r) => r.building === b.id).map((r) => r.name),
+      ...places.filter((p) => p.building === b.id).map((p) => p.name),
+    ]
+    const roomsText = parts.length === 0 ? 'все помещения' : parts.join(', ')
     return { id: b.id, name: b.name, roomsText }
   })
 }
@@ -50,6 +64,7 @@ export function PassListPage() {
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
   const [modal, setModal] = useState(null) // null | 'new'
+  const columns = tab === 'active' ? ACTIVE_COLUMNS : UTILIZED_COLUMNS
 
   useEffect(() => {
     writeListCache(CACHE_KEY, { ui: { tab, status, search, sort } })
@@ -76,7 +91,8 @@ export function PassListPage() {
         <Can perm="canManageEmployees">
           <div className="ele-page-head__actions">
             <Button onClick={() => setModal('new')} title="Добавить средство доступа" aria-label="Добавить средство доступа">
-              <span className="ele-only-desktop">+ Добавить средство доступа</span>
+              <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />
+              <span className="ele-only-desktop">Добавить средство доступа</span>
               <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
             </Button>
           </div>
@@ -118,49 +134,61 @@ export function PassListPage() {
           action={search ? <Button variant="secondary" onClick={() => setSearch('')}>Сбросить фильтры</Button> : undefined}
         />
       ) : (
-        <Table columns={COLUMNS} sortKey={sort.key} sortDir={sort.dir} onSort={handleSort}>
-          {items.map((row) => (
+        <Table columns={columns} sortKey={sort.key} sortDir={sort.dir} onSort={handleSort}>
+          {items.map((row) => {
+            const isKey = row.object_type === 'key'
+            return (
             <Link key={row.id} to={`/passes/${row.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-              <TableRow columns={COLUMNS}>
+              <TableRow columns={columns}>
+                {/* Название: тип + учётный номер, ниже — плашки типа (у пропуска) и
+                    «Доступ в» (здания/помещения или объект ключа). */}
                 <div style={{ minWidth: 0 }}>
                   <div className="ele-clamp-2" style={{ fontWeight: 600 }}>
-                    {row.object_type === 'key' ? <>Ключ · <KeyTarget pass={row} /></> : `Пропуск · ${row.name || 'Без названия'}`}
+                    {isKey ? 'Ключ' : 'Пропуск'}
                   </div>
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>
                     № {row.account_number && row.account_number.trim() ? row.account_number : 'б/н'}
                   </div>
-                  <div style={{ display: 'flex', gap: 5, marginTop: 5 }}>
-                    {row.object_type === 'key' ? (
-                      <Badge>Ключ</Badge>
+                  {!isKey && (row.type_vehicle || row.type_pedestrian) ? (
+                    <div style={{ display: 'flex', gap: 5, marginTop: 5 }}>
+                      {row.type_vehicle ? <Badge>Авто</Badge> : null}
+                      {row.type_pedestrian ? <Badge>Пеший</Badge> : null}
+                    </div>
+                  ) : null}
+                  <div style={{ marginTop: 5, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {isKey ? (
+                      <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+                        <KeyTarget pass={row} />
+                      </div>
+                    ) : accessLines(row).length === 0 ? (
+                      <span style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5 }}>—</span>
                     ) : (
-                      <>
-                        {row.type_vehicle ? <Badge>Авто</Badge> : null}
-                        {row.type_pedestrian ? <Badge>Пеший</Badge> : null}
-                      </>
+                      accessLines(row).map((a) => (
+                        <div key={a.id} style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
+                          <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>{a.name}</span> — {a.roomsText}
+                        </div>
+                      ))
                     )}
                   </div>
                 </div>
-                <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {row.object_type === 'key' ? (
-                    <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', fontWeight: 600 }}>
-                      <KeyTarget pass={row} />
-                    </div>
-                  ) : accessLines(row).length === 0 ? (
-                    <span style={{ color: 'var(--color-text-placeholder)', fontSize: 13 }}>—</span>
-                  ) : (
-                    accessLines(row).map((a) => (
-                      <div key={a.id} style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
-                        <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>{a.name}</span> — {a.roomsText}
-                      </div>
-                    ))
-                  )}
-                </div>
+                {tab === 'active' ? (
+                  <div style={{ minWidth: 0 }}>
+                    {row.employee_name ? (
+                      <div className="ele-clamp-2">{row.employee_name}</div>
+                    ) : (
+                      <span style={{ color: 'var(--color-text-placeholder)' }}>Не закреплён</span>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ color: 'var(--color-text-placeholder)', font: '500 13px var(--font-mono)' }}>{formatDate(row.utilized_at)}</div>
+                )}
                 <div style={{ textAlign: 'right', color: 'var(--color-border-strong)' }}>
                   <Icon name="chevron-right" size={18} strokeWidth={2} />
                 </div>
               </TableRow>
             </Link>
-          ))}
+            )
+          })}
           <InfiniteScrollSentinel hasMore={hasMore} loading={loadingMore} onLoadMore={loadMore} />
         </Table>
       )}

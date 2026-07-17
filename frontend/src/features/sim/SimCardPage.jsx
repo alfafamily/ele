@@ -4,7 +4,7 @@ import { Can, usePermissions } from '../../app/usePermissions.js'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, BackButton, Button, Card, Spinner } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
 import {
   attachSimCard,
   getSimCard,
@@ -91,7 +91,7 @@ export function SimCardPage() {
         ) : null}
       </div>
 
-      <div className="ele-obj-layout ele-obj-layout--no-side">
+      <div className={'ele-obj-layout' + (sim.is_utilized ? ' ele-obj-layout--no-side' : '')}>
         <div className="ele-obj-layout__main">
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
@@ -103,35 +103,37 @@ export function SimCardPage() {
               <Field label="Статус" value={statusText} />
             </div>
           </Card>
-
-          <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Закреплено за</div>
-            {sim.is_utilized ? (
-              <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>{statusText}</div>
-            ) : sim.employee ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600 }}>
-                  {nameInitials(sim.employee_name)}
-                </span>
-                <Link to={`/employees/${sim.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                  {sim.employee_name}
-                </Link>
-                <Can perm="canManageEmployees">
-                  <Button variant="secondary" style={{ marginLeft: 'auto' }} onClick={() => setDisposeModal(true)}>Открепить</Button>
-                </Can>
-              </div>
-            ) : showPicker ? (
-              <EmployeePicker autoFocus onSelect={onAttach} />
-            ) : (
-              <>
-                <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не закреплена</div>
-                <Can perm="canManageEmployees">
-                  <Button fullWidth style={{ marginTop: 14 }} onClick={() => setShowPicker(true)}>+ Привязать сотрудника</Button>
-                </Can>
-              </>
-            )}
-          </Card>
         </div>
+
+        {/* Боковой блок «Закреплено за». У утилизированной SIM (терминальный
+            статус) всегда пуст — не показываем (одна колонка). */}
+        {!sim.is_utilized ? (
+        <Card className="ele-obj-layout__side ele-card-sticky">
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Закреплено за</div>
+          {sim.employee ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600 }}>
+                {nameInitials(sim.employee_name)}
+              </span>
+              <Link to={`/employees/${sim.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                {sim.employee_name}
+              </Link>
+              <Can perm="canManageEmployees">
+                <Button variant="secondary" style={{ marginLeft: 'auto' }} onClick={() => setDisposeModal(true)}>Открепить</Button>
+              </Can>
+            </div>
+          ) : showPicker ? (
+            <EmployeePicker autoFocus onSelect={onAttach} />
+          ) : (
+            <>
+              <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не закреплена</div>
+              <Can perm="canManageEmployees">
+                <Button fullWidth style={{ marginTop: 14 }} onClick={() => setShowPicker(true)}><Icon name="plus" size={18} strokeWidth={2.2} />Привязать сотрудника</Button>
+              </Can>
+            </>
+          )}
+        </Card>
+        ) : null}
 
         <Card className="ele-obj-layout__history">
           <HistoryList path={getSimHistoryPath(sim.id)} reloadKey={historyKey} />

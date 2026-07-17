@@ -45,7 +45,8 @@ export function CustomFieldsEditor({ items, onChange }) {
         </div>
       ))}
       <Button variant="secondary" type="button" onClick={addField}>
-        + Добавить поле
+        <Icon name="plus" size={18} strokeWidth={2.2} />
+        Добавить поле
       </Button>
     </div>
   )

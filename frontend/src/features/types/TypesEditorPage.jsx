@@ -125,7 +125,8 @@ export function TypesEditorPage({ domain, title }) {
         </div>
         <div className="ele-page-head__actions">
           <Button onClick={() => setShowNewType(true)} title="Новый тип" aria-label="Новый тип">
-            <span className="ele-only-desktop">＋ Новый тип</span>
+            <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />
+            <span className="ele-only-desktop">Новый тип</span>
             <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
           </Button>
         </div>
@@ -223,7 +224,8 @@ export function TypesEditorPage({ domain, title }) {
               ))}
             </div>
             <Button variant="secondary" fullWidth style={{ marginTop: 12 }} onClick={() => setFieldModal('new')}>
-              ＋ Добавить реквизит
+              <Icon name="plus" size={18} strokeWidth={2.2} />
+              Добавить реквизит
             </Button>
           </Card>
         ) : null}

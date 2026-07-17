@@ -139,7 +139,8 @@ export function FieldFormModal({ field, checkImpact, onClose, onSave }) {
               ))}
             </div>
             <Button variant="secondary" fullWidth style={{ marginTop: 8 }} onClick={() => setOptions((prev) => [...prev, ''])}>
-              + Добавить элемент
+              <Icon name="plus" size={18} strokeWidth={2.2} />
+              Добавить элемент
             </Button>
           </div>
         ) : null}

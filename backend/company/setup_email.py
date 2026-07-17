@@ -6,7 +6,7 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
-from core.utils.email import html_to_plain_text
+from core.utils.email import attach_ele_logo, html_to_plain_text
 
 CODE_TTL_SECONDS = 10 * 60
 
@@ -16,8 +16,7 @@ def generate_code() -> str:
 
 
 def send_test_code_email(to_email: str, code: str) -> None:
-    logo_url = f"{settings.SITE_URL}{settings.STATIC_URL}email/ele-logo.svg"
-    context = {"code": code, "ele_logo_url": logo_url, "company_name": "ELE"}
+    context = {"code": code, "company_name": "ELE"}
     html_body = render_to_string("email/setup_test_code.html", context)
     message = EmailMultiAlternatives(
         f"Код подтверждения: {code}",
@@ -26,4 +25,5 @@ def send_test_code_email(to_email: str, code: str) -> None:
         [to_email],
     )
     message.attach_alternative(html_body, "text/html")
+    attach_ele_logo(message)
     message.send()

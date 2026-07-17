@@ -122,7 +122,7 @@ export function UsersTab() {
           aria-label="Пригласить пользователя"
           style={isMobile ? { width: 44, minWidth: 44, padding: 0, flex: 'none' } : { flex: 'none' }}
         >
-          {isMobile ? <Icon name="plus" size={22} strokeWidth={2.4} /> : '+ Пригласить пользователя'}
+          {isMobile ? <Icon name="plus" size={22} strokeWidth={2.4} /> : <><Icon name="plus" size={18} strokeWidth={2.2} />Пригласить пользователя</>}
         </Button>
       </div>
 

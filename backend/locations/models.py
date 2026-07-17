@@ -60,6 +60,9 @@ class Place(models.Model):
         Room, verbose_name="Помещение/зона", on_delete=models.PROTECT, related_name="places",
     )
     name = models.CharField("Название/номер", max_length=255)
+    # Место требует персонального ключа/пропуска: только такие места можно
+    # выбрать как объект доступа при создании ключа/пропуска (employees.AccessPass).
+    requires_pass = models.BooleanField("Требуется ключ/пропуск", default=False)
     is_archived = models.BooleanField("В архиве", default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     history = HistoricalRecords()

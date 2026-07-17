@@ -54,7 +54,7 @@ export function AttachLicenseModal({ equipment, onClose, onAttached }) {
           description="Все лицензии уже привязаны к оборудованию. Добавьте новую лицензию в разделе «Лицензии»."
           action={
             <Link to="/licenses/new">
-              <Button>+ Создать лицензию</Button>
+              <Button><Icon name="plus" size={18} strokeWidth={2.2} />Создать лицензию</Button>
             </Link>
           }
         />

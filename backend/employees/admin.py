@@ -19,7 +19,7 @@ class SimCardAdmin(admin.ModelAdmin):
 
 @admin.register(AccessPass)
 class AccessPassAdmin(admin.ModelAdmin):
-    list_display = ("name", "account_number", "employee", "is_deactivated")
+    list_display = ("object_type", "account_number", "employee", "is_deactivated")
     list_filter = ("type_vehicle", "type_pedestrian", "buildings")
-    search_fields = ("name", "account_number", "employee__last_name", "employee__first_name")
+    search_fields = ("account_number", "employee__last_name", "employee__first_name")
     filter_horizontal = ("buildings", "rooms")

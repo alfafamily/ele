@@ -146,7 +146,8 @@ export function PremisesPage() {
         <Can perm="canManagePremises">
           <div className="ele-page-head__actions">
             <Button onClick={() => setBuildingModal('new')} title="Новое здание" aria-label="Новое здание">
-              <span className="ele-only-desktop">＋ Новое здание</span>
+              <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />
+              <span className="ele-only-desktop">Новое здание</span>
               <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
             </Button>
           </div>
@@ -251,7 +252,8 @@ export function PremisesPage() {
             {!selected.is_archived ? (
               <Can perm="canManagePremises">
                 <Button variant="secondary" fullWidth style={{ marginBottom: 12 }} onClick={() => setRoomModal({ room: null, buildingId: selected.id })}>
-                  ＋ Добавить помещение / зону
+                  <Icon name="plus" size={18} strokeWidth={2.2} />
+                  Добавить помещение / зону
                 </Button>
               </Can>
             ) : null}
@@ -419,7 +421,8 @@ function RoomRow({ room, buildingArchived, open, onToggle, canManage, onEdit, on
                 onClick={onAddPlace}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, background: 'transparent', color: 'var(--color-text-muted)', borderRadius: 8, padding: '6px 10px', boxShadow: 'inset 0 0 0 1px var(--color-border-strong)', cursor: 'pointer', border: 'none', fontFamily: 'inherit' }}
               >
-                ＋ Место
+                <Icon name="plus" size={14} strokeWidth={2.2} />
+                Место
               </button>
             ) : null}
           </div>
@@ -472,6 +475,9 @@ function PlaceChip({ place, canManage, onEdit, onArchive, onUnarchive }) {
           opacity: archived ? 0.55 : 1, textDecoration: archived ? 'line-through' : 'none',
         }}
       >
+        {place.requires_pass ? (
+          <Icon name="key-round" size={13} strokeWidth={2} title="Требуется ключ/пропуск" style={{ color: 'var(--color-text-muted)' }} />
+        ) : null}
         {place.name}
       </button>
       {open ? (

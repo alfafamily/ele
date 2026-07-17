@@ -86,7 +86,8 @@ export function LicenseListPage() {
             </Link>
             <Link to="/licenses/new">
               <Button title="Добавить лицензию" aria-label="Добавить лицензию">
-                <span className="ele-only-desktop">+ Добавить лицензию</span>
+                <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />
+                <span className="ele-only-desktop">Добавить лицензию</span>
                 <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
               </Button>
             </Link>

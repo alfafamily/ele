@@ -11,12 +11,13 @@ import { KeyTarget } from '../../shared/keyTarget.jsx'
 export function PassInfo({ pass }) {
   const buildings = pass.buildings || []
   const rooms = pass.rooms || []
+  const places = pass.places || []
   const isKey = pass.object_type === 'key'
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-          {isKey ? <>Ключ · <KeyTarget pass={pass} /></> : pass.name ? pass.name : 'Пропуск'}
+          {isKey ? <>Ключ · <KeyTarget pass={pass} /></> : 'Пропуск'}
         </span>
         <span style={{ font: '600 13px var(--font-mono)', color: 'var(--color-text-muted)' }}>
           № {pass.account_number && pass.account_number.trim() ? pass.account_number : 'б/н'}
@@ -35,11 +36,14 @@ export function PassInfo({ pass }) {
       {!isKey ? (
         <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {buildings.map((b) => {
-            const bRooms = rooms.filter((r) => r.building === b.id)
-            const roomsText = bRooms.length === 0 ? 'все помещения' : bRooms.map((r) => r.name).join(', ')
+            const parts = [
+              ...rooms.filter((r) => r.building === b.id).map((r) => r.name),
+              ...places.filter((p) => p.building === b.id).map((p) => p.name),
+            ]
+            const detail = parts.length === 0 ? 'все помещения' : parts.join(', ')
             return (
               <div key={b.id} style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
-                <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>{b.name}</span> — {roomsText}
+                <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>{b.name}</span> — {detail}
               </div>
             )
           })}

@@ -15,7 +15,7 @@ const CONFIG = {
     placeholder: 'Поиск',
     empty: 'Нет свободных SIM-карт',
     emptyHint: 'Все SIM-карты закреплены за сотрудниками. Создайте новую.',
-    createLabel: '+ Создать SIM-карту',
+    createLabel: 'Создать SIM-карту',
     attach: attachSimCard,
     match: (o, q) =>
       [o.phone_number, o.network_operator, o.provider].some((v) => (v || '').toLowerCase().includes(q)),
@@ -26,9 +26,9 @@ const CONFIG = {
     placeholder: 'Поиск',
     empty: 'Нет свободных средств доступа',
     emptyHint: 'Все пропуска и ключи закреплены за сотрудниками. Создайте новое.',
-    createLabel: '+ Создать средство доступа',
+    createLabel: 'Создать средство доступа',
     attach: attachPass,
-    match: (o, q) => [o.name, o.account_number].some((v) => (v || '').toLowerCase().includes(q)),
+    match: (o, q) => [o.account_number].some((v) => (v || '').toLowerCase().includes(q)),
   },
 }
 
@@ -52,7 +52,7 @@ function PassRow({ item }) {
   return (
     <span style={{ minWidth: 0, flex: 1 }}>
       <div style={{ fontSize: 13.5, fontWeight: 600 }}>
-        {isKey ? <>Ключ · <KeyTarget pass={item} /></> : `Пропуск · ${item.name || 'без названия'}`}
+        {isKey ? <>Ключ · <KeyTarget pass={item} /></> : 'Пропуск'}
       </div>
       <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
         № {item.account_number && item.account_number.trim() ? item.account_number : 'б/н'}{types ? ` · ${types}` : ''}
@@ -99,7 +99,7 @@ export function AttachOrCreateModal({ kind, employeeId, onClose, onAttached, onC
         <EmptyState
           title={cfg.empty}
           description={cfg.emptyHint}
-          action={<Button onClick={onCreateNew}>{cfg.createLabel}</Button>}
+          action={<Button onClick={onCreateNew}><Icon name="plus" size={18} strokeWidth={2.2} />{cfg.createLabel}</Button>}
         />
       ) : (
         <>
@@ -168,7 +168,7 @@ export function AttachOrCreateModal({ kind, employeeId, onClose, onAttached, onC
               Привязать{selectedIds.length > 1 ? ` (${selectedIds.length})` : ''}
             </Button>
           </div>
-          <Button fullWidth style={{ marginTop: 10 }} onClick={onCreateNew}>{cfg.createLabel}</Button>
+          <Button fullWidth style={{ marginTop: 10 }} onClick={onCreateNew}><Icon name="plus" size={18} strokeWidth={2.2} />{cfg.createLabel}</Button>
         </>
       )}
     </Modal>

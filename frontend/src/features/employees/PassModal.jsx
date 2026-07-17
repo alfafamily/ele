@@ -11,12 +11,12 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
   const isEdit = Boolean(pass)
   const [buildings, setBuildings] = useState(null)
   const [objectType, setObjectType] = useState(pass?.object_type || 'pass')
-  const [name, setName] = useState(pass?.name || '')
   const [accountNumber, setAccountNumber] = useState(pass?.account_number || '')
   const [typeVehicle, setTypeVehicle] = useState(pass?.type_vehicle || false)
   const [typePedestrian, setTypePedestrian] = useState(pass?.type_pedestrian || false)
   const [selBuildings, setSelBuildings] = useState(() => new Set((pass?.buildings || []).map((b) => b.id)))
   const [selRooms, setSelRooms] = useState(() => new Set((pass?.rooms || []).map((r) => r.id)))
+  const [selPlaces, setSelPlaces] = useState(() => new Set((pass?.places || []).map((p) => p.id)))
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -29,12 +29,16 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
   }, [])
 
   const activeRoomsOf = (b) => (b.rooms || []).filter((r) => !r.is_archived)
+  // Места, которые можно выбрать как объект доступа: только с флагом
+  // «Требуется ключ/пропуск» и не в архиве.
+  const passPlacesOf = (r) => (r.places || []).filter((p) => p.requires_pass && !p.is_archived)
 
   const toggleBuilding = (b, checked) => {
     if (isKey) {
-      // Ключ: одно здание целиком, помещения сбрасываются.
+      // Ключ: одно здание целиком, помещения и места сбрасываются.
       setSelBuildings(checked ? new Set([b.id]) : new Set())
       setSelRooms(new Set())
+      setSelPlaces(new Set())
       return
     }
     setSelBuildings((prev) => {
@@ -44,17 +48,21 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
       return next
     })
     if (!checked) {
-      const roomIds = new Set(activeRoomsOf(b).map((r) => r.id))
+      const rooms = activeRoomsOf(b)
+      const roomIds = new Set(rooms.map((r) => r.id))
+      const placeIds = new Set(rooms.flatMap((r) => passPlacesOf(r).map((p) => p.id)))
       setSelRooms((prev) => new Set([...prev].filter((id) => !roomIds.has(id))))
+      setSelPlaces((prev) => new Set([...prev].filter((id) => !placeIds.has(id))))
     }
   }
 
   const toggleRoom = (b, id, checked) => {
     if (isKey) {
-      // Ключ: одно помещение (его здание — родитель).
+      // Ключ: одно помещение (его здание — родитель), место сбрасывается.
       if (checked) {
         setSelBuildings(new Set([b.id]))
         setSelRooms(new Set([id]))
+        setSelPlaces(new Set())
       } else {
         setSelRooms(new Set())
       }
@@ -68,16 +76,37 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
     })
   }
 
+  const togglePlace = (b, id, checked) => {
+    if (isKey) {
+      // Ключ: одно место (его здание — родитель), помещение сбрасывается.
+      if (checked) {
+        setSelBuildings(new Set([b.id]))
+        setSelRooms(new Set())
+        setSelPlaces(new Set([id]))
+      } else {
+        setSelPlaces(new Set())
+      }
+      return
+    }
+    setSelPlaces((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
   const changeObjectType = (type) => {
     if (type === objectType) return
     setObjectType(type)
-    // При переключении на ключ оставляем максимум одно здание/помещение.
+    // При переключении на ключ оставляем максимум одно здание, помещения/места
+    // сбрасываем (у ключа объект доступа один).
     if (type === 'key') {
-      setName('')
       setTypeVehicle(false)
       setTypePedestrian(false)
       setSelBuildings((prev) => new Set([...prev].slice(0, 1)))
       setSelRooms(new Set())
+      setSelPlaces(new Set())
     }
   }
 
@@ -87,12 +116,12 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
     setFieldErrors({})
     const payload = {
       object_type: objectType,
-      name: isKey ? '' : name,
       account_number: accountNumber,
       type_vehicle: isKey ? false : typeVehicle,
       type_pedestrian: isKey ? false : typePedestrian,
       building_ids: [...selBuildings],
       room_ids: [...selRooms],
+      place_ids: [...selPlaces],
     }
     // Из карточки сотрудника создаём сразу привязанным; из раздела — свободным.
     if (!isEdit && employeeId) payload.employee = employeeId
@@ -145,9 +174,6 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
               </div>
             </div>
 
-            {!isKey ? (
-              <Input label="Название" value={name} onChange={(e) => setName(e.target.value)} error={fieldErrors.name} />
-            ) : null}
             <Input
               label="Учётный номер"
               value={accountNumber}
@@ -179,7 +205,7 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
               </div>
               {isKey ? (
                 <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
-                  У ключа доступен строго один объект: отметьте здание целиком или одно помещение.
+                  У ключа доступен строго один объект: отметьте здание целиком, одно помещение или одно место.
                 </div>
               ) : null}
               {buildings.length === 0 ? (
@@ -202,12 +228,26 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
                               </div>
                             ) : (
                               <>
-                                {rooms.map((r) => (
-                                  <CheckRow key={r.id} small checked={selRooms.has(r.id)} onChange={(v) => toggleRoom(b, r.id, v)}>
-                                    {r.floor ? <Badge>эт. {r.floor}</Badge> : null}
-                                    <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
-                                  </CheckRow>
-                                ))}
+                                {rooms.map((r) => {
+                                  const places = passPlacesOf(r)
+                                  return (
+                                    <div key={r.id}>
+                                      <CheckRow small checked={selRooms.has(r.id)} onChange={(v) => toggleRoom(b, r.id, v)}>
+                                        {r.floor ? <Badge>эт. {r.floor}</Badge> : null}
+                                        <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+                                      </CheckRow>
+                                      {places.length ? (
+                                        <div style={{ marginLeft: 14, marginTop: 6, paddingLeft: 12, borderLeft: '2px solid var(--color-border-hairline)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                          {places.map((p) => (
+                                            <CheckRow key={p.id} small checked={selPlaces.has(p.id)} onChange={(v) => togglePlace(b, p.id, v)}>
+                                              <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                                            </CheckRow>
+                                          ))}
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  )
+                                })}
                               </>
                             )}
                           </div>
@@ -225,6 +265,11 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
               {fieldErrors.room_ids ? (
                 <div style={{ fontSize: 12, color: 'var(--color-error)', marginTop: 4 }}>
                   {Array.isArray(fieldErrors.room_ids) ? fieldErrors.room_ids[0] : fieldErrors.room_ids}
+                </div>
+              ) : null}
+              {fieldErrors.place_ids ? (
+                <div style={{ fontSize: 12, color: 'var(--color-error)', marginTop: 4 }}>
+                  {Array.isArray(fieldErrors.place_ids) ? fieldErrors.place_ids[0] : fieldErrors.place_ids}
                 </div>
               ) : null}
             </div>

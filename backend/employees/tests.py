@@ -300,13 +300,13 @@ class AccessPassTests(APITestCase):
         payload = {"building_ids": [self.building.id], **extra}
         return self.client.post("/api/access-passes/", payload, format="json")
 
-    def test_create_with_name_and_types(self):
+    def test_create_with_account_and_types(self):
         resp = self._create(
-            employee=self.employee.id, name="Синий брелок", account_number="A-100",
+            employee=self.employee.id, account_number="A-100",
             type_vehicle=True, type_pedestrian=True,
         )
         self.assertEqual(resp.status_code, 201, resp.data)
-        self.assertEqual(resp.data["name"], "Синий брелок")
+        self.assertEqual(resp.data["account_number"], "A-100")
         self.assertTrue(resp.data["type_vehicle"])
         self.assertTrue(resp.data["type_pedestrian"])
         self.assertFalse(resp.data["is_deactivated"])

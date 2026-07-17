@@ -2,7 +2,7 @@
 доступа и SIM, комментарии/движения в истории."""
 
 from accounts.models import User
-from locations.models import Building, Room
+from locations.models import Building, Place, Room
 from rest_framework.test import APITestCase
 
 from .models import AccessPass, Employee, SimCard
@@ -15,6 +15,9 @@ class AccessPassKeyTests(APITestCase):
         self.b1 = Building.objects.create(name="Корпус А")
         self.b2 = Building.objects.create(name="Корпус Б")
         self.r1 = Room.objects.create(building=self.b1, name="101")
+        # Место с флагом «Требуется ключ/пропуск» — доступно для выбора; без флага — нет.
+        self.p1 = Place.objects.create(room=self.r1, name="Сейф", requires_pass=True)
+        self.p_plain = Place.objects.create(room=self.r1, name="Стол", requires_pass=False)
 
     def test_key_requires_single_building(self):
         resp = self.client.post("/api/access-passes/", {
@@ -24,10 +27,9 @@ class AccessPassKeyTests(APITestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertIn("building_ids", resp.data.get("errors", resp.data))
 
-    def test_key_created_clears_name(self):
+    def test_key_created_with_single_room(self):
         resp = self.client.post("/api/access-passes/", {
             "object_type": "key",
-            "name": "должно очиститься",
             "account_number": "K-1",
             "building_ids": [self.b1.id],
             "room_ids": [self.r1.id],
@@ -35,16 +37,62 @@ class AccessPassKeyTests(APITestCase):
         self.assertEqual(resp.status_code, 201, resp.data)
         ap = AccessPass.objects.get(pk=resp.data["id"])
         self.assertEqual(ap.object_type, "key")
-        self.assertEqual(ap.name, "")
         self.assertEqual(list(ap.rooms.all()), [self.r1])
 
     def test_pass_allows_multiple_buildings(self):
         resp = self.client.post("/api/access-passes/", {
             "object_type": "pass",
-            "name": "Осн. пропуск",
             "building_ids": [self.b1.id, self.b2.id],
         }, format="json")
         self.assertEqual(resp.status_code, 201, resp.data)
+
+    def test_pass_with_flagged_place(self):
+        resp = self.client.post("/api/access-passes/", {
+            "object_type": "pass",
+            "building_ids": [self.b1.id],
+            "place_ids": [self.p1.id],
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        ap = AccessPass.objects.get(pk=resp.data["id"])
+        self.assertEqual(list(ap.places.all()), [self.p1])
+
+    def test_pass_place_without_flag_rejected(self):
+        resp = self.client.post("/api/access-passes/", {
+            "object_type": "pass",
+            "building_ids": [self.b1.id],
+            "place_ids": [self.p_plain.id],
+        }, format="json")
+        # Место без флага не входит в queryset place_ids → ошибка выбора.
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("place_ids", resp.data.get("errors", resp.data))
+
+    def test_place_must_belong_to_selected_building(self):
+        resp = self.client.post("/api/access-passes/", {
+            "object_type": "pass",
+            "building_ids": [self.b2.id],
+            "place_ids": [self.p1.id],
+        }, format="json")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("place_ids", resp.data.get("errors", resp.data))
+
+    def test_key_targets_single_place(self):
+        resp = self.client.post("/api/access-passes/", {
+            "object_type": "key",
+            "building_ids": [self.b1.id],
+            "place_ids": [self.p1.id],
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        ap = AccessPass.objects.get(pk=resp.data["id"])
+        self.assertEqual(list(ap.places.all()), [self.p1])
+
+    def test_key_rejects_room_and_place_together(self):
+        resp = self.client.post("/api/access-passes/", {
+            "object_type": "key",
+            "building_ids": [self.b1.id],
+            "room_ids": [self.r1.id],
+            "place_ids": [self.p1.id],
+        }, format="json")
+        self.assertEqual(resp.status_code, 400)
 
 
 class UtilizeTests(APITestCase):
@@ -55,7 +103,7 @@ class UtilizeTests(APITestCase):
         self.b1 = Building.objects.create(name="Корпус А")
 
     def test_pass_utilize_handed_sets_status_and_detaches(self):
-        ap = AccessPass.objects.create(object_type="pass", name="P1", employee=self.emp)
+        ap = AccessPass.objects.create(object_type="pass", employee=self.emp)
         ap.buildings.add(self.b1)
         resp = self.client.post(f"/api/access-passes/{ap.id}/utilize/", {
             "reason": "handed", "comment": "передан арендодателю",
@@ -68,13 +116,13 @@ class UtilizeTests(APITestCase):
         self.assertFalse(ap.is_deactivated)  # утилизированный ≠ неиспользуемый
 
     def test_pass_utilize_bad_reason_rejected(self):
-        ap = AccessPass.objects.create(object_type="pass", name="P1")
+        ap = AccessPass.objects.create(object_type="pass")
         ap.buildings.add(self.b1)
         resp = self.client.post(f"/api/access-passes/{ap.id}/utilize/", {"reason": "nope"}, format="json")
         self.assertEqual(resp.status_code, 400)
 
     def test_utilized_pass_in_utilized_tab_only(self):
-        ap = AccessPass.objects.create(object_type="pass", name="P1")
+        ap = AccessPass.objects.create(object_type="pass")
         ap.buildings.add(self.b1)
         self.client.post(f"/api/access-passes/{ap.id}/utilize/", {"reason": "utilized"}, format="json")
         utilized = self.client.get("/api/access-passes/?tab=utilized").data["results"]
@@ -98,7 +146,7 @@ class TerminateDispositionTests(APITestCase):
         self.emp = Employee.objects.create(first_name="Иван", last_name="Петров")
         self.b1 = Building.objects.create(name="Корпус А")
         self.sim = SimCard.objects.create(phone_number="+70000000002", employee=self.emp)
-        self.ap = AccessPass.objects.create(object_type="pass", name="P1", employee=self.emp)
+        self.ap = AccessPass.objects.create(object_type="pass", employee=self.emp)
         self.ap.buildings.add(self.b1)
 
     def test_terminate_with_per_item_actions(self):
@@ -125,7 +173,6 @@ class HistoryTests(APITestCase):
     def test_creation_comment_and_fields_in_history(self):
         resp = self.client.post("/api/access-passes/", {
             "object_type": "pass",
-            "name": "Пропуск-1",
             "account_number": "AP-1",
             "building_ids": [self.b1.id],
             "comment": "получен на складе",
@@ -137,11 +184,10 @@ class HistoryTests(APITestCase):
         self.assertEqual(created[0]["category"], "movement")
         self.assertEqual(created[0]["comment"], "получен на складе")
         labels = {ln["label"]: ln["value"] for ln in created[0]["lines"]}
-        self.assertEqual(labels.get("Название"), "Пропуск-1")
         self.assertEqual(labels.get("Учётный номер"), "AP-1")
 
     def test_utilize_is_movement_with_reason_label(self):
-        ap = AccessPass.objects.create(object_type="pass", name="P1")
+        ap = AccessPass.objects.create(object_type="pass")
         ap.buildings.add(self.b1)
         self.client.post(f"/api/access-passes/{ap.id}/utilize/", {"reason": "handed", "comment": "к"}, format="json")
         rows = self.client.get(f"/api/access-passes/{ap.id}/history/").data

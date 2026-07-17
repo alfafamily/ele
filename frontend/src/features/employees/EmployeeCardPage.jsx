@@ -233,7 +233,8 @@ export function EmployeeCardPage() {
           {employee.is_employed ? (
             <Can perm="canManageEmployees">
               <Button variant="secondary" fullWidth style={{ marginTop: employee.sim_cards.length ? 4 : 12 }} onClick={() => setSimAttach(true)}>
-                + Добавить SIM-карту
+                <Icon name="plus" size={18} strokeWidth={2.2} />
+                Добавить SIM-карту
               </Button>
             </Can>
           ) : null}
@@ -278,7 +279,8 @@ export function EmployeeCardPage() {
           {employee.is_employed ? (
             <Can perm="canManageEmployees">
               <Button variant="secondary" fullWidth style={{ marginTop: employee.passes.length ? 4 : 12 }} onClick={() => setPassAttach(true)}>
-                + Добавить средство доступа
+                <Icon name="plus" size={18} strokeWidth={2.2} />
+                Добавить средство доступа
               </Button>
             </Can>
           ) : null}

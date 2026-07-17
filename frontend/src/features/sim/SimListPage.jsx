@@ -4,7 +4,6 @@ import { Can } from '../../app/usePermissions.js'
 import { InfiniteScrollSentinel } from '../../shared/InfiniteScrollSentinel.jsx'
 import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
-import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
@@ -23,16 +22,21 @@ const FILTERS = [
   { value: 'free', label: 'Неактивные' },
 ]
 
-const DESKTOP_COLUMNS = [
+const ACTIVE_COLUMNS = [
   { key: 'phone_number', label: 'Номер', sortable: true, width: 'minmax(0, 1.3fr)' },
-  { key: 'network_operator', label: 'Оператор', sortable: true, width: 'minmax(0, 1fr)' },
-  { key: 'provider', label: 'Поставщик', sortable: true, width: 'minmax(0, 1fr)' },
+  { key: 'employee__last_name', label: 'Закреплено за', sortable: true, width: 'minmax(0, 1fr)' },
   { key: 'chevron', label: '', width: '30px' },
 ]
-const MOBILE_COLUMNS = [
-  { key: 'phone_number', label: 'Номер', sortable: true, width: 'minmax(0, 1.2fr)' },
-  { key: 'network_operator', label: 'Оператор / Поставщик', width: 'minmax(0, 1fr)' },
+const UTILIZED_COLUMNS = [
+  { key: 'phone_number', label: 'Номер', width: 'minmax(0, 1.3fr)' },
+  { key: 'utilized_at', label: 'Дата утилизации', width: '170px' },
+  { key: 'chevron', label: '', width: '30px' },
 ]
+
+function formatDate(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('ru-RU')
+}
 
 // Плашка типа (SIM / E-SIM) перед номером — единая чёрная схема, как в SimCardInfo.
 function TypeBadge({ label }) {
@@ -52,8 +56,7 @@ export function SimListPage() {
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
   const [modal, setModal] = useState(null) // null | 'new'
-  const isMobile = useMediaQuery('(max-width: 768px)')
-  const columns = isMobile ? MOBILE_COLUMNS : DESKTOP_COLUMNS
+  const columns = tab === 'active' ? ACTIVE_COLUMNS : UTILIZED_COLUMNS
 
   useEffect(() => {
     writeListCache(CACHE_KEY, { ui: { tab, status, search, sort } })
@@ -80,7 +83,8 @@ export function SimListPage() {
         <Can perm="canManageEmployees">
           <div className="ele-page-head__actions">
             <Button onClick={() => setModal('new')} title="Добавить SIM-карту" aria-label="Добавить SIM-карту">
-              <span className="ele-only-desktop">+ Добавить SIM-карту</span>
+              <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />
+              <span className="ele-only-desktop">Добавить SIM-карту</span>
               <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
             </Button>
           </div>
@@ -126,23 +130,30 @@ export function SimListPage() {
           {items.map((row) => (
             <Link key={row.id} to={`/sim-cards/${row.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
               <TableRow columns={columns}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                  <TypeBadge label={row.sim_type_display} />
-                  <span style={{ font: '600 13.5px var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.phone_number}</span>
-                </div>
-                {isMobile ? (
-                  <div style={{ color: 'var(--color-text-muted)', fontSize: 12.5, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {/* Номер+тип в первой строке, оператор/поставщик — во второй */}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <TypeBadge label={row.sim_type_display} />
+                    <span style={{ font: '600 13.5px var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.phone_number}</span>
+                  </div>
+                  <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {[row.network_operator, row.provider].filter(Boolean).join(' / ') || '—'}
                   </div>
+                </div>
+                {tab === 'active' ? (
+                  <div style={{ minWidth: 0 }}>
+                    {row.employee_name ? (
+                      <div className="ele-clamp-2">{row.employee_name}</div>
+                    ) : (
+                      <span style={{ color: 'var(--color-text-placeholder)' }}>Не закреплена</span>
+                    )}
+                  </div>
                 ) : (
-                  <>
-                    <div style={{ color: 'var(--color-text-muted)', fontSize: 13, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.network_operator || '—'}</div>
-                    <div style={{ color: 'var(--color-text-muted)', fontSize: 13, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.provider || '—'}</div>
-                    <div style={{ textAlign: 'right', color: 'var(--color-border-strong)' }}>
-                      <Icon name="chevron-right" size={18} strokeWidth={2} />
-                    </div>
-                  </>
+                  <div style={{ color: 'var(--color-text-placeholder)', font: '500 13px var(--font-mono)' }}>{formatDate(row.utilized_at)}</div>
                 )}
+                <div style={{ textAlign: 'right', color: 'var(--color-border-strong)' }}>
+                  <Icon name="chevron-right" size={18} strokeWidth={2} />
+                </div>
               </TableRow>
             </Link>
           ))}

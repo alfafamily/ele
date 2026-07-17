@@ -94,7 +94,8 @@ export function EmployeeListPage() {
           <div className="ele-page-head__actions">
             <Link to="/employees/new">
               <Button title="Добавить сотрудника" aria-label="Добавить сотрудника">
-                <span className="ele-only-desktop">+ Добавить сотрудника</span>
+                <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />
+                <span className="ele-only-desktop">Добавить сотрудника</span>
                 <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
               </Button>
             </Link>

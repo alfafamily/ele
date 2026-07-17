@@ -87,7 +87,8 @@ export function EquipmentListPage() {
             </Link>
             <Link to="/equipment/new">
               <Button title="Добавить оборудование" aria-label="Добавить оборудование">
-                <span className="ele-only-desktop">+ Добавить оборудование</span>
+                <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />
+                <span className="ele-only-desktop">Добавить оборудование</span>
                 <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
               </Button>
             </Link>

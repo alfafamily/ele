@@ -7,7 +7,7 @@ from .sorting import room_sort_key
 class PlaceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Place
-        fields = ["id", "room", "name", "is_archived"]
+        fields = ["id", "room", "name", "requires_pass", "is_archived"]
         # Архивирование — только через отдельный action, не записью поля.
         read_only_fields = ["is_archived"]
 
@@ -77,3 +77,13 @@ class RoomMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
         fields = ["id", "building", "name", "floor", "is_archived"]
+
+
+class PlaceMiniSerializer(serializers.ModelSerializer):
+    """Место в карточке пропуска (room/building — для группировки)."""
+
+    building = serializers.IntegerField(source="room.building_id", read_only=True)
+
+    class Meta:
+        model = Place
+        fields = ["id", "room", "building", "name", "is_archived"]
