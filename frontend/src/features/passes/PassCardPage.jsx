@@ -22,10 +22,16 @@ export function PassCardPage() {
   const [editModal, setEditModal] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [disposeModal, setDisposeModal] = useState(false)
+  const [historyKey, setHistoryKey] = useState(0)
 
   const load = useCallback(() => {
     setLoadError(false)
-    getPass(id).then(setPass).catch(() => setLoadError(true))
+    getPass(id)
+      .then((data) => {
+        setPass(data)
+        setHistoryKey((k) => k + 1)
+      })
+      .catch(() => setLoadError(true))
   }, [id])
   useEffect(load, [load])
 
@@ -160,7 +166,7 @@ export function PassCardPage() {
         </div>
 
         <Card className="ele-obj-layout__history">
-          <HistoryList path={getPassHistoryPath(pass.id)} />
+          <HistoryList path={getPassHistoryPath(pass.id)} reloadKey={historyKey} />
         </Card>
       </div>
 

@@ -21,10 +21,16 @@ export function SimCardPage() {
   const [editModal, setEditModal] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [disposeModal, setDisposeModal] = useState(false)
+  const [historyKey, setHistoryKey] = useState(0)
 
   const load = useCallback(() => {
     setLoadError(false)
-    getSimCard(id).then(setSim).catch(() => setLoadError(true))
+    getSimCard(id)
+      .then((data) => {
+        setSim(data)
+        setHistoryKey((k) => k + 1)
+      })
+      .catch(() => setLoadError(true))
   }, [id])
   useEffect(load, [load])
 
@@ -128,7 +134,7 @@ export function SimCardPage() {
         </div>
 
         <Card className="ele-obj-layout__history">
-          <HistoryList path={getSimHistoryPath(sim.id)} />
+          <HistoryList path={getSimHistoryPath(sim.id)} reloadKey={historyKey} />
         </Card>
       </div>
 

@@ -30,6 +30,10 @@ export function useCursorList(basePath, params = {}, { cacheKey, restore = true 
   // проход сбрасывал восстановленные страницы загрузкой первой). Загружаем
   // только когда для текущих params данных ещё нет.
   const loadedParamsRef = useRef(restorable ? paramsKey : null)
+  // Сколько элементов было восстановлено из кэша — столько же догружаем при
+  // фоновом обновлении, чтобы прокрутка легла на прежнее место.
+  const restoredCountRef = useRef(restorable ? cached.items.length : 0)
+  const didSilentRefreshRef = useRef(false)
 
   const buildInitialUrl = useCallback(() => {
     const query = new URLSearchParams()
@@ -58,11 +62,42 @@ export function useCursorList(basePath, params = {}, { cacheKey, restore = true 
     }
   }, [buildInitialUrl])
 
+  // Фоновое обновление восстановленного из кэша списка: перезагружаем столько же
+  // страниц, сколько было показано, и заменяем список — без скелетона и сброса
+  // прокрутки. Так возврат «назад» показывает актуальное состояние объектов
+  // (например, только что списанного в активной вкладке уже нет).
+  const silentRefresh = useCallback(async () => {
+    const requestId = ++requestIdRef.current
+    try {
+      let url = buildInitialUrl()
+      const acc = []
+      let next = null
+      do {
+        const data = await apiGet(url)
+        if (requestId !== requestIdRef.current) return
+        acc.push(...data.results)
+        next = data.next
+        url = next
+      } while (next && acc.length < restoredCountRef.current)
+      if (requestId !== requestIdRef.current) return
+      setItems(acc)
+      nextRef.current = next
+    } catch {
+      // Сеть/ошибка — оставляем восстановленные из кэша данные как есть.
+    }
+  }, [buildInitialUrl])
+
   useEffect(() => {
-    if (loadedParamsRef.current === paramsKey) return
+    if (loadedParamsRef.current === paramsKey) {
+      if (restorable && !didSilentRefreshRef.current) {
+        didSilentRefreshRef.current = true
+        silentRefresh()
+      }
+      return
+    }
     loadedParamsRef.current = paramsKey
     load()
-  }, [load, paramsKey])
+  }, [load, paramsKey, restorable, silentRefresh])
 
   // Держим кэш в актуальном состоянии, пока список открыт.
   useEffect(() => {

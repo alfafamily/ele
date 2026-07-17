@@ -74,7 +74,11 @@ const FILTERS = [
 // «История изменений» — сворачиваемый блок для карточек. Данные грузятся лениво
 // при первом раскрытии. Строки делятся на движения (создание, привязка/
 // открепление, списание/утилизация) и изменения реквизитов — можно фильтровать.
-export function HistoryList({ path }) {
+// reloadKey — любое меняющееся значение от родителя (счётчик, который карточка
+// увеличивает после действий: привязка/открепление/списание/утилизация). Пока
+// история раскрыта, её изменение перезапрашивает данные — чтобы новое движение
+// появлялось сразу, без перезагрузки страницы.
+export function HistoryList({ path, reloadKey }) {
   const [items, setItems] = useState(null)
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState('all')
@@ -86,8 +90,10 @@ export function HistoryList({ path }) {
     setFilter('all')
   }, [path])
 
+  // Грузим при раскрытии и перезапрашиваем при смене reloadKey (старые строки при
+  // этом остаются на экране до прихода новых — без «мигания» скелетоном).
   useEffect(() => {
-    if (!open || items !== null) return
+    if (!open) return
     let cancelled = false
     apiGet(path).then((data) => {
       if (!cancelled) setItems(data)
@@ -95,7 +101,7 @@ export function HistoryList({ path }) {
     return () => {
       cancelled = true
     }
-  }, [open, items, path])
+  }, [open, path, reloadKey])
 
   const filtered = useMemo(() => {
     if (!items) return items

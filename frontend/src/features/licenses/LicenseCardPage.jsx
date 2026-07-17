@@ -19,11 +19,15 @@ export function LicenseCardPage() {
   const [showUtilize, setShowUtilize] = useState(false)
   const [showAttach, setShowAttach] = useState(false)
   const [confirmDetach, setConfirmDetach] = useState(false)
+  const [historyKey, setHistoryKey] = useState(0)
 
   const load = useCallback(() => {
     setLoadError(false)
     getLicense(id)
-      .then(setLicense)
+      .then((data) => {
+        setLicense(data)
+        setHistoryKey((k) => k + 1)
+      })
       .catch(() => setLoadError(true))
   }, [id])
 
@@ -209,7 +213,7 @@ export function LicenseCardPage() {
         ) : null}
 
         <Card className="ele-obj-layout__history">
-          <HistoryList path={getLicenseHistoryPath(license.id)} />
+          <HistoryList path={getLicenseHistoryPath(license.id)} reloadKey={historyKey} />
         </Card>
       </div>
 

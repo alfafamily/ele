@@ -14,34 +14,13 @@ export function AppLayout() {
   const sections = navSectionsForRole(user.role)
   const employeeName = user.employee ? user.employee.full_name : null
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [topbarHidden, setTopbarHidden] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
 
-  // Верхняя панель скрывается на страницах создания/редактирования объектов
-  // (маршруты …/new и …/edit) — чтобы не отвлекать при заполнении формы.
-  const isFormPage = /\/(new|edit)\/?$/.test(location.pathname)
-
-  // Закрываем выезжающее меню и показываем панель при переходе на другую страницу.
+  // Закрываем выезжающее меню при переходе на другую страницу.
   useEffect(() => {
     setDrawerOpen(false)
-    setTopbarHidden(false)
   }, [location.pathname])
-
-  // Верхняя панель уезжает вверх при скролле вниз и возвращается при скролле
-  // вверх (паттерн Material). У самого верха страницы всегда видна.
-  useEffect(() => {
-    let lastY = window.scrollY
-    const onScroll = () => {
-      const y = window.scrollY
-      if (y < 10) setTopbarHidden(false)
-      else if (y > lastY + 5) setTopbarHidden(true)
-      else if (y < lastY - 5) setTopbarHidden(false)
-      lastY = y
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
 
   const avatar = (size, fontSize) => (
     <span className="ele-rail__avatar" style={{ width: size, height: size, fontSize, overflow: 'hidden' }}>
@@ -52,17 +31,32 @@ export function AppLayout() {
       )}
     </span>
   )
+
+  // Логотип по единой логике (desktop rail и мобильное меню): при загруженном
+  // лого компании — лого компании + разделитель + знак ELE, иначе только ELE.
+  const brand = company?.logo ? (
+    <>
+      <img className="ele-brand__company" src={company.logo.url} alt="" />
+      <div className="ele-brand__divider" />
+      <img className="ele-brand__full" src="/brand/ele-full.svg" alt="ELE" />
+    </>
+  ) : (
+    <img className="ele-brand__full" src="/brand/ele-full.svg" alt="ELE" />
+  )
+
   // «Настройки» — внизу rail, над «Помощью» (макет N); остальные разделы
   // идут сверху в порядке навигации.
   const topSections = sections.filter((s) => !s.bottom)
   const bottomSections = sections.filter((s) => s.bottom)
   // Мобильное меню (drawer) — все разделы как на десктопе + Настройки (у админа)
-  // и Руководство.
+  // и Руководство. Профиль в меню не дублируем — он в нижнем таб-баре.
   const drawerSections = [
     ...topSections,
     ...bottomSections,
     { key: 'guide', to: '/guide', label: 'Руководство', icon: HelpIcon },
   ]
+
+  const isProfileActive = location.pathname === '/profile'
 
   return (
     <div className="ele-shell">
@@ -148,48 +142,40 @@ export function AppLayout() {
         </NavLink>
       </aside>
 
-      {/* Мобильная верхняя панель: профиль слева, лого ELE по центру, меню
-          справа. Скрыта на десктопе (там rail) и на страницах форм. */}
-      {!isFormPage ? (
-        <header className={`ele-topbar${topbarHidden ? ' ele-topbar--hidden' : ''}`}>
-          <button type="button" className="ele-topbar__profile" aria-label="Профиль" onClick={() => navigate('/profile')}>
-            {avatar(34, 12)}
-          </button>
-          {/* Лого по той же логике, что и развёрнутый rail: при загруженном лого
-              компании — лого компании + разделитель + знак ELE, иначе только ELE. */}
-          <div className="ele-topbar__brand">
-            {company?.logo ? (
-              <>
-                <img className="ele-topbar__company-logo" src={company.logo.url} alt="" />
-                <div className="ele-topbar__brand-divider" />
-                <img className="ele-topbar__logo" src="/brand/ele-full.svg" alt="ELE" />
-              </>
-            ) : (
-              <img className="ele-topbar__logo" src="/brand/ele-full.svg" alt="ELE" />
-            )}
-          </div>
-          <button type="button" className="ele-topbar__menu" aria-label="Меню" aria-haspopup="menu" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}>
-            <MenuIcon />
-          </button>
-        </header>
-      ) : null}
-
-      <main className={`ele-content${!isFormPage ? ' ele-content--with-topbar' : ''}`}>
+      <main className="ele-content ele-content--with-bottomnav">
         <div className="ele-content__inner">
           <Outlet />
         </div>
       </main>
 
+      {/* Мобильный нижний таб-бар: Меню (открывает выезжающее меню) и Профиль
+          (страница профиля). На десктопе скрыт (там rail). */}
+      <nav className="ele-bottom-nav">
+        <button
+          type="button"
+          className={`ele-bottom-nav__item${drawerOpen ? ' ele-bottom-nav__item--active' : ''}`}
+          aria-haspopup="menu"
+          aria-expanded={drawerOpen}
+          onClick={() => setDrawerOpen(true)}
+        >
+          <MenuIcon />
+          <span>Меню</span>
+        </button>
+        <button
+          type="button"
+          className={`ele-bottom-nav__item${isProfileActive ? ' ele-bottom-nav__item--active' : ''}`}
+          onClick={() => navigate('/profile')}
+        >
+          {avatar(24, 10)}
+          <span>Профиль</span>
+        </button>
+      </nav>
+
       {/* Выезжающее справа меню (поверх страницы) со всеми разделами. */}
       {drawerOpen ? <div className="ele-drawer__backdrop" onClick={() => setDrawerOpen(false)} /> : null}
       <nav className={`ele-drawer${drawerOpen ? ' ele-drawer--open' : ''}`} aria-hidden={!drawerOpen}>
-        <NavLink to="/profile" className="ele-drawer__user" onClick={() => setDrawerOpen(false)}>
-          {avatar(40, 14)}
-          <span className="ele-drawer__user-text">
-            <span className="ele-drawer__user-name">{employeeName || user.email}</span>
-            <span className="ele-drawer__user-role">{roleLabel(user.role)}</span>
-          </span>
-        </NavLink>
+        {/* Логотип наверху меню — по логике десктопа (компания + ELE / только ELE). */}
+        <div className="ele-drawer__brand">{brand}</div>
         <div className="ele-drawer__items">
           {drawerSections.map(({ key, to, label, icon: Icon }) => (
             <NavLink

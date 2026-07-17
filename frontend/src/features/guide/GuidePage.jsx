@@ -179,10 +179,12 @@ function GuideMobile() {
   return (
     <div className="ele-guide">
       <h1 className="ele-guide__h1">Руководство пользователя</h1>
-      <div className="ele-guide-m">
+      {/* Свайп ловим на всей обёртке (а не только на карточке), чтобы он работал
+          и после прокрутки длинного раздела вниз. */}
+      <div className="ele-guide-m" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <GuideSelect sections={GUIDE_SECTIONS} index={index} onPick={go} />
 
-        <div className="ele-guide-m__stage" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <div className="ele-guide-m__stage">
           {index === 0 ? (
             <Card className="ele-guide__intro">
               {GUIDE_INTRO.map((text, i) => (

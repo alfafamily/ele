@@ -302,52 +302,20 @@
   padding: 24px 30px;
 }
 
-/* Верхняя панель (мобилка) вместо нижнего таббара: профиль · лого · меню.
-   На десктопе скрыта (там rail). */
-.ele-topbar {
+/* Мобильный нижний таб-бар: Меню + Профиль. На десктопе скрыт (там rail). */
+.ele-bottom-nav {
   display: none;
 }
 
-.ele-topbar__profile,
-.ele-topbar__menu {
-  appearance: none;
-  border: none;
-  background: none;
-  cursor: pointer;
-  padding: 0;
-  color: var(--color-text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ele-topbar__menu {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-}
-
-.ele-topbar__menu:active {
-  background: var(--color-fill-active-tint);
-}
-
-.ele-topbar__logo {
+/* Логотип (лого компании + разделитель + знак ELE / только знак ELE) — общий
+   для мобильного меню; min-width:0 + overflow не дают длинному лого распирать. */
+.ele-brand__full {
   height: 22px;
   width: auto;
+  flex: none;
 }
 
-/* Бренд по центру верхней панели — лого компании + разделитель + знак ELE
-   (как в развёрнутом rail). min-width:0 + overflow позволяют длинному лого
-   компании ужаться, не распирая панель. */
-.ele-topbar__brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.ele-topbar__company-logo {
+.ele-brand__company {
   height: 28px;
   width: 28px;
   flex: none;
@@ -355,9 +323,9 @@
   object-fit: cover;
 }
 
-.ele-topbar__brand-divider {
+.ele-brand__divider {
   width: 1px;
-  height: 20px;
+  height: 22px;
   background: var(--color-border);
   flex: none;
 }
@@ -393,34 +361,14 @@
   transform: translateX(0);
 }
 
-.ele-drawer__user {
+/* Логотип наверху выезжающего меню. */
+.ele-drawer__brand {
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 10px 8px;
-  border-radius: 10px;
-  color: inherit;
-  margin-bottom: 6px;
-}
-
-.ele-drawer__user-text {
+  gap: 10px;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.ele-drawer__user-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ele-drawer__user-role {
-  font-size: 11.5px;
-  color: var(--color-text-placeholder);
+  padding: 8px 10px 14px;
 }
 
 .ele-drawer__items {
@@ -461,38 +409,48 @@
 
   .ele-content {
     margin-left: 0;
+    /* Отступ снизу под фиксированный нижний таб-бар. */
+    padding-bottom: 66px;
     /* Мобильные списки с фиксированными ширинами колонок скроллятся внутри
        своей карточки (.ele-table__scroll) — страница по горизонтали не едет. */
     overflow-x: hidden;
-  }
-
-  /* Отступ сверху под фиксированную верхнюю панель (когда она показана). */
-  .ele-content--with-topbar {
-    padding-top: 54px;
   }
 
   .ele-content__inner {
     padding: 16px;
   }
 
-  .ele-topbar {
+  .ele-bottom-nav {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    align-items: flex-start;
+    justify-content: space-around;
     position: fixed;
-    top: 0;
     left: 0;
     right: 0;
-    height: 54px;
-    padding: 0 14px;
+    bottom: 0;
+    height: 66px;
+    padding-top: 10px;
     background: var(--color-surface);
-    border-bottom: 1px solid var(--color-border);
+    border-top: 1px solid var(--color-border);
     z-index: 40;
-    transition: transform 0.25s ease;
   }
 
-  /* Уезжает вверх за границу экрана при скролле вниз. */
-  .ele-topbar--hidden {
-    transform: translateY(-100%);
+  .ele-bottom-nav__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--color-text-placeholder);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 10px;
+    padding: 0;
+  }
+
+  .ele-bottom-nav__item--active {
+    color: var(--color-text-primary);
+    font-weight: 600;
   }
 }

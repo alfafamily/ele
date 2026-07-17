@@ -41,7 +41,7 @@ export function FilterButton({ options, value, onChange, title = 'Фильтры
   const trigger = (
     <button
       type="button"
-      className={'ele-filter-btn__trigger' + (active ? ' ele-filter-btn__trigger--active' : '')}
+      className="ele-filter-btn__trigger"
       onClick={() => setOpen((o) => !o)}
       aria-haspopup="menu"
       aria-expanded={open}
@@ -49,7 +49,8 @@ export function FilterButton({ options, value, onChange, title = 'Фильтры
     >
       <Icon name="sliders-horizontal" size={18} strokeWidth={1.9} />
       <span className="ele-only-desktop">{title}</span>
-      {active ? <span className="ele-filter-btn__dot" /> : null}
+      {/* Бейдж-счётчик применённых фильтров (у нас одиночный выбор — всегда «1»). */}
+      {active ? <span className="ele-filter-btn__badge">1</span> : null}
     </button>
   )
 

@@ -22,13 +22,18 @@ export function EquipmentCardPage() {
   const [showWriteOff, setShowWriteOff] = useState(false)
   const [showAssignPicker, setShowAssignPicker] = useState(false)
   const [showAttachLicense, setShowAttachLicense] = useState(false)
+  // Счётчик перезагрузок — растёт при каждом load(), сигналит истории обновиться.
+  const [historyKey, setHistoryKey] = useState(0)
   // Подтверждение открепления/отвязки: { title, message, confirmLabel, onConfirm }.
   const [confirm, setConfirm] = useState(null)
 
   const load = useCallback(() => {
     setLoadError(false)
     getEquipment(id)
-      .then(setEquipment)
+      .then((data) => {
+        setEquipment(data)
+        setHistoryKey((k) => k + 1)
+      })
       .catch(() => setLoadError(true))
   }, [id])
 
@@ -278,7 +283,7 @@ export function EquipmentCardPage() {
         ) : null}
 
         <Card className="ele-obj-layout__history">
-          <HistoryList path={getEquipmentHistoryPath(equipment.id)} />
+          <HistoryList path={getEquipmentHistoryPath(equipment.id)} reloadKey={historyKey} />
         </Card>
       </div>
 
