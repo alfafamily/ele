@@ -328,7 +328,7 @@ export function SystemTab() {
                 <div style={{ maxWidth: FIELD_W, minWidth: 0 }}>
                   <FieldView label={row.note || 'IP-адрес'} value={row.ip} mono />
                 </div>
-                <IconBtn outlined kind="delete" title="Удалить" onClick={() => deleteIp(i)} disabled={ipBusy} />
+                <IconBtn outlined size={36} kind="delete" title="Удалить" onClick={() => deleteIp(i)} disabled={ipBusy} />
               </div>
             ))}
 

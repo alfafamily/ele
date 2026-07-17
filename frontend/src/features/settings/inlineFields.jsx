@@ -12,11 +12,12 @@ const ICON_BY_KIND = { edit: 'square-pen', delete: 'trash-2', apply: 'check', ca
 // Иконочная кнопка действия. Плоская (в режиме просмотра — рядом с полем) или
 // outlined — полноценная кнопка в высоту инпута с контуром (как «…» в списках),
 // для действий Применить/Отменить при редактировании/добавлении.
-export function IconBtn({ kind, title, onClick, disabled, outlined }) {
+export function IconBtn({ kind, title, onClick, disabled, outlined, size }) {
   const color = kind === 'delete' ? 'var(--color-error)' : kind === 'apply' ? 'var(--color-success)' : 'var(--color-text-muted)'
   const base = { border: 'none', cursor: disabled ? 'default' : 'pointer', color, opacity: disabled ? 0.4 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }
+  const dim = size ? (typeof size === 'number' ? `${size}px` : size) : 'var(--control-height)'
   const style = outlined
-    ? { ...base, width: 'var(--control-height)', height: 'var(--control-height)', borderRadius: 'var(--radius-control)', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)' }
+    ? { ...base, width: dim, height: dim, borderRadius: 'var(--radius-control)', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)' }
     : { ...base, background: 'none', padding: 6 }
   return (
     <button type="button" title={title} aria-label={title} onClick={onClick} disabled={disabled} style={style}>
@@ -95,8 +96,8 @@ export function InlineField({ label, value, mono, placeholder, onSave, onClear }
         <div style={{ maxWidth: FIELD_W, minWidth: 0 }}>
           <FieldView label={label} value={value} mono={mono} />
         </div>
-        <IconBtn outlined kind="edit" title="Редактировать" onClick={() => { setDraft(value || ''); setError(null); setEditing(true) }} disabled={busy} />
-        {onClear ? <IconBtn outlined kind="delete" title="Очистить" onClick={clear} disabled={busy || !value} /> : null}
+        <IconBtn outlined size={36} kind="edit" title="Редактировать" onClick={() => { setDraft(value || ''); setError(null); setEditing(true) }} disabled={busy} />
+        {onClear ? <IconBtn outlined size={36} kind="delete" title="Очистить" onClick={clear} disabled={busy || !value} /> : null}
       </div>
       {error ? <div style={{ fontSize: 12, color: 'var(--color-error)', marginTop: 4 }}>{error}</div> : null}
     </div>
