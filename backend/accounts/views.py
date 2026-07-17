@@ -4,6 +4,8 @@ from smtplib import SMTPException
 from django.conf import settings
 from django.contrib.auth import get_user_model, login, logout, update_session_auth_hash
 from django.db import transaction
+from django.db.models import Case, CharField, Q, Value, When
+from django.db.models.functions import Concat, Lower
 from django.http import HttpResponseRedirect
 from django.middleware.csrf import get_token
 from django.utils import timezone
@@ -319,10 +321,11 @@ class InviteView(APIView):
 
 
 class _UserCursorPagination(ELECursorPagination):
-    # User не имеет поля created_at (только date_joined) — переопределяем
-    # ordering пагинатора под реальную сортировку списка (без
-    # предпочтения по дате, порядок как в get_queryset()).
-    ordering = "email"
+    # Сортировка списка — единым аннотированным ключом _sort (см. get_queryset):
+    # сначала активные/приглашённые, затем деактивированные; внутри — по ФИО
+    # сотрудника, email как уникальный тай-брейкер. Одно поле надёжно работает с
+    # курсорной пагинацией.
+    ordering = "_sort"
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -342,7 +345,28 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserListSerializer if self.action == "list" else UserSerializer
 
     def get_queryset(self):
-        return User.objects.select_related("employee", "employee__avatar").order_by("email")
+        qs = User.objects.select_related("employee", "employee__avatar")
+        search = (self.request.query_params.get("search") or "").strip()
+        if search:
+            qs = qs.filter(
+                Q(employee__first_name__icontains=search)
+                | Q(employee__last_name__icontains=search)
+                | Q(email__icontains=search)
+            )
+        # Единый сортировочный ключ: группа (0 — активные/приглашённые, 1 —
+        # деактивированные) → ФИО сотрудника (без сотрудника — в конце группы) →
+        # email (уникальный тай-брейкер).
+        qs = qs.annotate(
+            _grp=Case(When(is_active=True, then=Value("0")), default=Value("1"), output_field=CharField()),
+            _name=Case(
+                When(employee__isnull=True, then=Value("яяяяяя")),
+                default=Lower(Concat("employee__last_name", Value(" "), "employee__first_name")),
+                output_field=CharField(),
+            ),
+        ).annotate(
+            _sort=Concat("_grp", Value("|"), "_name", Value("|"), Lower("email"), output_field=CharField()),
+        )
+        return qs.order_by("_sort")
 
     def create(self, request, *args, **kwargs):
         return Response({"detail": "Пользователи создаются через /api/users/invite/."}, status=405)

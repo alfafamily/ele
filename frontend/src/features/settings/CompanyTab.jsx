@@ -113,10 +113,13 @@ export function CompanyTab() {
     }
   }
 
+  // На десктопе плитка лого растягивается по высоте до полей (Название + ИНН);
+  // на мобильных остаётся квадратом.
+  const tileH = isMobile ? TILE : '100%'
   const logoBlock = (
-    <div style={{ flex: 'none', position: 'relative' }}>
+    <div style={{ flex: 'none', position: 'relative', alignSelf: isMobile ? undefined : 'stretch' }}>
       {uploadingLogo ? (
-        <span style={{ width: TILE, height: TILE, borderRadius: 16, background: 'var(--color-fill-active-tint)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ width: TILE, height: tileH, borderRadius: 16, background: 'var(--color-fill-active-tint)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Spinner size={24} />
         </span>
       ) : company?.logo ? (
@@ -127,7 +130,7 @@ export function CompanyTab() {
             onClick={() => setLogoMenu((v) => !v)}
             aria-haspopup="menu"
             aria-expanded={logoMenu}
-            style={{ width: TILE, height: TILE, borderRadius: 16, overflow: 'hidden', background: 'var(--color-fill-active-tint)', border: 'none', padding: 0, cursor: 'pointer', display: 'block' }}
+            style={{ width: TILE, height: tileH, borderRadius: 16, overflow: 'hidden', background: 'var(--color-fill-active-tint)', border: 'none', padding: 0, cursor: 'pointer', display: 'block' }}
           >
             <img src={company.logo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </button>
@@ -136,7 +139,7 @@ export function CompanyTab() {
               <div style={{ position: 'fixed', inset: 0, zIndex: 45 }} onClick={() => setLogoMenu(false)} />
               <div
                 role="menu"
-                style={{ position: 'absolute', top: TILE + 6, left: '50%', transform: 'translateX(-50%)', zIndex: 46, minWidth: 168, padding: 6, display: 'flex', flexDirection: 'column', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, boxShadow: 'var(--shadow-block)' }}
+                style={{ position: 'absolute', top: 'calc(100% + 6px)', left: '50%', transform: 'translateX(-50%)', zIndex: 46, minWidth: 168, padding: 6, display: 'flex', flexDirection: 'column', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, boxShadow: 'var(--shadow-block)' }}
               >
                 <button type="button" style={menuItem} onClick={() => { setLogoMenu(false); pickLogo() }}>
                   Загрузить новый
@@ -153,7 +156,7 @@ export function CompanyTab() {
         <button
           type="button"
           onClick={pickLogo}
-          style={{ width: TILE, height: TILE, borderRadius: 16, border: '1.5px dashed var(--color-border-strong)', background: 'var(--color-fill-active-tint)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'var(--color-text-muted)', fontFamily: 'inherit' }}
+          style={{ width: TILE, height: tileH, borderRadius: 16, border: '1.5px dashed var(--color-border-strong)', background: 'var(--color-fill-active-tint)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'var(--color-text-muted)', fontFamily: 'inherit' }}
         >
           <Icon name="plus" size={22} strokeWidth={1.8} />
           <span style={{ fontSize: 11 }}>Логотип</span>
@@ -172,7 +175,7 @@ export function CompanyTab() {
       ) : null}
 
       <Card>
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'center' : 'flex-start', gap: 20 }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'center' : 'stretch', gap: 20 }}>
           {logoBlock}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
             <InlineField label="Название компании" value={name} onSave={saveName} />

@@ -16,11 +16,14 @@ function minTableWidth(columns) {
   return cols + 16 * Math.max(0, columns.length - 1) // + column-gap между колонками (Table.css)
 }
 
-export function Table({ columns, sortKey, sortDir, onSort, children }) {
+// fit — не задавать принудительную минимальную ширину: колонки ужимаются под
+// контейнер (mobile-раскладки, где содержимое обрезается многоточием в границах
+// колонок вместо горизонтального скролла).
+export function Table({ columns, sortKey, sortDir, onSort, fit, children }) {
   return (
     <div className="ele-table">
       <div className="ele-table__scroll">
-        <div style={{ minWidth: minTableWidth(columns) }}>
+        <div style={fit ? undefined : { minWidth: minTableWidth(columns) }}>
           <div className="ele-table__head" style={{ gridTemplateColumns: gridTemplateColumns(columns) }}>
             {columns.map((col) => {
               const isActive = col.key === sortKey

@@ -8,6 +8,14 @@
   white-space: nowrap;
 }
 
+/* Обрезка плашки многоточием по ширине контейнера (узкие колонки на мобильных). */
+.ele-pill--clip {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .ele-pill--assigned {
   background: var(--color-pill-assigned-bg);
   color: var(--color-pill-assigned-text);

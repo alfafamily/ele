@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
 import { Banner, Button, Checkbox, Icon, Modal, Select } from '../../shared/ui'
-import { updateUser } from './settingsApi.js'
+import { activateUser, deactivateUser, updateUser } from './settingsApi.js'
 
 const ROLE_OPTIONS = [
   { value: 'admin', label: 'Администратор' },
@@ -23,6 +23,10 @@ export function EditUserModal({ user, onClose, onSaved }) {
   )
   const [showEmployeePicker, setShowEmployeePicker] = useState(false)
   const [isObserver, setIsObserver] = useState(user.is_observer)
+  // Статус доступа: приглашённый пользователь тоже активен (is_active=True).
+  const currentlyActive = user.status !== 'deactivated'
+  const [status, setStatus] = useState(currentlyActive ? 'active' : 'deactivated')
+  const [terminateEmployee, setTerminateEmployee] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
@@ -30,11 +34,18 @@ export function EditUserModal({ user, onClose, onSaved }) {
     setSubmitting(true)
     setError(null)
     try {
-      await updateUser(user.id, {
-        role,
-        employee: employee?.id ?? null,
-        is_observer: role === 'employee' ? isObserver : false,
-      })
+      if (status === 'deactivated' && currentlyActive) {
+        // Деактивация (с опциональным увольнением связанного сотрудника) —
+        // остальные правки при этом не применяем, связь снимается на бэкенде.
+        await deactivateUser(user.id, employee ? terminateEmployee : false)
+      } else {
+        await updateUser(user.id, {
+          role,
+          employee: employee?.id ?? null,
+          is_observer: role === 'employee' ? isObserver : false,
+        })
+        if (status === 'active' && !currentlyActive) await activateUser(user.id)
+      }
       onSaved()
     } catch (err) {
       setError(err.errors ? Object.values(err.errors).flat().join(' ') : err.detail || 'Не удалось сохранить изменения.')
@@ -48,6 +59,13 @@ export function EditUserModal({ user, onClose, onSaved }) {
       <p style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginBottom: 18, marginTop: -6 }}>{user.email}</p>
       {error ? <Banner variant="error">{error}</Banner> : null}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <Select label="Статус доступа" value={status} onChange={setStatus}>
+          <option value="active">Активен</option>
+          <option value="deactivated">Деактивирован</option>
+        </Select>
+
+        {status === 'active' ? (
+          <>
         <Select label="Роль" required value={role} onChange={setRole}>
           {ROLE_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -151,6 +169,14 @@ export function EditUserModal({ user, onClose, onSaved }) {
 
         {role === 'employee' ? (
           <Checkbox label="Признак «Наблюдатель» (только для роли «Сотрудник»)" checked={isObserver} onChange={setIsObserver} />
+        ) : null}
+          </>
+        ) : currentlyActive && employee ? (
+          <Checkbox
+            label="Также уволить связанного сотрудника (снять оборудование, статус «Уволен»)"
+            checked={terminateEmployee}
+            onChange={setTerminateEmployee}
+          />
         ) : null}
       </div>
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22 }}>
