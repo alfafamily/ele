@@ -64,6 +64,27 @@
   color: var(--color-text-placeholder);
 }
 
+/* Нативные поля времени/даты (мобильный WebKit) центрируют значение и добавляют
+   собственную высоту — из-за этого текст «висит» по центру, а снизу остаётся
+   большой отступ. Убираем нативный вид и прижимаем значение влево/вверх. */
+.ele-field__input[type='time'],
+.ele-field__input[type='date'],
+.ele-field__input[type='datetime-local'],
+.ele-field__input[type='month'] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 0;
+}
+
+.ele-field__input::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+}
+
+.ele-field__input::-webkit-datetime-edit {
+  padding: 0;
+}
+
 /* Плавающий лейбл (только текстовые поля с лейблом, класс ele-field--floating).
    Пустое поле: лейбл стоит на месте значения и выглядит как плейсхолдер — вместо
    пустой строки под мелким лейблом. Фокус/заполнение (:not(:placeholder-shown)):
