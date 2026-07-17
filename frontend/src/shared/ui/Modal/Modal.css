@@ -41,16 +41,32 @@
 
 .ele-modal__close {
   flex: none;
-  width: 18px;
-  height: 18px;
+  width: 36px;
+  height: 36px;
+  /* Компенсируем габарит кнопки, чтобы иконка стояла у правого края, а строка
+     заголовка не становилась заметно выше. */
+  margin: -6px -8px -6px 0;
   padding: 0;
   border: none;
+  border-radius: 10px;
   background: none;
   color: var(--color-text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.ele-modal__close:hover {
+  background: var(--color-fill-active-tint);
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 768px) {
+  .ele-modal__close {
+    width: 40px;
+    height: 40px;
+  }
 }
 
 .ele-modal__title {

@@ -95,8 +95,8 @@ export function InlineField({ label, value, mono, placeholder, onSave, onClear }
         <div style={{ maxWidth: FIELD_W, minWidth: 0 }}>
           <FieldView label={label} value={value} mono={mono} />
         </div>
-        <IconBtn kind="edit" title="Редактировать" onClick={() => { setDraft(value || ''); setError(null); setEditing(true) }} disabled={busy} />
-        {onClear ? <IconBtn kind="delete" title="Очистить" onClick={clear} disabled={busy || !value} /> : null}
+        <IconBtn outlined kind="edit" title="Редактировать" onClick={() => { setDraft(value || ''); setError(null); setEditing(true) }} disabled={busy} />
+        {onClear ? <IconBtn outlined kind="delete" title="Очистить" onClick={clear} disabled={busy || !value} /> : null}
       </div>
       {error ? <div style={{ fontSize: 12, color: 'var(--color-error)', marginTop: 4 }}>{error}</div> : null}
     </div>

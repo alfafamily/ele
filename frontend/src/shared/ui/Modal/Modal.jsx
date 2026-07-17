@@ -34,8 +34,7 @@ export function Modal({ open, onClose, title, children }) {
             {title ? <div className="ele-modal__title">{title}</div> : <span style={{ flex: 1 }} />}
             {onClose ? (
               <button type="button" className="ele-modal__close" onClick={onClose} aria-label="Закрыть">
-                {/* Высота крестика ≈ высоте заглавной буквы заголовка. */}
-                <Icon name="x" size={15} strokeWidth={2.2} />
+                <Icon name="x" size={20} strokeWidth={2} />
               </button>
             ) : null}
           </div>

@@ -154,34 +154,51 @@ const SWIPE_MIN = 50
 function GuideMobile() {
   const [index, setIndex] = useState(0)
   const last = GUIDE_SECTIONS.length - 1
-  const touch = useRef(null)
 
+  // Переход к разделу i (с зажимом в границы) + прокрутка к началу.
   const go = (i) => {
-    setIndex(Math.max(0, Math.min(last, i)))
-    window.scrollTo({ top: 0 })
+    setIndex((prev) => {
+      const next = Math.max(0, Math.min(last, i))
+      if (next !== prev) window.scrollTo({ top: 0 })
+      return next
+    })
   }
 
-  const onTouchStart = (e) => {
-    const t = e.touches[0]
-    touch.current = { x: t.clientX, y: t.clientY }
-  }
-  const onTouchEnd = (e) => {
-    if (!touch.current) return
-    const t = e.changedTouches[0]
-    const dx = t.clientX - touch.current.x
-    const dy = t.clientY - touch.current.y
-    touch.current = null
-    if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) < Math.abs(dy)) return
-    if (dx < 0) go(index + 1) // свайп влево — дальше
-    else go(index - 1) // свайп вправо — назад
-  }
+  // Свайп ловим слушателями на window — тогда он работает на любой позиции
+  // прокрутки длинного раздела, а не только у его верха. Функциональный
+  // setIndex избавляет от устаревшего замыкания по index (не пере-подписываемся).
+  useEffect(() => {
+    let start = null
+    const onStart = (e) => {
+      const t = e.touches[0]
+      start = { x: t.clientX, y: t.clientY }
+    }
+    const onEnd = (e) => {
+      if (!start) return
+      const t = e.changedTouches[0]
+      const dx = t.clientX - start.x
+      const dy = t.clientY - start.y
+      start = null
+      // Горизонтальный жест должен заметно преобладать над вертикальным.
+      if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) < Math.abs(dy) * 1.4) return
+      setIndex((prev) => {
+        const next = Math.max(0, Math.min(last, dx < 0 ? prev + 1 : prev - 1))
+        if (next !== prev) window.scrollTo({ top: 0 })
+        return next
+      })
+    }
+    window.addEventListener('touchstart', onStart, { passive: true })
+    window.addEventListener('touchend', onEnd, { passive: true })
+    return () => {
+      window.removeEventListener('touchstart', onStart)
+      window.removeEventListener('touchend', onEnd)
+    }
+  }, [last])
 
   return (
     <div className="ele-guide">
       <h1 className="ele-guide__h1">Руководство пользователя</h1>
-      {/* Свайп ловим на всей обёртке (а не только на карточке), чтобы он работал
-          и после прокрутки длинного раздела вниз. */}
-      <div className="ele-guide-m" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <div className="ele-guide-m">
         <GuideSelect sections={GUIDE_SECTIONS} index={index} onPick={go} />
 
         <div className="ele-guide-m__stage">
