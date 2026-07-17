@@ -16,6 +16,16 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.5.1] — 2026-07-17
+
+### Исправлено
+- **История изменений средств доступа** — правки набора зданий/помещений/мест
+  ключа или пропуска теперь отражаются в истории (раньше показывались только в
+  записи «Объект создан»).
+- **История изменений оборудования** — привязка и снятие лицензий теперь
+  отражаются в истории оборудования (движение «Установленная лицензия»); раньше
+  это было видно только в истории самой лицензии.
+
 ## [1.5.0] — 2026-07-17
 
 ### Добавлено
@@ -741,7 +751,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/alfafamily/ele/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/alfafamily/ele/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/alfafamily/ele/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/alfafamily/ele/compare/v1.2.0...v1.3.0
