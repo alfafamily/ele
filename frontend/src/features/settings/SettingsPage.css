@@ -1,0 +1,111 @@
+/* Раскладка настроек — как у десктопного «Руководства»: боковое меню слева
+   (липкое), контент справа. */
+.ele-settings__layout {
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+
+.ele-settings__nav {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ele-settings__nav-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.ele-settings__nav-item:hover {
+  background: var(--color-fill-active-tint);
+}
+
+.ele-settings__nav-item--active {
+  background: var(--color-fill-active-tint);
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+/* Мобильный селект раздела — как в мобильном «Руководстве». */
+.ele-settings__select {
+  position: relative;
+}
+
+.ele-settings__select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  border: none;
+  border-radius: var(--radius-control);
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ele-settings__select-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ele-settings__select-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-modal);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ele-settings__select-item {
+  display: block;
+  width: 100%;
+  padding: 11px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ele-settings__select-item--active {
+  background: var(--color-fill-active-tint);
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
