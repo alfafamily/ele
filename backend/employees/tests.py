@@ -166,8 +166,17 @@ class SimCardTests(APITestCase):
     def test_tab_filters_active_and_deactivated(self):
         SimCard.objects.create(employee=self.employee, phone_number="+79001112233")
         SimCard.objects.create(phone_number="+79004445566")  # свободна
+        # Вкладка «Активные» — все неутилизированные (и привязанные, и свободные);
+        # разделяет их фильтр status внутри вкладки (attached/free), см. ниже.
         active = self.client.get("/api/sim-cards/?tab=active")
-        self.assertEqual([s["phone_number"] for s in active.data["results"]], ["+79001112233"])
+        self.assertEqual(
+            sorted(s["phone_number"] for s in active.data["results"]),
+            ["+79001112233", "+79004445566"],
+        )
+        # Только привязанные — status=attached.
+        attached = self.client.get("/api/sim-cards/?tab=active&status=attached")
+        self.assertEqual([s["phone_number"] for s in attached.data["results"]], ["+79001112233"])
+        # tab=deactivated — только свободные (без сотрудника, неутилизированные).
         deact = self.client.get("/api/sim-cards/?tab=deactivated")
         self.assertEqual([s["phone_number"] for s in deact.data["results"]], ["+79004445566"])
 
