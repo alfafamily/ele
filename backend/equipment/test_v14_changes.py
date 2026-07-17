@@ -99,3 +99,33 @@ class FileRequisiteDeleteTests(APITestCase):
     def test_delete_file_requisite_returns_204(self):
         resp = self.client.delete(f"/api/equipment/{self.eq_id}/field-values/{self.file_field_id}/file/")
         self.assertEqual(resp.status_code, 204)
+
+
+class LicenseAttachHistoryTests(APITestCase):
+    """Привязка/снятие лицензии (связь на стороне License) отражается в истории
+    самого Оборудования — движением «Установленная лицензия»."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(self.admin)
+        self.type_id = self.client.post("/api/equipment-types/", {"name": "ПК"}, format="json").data["id"]
+        self.eq_id = self.client.post(
+            "/api/equipment/",
+            {"inventory_number": "INV-1", "equipment_type": self.type_id},
+            format="json",
+        ).data["id"]
+        from licenses.models import License
+
+        lt_id = self.client.post("/api/license-types/", {"name": "ПО"}, format="json").data["id"]
+        self.lic = License.objects.create(name="Office 2021", license_type_id=lt_id)
+
+    def test_attach_and_detach_appear_in_equipment_history(self):
+        r = self.client.patch(f"/api/licenses/{self.lic.id}/", {"equipment": self.eq_id}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        r = self.client.patch(f"/api/licenses/{self.lic.id}/", {"equipment": None}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        rows = self.client.get(f"/api/equipment/{self.eq_id}/history/").data
+        lic_rows = [row for row in rows if row["label"] == "Установленная лицензия"]
+        pairs = {(row["old"], row["new"]) for row in lic_rows}
+        self.assertIn(("—", "Office 2021"), pairs)  # установлена
+        self.assertIn(("Office 2021", "—"), pairs)  # снята

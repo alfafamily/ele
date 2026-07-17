@@ -290,6 +290,39 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         related_rows += cf_rows
         created_extra += cf_created
 
+        # Привязка/снятие лицензий — движения оборудования (лицензии привязывают
+        # с карточки оборудования). Связь хранится на стороне License
+        # (License.equipment), поэтому собственная история оборудования её не
+        # видит — восстанавливаем из истории лицензий: переход equipment_id к
+        # этому оборудованию = «установлена», от него = «снята».
+        from licenses.models import License
+
+        lic_ids = set(License.history.filter(equipment_id=eq.id).values_list("id", flat=True))
+        if lic_ids:
+            lic_hist = list(
+                License.history.filter(id__in=lic_ids)
+                .select_related("history_user")
+                .order_by("id", "history_date")
+            )
+            by_lic = {}
+            for r in lic_hist:
+                by_lic.setdefault(r.id, []).append(r)
+            for recs in by_lic.values():
+                prev_attached = False
+                for r in recs:
+                    attached = r.equipment_id == eq.id and r.history_type != "-"
+                    if attached != prev_attached:
+                        related_rows.append({
+                            "date": r.history_date,
+                            "author": r.history_user.email if r.history_user_id else None,
+                            "kind": "changed", "category": "movement",
+                            "label": "Установленная лицензия",
+                            "old": "—" if attached else r.name,
+                            "new": r.name if attached else "—",
+                            "secret": False, "comment": None,
+                        })
+                    prev_attached = attached
+
         rows = build_history_rows(
             eq, field_specs,
             movement_fields={"employee"},
