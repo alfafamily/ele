@@ -242,12 +242,21 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  flex-wrap: wrap;
+}
+
+/* Заголовок ужимается и обрезается многоточием — кнопки действий всегда остаются
+   в одной строке с ним и не переносятся, даже если заголовок длинный. */
+.ele-page-head > h1 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ele-page-head__actions {
   display: flex;
   gap: 10px;
+  flex: none;
 }
 
 /* Строка управления списком: вкладки (Активное/Архив…) + поиск + кнопка
@@ -284,16 +293,10 @@
 }
 
 @media (max-width: 768px) {
-  /* Заголовок ужимается/переносится, освобождая место кнопкам-иконкам. */
-  .ele-page-head > h1 {
-    min-width: 0;
-  }
-
   /* Действия остаются в строке заголовка квадратными кнопками-иконками
-     (текстовые подписи скрыты через .ele-only-desktop), а не уезжают под него. */
+     (текстовые подписи скрыты через .ele-only-desktop). */
   .ele-page-head__actions {
     gap: 8px;
-    flex: none;
   }
 
   .ele-page-head__actions .ele-btn {
