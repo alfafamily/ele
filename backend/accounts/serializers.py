@@ -43,11 +43,26 @@ class UserListSerializer(serializers.ModelSerializer):
 
     status = serializers.SerializerMethodField()
     employee_name = serializers.SerializerMethodField()
+    # Имя и фамилия отдельно — для мобильной раскладки списка (фамилия и имя на
+    # разных строках, каждая обрезается многоточием по своей колонке).
+    employee_first_name = serializers.SerializerMethodField()
+    employee_last_name = serializers.SerializerMethodField()
     employee_avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["id", "email", "role", "is_observer", "status", "employee", "employee_name", "employee_avatar"]
+        fields = [
+            "id",
+            "email",
+            "role",
+            "is_observer",
+            "status",
+            "employee",
+            "employee_name",
+            "employee_first_name",
+            "employee_last_name",
+            "employee_avatar",
+        ]
 
     def get_status(self, obj):
         if not obj.is_active:
@@ -58,6 +73,12 @@ class UserListSerializer(serializers.ModelSerializer):
 
     def get_employee_name(self, obj):
         return str(obj.employee) if obj.employee_id else None
+
+    def get_employee_first_name(self, obj):
+        return obj.employee.first_name if obj.employee_id else None
+
+    def get_employee_last_name(self, obj):
+        return obj.employee.last_name if obj.employee_id else None
 
     def get_employee_avatar(self, obj):
         # Аватар связанного Сотрудника — чтобы список Пользователей и карточка

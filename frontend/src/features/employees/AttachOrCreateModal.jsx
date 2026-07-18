@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchAllPages } from '../../shared/api/fetchAll'
 import { Button, EmptyState, Icon, Modal } from '../../shared/ui'
 import { KeyTarget } from '../../shared/keyTarget.jsx'
+import { assignEmployee } from '../equipment/equipmentApi.js'
 import { attachPass, attachSimCard } from './employeesApi.js'
 
 // Привязка к сотруднику переиспользуемых объектов (SIM/пропуск): показываем
@@ -30,18 +31,37 @@ const CONFIG = {
     attach: attachPass,
     match: (o, q) => [o.account_number].some((v) => (v || '').toLowerCase().includes(q)),
   },
+  equipment: {
+    title: 'Закрепить оборудование',
+    // Свободное (не закреплённое, не списанное) оборудование.
+    path: '/api/equipment/?tab=active&status=free',
+    placeholder: 'Поиск',
+    empty: 'Нет свободного оборудования',
+    emptyHint: 'Всё оборудование закреплено за сотрудниками или списано. Создайте новое.',
+    createLabel: 'Создать оборудование',
+    attach: assignEmployee,
+    match: (o, q) => [o.inventory_number, o.type_and_model].some((v) => (v || '').toLowerCase().includes(q)),
+  },
 }
 
 function SimRow({ item }) {
+  // Номер — в первой строке; тип (SIM/E-SIM) и оператор/поставщик — текстом во второй.
+  const details = [item.network_operator, item.provider].filter(Boolean).join(' / ') || 'без поставщика и оператора'
   return (
     <span style={{ minWidth: 0, flex: 1 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: 'var(--color-text-primary)', padding: '1px 6px', borderRadius: 5 }}>{item.sim_type_display}</span>
-        <span style={{ font: '600 13.5px var(--font-mono)' }}>{item.phone_number}</span>
-      </div>
+      <span style={{ font: '600 13.5px var(--font-mono)', display: 'block' }}>{item.phone_number}</span>
       <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
-        {[item.network_operator, item.provider].filter(Boolean).join(' / ') || 'без поставщика и оператора'}
+        {`${item.sim_type_display} · ${details}`}
       </div>
+    </span>
+  )
+}
+
+function EquipmentRow({ item }) {
+  return (
+    <span style={{ minWidth: 0, flex: 1 }}>
+      <div style={{ fontSize: 13.5, fontWeight: 600 }}>{item.type_and_model}</div>
+      <div style={{ font: '500 11.5px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{item.inventory_number}</div>
     </span>
   )
 }
@@ -156,7 +176,7 @@ export function AttachOrCreateModal({ kind, employeeId, onClose, onAttached, onC
                     >
                       {checked ? <Icon name="check" size={12} strokeWidth={3} style={{ color: '#fff' }} /> : null}
                     </span>
-                    {kind === 'sim' ? <SimRow item={item} /> : <PassRow item={item} />}
+                    {kind === 'sim' ? <SimRow item={item} /> : kind === 'pass' ? <PassRow item={item} /> : <EquipmentRow item={item} />}
                   </div>
                 )
               })}

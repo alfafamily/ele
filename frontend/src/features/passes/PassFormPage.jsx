@@ -1,22 +1,30 @@
 import { useEffect, useState } from 'react'
-import { Badge, Banner, Button, Icon, Input, Modal, Spinner } from '../../shared/ui'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Badge, Banner, Button, Card, Icon, Input, Spinner } from '../../shared/ui'
 import { getBuildings } from '../premises/premisesApi.js'
-import { createPass, updatePass } from './employeesApi.js'
+import { createPass, getPass, updatePass } from '../employees/employeesApi.js'
 
-// Добавление/редактирование средства доступа: пропуск СКУД или ключ.
-// Пропуск может действовать в нескольких зданиях (чекбоксы + помещения). Ключ —
-// строго один объект: одно здание ИЛИ одно помещение (радио-поведение), без
-// названия и типа «Авто/Пеший».
-export function PassModal({ employeeId, pass, onClose, onDone }) {
-  const isEdit = Boolean(pass)
+// Создание/редактирование средства доступа (пропуск СКУД или ключ) —
+// полноценная страница (как у оборудования и лицензий). Пропуск может действовать
+// в нескольких зданиях/помещениях; ключ — строго один объект (радио-поведение).
+// При создании из карточки сотрудника ?employee=<id> — создаём сразу привязанным
+// и возвращаемся на карточку сотрудника.
+export function PassFormPage() {
+  const { id } = useParams()
+  const isEdit = Boolean(id)
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const employeeId = searchParams.get('employee')
+
   const [buildings, setBuildings] = useState(null)
-  const [objectType, setObjectType] = useState(pass?.object_type || 'pass')
-  const [accountNumber, setAccountNumber] = useState(pass?.account_number || '')
-  const [typeVehicle, setTypeVehicle] = useState(pass?.type_vehicle || false)
-  const [typePedestrian, setTypePedestrian] = useState(pass?.type_pedestrian || false)
-  const [selBuildings, setSelBuildings] = useState(() => new Set((pass?.buildings || []).map((b) => b.id)))
-  const [selRooms, setSelRooms] = useState(() => new Set((pass?.rooms || []).map((r) => r.id)))
-  const [selPlaces, setSelPlaces] = useState(() => new Set((pass?.places || []).map((p) => p.id)))
+  const [prefilled, setPrefilled] = useState(!isEdit)
+  const [objectType, setObjectType] = useState('pass')
+  const [accountNumber, setAccountNumber] = useState('')
+  const [typeVehicle, setTypeVehicle] = useState(false)
+  const [typePedestrian, setTypePedestrian] = useState(false)
+  const [selBuildings, setSelBuildings] = useState(() => new Set())
+  const [selRooms, setSelRooms] = useState(() => new Set())
+  const [selPlaces, setSelPlaces] = useState(() => new Set())
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -27,6 +35,20 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
   useEffect(() => {
     getBuildings().then(setBuildings)
   }, [])
+
+  useEffect(() => {
+    if (!isEdit) return
+    getPass(id).then((pass) => {
+      setObjectType(pass.object_type || 'pass')
+      setAccountNumber(pass.account_number || '')
+      setTypeVehicle(pass.type_vehicle || false)
+      setTypePedestrian(pass.type_pedestrian || false)
+      setSelBuildings(new Set((pass.buildings || []).map((b) => b.id)))
+      setSelRooms(new Set((pass.rooms || []).map((r) => r.id)))
+      setSelPlaces(new Set((pass.places || []).map((p) => p.id)))
+      setPrefilled(true)
+    })
+  }, [id, isEdit])
 
   const activeRoomsOf = (b) => (b.rooms || []).filter((r) => !r.is_archived)
   // Места, которые можно выбрать как объект доступа: только с флагом
@@ -51,17 +73,17 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
       const rooms = activeRoomsOf(b)
       const roomIds = new Set(rooms.map((r) => r.id))
       const placeIds = new Set(rooms.flatMap((r) => passPlacesOf(r).map((p) => p.id)))
-      setSelRooms((prev) => new Set([...prev].filter((id) => !roomIds.has(id))))
-      setSelPlaces((prev) => new Set([...prev].filter((id) => !placeIds.has(id))))
+      setSelRooms((prev) => new Set([...prev].filter((rid) => !roomIds.has(rid))))
+      setSelPlaces((prev) => new Set([...prev].filter((pid) => !placeIds.has(pid))))
     }
   }
 
-  const toggleRoom = (b, id, checked) => {
+  const toggleRoom = (b, roomId, checked) => {
     if (isKey) {
       // Ключ: одно помещение (его здание — родитель), место сбрасывается.
       if (checked) {
         setSelBuildings(new Set([b.id]))
-        setSelRooms(new Set([id]))
+        setSelRooms(new Set([roomId]))
         setSelPlaces(new Set())
       } else {
         setSelRooms(new Set())
@@ -70,19 +92,19 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
     }
     setSelRooms((prev) => {
       const next = new Set(prev)
-      if (checked) next.add(id)
-      else next.delete(id)
+      if (checked) next.add(roomId)
+      else next.delete(roomId)
       return next
     })
   }
 
-  const togglePlace = (b, id, checked) => {
+  const togglePlace = (b, placeId, checked) => {
     if (isKey) {
       // Ключ: одно место (его здание — родитель), помещение сбрасывается.
       if (checked) {
         setSelBuildings(new Set([b.id]))
         setSelRooms(new Set())
-        setSelPlaces(new Set([id]))
+        setSelPlaces(new Set([placeId]))
       } else {
         setSelPlaces(new Set())
       }
@@ -90,8 +112,8 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
     }
     setSelPlaces((prev) => {
       const next = new Set(prev)
-      if (checked) next.add(id)
-      else next.delete(id)
+      if (checked) next.add(placeId)
+      else next.delete(placeId)
       return next
     })
   }
@@ -110,7 +132,8 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
     }
   }
 
-  const submit = async () => {
+  const submit = async (e) => {
+    e.preventDefault()
     setSubmitting(true)
     setError(null)
     setFieldErrors({})
@@ -124,11 +147,18 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
       place_ids: [...selPlaces],
     }
     // Из карточки сотрудника создаём сразу привязанным; из раздела — свободным.
-    if (!isEdit && employeeId) payload.employee = employeeId
+    if (!isEdit && employeeId) payload.employee = Number(employeeId)
     if (!isEdit && comment.trim()) payload.comment = comment.trim()
     try {
-      const saved = isEdit ? await updatePass(pass.id, payload) : await createPass(payload)
-      onDone(saved)
+      if (isEdit) {
+        await updatePass(id, payload)
+        navigate(-1)
+      } else {
+        const created = await createPass(payload)
+        // replace — чтобы форма создания не оставалась в истории. При создании из
+        // карточки сотрудника возвращаемся на неё, иначе — на карточку средства.
+        navigate(employeeId ? `/employees/${employeeId}` : `/passes/${created.id}`, { replace: true })
+      }
     } catch (err) {
       if (err.errors) {
         setFieldErrors(err.errors)
@@ -140,78 +170,97 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
     }
   }
 
-  const title = isEdit
-    ? isKey ? 'Редактирование ключа' : 'Редактирование пропуска'
-    : 'Новое средство доступа'
+  const title = isEdit ? (isKey ? 'Редактирование ключа' : 'Редактирование пропуска') : 'Новое средство доступа'
+  const ready = buildings !== null && prefilled
 
   return (
-    <Modal open onClose={onClose} title={title}>
-      {error ? <Banner variant="error">{error}</Banner> : null}
-      {buildings === null ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 30 }}>
-          <Spinner />
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div style={{ width: '100%', maxWidth: 660 }}>
+        <div className="ele-form-head">
+          <h1 className="ele-form-head__title">{title}</h1>
+          <div style={{ display: 'flex', gap: 10, flex: 'none' }}>
+            <Button variant="secondary" onClick={() => navigate(-1)} aria-label="Отмена">
+              <span className="ele-only-desktop">Отмена</span>
+              <Icon className="ele-only-mobile" name="x" size={18} strokeWidth={2} />
+            </Button>
+            <Button loading={submitting} disabled={!ready || selBuildings.size === 0} onClick={submit} aria-label="Сохранить">
+              <span className="ele-only-desktop">Сохранить</span>
+              <Icon className="ele-only-mobile" name="check" size={18} strokeWidth={2.2} />
+            </Button>
+          </div>
         </div>
-      ) : (
-        <>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, margin: '4px 0 20px' }}>
-            <div>
-              <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>Тип объекта</div>
-              <div className="ele-segmented">
-                <button
-                  type="button"
-                  className={'ele-segmented__btn' + (!isKey ? ' ele-segmented__btn--active' : '')}
-                  onClick={() => changeObjectType('pass')}
-                >
-                  Пропуск СКУД
-                </button>
-                <button
-                  type="button"
-                  className={'ele-segmented__btn' + (isKey ? ' ele-segmented__btn--active' : '')}
-                  onClick={() => changeObjectType('key')}
-                >
-                  Ключ
-                </button>
-              </div>
-            </div>
 
-            <Input
-              label="Учётный номер"
-              value={accountNumber}
-              onChange={(e) => setAccountNumber(e.target.value)}
-              error={fieldErrors.account_number}
-            />
+        {error ? <Banner variant="error">{error}</Banner> : null}
 
-            {!isKey ? (
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>Тип пропуска</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <CheckRow checked={typeVehicle} onChange={setTypeVehicle}>
-                      <span style={{ fontSize: 14, fontWeight: 500 }}>Авто</span>
-                    </CheckRow>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <CheckRow checked={typePedestrian} onChange={setTypePedestrian}>
-                      <span style={{ fontSize: 14, fontWeight: 500 }}>Пеший</span>
-                    </CheckRow>
+        {!ready ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
+            <Spinner />
+          </div>
+        ) : (
+          <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: error ? 16 : 0 }}>
+            <Card>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>Тип объекта</div>
+                  <div className="ele-segmented">
+                    <button
+                      type="button"
+                      className={'ele-segmented__btn' + (!isKey ? ' ele-segmented__btn--active' : '')}
+                      onClick={() => changeObjectType('pass')}
+                    >
+                      Пропуск СКУД
+                    </button>
+                    <button
+                      type="button"
+                      className={'ele-segmented__btn' + (isKey ? ' ele-segmented__btn--active' : '')}
+                      onClick={() => changeObjectType('key')}
+                    >
+                      Ключ
+                    </button>
                   </div>
                 </div>
-              </div>
-            ) : null}
 
-            <div>
-              <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>
+                <Input
+                  label="Учётный номер"
+                  value={accountNumber}
+                  onChange={(e) => setAccountNumber(e.target.value)}
+                  error={fieldErrors.account_number}
+                />
+
+                {!isKey ? (
+                  <div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>Тип пропуска</div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <CheckRow checked={typeVehicle} onChange={setTypeVehicle}>
+                          <span style={{ fontSize: 14, fontWeight: 500 }}>Авто</span>
+                        </CheckRow>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <CheckRow checked={typePedestrian} onChange={setTypePedestrian}>
+                          <span style={{ fontSize: 14, fontWeight: 500 }}>Пеший</span>
+                        </CheckRow>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </Card>
+
+            <Card>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>
                 {isKey ? 'Здание или помещение' : 'Здания и помещения'}
               </div>
               {isKey ? (
-                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+                <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
                   У ключа доступен строго один объект: отметьте здание целиком, одно помещение или одно место.
                 </div>
               ) : null}
               {buildings.length === 0 ? (
                 <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Зданий пока нет.</div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 340, overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {buildings.map((b) => {
                     const checked = selBuildings.has(b.id)
                     const rooms = activeRoomsOf(b)
@@ -272,29 +321,26 @@ export function PassModal({ employeeId, pass, onClose, onDone }) {
                   {Array.isArray(fieldErrors.place_ids) ? fieldErrors.place_ids[0] : fieldErrors.place_ids}
                 </div>
               ) : null}
-            </div>
+            </Card>
 
             {!isEdit ? (
-              <Input
-                label="Комментарий (необязательно)"
-                multiline
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Например: приобретено по договору или изготовлено у мастера (для ключей)"
-              />
+              <Card>
+                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Комментарий</div>
+                <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
+                  Необязательный. Отобразится в истории движений в записи создания.
+                </div>
+                <Input
+                  multiline
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Например: приобретено по договору или изготовлено у мастера (для ключей)"
+                />
+              </Card>
             ) : null}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <Button fullWidth loading={submitting} disabled={selBuildings.size === 0} onClick={submit}>
-              Сохранить
-            </Button>
-            <Button variant="secondary" fullWidth onClick={onClose}>
-              Отмена
-            </Button>
-          </div>
-        </>
-      )}
-    </Modal>
+          </form>
+        )}
+      </div>
+    </div>
   )
 }
 

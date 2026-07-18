@@ -7,7 +7,6 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
-import { SimCardModal } from '../employees/SimCardModal.jsx'
 
 const CACHE_KEY = 'sim-list'
 
@@ -38,15 +37,6 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('ru-RU')
 }
 
-// Плашка типа (SIM / E-SIM) перед номером — единая чёрная схема, как в SimCardInfo.
-function TypeBadge({ label }) {
-  return (
-    <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', background: 'var(--color-text-primary)', padding: '1px 7px', borderRadius: 5, whiteSpace: 'nowrap', flex: 'none' }}>
-      {label}
-    </span>
-  )
-}
-
 export function SimListPage() {
   const isPop = useNavigationType() === 'POP'
   const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
@@ -55,7 +45,6 @@ export function SimListPage() {
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
-  const [modal, setModal] = useState(null) // null | 'new'
   const columns = tab === 'active' ? ACTIVE_COLUMNS : UTILIZED_COLUMNS
 
   useEffect(() => {
@@ -63,7 +52,7 @@ export function SimListPage() {
   }, [tab, status, search, sort])
 
   const ordering = sort.dir === 'desc' ? `-${sort.key}` : sort.key
-  const { items, loading, loadingMore, hasMore, loadMore, error, refetch } = useCursorList(
+  const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList(
     '/api/sim-cards/',
     { tab, status: tab === 'active' ? status : undefined, search: debouncedSearch || undefined, ordering },
     { cacheKey: CACHE_KEY, restore: isPop },
@@ -82,11 +71,13 @@ export function SimListPage() {
         </h1>
         <Can perm="canManageEmployees">
           <div className="ele-page-head__actions">
-            <Button onClick={() => setModal('new')} title="Добавить SIM-карту" aria-label="Добавить SIM-карту">
-              <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />
-              <span className="ele-only-desktop">Добавить SIM-карту</span>
-              <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
-            </Button>
+            <Link to="/sim-cards/new">
+              <Button title="Добавить SIM-карту" aria-label="Добавить SIM-карту">
+                <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />
+                <span className="ele-only-desktop">Добавить SIM-карту</span>
+                <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
+              </Button>
+            </Link>
           </div>
         </Can>
       </div>
@@ -130,14 +121,11 @@ export function SimListPage() {
           {items.map((row) => (
             <Link key={row.id} to={`/sim-cards/${row.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
               <TableRow columns={columns}>
-                {/* Номер+тип в первой строке, оператор/поставщик — во второй */}
+                {/* Номер — в первой строке; тип (SIM/E-SIM) и оператор/поставщик — во второй */}
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                    <TypeBadge label={row.sim_type_display} />
-                    <span style={{ font: '600 13.5px var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.phone_number}</span>
-                  </div>
+                  <span style={{ font: '600 13.5px var(--font-mono)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.phone_number}</span>
                   <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {[row.network_operator, row.provider].filter(Boolean).join(' / ') || '—'}
+                    {`${row.sim_type_display} · ${[row.network_operator, row.provider].filter(Boolean).join(' / ') || 'без поставщика и оператора'}`}
                   </div>
                 </div>
                 {tab === 'active' ? (
@@ -160,17 +148,6 @@ export function SimListPage() {
           <InfiniteScrollSentinel hasMore={hasMore} loading={loadingMore} onLoadMore={loadMore} />
         </Table>
       )}
-
-      {modal ? (
-        <SimCardModal
-          onClose={() => setModal(null)}
-          onDone={() => {
-            setModal(null)
-            // Новая SIM (и привязанная, и свободная) видна во вкладке «Активные».
-            refetch()
-          }}
-        />
-      ) : null}
     </div>
   )
 }

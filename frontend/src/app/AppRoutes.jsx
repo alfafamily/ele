@@ -16,8 +16,10 @@ import { EmployeeCardPage } from '../features/employees/EmployeeCardPage.jsx'
 import { EmployeeFormPage } from '../features/employees/EmployeeFormPage.jsx'
 import { EmployeeListPage } from '../features/employees/EmployeeListPage.jsx'
 import { SimListPage } from '../features/sim/SimListPage.jsx'
+import { SimFormPage } from '../features/sim/SimFormPage.jsx'
 import { SimCardPage } from '../features/sim/SimCardPage.jsx'
 import { PassListPage } from '../features/passes/PassListPage.jsx'
+import { PassFormPage } from '../features/passes/PassFormPage.jsx'
 import { PassCardPage } from '../features/passes/PassCardPage.jsx'
 import { PremisesPage } from '../features/premises/PremisesPage.jsx'
 import { TypesEditorPage } from '../features/types/TypesEditorPage.jsx'
@@ -206,11 +208,27 @@ export function AppRoutes() {
           }
         />
         <Route
+          path="/sim-cards/new"
+          element={
+            <RequireStaff>
+              <SimFormPage />
+            </RequireStaff>
+          }
+        />
+        <Route
           path="/sim-cards/:id"
           element={
             <RequireViewer>
               <SimCardPage />
             </RequireViewer>
+          }
+        />
+        <Route
+          path="/sim-cards/:id/edit"
+          element={
+            <RequireStaff>
+              <SimFormPage />
+            </RequireStaff>
           }
         />
         <Route
@@ -222,11 +240,27 @@ export function AppRoutes() {
           }
         />
         <Route
+          path="/passes/new"
+          element={
+            <RequireStaff>
+              <PassFormPage />
+            </RequireStaff>
+          }
+        />
+        <Route
           path="/passes/:id"
           element={
             <RequireViewer>
               <PassCardPage />
             </RequireViewer>
+          }
+        />
+        <Route
+          path="/passes/:id/edit"
+          element={
+            <RequireStaff>
+              <PassFormPage />
+            </RequireStaff>
           }
         />
         <Route

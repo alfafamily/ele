@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
@@ -10,15 +10,14 @@ import {
   getSimCard,
   getSimHistoryPath,
 } from '../employees/employeesApi.js'
-import { SimCardModal } from '../employees/SimCardModal.jsx'
 import { SimDisposeModal } from '../employees/SimDisposeModal.jsx'
 
 export function SimCardPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const perms = usePermissions()
   const [sim, setSim] = useState(null)
   const [loadError, setLoadError] = useState(false)
-  const [editModal, setEditModal] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [disposeModal, setDisposeModal] = useState(false)
   const [historyKey, setHistoryKey] = useState(0)
@@ -58,7 +57,7 @@ export function SimCardPage() {
   // утилизированная → без действий (терминальный статус, удаления из системы нет).
   const actions = []
   if (perms.canManageEmployees && !sim.is_utilized) {
-    actions.push({ label: 'Редактировать', onClick: () => setEditModal(true) })
+    actions.push({ label: 'Редактировать', onClick: () => navigate(`/sim-cards/${sim.id}/edit`) })
     if (sim.employee) {
       actions.push({ label: 'Открепить', danger: true, onClick: () => setDisposeModal(true) })
     } else {
@@ -139,17 +138,6 @@ export function SimCardPage() {
           <HistoryList path={getSimHistoryPath(sim.id)} reloadKey={historyKey} />
         </Card>
       </div>
-
-      {editModal ? (
-        <SimCardModal
-          sim={sim}
-          onClose={() => setEditModal(false)}
-          onDone={() => {
-            setEditModal(false)
-            load()
-          }}
-        />
-      ) : null}
 
       {disposeModal ? (
         <SimDisposeModal

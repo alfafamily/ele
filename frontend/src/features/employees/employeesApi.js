@@ -11,6 +11,8 @@ export const terminateEmployee = (id, { deactivateUser, simActions, passActions 
   })
 export const getDepartments = () => apiGet('/api/employees/departments/')
 export const restoreEmployee = (id) => apiPost(`/api/employees/${id}/restore/`, {})
+// Архив выданного: завершённые эпизоды владения (объект + даты закрепления/открепления).
+export const getEmployeeIssuedArchive = (id) => apiGet(`/api/employees/${id}/issued-archive/`)
 
 // Корпоративные SIM/E-SIM — самостоятельный раздел + привязка из карточки Сотрудника.
 export const getSimCard = (id) => apiGet(`/api/sim-cards/${id}/`)

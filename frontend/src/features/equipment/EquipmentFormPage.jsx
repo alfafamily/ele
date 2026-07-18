@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { apiPost } from '../../shared/api/client'
 import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
 import { Banner, Button, Card, Icon, Input, Select, Spinner } from '../../shared/ui'
 import {
+  assignEmployee,
   createEquipment,
   deleteEquipmentFieldFilePath,
   getEquipment,
@@ -25,6 +26,9 @@ export function EquipmentFormPage() {
   const { id } = useParams()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  // Создание из карточки сотрудника — сразу закрепляем за ним и возвращаемся туда.
+  const employeeId = searchParams.get('employee')
 
   const [types, setTypes] = useState(null)
   const [equipment, setEquipment] = useState(null)
@@ -109,9 +113,26 @@ export function EquipmentFormPage() {
             uploadFailed = true
           }
         }
-        // replace — чтобы форма создания не оставалась в истории: с карточки
-        // нового объекта «Назад» ведёт в список, а не обратно в форму.
-        navigate(uploadFailed ? `/equipment/${created.id}/edit` : `/equipment/${created.id}`, { replace: true })
+        // Закрепление за сотрудником (если создаём из его карточки) — отдельным
+        // вызовом, т.к. форма оборудования не задаёт employee в payload.
+        if (employeeId) {
+          try {
+            await assignEmployee(created.id, Number(employeeId))
+          } catch {
+            // Не удалось закрепить — оставим объект свободным; пользователь
+            // сможет закрепить его с карточки оборудования.
+          }
+        }
+        // replace — чтобы форма создания не оставалась в истории. При загрузке
+        // файлов с ошибкой ведём на форму редактирования (слоты активны); иначе
+        // при создании из карточки сотрудника — обратно к нему, а из раздела —
+        // на карточку нового объекта.
+        const target = uploadFailed
+          ? `/equipment/${created.id}/edit`
+          : employeeId
+            ? `/employees/${employeeId}`
+            : `/equipment/${created.id}`
+        navigate(target, { replace: true })
       }
     } catch (err) {
       if (err.errors) {

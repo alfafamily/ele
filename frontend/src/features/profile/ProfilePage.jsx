@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext.jsx'
 import { roleLabel } from '../../shared/roles.js'
 import { nameInitials } from '../../shared/employeeName.js'
@@ -10,11 +9,6 @@ import { SimCardInfo } from '../employees/SimCardInfo.jsx'
 import { ChangeEmailModal } from './ChangeEmailModal.jsx'
 import { ChangePasswordModal } from './ChangePasswordModal.jsx'
 import { getMyEquipment, getMyPasses, getMySimCards } from './profileApi.js'
-
-function formatDate(iso) {
-  if (!iso) return 'ещё не менялся'
-  return new Date(iso).toLocaleDateString('ru-RU')
-}
 
 const avatarMenuItem = {
   border: 'none',
@@ -164,25 +158,24 @@ export function ProfilePage() {
         <Card>
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Данные учётной записи</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 28px' }}>
-            <Field label="Email" value={user.email} />
-            <Field label="Роль" value={roleLabel(user.role)} />
-            {employee ? (
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 4 }}>Связанный сотрудник</div>
-                <Link to={`/employees/${employee.id}`} style={{ fontSize: 14, fontWeight: 600 }}>
-                  {employee.full_name}
-                </Link>
-              </div>
-            ) : null}
+            <div>
+              <Field label="Email" value={user.email} />
+              <Button variant="secondary" style={{ marginTop: 16 }} onClick={() => setShowChangeEmail(true)}>
+                Сменить email
+              </Button>
+            </div>
+            <div>
+              <Field label="Роль" value={roleLabel(user.role)} />
+              <Button variant="secondary" style={{ marginTop: 16 }} onClick={() => setShowChangePassword(true)}>
+                Сменить пароль
+              </Button>
+            </div>
           </div>
-          <Button variant="secondary" style={{ marginTop: 16 }} onClick={() => setShowChangeEmail(true)}>
-            Сменить email
-          </Button>
         </Card>
 
         {employee ? (
           <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Информация о сотруднике</div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Обо мне</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 28px' }}>
               <Field label="Имя" value={employee.first_name} />
               <Field label="Фамилия" value={employee.last_name} />
@@ -238,17 +231,6 @@ export function ProfilePage() {
           </Card>
         ) : null}
 
-        <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>Пароль</div>
-            <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginTop: 3 }}>
-              Последнее изменение — {formatDate(user.password_changed_at)}
-            </div>
-          </div>
-          <Button variant="secondary" onClick={() => setShowChangePassword(true)}>
-            Сменить пароль
-          </Button>
-        </Card>
       </div>
 
       {showChangePassword ? <ChangePasswordModal onClose={() => setShowChangePassword(false)} onDone={() => setShowChangePassword(false)} /> : null}

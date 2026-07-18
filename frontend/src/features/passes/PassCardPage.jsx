@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
@@ -11,15 +11,14 @@ import {
   getPassHistoryPath,
 } from '../employees/employeesApi.js'
 import { KeyTarget } from '../../shared/keyTarget.jsx'
-import { PassModal } from '../employees/PassModal.jsx'
 import { PassDisposeModal } from '../employees/PassDisposeModal.jsx'
 
 export function PassCardPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const perms = usePermissions()
   const [pass, setPass] = useState(null)
   const [loadError, setLoadError] = useState(false)
-  const [editModal, setEditModal] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [disposeModal, setDisposeModal] = useState(false)
   const [historyKey, setHistoryKey] = useState(0)
@@ -69,7 +68,7 @@ export function PassCardPage() {
   // статус, удаления из системы нет — только утилизация).
   const actions = []
   if (perms.canManageEmployees && !pass.is_utilized) {
-    actions.push({ label: 'Редактировать', onClick: () => setEditModal(true) })
+    actions.push({ label: 'Редактировать', onClick: () => navigate(`/passes/${pass.id}/edit`) })
     if (pass.employee) {
       actions.push({ label: 'Открепить', danger: true, onClick: () => setDisposeModal(true) })
     } else {
@@ -174,17 +173,6 @@ export function PassCardPage() {
           <HistoryList path={getPassHistoryPath(pass.id)} reloadKey={historyKey} />
         </Card>
       </div>
-
-      {editModal ? (
-        <PassModal
-          pass={pass}
-          onClose={() => setEditModal(false)}
-          onDone={() => {
-            setEditModal(false)
-            load()
-          }}
-        />
-      ) : null}
 
       {disposeModal ? (
         <PassDisposeModal

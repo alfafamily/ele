@@ -16,7 +16,7 @@ export function NotFoundPage() {
           <Button variant="secondary" onClick={() => navigate(-1)}>
             Назад
           </Button>
-          <Button onClick={() => navigate('/')}>На главную</Button>
+          <Button onClick={() => navigate('/profile')}>На главную</Button>
         </div>
       </div>
     </div>

@@ -14,7 +14,7 @@ export function ServerErrorPage() {
           Внутренняя ошибка сервера. Мы уже уведомлены. Попробуйте обновить страницу или вернуться позже.
         </div>
         <div className="ele-error-card__actions">
-          <Button variant="secondary" onClick={() => window.location.assign('/')}>
+          <Button variant="secondary" onClick={() => window.location.assign('/profile')}>
             На главную
           </Button>
           <Button onClick={() => window.location.reload()}>Обновить</Button>

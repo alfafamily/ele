@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useNavigationType, useParams } from 'react-router-dom'
 import { apiPatch } from '../../shared/api/client'
 import { Can, usePermissions } from '../../app/usePermissions.js'
-import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner, StatusPill } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner, StatusPill, Table, TabBar, TableRow } from '../../shared/ui'
+import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
+import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
+import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { nameInitials } from '../../shared/employeeName.js'
-import { getEmployee, restoreEmployee, uploadEmployeeAvatar } from './employeesApi.js'
+import { getEmployee, getEmployeeIssuedArchive, restoreEmployee, uploadEmployeeAvatar } from './employeesApi.js'
 import { AttachOrCreateModal } from './AttachOrCreateModal.jsx'
 import { PassInfo } from './PassInfo.jsx'
-import { PassModal } from './PassModal.jsx'
 import { PassDisposeModal } from './PassDisposeModal.jsx'
 import { SimCardInfo } from './SimCardInfo.jsx'
-import { SimCardModal } from './SimCardModal.jsx'
 import { SimDisposeModal } from './SimDisposeModal.jsx'
 import { TerminateModal } from './TerminateModal.jsx'
 
@@ -18,15 +19,23 @@ export function EmployeeCardPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const perms = usePermissions()
+  const isMobile = useMediaQuery('(max-width: 768px)')
+  // При возврате «назад» (POP) с карточки объекта — восстанавливаем активную
+  // вкладку и позицию прокрутки (например, из «Архива» к нужной строке).
+  const isPop = useNavigationType() === 'POP'
+  const cacheKey = `employee-card-${id}`
+  const savedUi = isPop ? readListCache(cacheKey)?.ui : undefined
   const [employee, setEmployee] = useState(null)
+  // Вкладки карточки: «Выдано» (текущие блоки) / «Архив» (завершённые эпизоды).
+  const [tab, setTab] = useState(() => savedUi?.tab ?? 'issued')
+  const [archive, setArchive] = useState(null)
   const [showTerminate, setShowTerminate] = useState(false)
-  // null — закрыто; 'new' — создание новой (сразу привязанной); объект SIM —
-  // редактирование. simAttach — модалка выбора свободной для привязки.
-  const [simModal, setSimModal] = useState(null)
+  // Создание/редактирование SIM и пропусков — отдельные страницы-формы
+  // (/sim-cards/new|:id/edit, /passes/new|:id/edit). Здесь остаётся только
+  // модалка выбора свободного объекта для привязки.
   const [simAttach, setSimAttach] = useState(false)
-  // Аналогично для пропусков.
-  const [passModal, setPassModal] = useState(null)
   const [passAttach, setPassAttach] = useState(false)
+  const [equipmentAttach, setEquipmentAttach] = useState(false)
   // Открепление/утилизация — выбор действия (SimDisposeModal/PassDisposeModal).
   const [disposeSim, setDisposeSim] = useState(null)
   const [disposePass, setDisposePass] = useState(null)
@@ -37,9 +46,28 @@ export function EmployeeCardPage() {
 
   const load = useCallback(() => {
     getEmployee(id).then(setEmployee)
+    // Инвалидируем архив: после привязки/открепления состав эпизодов меняется.
+    setArchive(null)
   }, [id])
 
   useEffect(load, [load])
+
+  // Архив грузим лениво — при первом открытии вкладки (и после инвалидации).
+  useEffect(() => {
+    if (tab === 'archive' && archive === null) {
+      getEmployeeIssuedArchive(id).then(setArchive)
+    }
+  }, [tab, archive, id])
+
+  // Пишем активную вкладку в кэш — чтобы «назад» с карточки объекта вернул на неё.
+  useEffect(() => {
+    writeListCache(cacheKey, { ui: { tab } })
+  }, [cacheKey, tab])
+
+  // Восстанавливаем прокрутку при POP, как только содержимое активной вкладки
+  // готово (для «Архива» — после загрузки таблицы).
+  const contentReady = employee != null && (tab === 'archive' ? archive !== null : true)
+  useScrollRestoration(cacheKey, isPop && contentReady)
 
   if (!employee) {
     return (
@@ -110,8 +138,17 @@ export function EmployeeCardPage() {
               <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onAvatarSelected} />
             ) : null}
             <div style={{ minWidth: 0 }}>
-              {/* Должность/отдел в заголовке не дублируем — они в «Данных сотрудника» */}
-              <div className="ele-clamp-2" style={{ fontSize: 20, fontWeight: 600 }}>{employee.full_name}</div>
+              {/* Должность/отдел в заголовке не дублируем — они в «Данных сотрудника».
+                  На мобилке фамилия и имя — на отдельных строках, каждая обрезается
+                  многоточием по ширине (как в списке Пользователей). */}
+              {isMobile ? (
+                <div style={{ fontSize: 20, fontWeight: 600, minWidth: 0 }}>
+                  <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{employee.last_name}</div>
+                  <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{employee.first_name}</div>
+                </div>
+              ) : (
+                <div className="ele-clamp-2" style={{ fontSize: 20, fontWeight: 600 }}>{employee.full_name}</div>
+              )}
             </div>
           </div>
           {employee.is_employed ? (
@@ -156,12 +193,23 @@ export function EmployeeCardPage() {
           </div>
         </Card>
 
+        <div>
+          <TabBar options={ISSUED_ARCHIVE_TABS} value={tab} onChange={setTab} />
+        </div>
+
+        {tab === 'issued' ? (
+        <>
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Закреплённое оборудование</div>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
               {employee.equipment.length}
             </span>
+            {employee.is_employed ? (
+              <Can perm="canManageEquipment">
+                <AddButton isMobile={isMobile} onClick={() => setEquipmentAttach(true)} label="Закрепить оборудование" />
+              </Can>
+            ) : null}
           </div>
           {employee.equipment.length === 0 ? (
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено оборудование.</div>
@@ -200,6 +248,11 @@ export function EmployeeCardPage() {
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
               {employee.sim_cards.length}
             </span>
+            {employee.is_employed ? (
+              <Can perm="canManageEmployees">
+                <AddButton isMobile={isMobile} onClick={() => setSimAttach(true)} label="Добавить SIM-карту" />
+              </Can>
+            ) : null}
           </div>
           {employee.sim_cards.length === 0 ? (
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено SIM-карт.</div>
@@ -210,7 +263,7 @@ export function EmployeeCardPage() {
                 {employee.is_employed ? (
                   <Can perm="canManageEmployees">
                     <div className="ele-card-actions-desktop">
-                      <Button variant="secondary" onClick={() => setSimModal(sim)}>
+                      <Button variant="secondary" onClick={() => navigate(`/sim-cards/${sim.id}/edit`)}>
                         Изменить
                       </Button>
                       <Button variant="secondary" onClick={() => askDetachSim(sim)}>
@@ -220,7 +273,7 @@ export function EmployeeCardPage() {
                     <div className="ele-card-actions-mobile">
                       <ActionMenu
                         items={[
-                          { label: 'Изменить', onClick: () => setSimModal(sim) },
+                          { label: 'Изменить', onClick: () => navigate(`/sim-cards/${sim.id}/edit`) },
                           { label: 'Открепить', onClick: () => askDetachSim(sim) },
                         ]}
                       />
@@ -230,14 +283,6 @@ export function EmployeeCardPage() {
               </div>
             ))
           )}
-          {employee.is_employed ? (
-            <Can perm="canManageEmployees">
-              <Button variant="secondary" fullWidth style={{ marginTop: employee.sim_cards.length ? 4 : 12 }} onClick={() => setSimAttach(true)}>
-                <Icon name="plus" size={18} strokeWidth={2.2} />
-                Добавить SIM-карту
-              </Button>
-            </Can>
-          ) : null}
         </Card>
 
         <Card>
@@ -246,6 +291,11 @@ export function EmployeeCardPage() {
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
               {employee.passes.length}
             </span>
+            {employee.is_employed ? (
+              <Can perm="canManageEmployees">
+                <AddButton isMobile={isMobile} onClick={() => setPassAttach(true)} label="Добавить средство доступа" />
+              </Can>
+            ) : null}
           </div>
           {employee.passes.length === 0 ? (
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено средств доступа.</div>
@@ -256,7 +306,7 @@ export function EmployeeCardPage() {
                 {employee.is_employed ? (
                   <Can perm="canManageEmployees">
                     <div className="ele-card-actions-desktop">
-                      <Button variant="secondary" onClick={() => setPassModal(pass)}>
+                      <Button variant="secondary" onClick={() => navigate(`/passes/${pass.id}/edit`)}>
                         Изменить
                       </Button>
                       <Button variant="secondary" onClick={() => askDetachPass(pass)}>
@@ -266,7 +316,7 @@ export function EmployeeCardPage() {
                     <div className="ele-card-actions-mobile">
                       <ActionMenu
                         items={[
-                          { label: 'Изменить', onClick: () => setPassModal(pass) },
+                          { label: 'Изменить', onClick: () => navigate(`/passes/${pass.id}/edit`) },
                           { label: 'Открепить', onClick: () => askDetachPass(pass) },
                         ]}
                       />
@@ -276,15 +326,11 @@ export function EmployeeCardPage() {
               </div>
             ))
           )}
-          {employee.is_employed ? (
-            <Can perm="canManageEmployees">
-              <Button variant="secondary" fullWidth style={{ marginTop: employee.passes.length ? 4 : 12 }} onClick={() => setPassAttach(true)}>
-                <Icon name="plus" size={18} strokeWidth={2.2} />
-                Добавить средство доступа
-              </Button>
-            </Can>
-          ) : null}
         </Card>
+        </>
+        ) : (
+          <ArchiveTab archive={archive} />
+        )}
       </div>
 
       {simAttach ? (
@@ -298,19 +344,7 @@ export function EmployeeCardPage() {
           }}
           onCreateNew={() => {
             setSimAttach(false)
-            setSimModal('new')
-          }}
-        />
-      ) : null}
-
-      {simModal ? (
-        <SimCardModal
-          employeeId={employee.id}
-          sim={simModal === 'new' ? null : simModal}
-          onClose={() => setSimModal(null)}
-          onDone={() => {
-            setSimModal(null)
-            load()
+            navigate(`/sim-cards/new?employee=${employee.id}`)
           }}
         />
       ) : null}
@@ -326,19 +360,23 @@ export function EmployeeCardPage() {
           }}
           onCreateNew={() => {
             setPassAttach(false)
-            setPassModal('new')
+            navigate(`/passes/new?employee=${employee.id}`)
           }}
         />
       ) : null}
 
-      {passModal ? (
-        <PassModal
+      {equipmentAttach ? (
+        <AttachOrCreateModal
+          kind="equipment"
           employeeId={employee.id}
-          pass={passModal === 'new' ? null : passModal}
-          onClose={() => setPassModal(null)}
-          onDone={() => {
-            setPassModal(null)
+          onClose={() => setEquipmentAttach(false)}
+          onAttached={() => {
+            setEquipmentAttach(false)
             load()
+          }}
+          onCreateNew={() => {
+            setEquipmentAttach(false)
+            navigate(`/equipment/new?employee=${employee.id}`)
           }}
         />
       ) : null}
@@ -394,5 +432,101 @@ function Field({ label, value }) {
       <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 14, fontWeight: 500 }}>{value || '—'}</div>
     </div>
+  )
+}
+
+// Кнопка добавления в заголовке блока: на десктопе «+ Добавить»; на мобилке —
+// квадратная кнопка-иконка «+» того же размера, что и кнопки-меню «…».
+function AddButton({ isMobile, onClick, label }) {
+  return (
+    <Button
+      variant="secondary"
+      onClick={onClick}
+      aria-label={label}
+      title={isMobile ? label : undefined}
+      style={
+        isMobile
+          ? { marginLeft: 'auto', flex: 'none', width: 'var(--control-height)', minWidth: 'var(--control-height)', padding: 0 }
+          : { marginLeft: 'auto', flex: 'none' }
+      }
+    >
+      <Icon name="plus" size={isMobile ? 20 : 18} strokeWidth={2.2} />
+      {isMobile ? null : 'Добавить'}
+    </Button>
+  )
+}
+
+const ISSUED_ARCHIVE_TABS = [
+  { value: 'issued', label: 'Выдано' },
+  { value: 'archive', label: 'Архив' },
+]
+
+// Таблица «Архив»: две колонки — объект (как в списке своего раздела) и период
+// «прикрепление → открепление».
+const ARCHIVE_COLUMNS = [
+  { key: 'object', label: 'Объект', width: 'minmax(0, 1fr)' },
+  { key: 'period', label: 'Дата прикрепления / открепления', width: '160px' },
+]
+
+const ARCHIVE_OBJECT_PATH = { equipment: 'equipment', sim: 'sim-cards', pass: 'passes' }
+
+function formatDate(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('ru-RU')
+}
+
+// Контент первой колонки — тот же, что в списке соответствующего раздела.
+function ArchiveObject({ row }) {
+  if (row.kind === 'sim') return <SimCardInfo sim={row.object} />
+  if (row.kind === 'pass') return <PassInfo pass={row.object} />
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600 }}>{row.object.type_and_model}</div>
+      <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{row.object.inventory_number}</div>
+    </div>
+  )
+}
+
+function ArchiveTab({ archive }) {
+  if (archive === null) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+        <Spinner />
+      </div>
+    )
+  }
+  if (archive.length === 0) {
+    return (
+      <Card>
+        <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>Ранее выданных объектов нет.</div>
+      </Card>
+    )
+  }
+  return (
+    <Table fit columns={ARCHIVE_COLUMNS}>
+      {archive.map((row) => {
+        const key = `${row.kind}-${row.object.id}-${row.detached_at}`
+        const inner = (
+          <TableRow columns={ARCHIVE_COLUMNS}>
+            <div style={{ minWidth: 0 }}>
+              <ArchiveObject row={row} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ font: '500 12.5px var(--font-mono)' }}>{formatDate(row.attached_at)}</div>
+              <div style={{ font: '500 12.5px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>
+                → {formatDate(row.detached_at)}
+              </div>
+            </div>
+          </TableRow>
+        )
+        return row.exists ? (
+          <Link key={key} to={`/${ARCHIVE_OBJECT_PATH[row.kind]}/${row.object.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+            {inner}
+          </Link>
+        ) : (
+          <div key={key}>{inner}</div>
+        )
+      })}
+    </Table>
   )
 }

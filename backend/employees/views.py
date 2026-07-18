@@ -167,6 +167,115 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         )
         return Response(list(values))
 
+    @action(detail=True, methods=["get"], url_path="issued-archive")
+    def issued_archive(self, request, pk=None):
+        """Архив выданного: по истории (django-simple-history) собираем
+        ЗАВЕРШЁННЫЕ эпизоды владения — объекты (оборудование/SIM/пропуска),
+        которые были закреплены за сотрудником и позднее откреплены любым
+        способом (открепление, увольнение, утилизация/списание, передача
+        другому). Текущие (незакрытые) привязки — на вкладке «Выдано»,
+        в архив не попадают.
+
+        Отдельной модели/полей не требуется: даты и владельцы уже пишутся в
+        исторические таблицы. Здесь только реконструкция пар «прикреплён →
+        откреплён» (переход employee_id к сотруднику = закрепление, от него —
+        в т.ч. в NULL/другого/при удалении — открепление) и сортировка по дате
+        открепления (свежие выше). Один объект может дать несколько эпизодов
+        (повторные выдачи).
+        """
+        from equipment.models import Equipment
+        from equipment.serializers import EquipmentMiniSerializer
+
+        employee = self.get_object()
+        eid = employee.id
+
+        def episodes(history_manager):
+            out = []  # (object_id, attached_at, detached_at, last_record)
+            obj_ids = set(history_manager.filter(employee_id=eid).values_list("id", flat=True))
+            for oid in obj_ids:
+                recs = list(history_manager.filter(id=oid).order_by("history_date", "history_id"))
+                prev_here = False
+                attached_at = None
+                for r in recs:
+                    here = r.employee_id == eid and r.history_type != "-"
+                    if here and not prev_here:
+                        attached_at = r.history_date
+                    elif prev_here and not here:
+                        out.append((oid, attached_at, r.history_date, r))
+                        attached_at = None
+                    prev_here = here
+            return out
+
+        results = []
+
+        # Оборудование
+        eq_eps = episodes(Equipment.history)
+        eq_map = {
+            e.id: e
+            for e in Equipment.objects.filter(id__in=[o for o, *_ in eq_eps])
+            .select_related("equipment_type")
+            .prefetch_related("field_values__field")
+        }
+        for oid, att, det, snap in eq_eps:
+            obj = eq_map.get(oid)
+            if obj is not None:
+                data, exists = EquipmentMiniSerializer(obj).data, True
+            else:
+                data = {"id": oid, "inventory_number": snap.inventory_number, "type_and_model": snap.inventory_number}
+                exists = False
+            results.append({"kind": "equipment", "object": data, "exists": exists, "attached_at": att, "detached_at": det})
+
+        # SIM/E-SIM
+        sim_eps = episodes(SimCard.history)
+        sim_map = {s.id: s for s in SimCard.objects.filter(id__in=[o for o, *_ in sim_eps]).select_related("employee")}
+        sim_type_labels = dict(SimCard.SimType.choices)
+        for oid, att, det, snap in sim_eps:
+            obj = sim_map.get(oid)
+            if obj is not None:
+                data, exists = SimCardSerializer(obj).data, True
+            else:
+                data = {
+                    "id": oid,
+                    "phone_number": snap.phone_number,
+                    "sim_type": snap.sim_type,
+                    "sim_type_display": sim_type_labels.get(snap.sim_type, snap.sim_type or "—"),
+                    "network_operator": snap.network_operator,
+                    "provider": snap.provider,
+                }
+                exists = False
+            results.append({"kind": "sim", "object": data, "exists": exists, "attached_at": att, "detached_at": det})
+
+        # Пропуска/ключи
+        pass_eps = episodes(AccessPass.history)
+        pass_map = {
+            p.id: p
+            for p in AccessPass.objects.filter(id__in=[o for o, *_ in pass_eps]).prefetch_related(
+                "buildings", "rooms", "places__room"
+            )
+        }
+        pass_type_labels = dict(AccessPass.ObjectType.choices)
+        for oid, att, det, snap in pass_eps:
+            obj = pass_map.get(oid)
+            if obj is not None:
+                data, exists = AccessPassSerializer(obj).data, True
+            else:
+                data = {
+                    "id": oid,
+                    "object_type": snap.object_type,
+                    "object_type_display": pass_type_labels.get(snap.object_type, snap.object_type or "—"),
+                    "account_number": snap.account_number,
+                    "type_vehicle": snap.type_vehicle,
+                    "type_pedestrian": snap.type_pedestrian,
+                    "buildings": [],
+                    "rooms": [],
+                    "places": [],
+                }
+                exists = False
+            results.append({"kind": "pass", "object": data, "exists": exists, "attached_at": att, "detached_at": det})
+
+        results.sort(key=lambda r: r["detached_at"], reverse=True)
+        return Response(results)
+
 
 class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     """Корпоративные SIM/E-SIM — самостоятельный раздел (admin/accountant).

@@ -155,7 +155,12 @@ export function UsersTab() {
                   <>
                     <Avatar user={u} />
                     {isMobile ? (
-                      <span className="ele-clamp-2" style={{ minWidth: 0 }}>{u.employee_name}</span>
+                      // Фамилия и имя — на разных строках; каждая обрезается
+                      // многоточием по ширине колонки (не переносится).
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.employee_last_name}</span>
+                        <span style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.employee_first_name}</span>
+                      </span>
                     ) : (
                       <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.employee_name}</span>
                     )}

@@ -8,7 +8,6 @@ import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Badge, Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 import { KeyTarget } from '../../shared/keyTarget.jsx'
-import { PassModal } from '../employees/PassModal.jsx'
 
 const CACHE_KEY = 'pass-list'
 
@@ -63,7 +62,6 @@ export function PassListPage() {
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
-  const [modal, setModal] = useState(null) // null | 'new'
   const columns = tab === 'active' ? ACTIVE_COLUMNS : UTILIZED_COLUMNS
 
   useEffect(() => {
@@ -71,7 +69,7 @@ export function PassListPage() {
   }, [tab, status, search, sort])
 
   const ordering = sort.dir === 'desc' ? `-${sort.key}` : sort.key
-  const { items, loading, loadingMore, hasMore, loadMore, error, refetch } = useCursorList(
+  const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList(
     '/api/access-passes/',
     { tab, status: tab === 'active' ? status : undefined, search: debouncedSearch || undefined, ordering },
     { cacheKey: CACHE_KEY, restore: isPop },
@@ -90,11 +88,13 @@ export function PassListPage() {
         </h1>
         <Can perm="canManageEmployees">
           <div className="ele-page-head__actions">
-            <Button onClick={() => setModal('new')} title="Добавить средство доступа" aria-label="Добавить средство доступа">
-              <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />
-              <span className="ele-only-desktop">Добавить средство доступа</span>
-              <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
-            </Button>
+            <Link to="/passes/new">
+              <Button title="Добавить средство доступа" aria-label="Добавить средство доступа">
+                <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />
+                <span className="ele-only-desktop">Добавить средство доступа</span>
+                <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
+              </Button>
+            </Link>
           </div>
         </Can>
       </div>
@@ -192,17 +192,6 @@ export function PassListPage() {
           <InfiniteScrollSentinel hasMore={hasMore} loading={loadingMore} onLoadMore={loadMore} />
         </Table>
       )}
-
-      {modal ? (
-        <PassModal
-          onClose={() => setModal(null)}
-          onDone={() => {
-            setModal(null)
-            // Новый пропуск/ключ (выданный или свободный) виден во вкладке «Активные».
-            refetch()
-          }}
-        />
-      ) : null}
     </div>
   )
 }

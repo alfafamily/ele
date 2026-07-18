@@ -176,7 +176,7 @@ export function PremisesPage() {
 
           {allBuildings.length > 0 ? (
             <div style={{ padding: '0 4px 8px' }}>
-              <SearchInput value={buildingSearch} onChange={setBuildingSearch} placeholder="Поиск по названию, адресу" />
+              <SearchInput value={buildingSearch} onChange={setBuildingSearch} placeholder="Поиск" />
             </div>
           ) : null}
 
@@ -260,7 +260,7 @@ export function PremisesPage() {
 
             {selected.rooms.length > 0 ? (
               <div style={{ marginBottom: 12 }}>
-                <SearchInput value={roomSearch} onChange={setRoomSearch} placeholder="Поиск по названию / номеру" />
+                <SearchInput value={roomSearch} onChange={setRoomSearch} placeholder="Поиск" />
               </div>
             ) : null}
 
