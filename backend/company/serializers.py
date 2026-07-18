@@ -115,6 +115,28 @@ class NumberingSettingsSerializer(serializers.ModelSerializer):
     def validate_pass_number_prefix(self, value):
         return self._clean_prefix(value)
 
+    _PREFIX_FIELDS = ("equipment_number_prefix", "key_number_prefix", "pass_number_prefix")
+
+    def validate(self, attrs):
+        # Префиксы должны различаться между видами объектов — иначе номера разных
+        # списков пересекались бы (например KEY-1 и у ключа, и у пропуска).
+        # Сравниваем без учёта регистра; при PATCH недостающие поля берём из
+        # текущих значений. Ошибку кладём на редактируемое поле (из payload).
+        effective = {
+            f: attrs.get(f) if attrs.get(f) is not None else (getattr(self.instance, f) if self.instance else "")
+            for f in self._PREFIX_FIELDS
+        }
+        norm = {f: effective[f].strip().casefold() for f in self._PREFIX_FIELDS}
+        errors = {}
+        for f in self._PREFIX_FIELDS:
+            if f not in attrs:
+                continue
+            if any(other != f and norm[f] and norm[f] == norm[other] for other in self._PREFIX_FIELDS):
+                errors[f] = "Префикс должен отличаться от префиксов других видов объектов."
+        if errors:
+            raise serializers.ValidationError(errors)
+        return attrs
+
 
 class BackupSettingsSerializer(serializers.ModelSerializer):
     class Meta:

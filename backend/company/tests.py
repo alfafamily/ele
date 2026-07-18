@@ -438,6 +438,19 @@ class NumberingSettingsTests(APITestCase):
         resp = self.client.post("/api/company/next-number/", {"kind": "widget"}, format="json")
         self.assertEqual(resp.status_code, 400)
 
+    def test_duplicate_prefix_across_kinds_rejected(self):
+        self.client.force_authenticate(user=self.admin)
+        # У ключей по умолчанию KEY — задать пропускам тот же префикс нельзя.
+        resp = self.client.patch("/api/company/numbering-settings/", {"pass_number_prefix": "KEY"}, format="json")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("pass_number_prefix", resp.data["errors"])
+        # Регистр не спасает — сравнение без учёта регистра.
+        resp = self.client.patch("/api/company/numbering-settings/", {"pass_number_prefix": "key"}, format="json")
+        self.assertEqual(resp.status_code, 400)
+        # Уникальный префикс — принимается.
+        resp = self.client.patch("/api/company/numbering-settings/", {"pass_number_prefix": "CARD"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+
     def test_next_number_forbidden_for_worker(self):
         worker = User.objects.create_user(email="worker@example.com", password="Str0ng!Pass1")
         self.client.force_authenticate(user=worker)
