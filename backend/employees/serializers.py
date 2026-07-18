@@ -118,20 +118,20 @@ class AccessPassSerializer(serializers.ModelSerializer):
         # action attach/detach; статусы утилизации — read-only (только action
         # utilize).
         read_only_fields = ["created_at", "is_utilized", "utilized_at", "utilization_reason"]
+        # Уникальность учётного номера проверяем вручную в validate() — в разрезе
+        # object_type и только среди непустых (B1). Иначе DRF из составного
+        # UniqueConstraint (object_type, account_number) автоматически добавил бы
+        # UniqueTogetherValidator, который делает account_number обязательным и
+        # отдаёт ошибку в non_field_errors — оба поведения нам не нужны.
+        validators = []
 
     def get_employee_name(self, obj):
         return str(obj.employee) if obj.employee_id else None
 
     def validate_account_number(self, value):
-        value = value.strip()
-        # Уникальность — только среди непустых учётных номеров.
-        if value:
-            qs = AccessPass.objects.filter(account_number=value)
-            if self.instance:
-                qs = qs.exclude(pk=self.instance.pk)
-            if qs.exists():
-                raise serializers.ValidationError("Пропуск с таким учётным номером уже есть.")
-        return value
+        # Уникальность проверяется в validate() — там уже известен object_type
+        # (номера пропусков и ключей независимы, см. B1).
+        return value.strip()
 
     def validate(self, attrs):
         # Каждое выбранное помещение должно принадлежать одному из выбранных зданий.
@@ -160,6 +160,22 @@ class AccessPassSerializer(serializers.ModelSerializer):
         object_type = attrs.get("object_type")
         if object_type is None:
             object_type = self.instance.object_type if self.instance else AccessPass.ObjectType.PASS
+
+        # Уникальность учётного номера — в разрезе типа объекта и только среди
+        # непустых (пропуска и ключи не конфликтуют между собой, см. B1).
+        account_number = attrs.get("account_number")
+        if account_number is None and self.instance:
+            account_number = self.instance.account_number
+        if account_number:
+            qs = AccessPass.objects.filter(object_type=object_type, account_number=account_number)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                label = "Ключ" if object_type == AccessPass.ObjectType.KEY else "Пропуск"
+                raise serializers.ValidationError(
+                    {"account_number": f"{label} с таким учётным номером уже есть."}
+                )
+
         if object_type == AccessPass.ObjectType.KEY:
             if len(buildings) != 1:
                 raise serializers.ValidationError(

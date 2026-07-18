@@ -151,9 +151,12 @@ class AccessPass(models.Model):
         verbose_name_plural = "Пропуска"
         ordering = ["-created_at"]
         constraints = [
-            # Учётный номер уникален, но только среди непустых (частичный индекс).
+            # Учётный номер уникален в разрезе типа объекта и только среди
+            # непустых (частичный индекс): у пропусков и ключей независимые
+            # пространства номеров — один и тот же номер может быть и у ключа,
+            # и у пропуска.
             models.UniqueConstraint(
-                fields=["account_number"],
+                fields=["object_type", "account_number"],
                 condition=~Q(account_number=""),
                 name="uniq_pass_account",
             ),

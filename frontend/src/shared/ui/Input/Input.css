@@ -151,6 +151,37 @@
   padding: 4px;
 }
 
+.ele-field__trailing {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+/* Иконка-кнопка внутри поля (напр. автогенерация учётного номера). */
+.ele-field__icon-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.ele-field__icon-btn:hover:not(:disabled) {
+  background: var(--color-fill-active-tint);
+  color: var(--color-primary);
+}
+
+.ele-field__icon-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .ele-field__error-text {
   font-size: 12px;
   color: var(--color-error);

@@ -34,6 +34,17 @@ class Company(models.Model):
     auto_backup_time = models.TimeField("Время автокопирования", default=time(3, 0))
     auto_backup_retention = models.PositiveSmallIntegerField("Хранить последних копий", default=30)
 
+    # Автонумератор учётных номеров (B2). У каждого списка объектов свой префикс
+    # и свой сквозной счётчик. Порядковый номер только растёт и никогда не
+    # переиспользуется — при генерации значение сгорает, даже если объект не
+    # сохранён. Смена префикса счётчик НЕ сбрасывает.
+    equipment_number_prefix = models.CharField("Префикс номеров оборудования", max_length=16, default="EQUIP")
+    key_number_prefix = models.CharField("Префикс номеров ключей", max_length=16, default="KEY")
+    pass_number_prefix = models.CharField("Префикс номеров пропусков", max_length=16, default="PASS")
+    equipment_number_seq = models.PositiveIntegerField("Счётчик номеров оборудования", default=0)
+    key_number_seq = models.PositiveIntegerField("Счётчик номеров ключей", default=0)
+    pass_number_seq = models.PositiveIntegerField("Счётчик номеров пропусков", default=0)
+
     class Meta:
         verbose_name = "Компания"
         verbose_name_plural = "Компания"

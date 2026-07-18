@@ -10,6 +10,7 @@ export function Input({
   helperText,
   type = 'text',
   showToggle = false,
+  trailing = null,
   multiline = false,
   rows = 3,
   className = '',
@@ -94,6 +95,8 @@ export function Input({
           >
             {revealed ? 'Скрыть' : 'Показать'}
           </button>
+        ) : trailing ? (
+          <div className="ele-field__trailing">{trailing}</div>
         ) : null}
       </div>
       {errorText ? (

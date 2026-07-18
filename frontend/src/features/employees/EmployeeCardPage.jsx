@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useNavigationType, useParams } from 'react-router-dom'
 import { apiPatch } from '../../shared/api/client'
 import { Can, usePermissions } from '../../app/usePermissions.js'
-import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner, StatusPill, Table, TabBar, TableRow } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, SectionSelect, Spinner, StatusPill, Table, TableRow } from '../../shared/ui'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
@@ -193,8 +193,8 @@ export function EmployeeCardPage() {
           </div>
         </Card>
 
-        <div>
-          <TabBar options={ISSUED_ARCHIVE_TABS} value={tab} onChange={setTab} />
+        <div style={{ maxWidth: 260 }}>
+          <SectionSelect options={ISSUED_ARCHIVE_TABS} value={tab} onChange={setTab} ariaLabel="Раздел карточки" />
         </div>
 
         {tab === 'issued' ? (

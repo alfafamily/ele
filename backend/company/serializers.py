@@ -90,6 +90,32 @@ class StorageModeSerializer(serializers.ModelSerializer):
         fields = ["storage_mode"]
 
 
+class NumberingSettingsSerializer(serializers.ModelSerializer):
+    """Настройки → Префиксы: базовые префиксы автонумератора учётных номеров
+    (B2). Счётчики (`*_number_seq`) не редактируются через API — только растут
+    при генерации и не сбрасываются при смене префикса."""
+
+    class Meta:
+        model = Company
+        fields = ["equipment_number_prefix", "key_number_prefix", "pass_number_prefix"]
+
+    @staticmethod
+    def _clean_prefix(value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Префикс не может быть пустым.")
+        return value
+
+    def validate_equipment_number_prefix(self, value):
+        return self._clean_prefix(value)
+
+    def validate_key_number_prefix(self, value):
+        return self._clean_prefix(value)
+
+    def validate_pass_number_prefix(self, value):
+        return self._clean_prefix(value)
+
+
 class BackupSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Company

@@ -321,6 +321,17 @@ class AccessPassTests(APITestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertIn("account_number", resp.data["errors"])
 
+    def test_same_account_number_allowed_across_object_types(self):
+        # Пропуск и ключ имеют независимые пространства учётных номеров (B1):
+        # один и тот же номер можно завести и у пропуска, и у ключа.
+        self.assertEqual(self._create(account_number="N-7").status_code, 201)
+        key = self._create(object_type="key", account_number="N-7")
+        self.assertEqual(key.status_code, 201, key.data)
+        # Но два ключа с одним номером — по-прежнему нельзя.
+        dup = self._create(object_type="key", account_number="N-7")
+        self.assertEqual(dup.status_code, 400)
+        self.assertIn("account_number", dup.data["errors"])
+
     def test_detach_then_attach(self):
         created = self._create(employee=self.employee.id)
         pass_id = created.data["id"]

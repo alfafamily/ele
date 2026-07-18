@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Badge, Banner, Button, Card, Icon, Input, Spinner } from '../../shared/ui'
 import { getBuildings } from '../premises/premisesApi.js'
 import { createPass, getPass, updatePass } from '../employees/employeesApi.js'
+import { generateNextNumber } from '../settings/settingsApi.js'
 
 // Создание/редактирование средства доступа (пропуск СКУД или ключ) —
 // полноценная страница (как у оборудования и лицензий). Пропуск может действовать
@@ -29,8 +30,24 @@ export function PassFormPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
+  const [genLoading, setGenLoading] = useState(false)
 
   const isKey = objectType === 'key'
+
+  // Автонумератор: подставить следующий учётный номер для текущего типа объекта
+  // (ключ/пропуск — свои счётчики). Счётчик на сервере сгорает сразу.
+  const generateNumber = async () => {
+    setGenLoading(true)
+    setError(null)
+    try {
+      const { number } = await generateNextNumber(isKey ? 'key' : 'pass')
+      setAccountNumber(number)
+    } catch (err) {
+      setError(err?.detail || 'Не удалось сгенерировать номер.')
+    } finally {
+      setGenLoading(false)
+    }
+  }
 
   useEffect(() => {
     getBuildings().then(setBuildings)
@@ -226,6 +243,18 @@ export function PassFormPage() {
                   value={accountNumber}
                   onChange={(e) => setAccountNumber(e.target.value)}
                   error={fieldErrors.account_number}
+                  trailing={!isEdit ? (
+                    <button
+                      type="button"
+                      className="ele-field__icon-btn"
+                      onClick={generateNumber}
+                      disabled={genLoading}
+                      title="Сгенерировать номер"
+                      aria-label="Сгенерировать учётный номер"
+                    >
+                      <Icon name="pencil-sparkles" size={18} />
+                    </button>
+                  ) : null}
                 />
 
                 {!isKey ? (

@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 
 from accounts.captcha import is_captcha_enabled, verify_captcha
 from accounts.yandex_oauth import is_yandex_id_enabled
-from core.permissions import IsAdmin
+from core.permissions import IsAdmin, IsAdminOrAccountant
 from core.utils.client_ip import get_client_ip
 from core.version import _RELEASES_PAGE, get_current_version, get_latest_release, is_newer
 from employees.models import Employee
@@ -27,6 +27,7 @@ from .serializers import (
     BackupSettingsSerializer,
     CompanyBriefSerializer,
     CompanySettingsSerializer,
+    NumberingSettingsSerializer,
     SetupCompleteSerializer,
     StorageModeSerializer,
     TestEmailRequestSerializer,
@@ -583,3 +584,53 @@ class BackupSettingsView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+# Автонумератор (B2): вид объекта → (поле префикса, поле счётчика) в Company.
+NUMBERING_KINDS = {
+    "equipment": ("equipment_number_prefix", "equipment_number_seq"),
+    "key": ("key_number_prefix", "key_number_seq"),
+    "pass": ("pass_number_prefix", "pass_number_seq"),
+}
+
+
+class NumberingSettingsView(APIView):
+    """Настройки → Префиксы: базовые префиксы автонумератора учётных номеров
+    (B2). Только Администратор. Счётчики здесь не сбрасываются — смена префикса
+    на них не влияет."""
+
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        return Response(NumberingSettingsSerializer(Company.load()).data)
+
+    def patch(self, request):
+        company = Company.load()
+        serializer = NumberingSettingsSerializer(company, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+class NextNumberView(APIView):
+    """Автонумератор: выдать следующий учётный номер для формы создания (B2).
+    Счётчик инкрементится атомарно (select_for_update) и «сгорает» сразу —
+    порядковый номер уникален и не переиспользуется, даже если объект в итоге
+    не будет сохранён. Доступно ролям, создающим объекты (admin/accountant)."""
+
+    permission_classes = [IsAdminOrAccountant]
+
+    def post(self, request):
+        kind = request.data.get("kind") or request.query_params.get("kind")
+        fields = NUMBERING_KINDS.get(kind)
+        if not fields:
+            return Response({"detail": "Неизвестный вид объекта."}, status=400)
+        prefix_field, seq_field = fields
+        Company.load()  # гарантируем существование singleton-строки
+        with transaction.atomic():
+            company = Company.objects.select_for_update().get(pk=1)
+            seq = getattr(company, seq_field) + 1
+            setattr(company, seq_field, seq)
+            company.save(update_fields=[seq_field])
+            prefix = getattr(company, prefix_field)
+        return Response({"number": f"{prefix}-{seq}"})

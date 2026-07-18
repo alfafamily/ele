@@ -30,5 +30,11 @@ export const checkCaptcha = (token) => apiPost('/api/company/captcha-check/', { 
 
 export const getBackupSettings = () => apiGet('/api/company/backup-settings/')
 export const updateBackupSettings = (payload) => apiPatch('/api/company/backup-settings/', payload)
+
+export const getNumberingSettings = () => apiGet('/api/company/numbering-settings/')
+export const updateNumberingSettings = (payload) => apiPatch('/api/company/numbering-settings/', payload)
+// Автонумератор: следующий учётный номер для kind = equipment|key|pass (B2).
+// Счётчик на сервере инкрементится сразу — номер сгорает при генерации.
+export const generateNextNumber = (kind) => apiPost('/api/company/next-number/', { kind })
 export const createBackup = () => apiPost('/api/backup/create/')
 export const backupDownloadUrl = (id) => `/api/backup/${id}/download/`

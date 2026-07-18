@@ -13,6 +13,7 @@ import {
   updateEquipment,
   uploadEquipmentFieldFile,
 } from './equipmentApi.js'
+import { generateNextNumber } from '../settings/settingsApi.js'
 
 function buildValueMap(fieldValues) {
   const map = {}
@@ -40,10 +41,26 @@ export function EquipmentFormPage() {
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  const [genLoading, setGenLoading] = useState(false)
 
   useEffect(() => {
     getEquipmentTypes().then(setTypes)
   }, [])
+
+  // Автонумератор: подставить следующий учётный номер (счётчик на сервере
+  // сгорает сразу). Только при создании; введённый вручную номер не трогаем.
+  const generateNumber = async () => {
+    setGenLoading(true)
+    setError(null)
+    try {
+      const { number } = await generateNextNumber('equipment')
+      setInventoryNumber(number)
+    } catch (err) {
+      setError(err?.detail || 'Не удалось сгенерировать номер.')
+    } finally {
+      setGenLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (!isEdit) return
@@ -188,6 +205,18 @@ export function EquipmentFormPage() {
                 value={inventoryNumber}
                 onChange={(e) => setInventoryNumber(e.target.value)}
                 style={{ fontFamily: 'var(--font-mono)' }}
+                trailing={!isEdit ? (
+                  <button
+                    type="button"
+                    className="ele-field__icon-btn"
+                    onClick={generateNumber}
+                    disabled={genLoading}
+                    title="Сгенерировать номер"
+                    aria-label="Сгенерировать учётный номер"
+                  >
+                    <Icon name="pencil-sparkles" size={18} />
+                  </button>
+                ) : null}
               />
             </div>
           </Card>

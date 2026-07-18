@@ -3,6 +3,7 @@ import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { Icon } from '../../shared/ui'
 import { BackupTab } from './BackupTab.jsx'
 import { CompanyTab } from './CompanyTab.jsx'
+import { NumberingTab } from './NumberingTab.jsx'
 import { SystemTab } from './SystemTab.jsx'
 import { UpdateTab } from './UpdateTab.jsx'
 import { UsersTab } from './UsersTab.jsx'
@@ -12,6 +13,7 @@ const SECTIONS = [
   { value: 'company', label: 'Компания', desc: 'Реквизиты организации и логотип', Component: CompanyTab },
   { value: 'users', label: 'Пользователи', desc: 'Доступ к системе и роли', Component: UsersTab },
   { value: 'system', label: 'Системные', desc: 'Хранилище, доступ и проверка интеграций', Component: SystemTab },
+  { value: 'numbering', label: 'Префиксы', desc: 'Префиксы учётных номеров для автогенерации', Component: NumberingTab },
   { value: 'backup', label: 'Резервное копирование', desc: 'Настройки резервного копирования', Component: BackupTab },
   { value: 'update', label: 'Обновление', desc: 'Версия и обновление системы', Component: UpdateTab },
 ]

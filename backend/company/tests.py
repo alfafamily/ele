@@ -393,3 +393,53 @@ class UpdateInfoTests(APITestCase):
         self.assertFalse(resp.data["check_ok"])
         self.assertFalse(resp.data["update_available"])
         self.assertIsNone(resp.data["latest_version"])
+
+
+class NumberingSettingsTests(APITestCase):
+    """Настройки → Префиксы и автонумератор учётных номеров (B2)."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+
+    def test_settings_require_admin(self):
+        worker = User.objects.create_user(email="worker@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=worker)
+        self.assertEqual(self.client.get("/api/company/numbering-settings/").status_code, 403)
+
+    def test_default_prefixes(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.get("/api/company/numbering-settings/")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["equipment_number_prefix"], "EQUIP")
+        self.assertEqual(resp.data["key_number_prefix"], "KEY")
+        self.assertEqual(resp.data["pass_number_prefix"], "PASS")
+
+    def test_empty_prefix_rejected(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.patch("/api/company/numbering-settings/", {"key_number_prefix": "  "}, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_next_number_increments_per_kind(self):
+        self.client.force_authenticate(user=self.admin)
+        self.assertEqual(self.client.post("/api/company/next-number/", {"kind": "key"}, format="json").data["number"], "KEY-1")
+        self.assertEqual(self.client.post("/api/company/next-number/", {"kind": "key"}, format="json").data["number"], "KEY-2")
+        # Другой вид объектов — независимый счётчик.
+        self.assertEqual(self.client.post("/api/company/next-number/", {"kind": "equipment"}, format="json").data["number"], "EQUIP-1")
+
+    def test_prefix_change_does_not_reset_counter(self):
+        self.client.force_authenticate(user=self.admin)
+        self.client.post("/api/company/next-number/", {"kind": "pass"}, format="json")  # PASS-1 «сгорел»
+        self.client.patch("/api/company/numbering-settings/", {"pass_number_prefix": "CARD"}, format="json")
+        # Смена префикса не сбрасывает порядковый номер — следующий именно 2.
+        self.assertEqual(self.client.post("/api/company/next-number/", {"kind": "pass"}, format="json").data["number"], "CARD-2")
+
+    def test_unknown_kind_rejected(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/company/next-number/", {"kind": "widget"}, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_next_number_forbidden_for_worker(self):
+        worker = User.objects.create_user(email="worker@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=worker)
+        resp = self.client.post("/api/company/next-number/", {"kind": "key"}, format="json")
+        self.assertEqual(resp.status_code, 403)
