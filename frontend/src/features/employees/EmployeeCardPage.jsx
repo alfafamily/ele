@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useNavigationType, useParams } from 'react-router-dom'
 import { apiPatch } from '../../shared/api/client'
 import { unassignUnits as unassignToolUnits } from '../tools/toolsApi.js'
+import { AssignToolModal } from '../tools/AssignToolModal.jsx'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner, StatusPill, Table, TabBar, TableRow } from '../../shared/ui'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
@@ -37,6 +38,7 @@ export function EmployeeCardPage() {
   const [simAttach, setSimAttach] = useState(false)
   const [passAttach, setPassAttach] = useState(false)
   const [equipmentAttach, setEquipmentAttach] = useState(false)
+  const [toolAssign, setToolAssign] = useState(false)
   // Открепление/утилизация — выбор действия (SimDisposeModal/PassDisposeModal).
   const [disposeSim, setDisposeSim] = useState(null)
   const [disposePass, setDisposePass] = useState(null)
@@ -256,6 +258,11 @@ export function EmployeeCardPage() {
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
               {employee.tools.length}
             </span>
+            {employee.is_employed ? (
+              <Can perm="canManageEquipment">
+                <AddButton isMobile={isMobile} onClick={() => setToolAssign(true)} label="Закрепить инструмент" />
+              </Can>
+            ) : null}
           </div>
           {employee.tools.length === 0 ? (
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплены инструменты.</div>
@@ -425,6 +432,17 @@ export function EmployeeCardPage() {
           onCreateNew={() => {
             setEquipmentAttach(false)
             navigate(`/equipment/new?employee=${employee.id}`)
+          }}
+        />
+      ) : null}
+
+      {toolAssign ? (
+        <AssignToolModal
+          employeeId={employee.id}
+          onClose={() => setToolAssign(false)}
+          onDone={() => {
+            setToolAssign(false)
+            load()
           }}
         />
       ) : null}

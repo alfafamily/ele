@@ -192,7 +192,7 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove }) {
       </div>
       {canManage ? (
         <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <Button fullWidth onClick={openAdd} aria-label="Оприходовать">
+          <Button variant="secondary" fullWidth onClick={openAdd} aria-label="Оприходовать">
             <Icon name="plus" size={18} strokeWidth={2.2} />
             <span className="ele-only-desktop">Оприходовать</span>
           </Button>
