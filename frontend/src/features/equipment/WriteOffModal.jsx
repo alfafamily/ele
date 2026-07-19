@@ -65,11 +65,12 @@ export function WriteOffModal({ equipment, onClose, onDone }) {
           </p>
           {equipment.accounting_type === 'quantity' ? (
             <p style={{ fontSize: 13.5, color: 'var(--color-text-muted)', lineHeight: 1.5, marginTop: 10 }}>
-              Будет списан весь свободный остаток
-              {' '}<b style={{ color: 'var(--color-text-primary)' }}>{equipment.free} шт.</b>
               {equipment.allocated > 0 ? (
-                <> и откреплены все закрепления (<b style={{ color: 'var(--color-text-primary)' }}>{equipment.allocated} шт.</b>).</>
-              ) : '.'}
+                <>Всё закреплённое (<b style={{ color: 'var(--color-text-primary)' }}>{equipment.allocated} шт.</b>) будет откреплено от сотрудников, а весь остаток{' '}</>
+              ) : (
+                <>Весь остаток{' '}</>
+              )}
+              <b style={{ color: 'var(--color-text-primary)' }}>{equipment.quantity} шт.</b> будет списан.
             </p>
           ) : null}
           <div style={{ marginTop: 16 }}>

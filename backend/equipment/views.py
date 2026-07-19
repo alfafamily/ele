@@ -170,23 +170,22 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 lic.equipment = None
                 lic.save(update_fields=["equipment"])
         comment = (request.data.get("comment") or "").strip()
-        # Количественная карточка: списание всей карточки очищает закрепления
-        # (единицы уходят из обращения вместе с картой) и обнуляет остаток. По
-        # каждому закреплению пишем «Открепление», а свободный остаток — отдельным
-        # движением «Списание»: чтобы и архив выдач у сотрудника, и история
-        # карточки остались согласованными («будет списан весь свободный остаток»).
+        # Количественная карточка: списание всей карточки убирает из обращения ВЕСЬ
+        # остаток. Сначала по каждому закреплению пишем «Открепление» (возврат
+        # единиц в пул — чтобы архив выдач у сотрудника остался согласованным),
+        # затем весь остаток целиком списываем одним движением «Списание».
         if equipment.equipment_type.accounting_type == EquipmentType.AccountingType.QUANTITY:
-            free = self._free_units(equipment)
-            if free > 0:
-                self._record_movement(
-                    equipment, EquipmentMovement.Kind.WRITE_OFF, free, request.user, comment
-                )
+            total = equipment.quantity
             for alloc in list(equipment.allocations.all()):
                 self._record_movement(
                     equipment, EquipmentMovement.Kind.UNASSIGN, alloc.quantity,
                     request.user, comment, employee=alloc.employee,
                 )
                 alloc.delete()
+            if total > 0:
+                self._record_movement(
+                    equipment, EquipmentMovement.Kind.WRITE_OFF, total, request.user, comment
+                )
             equipment.quantity = 0
             equipment.save(update_fields=["quantity"])
         # Списанное оборудование выходит из обращения — снимаем закрепление за

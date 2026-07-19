@@ -184,14 +184,14 @@ class QuantityAccountingTests(APITestCase):
         resp = self.client.post(f"/api/equipment/{cid}/add-units/", {"quantity": 1}, format="json")
         self.assertEqual(resp.status_code, 409, resp.data)
 
-    def test_write_off_whole_card_records_free_writeoff_movement(self):
+    def test_write_off_whole_card_records_total_writeoff_movement(self):
         t = self._make_quantity_type()
         cid = self._make_card(t, quantity=10)["id"]
         self.client.post(f"/api/equipment/{cid}/assign-units/", {"employee": self.emp_a.id, "quantity": 4}, format="json")
         self.client.post(f"/api/equipment/{cid}/write-off/", {"comment": "акт"}, format="json")
         moves = list(EquipmentMovement.objects.filter(equipment_id=cid).values_list("kind", "quantity"))
-        self.assertIn(("write_off", 6), moves)  # свободный остаток
-        self.assertIn(("unassign", 4), moves)   # закрепление A
+        self.assertIn(("write_off", 10), moves)  # весь остаток списан целиком
+        self.assertIn(("unassign", 4), moves)    # закрепление A откреплено
 
     # ——— учётный номер ———
 
