@@ -172,9 +172,15 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         comment = (request.data.get("comment") or "").strip()
         # Количественная карточка: списание всей карточки очищает закрепления
         # (единицы уходят из обращения вместе с картой) и обнуляет остаток. По
-        # каждому закреплению пишем движение «Открепление» — чтобы архив выдач
-        # у сотрудника остался согласованным.
+        # каждому закреплению пишем «Открепление», а свободный остаток — отдельным
+        # движением «Списание»: чтобы и архив выдач у сотрудника, и история
+        # карточки остались согласованными («будет списан весь свободный остаток»).
         if equipment.equipment_type.accounting_type == EquipmentType.AccountingType.QUANTITY:
+            free = self._free_units(equipment)
+            if free > 0:
+                self._record_movement(
+                    equipment, EquipmentMovement.Kind.WRITE_OFF, free, request.user, comment
+                )
             for alloc in list(equipment.allocations.all()):
                 self._record_movement(
                     equipment, EquipmentMovement.Kind.UNASSIGN, alloc.quantity,
@@ -455,12 +461,12 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             def mv_label(m):
                 emp = m.employee or "—"
                 if m.kind == EquipmentMovement.Kind.ADD:
-                    return f"Приход +{m.quantity}"
+                    return f"Приход: +{m.quantity} шт."
                 if m.kind == EquipmentMovement.Kind.WRITE_OFF:
-                    return f"Списание −{m.quantity}"
+                    return f"Списание: −{m.quantity} шт."
                 if m.kind == EquipmentMovement.Kind.ASSIGN:
-                    return f"Закреплено {m.quantity} за «{emp}»"
-                return f"Откреплено {m.quantity} от «{emp}»"
+                    return f"Закреплено: {m.quantity} шт. за «{emp}»"
+                return f"Откреплено: {m.quantity} шт. от «{emp}»"
 
             for m in eq.movements.select_related("created_by", "employee"):
                 related_rows.append({
@@ -472,7 +478,7 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 })
             initial = eq.history.filter(history_type="+").values_list("quantity", flat=True).first()
             if initial is not None:
-                created_extra.append({"label": "Начальный остаток", "value": str(initial)})
+                created_extra.append({"label": "Начальный остаток", "value": f"{initial} шт."})
 
         rows = build_history_rows(
             eq, field_specs,

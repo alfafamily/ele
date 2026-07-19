@@ -144,7 +144,10 @@ export function EquipmentListPage() {
                 {/* Наименование (Тип+Модель) в 2 строки + учётный номер ниже */}
                 <div style={{ minWidth: 0 }}>
                   <div className="ele-clamp-2" style={{ fontWeight: 500 }}>{row.type_and_model}</div>
-                  <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{row.inventory_number}</div>
+                  {/* У количественных карточек учётного номера нет — не показываем. */}
+                  {row.inventory_number ? (
+                    <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{row.inventory_number}</div>
+                  ) : null}
                 </div>
                 {tab === 'active' ? (
                   row.accounting_type === 'quantity' ? (

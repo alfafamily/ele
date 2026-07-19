@@ -97,7 +97,10 @@ class EquipmentTypeFieldOption(models.Model):
 class Equipment(models.Model):
     """Единица физического актива компании."""
 
-    inventory_number = models.CharField("Учётный номер", max_length=255)
+    # У количественного учёта один номер не может относиться ко всему количеству,
+    # поэтому у таких карточек он не задаётся (пустой). У поэкземплярных —
+    # обязателен (проверка в сериализаторе).
+    inventory_number = models.CharField("Учётный номер", max_length=255, blank=True, default="")
     # Единичное закрепление — только для поэкземплярного учёта. У количественных
     # Типов остаётся null, раздача ведётся через EquipmentAllocation (см.).
     employee = models.ForeignKey(
@@ -126,7 +129,12 @@ class Equipment(models.Model):
         ordering = ["-created_at"]
         constraints = [
             # Учётный номер уникален по всему Оборудованию (включая списанное).
-            models.UniqueConstraint(fields=["inventory_number"], name="uniq_equipment_inventory"),
+            # Пустой номер (количественные карточки) из-под уникальности выведен.
+            models.UniqueConstraint(
+                fields=["inventory_number"],
+                name="uniq_equipment_inventory",
+                condition=~models.Q(inventory_number=""),
+            ),
         ]
 
     def __str__(self):

@@ -135,54 +135,15 @@ export function EquipmentCardPage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div className="ele-field-grid">
-              <Field label="Учётный номер" value={equipment.inventory_number} mono />
+              {/* У количественных карточек учётного номера нет. */}
+              {isQuantity ? null : <Field label="Учётный номер" value={equipment.inventory_number} mono />}
               <Field label="Тип оборудования" value={equipment.equipment_type_name} />
               {isQuantity ? (
-                equipment.is_written_off ? (
-                  <Field label="Статус" value="Списано" />
-                ) : (
-                  <>
-                    <Field label="Остаток" value={String(equipment.quantity)} />
-                    <Field label="Свободно" value={String(equipment.free)} />
-                    <Field label="Закреплено" value={String(equipment.allocated)} />
-                  </>
-                )
+                equipment.is_written_off ? <Field label="Статус" value="Списано" /> : null
               ) : (
                 <Field label="Статус" value={equipment.is_written_off ? 'Списано' : EQUIPMENT_STATUS_LABEL[equipment.status]} />
               )}
             </div>
-            {isQuantity && !equipment.is_written_off && perms.canManageEquipment ? (
-              <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
-                <Button
-                  variant="secondary"
-                  onClick={() =>
-                    setMoveModal({
-                      kind: 'add',
-                      title: 'Оприходовать',
-                      confirmLabel: 'Оприходовать',
-                      onSubmit: (qty, comment) => addUnits(equipment.id, qty, comment).then(closeMove),
-                    })
-                  }
-                >
-                  <Icon name="plus" size={18} strokeWidth={2.2} />
-                  Оприходовать
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() =>
-                    setMoveModal({
-                      kind: 'write_off_units',
-                      title: 'Списать единицы',
-                      confirmLabel: 'Списать',
-                      max: equipment.free,
-                      onSubmit: (qty, comment) => writeOffUnits(equipment.id, qty, comment).then(closeMove),
-                    })
-                  }
-                >
-                  Списать единицы
-                </Button>
-              </div>
-            ) : null}
           </Card>
 
           {(() => {
@@ -235,16 +196,28 @@ export function EquipmentCardPage() {
 
         {/* Боковой блок: «Закреплено за» + «Установленные лицензии». У списанного
             оборудования всегда пуст — не показываем (одна колонка). */}
-        {!equipment.is_written_off ? (
+        {!equipment.is_written_off && isQuantity ? (
+          <div className="ele-obj-layout__side ele-card-sticky" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <Card>
+              <QuantityStock
+                equipment={equipment}
+                canManage={perms.canManageEquipment}
+                setMoveModal={setMoveModal}
+                closeMove={closeMove}
+              />
+            </Card>
+            <Card>
+              <QuantityAssignments
+                equipment={equipment}
+                canManage={perms.canManageEquipment}
+                setMoveModal={setMoveModal}
+                closeMove={closeMove}
+              />
+            </Card>
+          </div>
+        ) : null}
+        {!equipment.is_written_off && !isQuantity ? (
         <Card className="ele-obj-layout__side ele-card-sticky">
-          {isQuantity ? (
-            <QuantityAssignments
-              equipment={equipment}
-              canManage={perms.canManageEquipment}
-              setMoveModal={setMoveModal}
-              closeMove={closeMove}
-            />
-          ) : (
           <>
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Закреплено за</div>
           {equipment.employee ? (
@@ -354,7 +327,6 @@ export function EquipmentCardPage() {
             </Can>
           ) : null}
           </>
-          )}
         </Card>
         ) : null}
 
@@ -416,6 +388,57 @@ function Field({ label, value, mono, muted }) {
       <div style={{ fontSize: 14, fontWeight: 500, fontFamily: mono ? 'var(--font-mono)' : 'inherit', color: muted ? 'var(--color-text-muted)' : 'inherit', overflowWrap: 'break-word' }}>
         {value || '—'}
       </div>
+    </div>
+  )
+}
+
+// Боковой блок «Остаток» для количественной карточки: метрики
+// Остаток/Свободно/Закреплено и операции прихода/списания единиц.
+function QuantityStock({ equipment, canManage, setMoveModal, closeMove }) {
+  const openAdd = () =>
+    setMoveModal({
+      title: 'Оприходовать',
+      confirmLabel: 'Оприходовать',
+      onSubmit: (qty, comment) => addUnits(equipment.id, qty, comment).then(closeMove),
+    })
+
+  const openWriteOff = () =>
+    setMoveModal({
+      title: 'Списать единицы',
+      confirmLabel: 'Списать',
+      max: equipment.free,
+      onSubmit: (qty, comment) => writeOffUnits(equipment.id, qty, comment).then(closeMove),
+    })
+
+  return (
+    <>
+      <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 14 }}>Остаток</div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Metric label="Остаток" value={equipment.quantity} />
+        <Metric label="Свободно" value={equipment.free} />
+        <Metric label="Закреплено" value={equipment.allocated} />
+      </div>
+      {canManage ? (
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+          <Button fullWidth onClick={openAdd} aria-label="Оприходовать">
+            <Icon name="plus" size={18} strokeWidth={2.2} />
+            <span className="ele-only-desktop">Оприходовать</span>
+          </Button>
+          <Button variant="secondary" fullWidth onClick={openWriteOff} disabled={equipment.free <= 0} aria-label="Списать">
+            <Icon name="minus" size={18} strokeWidth={2.2} />
+            <span className="ele-only-desktop">Списать</span>
+          </Button>
+        </div>
+      ) : null}
+    </>
+  )
+}
+
+function Metric({ label, value }) {
+  return (
+    <div style={{ flex: 1, minWidth: 0, background: 'var(--color-fill-input)', borderRadius: 10, padding: '10px 12px', textAlign: 'center' }}>
+      <div style={{ fontSize: 20, fontWeight: 600, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 4 }}>{label}</div>
     </div>
   )
 }

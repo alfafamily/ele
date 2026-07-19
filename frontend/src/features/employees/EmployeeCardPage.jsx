@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useNavigationType, useParams } from 'react-router-dom'
 import { apiPatch } from '../../shared/api/client'
+import { unassignUnits } from '../equipment/equipmentApi.js'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner, StatusPill, Table, TabBar, TableRow } from '../../shared/ui'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
@@ -92,6 +93,14 @@ export function EmployeeCardPage() {
 
   const onDetachEquipment = async (equipmentId) => {
     await apiPatch(`/api/equipment/${equipmentId}/`, { employee: null })
+    load()
+  }
+
+  // Открепление количественного оборудования — возвращает все закреплённые за
+  // сотрудником единицы в свободный пул карточки (частичное — на карточке
+  // оборудования).
+  const onDetachQuantity = async (eq) => {
+    await unassignUnits(eq.id, employee.id, eq.quantity)
     load()
   }
 
@@ -218,17 +227,26 @@ export function EmployeeCardPage() {
               <div key={eq.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
                 <Link to={`/equipment/${eq.id}`} style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{eq.type_and_model}</div>
-                  <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</div>
+                  {/* Количественное — показываем «N шт.»; поэкземплярное — учётный номер. */}
+                  <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>
+                    {eq.is_quantity ? `${eq.quantity} шт.` : eq.inventory_number}
+                  </div>
                 </Link>
                 <Can perm="canManageEquipment">
                   <Button
                     variant="secondary"
                     onClick={() =>
-                      setConfirm({
-                        title: 'Открепить оборудование?',
-                        message: `«${eq.type_and_model}» больше не будет закреплено за сотрудником ${employee.full_name}.`,
-                        onConfirm: () => onDetachEquipment(eq.id),
-                      })
+                      eq.is_quantity
+                        ? setConfirm({
+                            title: 'Открепить оборудование?',
+                            message: `Все ${eq.quantity} шт. «${eq.type_and_model}» будут откреплены от сотрудника ${employee.full_name} и вернутся в свободный остаток.`,
+                            onConfirm: () => onDetachQuantity(eq),
+                          })
+                        : setConfirm({
+                            title: 'Открепить оборудование?',
+                            message: `«${eq.type_and_model}» больше не будет закреплено за сотрудником ${employee.full_name}.`,
+                            onConfirm: () => onDetachEquipment(eq.id),
+                          })
                     }
                   >
                     Открепить

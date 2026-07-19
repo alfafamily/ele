@@ -164,7 +164,9 @@ class EquipmentSerializer(serializers.ModelSerializer):
 
     # Объявлено явно, чтобы уникальность проверялась своим сообщением
     # (validate_inventory_number), а не авто-валидатором DRF по UniqueConstraint.
-    inventory_number = serializers.CharField(max_length=255)
+    # Необязателен на уровне поля: для поэкземплярного учёта обязательность
+    # проверяется в validate() (там известен Тип), у количественного номера нет.
+    inventory_number = serializers.CharField(max_length=255, required=False, allow_blank=True)
     equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True)
     accounting_type = serializers.CharField(source="equipment_type.accounting_type", read_only=True)
     # quantity — начальный остаток (writable только при создании количественной
@@ -261,10 +263,12 @@ class EquipmentSerializer(serializers.ModelSerializer):
         ).data
 
     def validate_inventory_number(self, value):
-        value = value.strip()
+        value = (value or "").strip()
+        # Пустой номер допустим (количественный учёт) — обязательность для
+        # поэкземплярного проверяется в validate(). Уникальность — только для
+        # непустого номера, по всему Оборудованию (включая списанное).
         if not value:
-            raise serializers.ValidationError("Укажите учётный номер.")
-        # Уникальность по всему Оборудованию (включая списанное).
+            return value
         qs = Equipment.objects.filter(inventory_number=value)
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)
@@ -281,10 +285,21 @@ class EquipmentSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {"field_values": [f"Реквизит «{item['field'].name}» не относится к выбранному Типу."]}
                     )
+        is_quantity = equipment_type and equipment_type.accounting_type == EquipmentType.AccountingType.QUANTITY
         # Остаток осмыслен только у количественных Типов. У поэкземплярных
         # принудительно обнуляем, чтобы случайно переданное значение не осело.
-        if equipment_type and equipment_type.accounting_type != EquipmentType.AccountingType.QUANTITY:
+        if not is_quantity:
             attrs["quantity"] = 0
+        # Учётный номер: у количественного всегда пустой (номер не относится ко
+        # всему количеству), у поэкземплярного — обязателен.
+        if is_quantity:
+            attrs["inventory_number"] = ""
+        else:
+            number = attrs.get("inventory_number")
+            if number is None:
+                number = getattr(self.instance, "inventory_number", "")
+            if not (number or "").strip():
+                raise serializers.ValidationError({"inventory_number": ["Укажите учётный номер."]})
         return attrs
 
     @transaction.atomic

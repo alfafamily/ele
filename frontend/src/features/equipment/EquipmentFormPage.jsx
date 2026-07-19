@@ -205,26 +205,30 @@ export function EquipmentFormPage() {
                   ))}
               </Select>
               {/* Закрепление сотрудника здесь не задаётся — оно выполняется на
-                  карточке оборудования (кнопка «Закрепить сотрудника»). */}
-              <Input
-                label="Учётный номер"
-                required
-                value={inventoryNumber}
-                onChange={(e) => setInventoryNumber(e.target.value)}
-                style={{ fontFamily: 'var(--font-mono)' }}
-                trailing={!isEdit ? (
-                  <button
-                    type="button"
-                    className="ele-field__icon-btn"
-                    onClick={generateNumber}
-                    disabled={genLoading}
-                    title="Сгенерировать номер"
-                    aria-label="Сгенерировать учётный номер"
-                  >
-                    <Icon name="pencil-sparkles" size={18} />
-                  </button>
-                ) : null}
-              />
+                  карточке оборудования (кнопка «Закрепить сотрудника»).
+                  Учётный номер — только у поэкземплярного учёта: у количественной
+                  карточки один номер не относится ко всему количеству. */}
+              {!isQuantity ? (
+                <Input
+                  label="Учётный номер"
+                  required
+                  value={inventoryNumber}
+                  onChange={(e) => setInventoryNumber(e.target.value)}
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                  trailing={!isEdit ? (
+                    <button
+                      type="button"
+                      className="ele-field__icon-btn"
+                      onClick={generateNumber}
+                      disabled={genLoading}
+                      title="Сгенерировать номер"
+                      aria-label="Сгенерировать учётный номер"
+                    >
+                      <Icon name="pencil-sparkles" size={18} />
+                    </button>
+                  ) : null}
+                />
+              ) : null}
               {/* Начальный остаток — только при создании количественной карточки.
                   У поэкземплярного Типа поля нет. */}
               {!isEdit && isQuantity ? (

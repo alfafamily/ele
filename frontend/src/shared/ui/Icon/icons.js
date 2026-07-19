@@ -15,6 +15,7 @@ export const icons = {
   'x': `<path d="M18 6 6 18"/> <path d="m6 6 12 12"/>`,
   'menu': `<path d="M4 12h16"/> <path d="M4 6h16"/> <path d="M4 18h16"/>`,
   'plus': `<path d="M5 12h14"/> <path d="M12 5v14"/>`,
+  'minus': `<path d="M5 12h14"/>`,
   'search': `<path d="m21 21-4.34-4.34"/> <circle cx="11" cy="11" r="8"/>`,
   'sliders-horizontal': `<line x1="21" x2="14" y1="4" y2="4"/> <line x1="10" x2="3" y1="4" y2="4"/> <line x1="21" x2="12" y1="12" y2="12"/> <line x1="8" x2="3" y1="12" y2="12"/> <line x1="21" x2="16" y1="20" y2="20"/> <line x1="12" x2="3" y1="20" y2="20"/> <line x1="14" x2="14" y1="2" y2="6"/> <line x1="8" x2="8" y1="10" y2="14"/> <line x1="16" x2="16" y1="18" y2="22"/>`,
   'columns-3-cog': `<path d="M10.5 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5.5"/> <path d="m14.3 19.6 1-.4"/> <path d="M15 3v7.5"/> <path d="m15.2 16.9-.9-.3"/> <path d="m16.6 21.7.3-.9"/> <path d="m16.8 15.3-.4-1"/> <path d="m19.1 15.2.3-.9"/> <path d="m19.6 21.7-.4-1"/> <path d="m20.7 16.8 1-.4"/> <path d="m21.7 19.4-.9-.3"/> <path d="M9 3v18"/> <circle cx="18" cy="18" r="3"/>`,

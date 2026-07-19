@@ -184,6 +184,49 @@ class QuantityAccountingTests(APITestCase):
         resp = self.client.post(f"/api/equipment/{cid}/add-units/", {"quantity": 1}, format="json")
         self.assertEqual(resp.status_code, 409, resp.data)
 
+    def test_write_off_whole_card_records_free_writeoff_movement(self):
+        t = self._make_quantity_type()
+        cid = self._make_card(t, quantity=10)["id"]
+        self.client.post(f"/api/equipment/{cid}/assign-units/", {"employee": self.emp_a.id, "quantity": 4}, format="json")
+        self.client.post(f"/api/equipment/{cid}/write-off/", {"comment": "акт"}, format="json")
+        moves = list(EquipmentMovement.objects.filter(equipment_id=cid).values_list("kind", "quantity"))
+        self.assertIn(("write_off", 6), moves)  # свободный остаток
+        self.assertIn(("unassign", 4), moves)   # закрепление A
+
+    # ——— учётный номер ———
+
+    def test_quantity_card_without_inventory_number(self):
+        t = self._make_quantity_type()
+        resp = self.client.post("/api/equipment/", {"equipment_type": t, "quantity": 5}, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(resp.data["inventory_number"], "")
+
+    def test_quantity_card_ignores_passed_inventory_number(self):
+        t = self._make_quantity_type()
+        resp = self.client.post(
+            "/api/equipment/", {"inventory_number": "SHOULD-IGNORE", "equipment_type": t, "quantity": 5}, format="json"
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(resp.data["inventory_number"], "")
+
+    def test_two_quantity_cards_without_number_allowed(self):
+        t = self._make_quantity_type()
+        r1 = self.client.post("/api/equipment/", {"equipment_type": t, "quantity": 1}, format="json")
+        r2 = self.client.post("/api/equipment/", {"equipment_type": t, "quantity": 2}, format="json")
+        self.assertEqual(r1.status_code, 201, r1.data)
+        self.assertEqual(r2.status_code, 201, r2.data)
+
+    def test_instance_still_requires_inventory_number(self):
+        resp = self.client.post("/api/equipment-types/", {"name": "Ноутбук"}, format="json")
+        t = resp.data["id"]
+        model_field = next(f["id"] for f in resp.data["fields"] if f["name"] == "Модель")
+        resp = self.client.post(
+            "/api/equipment/",
+            {"equipment_type": t, "field_values_input": [{"field": model_field, "value": "X"}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400, resp.data)
+
     # ——— смена вида учёта ———
 
     def test_cannot_change_accounting_type_with_objects(self):
@@ -208,8 +251,8 @@ class QuantityAccountingTests(APITestCase):
         resp = self.client.get(f"/api/equipment/{cid}/history/")
         self.assertEqual(resp.status_code, 200, resp.data)
         labels = [r["label"] for r in resp.data]
-        self.assertTrue(any("Приход +5" in ln for ln in labels))
-        self.assertTrue(any("Закреплено 2" in ln for ln in labels))
+        self.assertTrue(any("Приход: +5 шт." in ln for ln in labels))
+        self.assertTrue(any("Закреплено: 2 шт." in ln for ln in labels))
         # Начальный остаток — в записи создания.
         created = next(r for r in resp.data if r["kind"] == "created")
         self.assertTrue(any(ln["label"] == "Начальный остаток" for ln in created["lines"]))
