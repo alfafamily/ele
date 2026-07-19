@@ -184,14 +184,18 @@ class QuantityAccountingTests(APITestCase):
         resp = self.client.post(f"/api/equipment/{cid}/add-units/", {"quantity": 1}, format="json")
         self.assertEqual(resp.status_code, 409, resp.data)
 
-    def test_write_off_whole_card_records_total_writeoff_movement(self):
+    def test_write_off_whole_card_history_shows_total(self):
         t = self._make_quantity_type()
         cid = self._make_card(t, quantity=10)["id"]
         self.client.post(f"/api/equipment/{cid}/assign-units/", {"employee": self.emp_a.id, "quantity": 4}, format="json")
         self.client.post(f"/api/equipment/{cid}/write-off/", {"comment": "акт"}, format="json")
-        moves = list(EquipmentMovement.objects.filter(equipment_id=cid).values_list("kind", "quantity"))
-        self.assertIn(("write_off", 10), moves)  # весь остаток списан целиком
-        self.assertIn(("unassign", 4), moves)    # закрепление A откреплено
+        # Закрепление откреплено; отдельного ledger-движения «Списание» нет —
+        # списанное количество показывается строкой «Списано: N шт.».
+        kinds = list(EquipmentMovement.objects.filter(equipment_id=cid).values_list("kind", flat=True))
+        self.assertIn("unassign", kinds)
+        self.assertNotIn("write_off", kinds)
+        labels = [r["label"] for r in self.client.get(f"/api/equipment/{cid}/history/").data]
+        self.assertIn("Списано: 10 шт.", labels)
 
     # ——— учётный номер ———
 

@@ -174,20 +174,22 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         # остаток. Сначала по каждому закреплению пишем «Открепление» (возврат
         # единиц в пул — чтобы архив выдач у сотрудника остался согласованным),
         # затем весь остаток целиком списываем одним движением «Списание».
-        if equipment.equipment_type.accounting_type == EquipmentType.AccountingType.QUANTITY:
-            total = equipment.quantity
+        # Списанное количество показывается строкой «Списано: N шт.» в истории
+        # (см. history_list), поэтому отдельного ledger-движения «Списание» тут
+        # нет — иначе в истории было бы две записи об одном и том же. Остаток
+        # обнуляем ВМЕСТЕ с признаком архива (одним save), чтобы N можно было
+        # восстановить из истории как остаток на момент архивации.
+        is_quantity_card = equipment.equipment_type.accounting_type == EquipmentType.AccountingType.QUANTITY
+        update_fields = ["employee", "is_written_off", "written_off_at"]
+        if is_quantity_card:
             for alloc in list(equipment.allocations.all()):
                 self._record_movement(
                     equipment, EquipmentMovement.Kind.UNASSIGN, alloc.quantity,
                     request.user, comment, employee=alloc.employee,
                 )
                 alloc.delete()
-            if total > 0:
-                self._record_movement(
-                    equipment, EquipmentMovement.Kind.WRITE_OFF, total, request.user, comment
-                )
             equipment.quantity = 0
-            equipment.save(update_fields=["quantity"])
+            update_fields.append("quantity")
         # Списанное оборудование выходит из обращения — снимаем закрепление за
         # Сотрудником (аналогично тому, как увольнение открепляет оборудование,
         #). Историю «за кем было закреплено» хранит журнал изменений.
@@ -196,7 +198,7 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         equipment.written_off_at = timezone.now()
         if comment:
             equipment._change_reason = comment
-        equipment.save(update_fields=["employee", "is_written_off", "written_off_at"])
+        equipment.save(update_fields=update_fields)
         return Response(EquipmentSerializer(self.get_object()).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
@@ -456,7 +458,19 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         # открепление) — из журнала EquipmentMovement. Само поле quantity в
         # field_specs не включаем: иначе каждое движение дублировалось бы строкой
         # «Изменено „Остаток"». Начальный остаток уносим в запись «Объект создан».
-        if eq.equipment_type.accounting_type == EquipmentType.AccountingType.QUANTITY:
+        is_quantity = eq.equipment_type.accounting_type == EquipmentType.AccountingType.QUANTITY
+        # Списанное количество (остаток на момент архивации) — для строки
+        # «Списано: N шт.». Восстанавливаем из истории: остаток в записи прямо
+        # перед переводом is_written_off → True (в этот же save остаток обнуляется).
+        written_off_qty = None
+        if is_quantity and eq.is_written_off:
+            recs = list(eq.history.order_by("history_date", "history_id"))
+            for i, r in enumerate(recs):
+                prev_wo = recs[i - 1].is_written_off if i > 0 else False
+                if r.is_written_off and not prev_wo:
+                    written_off_qty = recs[i - 1].quantity if i > 0 else r.quantity
+                    break
+        if is_quantity:
             def mv_label(m):
                 emp = m.employee or "—"
                 if m.kind == EquipmentMovement.Kind.ADD:
@@ -479,13 +493,18 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             if initial is not None:
                 created_extra.append({"label": "Начальный остаток", "value": f"{initial} шт."})
 
+        # У количественной карточки в записи архивации показываем списанное
+        # количество; у поэкземплярной — просто «Списано».
+        def archived_label(_record):
+            return f"Списано: {written_off_qty} шт." if written_off_qty is not None else "Списано"
+
         rows = build_history_rows(
             eq, field_specs,
             movement_fields={"employee"},
             movement_events=[{
                 "trigger": "is_written_off", "to": True,
-                "consume": ["is_written_off", "written_off_at", "employee"],
-                "label": "Списано",
+                "consume": ["is_written_off", "written_off_at", "employee", "quantity"],
+                "label": archived_label,
             }],
             created_extra_lines=created_extra,
         )
