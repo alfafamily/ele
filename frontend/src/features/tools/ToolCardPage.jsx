@@ -97,8 +97,12 @@ export function ToolCardPage() {
         ) : null}
       </div>
 
-      <div className={'ele-obj-layout' + (tool.is_written_off ? ' ele-obj-layout--no-side' : '')}>
-        <div className="ele-obj-layout__main">
+      {/* Двухколоночная раскладка: слева — основные блоки и История (в общем
+          потоке, чтобы отступ до Истории не зависел от высоты боковой колонки),
+          справа — липкие блоки остатка/закреплений. На мобильных (ele-card-grid
+          ≤900px) схлопывается в одну колонку. */}
+      <div className="ele-card-grid" style={{ gridTemplateColumns: tool.is_written_off ? 'minmax(0, 1fr)' : undefined }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div className="ele-field-grid">
@@ -119,10 +123,14 @@ export function ToolCardPage() {
               </div>
             )}
           </Card>
+
+          <Card>
+            <HistoryList path={getToolHistoryPath(tool.id)} reloadKey={historyKey} />
+          </Card>
         </div>
 
         {!tool.is_written_off ? (
-          <div className="ele-obj-layout__side ele-card-sticky" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="ele-card-sticky" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
             <Card>
               <QuantityStock tool={tool} canManage={perms.canManageEquipment} setMoveModal={setMoveModal} closeMove={closeMove} />
             </Card>
@@ -131,10 +139,6 @@ export function ToolCardPage() {
             </Card>
           </div>
         ) : null}
-
-        <Card className="ele-obj-layout__history">
-          <HistoryList path={getToolHistoryPath(tool.id)} reloadKey={historyKey} />
-        </Card>
       </div>
 
       {showWriteOff ? (
