@@ -42,6 +42,8 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         qs = Employee.objects.all().prefetch_related(
             "equipment__equipment_type",
             "equipment__field_values__field",
+            "equipment_allocations__equipment__equipment_type",
+            "equipment_allocations__equipment__field_values__field",
             "sim_cards",
             "passes__buildings",
             "passes__rooms",
@@ -80,12 +82,28 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         """
         from django.utils import timezone
 
+        from equipment.models import EquipmentMovement
+
         employee = self.get_object()
         equipment_list = list(employee.equipment.all())
         for eq in equipment_list:
             # По одной, не bulk .update() — иначе не сработает история.
             eq.employee = None
             eq.save(update_fields=["employee"])
+
+        # Количественные закрепления возвращаем в свободный пул своих карточек —
+        # по каждому пишем движение «Открепление» (аналогично открепление
+        # поэкземплярного оборудования выше).
+        allocations = list(employee.equipment_allocations.all())
+        for alloc in allocations:
+            EquipmentMovement.objects.create(
+                equipment=alloc.equipment,
+                kind=EquipmentMovement.Kind.UNASSIGN,
+                quantity=alloc.quantity,
+                employee=employee,
+                created_by=request.user if request.user.is_authenticated else None,
+            )
+            alloc.delete()
 
         sim_actions = request.data.get("sim_actions") or {}
         pass_actions = request.data.get("pass_actions") or {}
@@ -139,6 +157,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
         data = EmployeeSerializer(employee).data
         data["detached_equipment_count"] = len(equipment_list)
+        data["detached_allocation_count"] = len(allocations)
         data["deactivated_sim_count"] = len(active_sims) - utilized_sim_count
         data["utilized_sim_count"] = utilized_sim_count
         data["deactivated_pass_count"] = len(active_passes) - utilized_pass_count
@@ -183,7 +202,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         открепления (свежие выше). Один объект может дать несколько эпизодов
         (повторные выдачи).
         """
-        from equipment.models import Equipment
+        from equipment.models import Equipment, EquipmentMovement
         from equipment.serializers import EquipmentMiniSerializer
 
         employee = self.get_object()
@@ -224,6 +243,47 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                 data = {"id": oid, "inventory_number": snap.inventory_number, "type_and_model": snap.inventory_number}
                 exists = False
             results.append({"kind": "equipment", "object": data, "exists": exists, "attached_at": att, "detached_at": det})
+
+        # Количественное оборудование: у поштучных выдач нет employee_id на самой
+        # карточке — эпизоды реконструируем по журналу движений. Для пары
+        # (карточка, сотрудник) проигрываем assign/unassign: баланс 0→N — начало
+        # владения, N→0 — завершённый эпизод (уходит в архив). Текущий ненулевой
+        # баланс — это вкладка «Выдано», в архив не попадает.
+        qty_moves = list(
+            EquipmentMovement.objects.filter(
+                employee_id=eid,
+                kind__in=[EquipmentMovement.Kind.ASSIGN, EquipmentMovement.Kind.UNASSIGN],
+            )
+            .select_related("equipment__equipment_type")
+            .prefetch_related("equipment__field_values__field")
+            .order_by("equipment_id", "created_at", "id")
+        )
+        by_eq = {}
+        for m in qty_moves:
+            by_eq.setdefault(m.equipment_id, []).append(m)
+        for recs in by_eq.values():
+            equipment = recs[0].equipment
+            balance = peak = 0
+            attached_at = None
+            for m in recs:
+                if m.kind == EquipmentMovement.Kind.ASSIGN:
+                    if balance == 0:
+                        attached_at = m.created_at
+                        peak = 0
+                    balance += m.quantity
+                    peak = max(peak, balance)
+                else:
+                    balance -= m.quantity
+                    if balance <= 0:
+                        data = EquipmentMiniSerializer(equipment).data
+                        data["quantity"] = peak
+                        data["is_quantity"] = True
+                        results.append({
+                            "kind": "equipment", "object": data, "exists": not equipment.is_written_off,
+                            "attached_at": attached_at, "detached_at": m.created_at,
+                        })
+                        balance = peak = 0
+                        attached_at = None
 
         # SIM/E-SIM
         sim_eps = episodes(SimCard.history)

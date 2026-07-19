@@ -194,6 +194,24 @@ def _active_equipment(employee):
     return [eq for eq in employee.equipment.all() if not eq.is_written_off]
 
 
+# Количественные закрепления — за сотрудником может числиться часть единиц
+# количественной карточки (списанные карточки закрепления не имеют).
+def _active_allocations(employee):
+    return [a for a in employee.equipment_allocations.all() if not a.equipment.is_written_off]
+
+
+def _equipment_entries(employee):
+    """Единый список «Выдано»: поэкземплярное оборудование + количественные
+    закрепления (строкой с количеством, флаг is_quantity)."""
+    items = EquipmentMiniSerializer(_active_equipment(employee), many=True).data
+    for alloc in _active_allocations(employee):
+        data = EquipmentMiniSerializer(alloc.equipment).data
+        data["quantity"] = alloc.quantity
+        data["is_quantity"] = True
+        items.append(data)
+    return items
+
+
 class EmployeeListSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     equipment_count = serializers.SerializerMethodField()
@@ -219,7 +237,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
         return str(obj)
 
     def get_equipment_count(self, obj):
-        return len(_active_equipment(obj))
+        return len(_active_equipment(obj)) + len(_active_allocations(obj))
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
@@ -252,7 +270,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
         return str(obj)
 
     def get_equipment(self, obj):
-        return EquipmentMiniSerializer(_active_equipment(obj), many=True).data
+        return _equipment_entries(obj)
 
     def get_sim_cards(self, obj):
         # Показываем и активные, и деактивированные (для истории). Порядок —

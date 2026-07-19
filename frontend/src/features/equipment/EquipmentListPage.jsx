@@ -147,17 +147,27 @@ export function EquipmentListPage() {
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{row.inventory_number}</div>
                 </div>
                 {tab === 'active' ? (
-                  // Сотрудник: ФИО в 2 строки + отдел ниже
-                  <div style={{ minWidth: 0 }}>
-                    {row.employee_name ? (
-                      <>
-                        <div className="ele-clamp-2">{row.employee_name}</div>
-                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>{row.department || '—'}</div>
-                      </>
-                    ) : (
-                      <span style={{ color: 'var(--color-text-placeholder)' }}>Не закреплено</span>
-                    )}
-                  </div>
+                  row.accounting_type === 'quantity' ? (
+                    // Количественная карточка: сводка остатка вместо сотрудника.
+                    <div style={{ minWidth: 0 }}>
+                      <div>Остаток: {row.quantity}</div>
+                      <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>
+                        закреплено: {row.allocated}
+                      </div>
+                    </div>
+                  ) : (
+                    // Сотрудник: ФИО в 2 строки + отдел ниже
+                    <div style={{ minWidth: 0 }}>
+                      {row.employee_name ? (
+                        <>
+                          <div className="ele-clamp-2">{row.employee_name}</div>
+                          <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>{row.department || '—'}</div>
+                        </>
+                      ) : (
+                        <span style={{ color: 'var(--color-text-placeholder)' }}>Не закреплено</span>
+                      )}
+                    </div>
+                  )
                 ) : (
                   <div style={{ color: 'var(--color-text-placeholder)', font: '500 13px var(--font-mono)' }}>
                     {formatDate(row.written_off_at)}

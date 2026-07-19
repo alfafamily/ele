@@ -35,6 +35,8 @@ export function EquipmentFormPage() {
   const [equipment, setEquipment] = useState(null)
   const [typeId, setTypeId] = useState('')
   const [inventoryNumber, setInventoryNumber] = useState('')
+  // Начальный остаток — только для количественного Типа при создании.
+  const [initialQuantity, setInitialQuantity] = useState('0')
   const [values, setValues] = useState({})
   const [fileValues, setFileValues] = useState({}) // fieldId -> {field values entry}
   const [customFields, setCustomFields] = useState([])
@@ -86,6 +88,7 @@ export function EquipmentFormPage() {
 
   const selectedType = types.find((t) => String(t.id) === String(typeId))
   const typeFields = selectedType?.fields || []
+  const isQuantity = selectedType?.accounting_type === 'quantity'
 
   const handleTypeChange = (newTypeId) => {
     setTypeId(newTypeId)
@@ -103,6 +106,8 @@ export function EquipmentFormPage() {
       field_values_input: typeFields.filter((f) => f.value_type !== 'file').map((f) => ({ field: f.id, value: values[f.id] ?? null })),
       custom_fields: customFields.filter((f) => f.name.trim()),
     }
+    // Начальный остаток задаётся только при создании количественной карточки.
+    if (!isEdit && isQuantity) payload.quantity = Math.max(0, Number(initialQuantity) || 0)
     if (!isEdit && comment.trim()) payload.comment = comment.trim()
     try {
       if (isEdit) {
@@ -132,7 +137,9 @@ export function EquipmentFormPage() {
         }
         // Закрепление за сотрудником (если создаём из его карточки) — отдельным
         // вызовом, т.к. форма оборудования не задаёт employee в payload.
-        if (employeeId) {
+        // Количественную карточку закрепляем не целиком — её создаём свободной,
+        // пользователь закрепит нужное количество с карточки (assign-units).
+        if (employeeId && !isQuantity) {
           try {
             await assignEmployee(created.id, Number(employeeId))
           } catch {
@@ -142,11 +149,11 @@ export function EquipmentFormPage() {
         }
         // replace — чтобы форма создания не оставалась в истории. При загрузке
         // файлов с ошибкой ведём на форму редактирования (слоты активны); иначе
-        // при создании из карточки сотрудника — обратно к нему, а из раздела —
-        // на карточку нового объекта.
+        // при создании поэкземплярного из карточки сотрудника — обратно к нему,
+        // а из раздела (и для количественного) — на карточку нового объекта.
         const target = uploadFailed
           ? `/equipment/${created.id}/edit`
-          : employeeId
+          : employeeId && !isQuantity
             ? `/employees/${employeeId}`
             : `/equipment/${created.id}`
         navigate(target, { replace: true })
@@ -218,6 +225,18 @@ export function EquipmentFormPage() {
                   </button>
                 ) : null}
               />
+              {/* Начальный остаток — только при создании количественной карточки.
+                  У поэкземплярного Типа поля нет. */}
+              {!isEdit && isQuantity ? (
+                <Input
+                  label="Начальный остаток"
+                  required
+                  type="number"
+                  min="0"
+                  value={initialQuantity}
+                  onChange={(e) => setInitialQuantity(e.target.value)}
+                />
+              ) : null}
             </div>
           </Card>
 

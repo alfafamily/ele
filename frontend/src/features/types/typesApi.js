@@ -7,7 +7,9 @@ export function makeTypesApi(domain) {
   const base = `/api/${domain}-types/`
   return {
     listTypes: () => apiGet(base),
-    createType: (name) => apiPost(base, { name }),
+    // accountingType — только для Типов оборудования (у лицензий не передаётся).
+    createType: (name, accountingType) =>
+      apiPost(base, accountingType ? { name, accounting_type: accountingType } : { name }),
     updateType: (id, payload) => apiPatch(`${base}${id}/`, payload),
     deleteType: (id) => apiDelete(`${base}${id}/`),
     createField: (typeId, payload) => apiPost(`${base}${typeId}/fields/`, payload),

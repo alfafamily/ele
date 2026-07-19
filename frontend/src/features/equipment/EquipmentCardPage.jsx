@@ -9,8 +9,18 @@ import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { AttachLicenseModal } from './AttachLicenseModal.jsx'
 import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
-import { assignEmployee, getEquipment, getEquipmentHistoryPath, unassignEmployee } from './equipmentApi.js'
+import {
+  addUnits,
+  assignEmployee,
+  assignUnits,
+  getEquipment,
+  getEquipmentHistoryPath,
+  unassignEmployee,
+  unassignUnits,
+  writeOffUnits,
+} from './equipmentApi.js'
 import { EQUIPMENT_STATUS_LABEL } from './statusLabels.js'
+import { QuantityMoveModal } from './QuantityMoveModal.jsx'
 import { WriteOffModal } from './WriteOffModal.jsx'
 
 export function EquipmentCardPage() {
@@ -22,6 +32,8 @@ export function EquipmentCardPage() {
   const [showWriteOff, setShowWriteOff] = useState(false)
   const [showAssignPicker, setShowAssignPicker] = useState(false)
   const [showAttachLicense, setShowAttachLicense] = useState(false)
+  // Движение количественной карточки: { kind, ...props для QuantityMoveModal }.
+  const [moveModal, setMoveModal] = useState(null)
   // Счётчик перезагрузок — растёт при каждом load(), сигналит истории обновиться.
   const [historyKey, setHistoryKey] = useState(0)
   // Подтверждение открепления/отвязки: { title, message, confirmLabel, onConfirm }.
@@ -59,6 +71,8 @@ export function EquipmentCardPage() {
     )
   }
 
+  const isQuantity = equipment.accounting_type === 'quantity'
+
   const onAssign = async (employee) => {
     await assignEmployee(equipment.id, employee.id)
     setShowAssignPicker(false)
@@ -70,6 +84,11 @@ export function EquipmentCardPage() {
   }
   const onDetachLicense = async (licenseId) => {
     await apiPatch(`/api/licenses/${licenseId}/`, { equipment: null })
+    load()
+  }
+
+  const closeMove = () => {
+    setMoveModal(null)
     load()
   }
 
@@ -118,8 +137,52 @@ export function EquipmentCardPage() {
             <div className="ele-field-grid">
               <Field label="Учётный номер" value={equipment.inventory_number} mono />
               <Field label="Тип оборудования" value={equipment.equipment_type_name} />
-              <Field label="Статус" value={equipment.is_written_off ? 'Списано' : EQUIPMENT_STATUS_LABEL[equipment.status]} />
+              {isQuantity ? (
+                equipment.is_written_off ? (
+                  <Field label="Статус" value="Списано" />
+                ) : (
+                  <>
+                    <Field label="Остаток" value={String(equipment.quantity)} />
+                    <Field label="Свободно" value={String(equipment.free)} />
+                    <Field label="Закреплено" value={String(equipment.allocated)} />
+                  </>
+                )
+              ) : (
+                <Field label="Статус" value={equipment.is_written_off ? 'Списано' : EQUIPMENT_STATUS_LABEL[equipment.status]} />
+              )}
             </div>
+            {isQuantity && !equipment.is_written_off && perms.canManageEquipment ? (
+              <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    setMoveModal({
+                      kind: 'add',
+                      title: 'Оприходовать',
+                      confirmLabel: 'Оприходовать',
+                      onSubmit: (qty, comment) => addUnits(equipment.id, qty, comment).then(closeMove),
+                    })
+                  }
+                >
+                  <Icon name="plus" size={18} strokeWidth={2.2} />
+                  Оприходовать
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    setMoveModal({
+                      kind: 'write_off_units',
+                      title: 'Списать единицы',
+                      confirmLabel: 'Списать',
+                      max: equipment.free,
+                      onSubmit: (qty, comment) => writeOffUnits(equipment.id, qty, comment).then(closeMove),
+                    })
+                  }
+                >
+                  Списать единицы
+                </Button>
+              </div>
+            ) : null}
           </Card>
 
           {(() => {
@@ -174,6 +237,15 @@ export function EquipmentCardPage() {
             оборудования всегда пуст — не показываем (одна колонка). */}
         {!equipment.is_written_off ? (
         <Card className="ele-obj-layout__side ele-card-sticky">
+          {isQuantity ? (
+            <QuantityAssignments
+              equipment={equipment}
+              canManage={perms.canManageEquipment}
+              setMoveModal={setMoveModal}
+              closeMove={closeMove}
+            />
+          ) : (
+          <>
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Закреплено за</div>
           {equipment.employee ? (
             <>
@@ -281,6 +353,8 @@ export function EquipmentCardPage() {
               </Button>
             </Can>
           ) : null}
+          </>
+          )}
         </Card>
         ) : null}
 
@@ -319,6 +393,18 @@ export function EquipmentCardPage() {
           }}
         />
       ) : null}
+
+      {moveModal ? (
+        <QuantityMoveModal
+          title={moveModal.title}
+          confirmLabel={moveModal.confirmLabel}
+          mode={moveModal.mode}
+          fixedEmployee={moveModal.fixedEmployee}
+          max={moveModal.max}
+          onSubmit={moveModal.onSubmit}
+          onClose={() => setMoveModal(null)}
+        />
+      ) : null}
     </div>
   )
 }
@@ -331,5 +417,82 @@ function Field({ label, value, mono, muted }) {
         {value || '—'}
       </div>
     </div>
+  )
+}
+
+// Боковой блок «Закреплено за» для количественной карточки: список закреплений
+// (сотрудник + количество + открепить) и кнопка «Закрепить».
+function QuantityAssignments({ equipment, canManage, setMoveModal, closeMove }) {
+  const allocations = equipment.allocations || []
+
+  const openAssign = () =>
+    setMoveModal({
+      title: 'Закрепить',
+      confirmLabel: 'Закрепить',
+      mode: 'assign',
+      max: equipment.free,
+      onSubmit: (qty, comment, employeeId) => assignUnits(equipment.id, employeeId, qty, comment).then(closeMove),
+    })
+
+  const openUnassign = (alloc) =>
+    setMoveModal({
+      title: 'Открепить',
+      confirmLabel: 'Открепить',
+      mode: 'fixed-employee',
+      fixedEmployee: { id: alloc.employee, name: alloc.employee_name },
+      max: alloc.quantity,
+      onSubmit: (qty, comment, employeeId) => unassignUnits(equipment.id, employeeId, qty, comment).then(closeMove),
+    })
+
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ fontSize: 16, fontWeight: 600 }}>Закреплено за</div>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
+          {equipment.allocated} / {equipment.quantity}
+        </span>
+      </div>
+
+      {allocations.length === 0 ? (
+        <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не закреплено</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {allocations.map((a) => (
+            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
+              <span style={{ width: 36, height: 36, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, overflow: 'hidden' }}>
+                {a.employee_avatar ? (
+                  <img src={a.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  nameInitials(a.employee_name)
+                )}
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Link className="ele-clamp-2" to={`/employees/${a.employee}`} style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                  {a.employee_name}
+                </Link>
+                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{a.department || '—'} · {a.quantity} шт.</div>
+              </div>
+              {canManage ? (
+                <button
+                  type="button"
+                  title="Открепить"
+                  onClick={() => openUnassign(a)}
+                  style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Icon name="x" size={16} strokeWidth={2} />
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {canManage ? (
+        <Button fullWidth style={{ marginTop: 14 }} onClick={openAssign} disabled={equipment.free <= 0}>
+          <Icon name="plus" size={18} strokeWidth={2.2} />
+          Закрепить
+        </Button>
+      ) : null}
+    </>
   )
 }
