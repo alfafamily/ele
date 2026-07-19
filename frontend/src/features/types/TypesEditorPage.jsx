@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { VALUE_TYPE_LABELS } from '../../shared/eav'
-import { ActionMenu, Badge, Banner, BackButton, Button, Card, ConfirmModal, Icon, Select, Spinner } from '../../shared/ui'
+import { ActionMenu, Badge, Banner, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { DeleteTypeModal } from './DeleteTypeModal.jsx'
 import { FieldFormModal } from './FieldFormModal.jsx'
 import { NewTypeModal } from './NewTypeModal.jsx'
@@ -21,15 +21,11 @@ function deleteBlockedNote(n) {
   return `Удаление невозможно. ${verb} ${n} ${objectsPlural(n)} с этим типом`
 }
 
-// Вид учёта — только у Типов оборудования (domain === 'equipment').
-const ACCOUNTING_LABELS = { instance: 'Поэкземплярный', quantity: 'Количественный' }
-
 // Общий редактор Типов оборудования/лицензий — оба домена
 // делят один и тот же CRUD-контракт (список/детали/реквизиты/impact),
 // различия — только в текстах и в паре захардкоженных Типов лицензий.
 export function TypesEditorPage({ domain, title }) {
   const api = makeTypesApi(domain)
-  const isEquipment = domain === 'equipment'
   const [types, setTypes] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [showArchived, setShowArchived] = useState(false)
@@ -75,16 +71,6 @@ export function TypesEditorPage({ domain, title }) {
   const toggleArchive = async (type) => {
     await api.updateType(type.id, { is_archived: !type.is_archived })
     load()
-  }
-
-  const changeAccounting = async (type, value) => {
-    setError(null)
-    try {
-      await api.updateType(type.id, { accounting_type: value })
-      load()
-    } catch (err) {
-      setError(err.errors ? Object.values(err.errors).flat().join(' ') : err.detail || 'Не удалось сменить вид учёта.')
-    }
   }
 
   const deleteType = async () => {
@@ -184,7 +170,6 @@ export function TypesEditorPage({ domain, title }) {
                   <span style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: t.is_archived ? 0.65 : 1 }}>{t.name}</span>
                 </span>
                 <span style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>
-                  {isEquipment ? `${ACCOUNTING_LABELS[t.accounting_type] || ''} · ` : ''}
                   Реквизиты: {t.fields.length} · объектов: {t.objects_count}
                 </span>
               </button>
@@ -200,25 +185,6 @@ export function TypesEditorPage({ domain, title }) {
               <Badge style={{ fontSize: 11, padding: '3px 9px' }}>{selected.objects_count} объектов</Badge>
               {selected.is_archived ? <Badge style={{ fontSize: 11, padding: '3px 9px' }}>В архиве</Badge> : null}
             </div>
-
-            {isEquipment ? (
-              <div style={{ marginBottom: 18, maxWidth: 320 }}>
-                {selected.objects_count === 0 ? (
-                  <Select label="Вид учёта" value={selected.accounting_type} onChange={(v) => changeAccounting(selected, v)}>
-                    <option value="instance">Поэкземплярный</option>
-                    <option value="quantity">Количественный</option>
-                  </Select>
-                ) : (
-                  <>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 4 }}>Вид учёта</div>
-                    <div style={{ fontSize: 14, fontWeight: 500 }}>{ACCOUNTING_LABELS[selected.accounting_type]}</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 4 }}>
-                      Сменить нельзя — к Типу уже привязаны объекты.
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : null}
 
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Реквизиты типа</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -267,10 +233,9 @@ export function TypesEditorPage({ domain, title }) {
 
       {showNewType ? (
         <NewTypeModal
-          withAccounting={isEquipment}
           onClose={() => setShowNewType(false)}
-          onCreate={async (name, accountingType) => {
-            const created = await api.createType(name, accountingType)
+          onCreate={async (name) => {
+            const created = await api.createType(name)
             setShowNewType(false)
             setSelectedId(created.id)
             load()

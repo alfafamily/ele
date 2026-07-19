@@ -5,21 +5,8 @@ from simple_history.models import HistoricalRecords
 class EquipmentType(models.Model):
     """Тип оборудования — классификатор, задающий набор реквизитов."""
 
-    class AccountingType(models.TextChoices):
-        # Поэкземплярный — одна карточка = один физический экземпляр (employee — FK).
-        # Количественный — карточка = N одинаковых единиц (остаток + раздача по
-        # частям через EquipmentAllocation; см.).
-        INSTANCE = "instance", "Поэкземплярный"
-        QUANTITY = "quantity", "Количественный"
-
     name = models.CharField("Наименование", max_length=255)
     is_archived = models.BooleanField("Архивный", default=False)
-    # Вид учёта. Существующие Типы при миграции получают «Поэкземплярный» (default),
-    # поведение не меняется. Смену запрещаем, когда у Типа уже есть объекты
-    # (валидация в EquipmentTypeSerializer).
-    accounting_type = models.CharField(
-        "Вид учёта", max_length=10, choices=AccountingType.choices, default=AccountingType.INSTANCE
-    )
 
     class Meta:
         verbose_name = "Тип оборудования"
@@ -97,20 +84,11 @@ class EquipmentTypeFieldOption(models.Model):
 class Equipment(models.Model):
     """Единица физического актива компании."""
 
-    # У количественного учёта один номер не может относиться ко всему количеству,
-    # поэтому у таких карточек он не задаётся (пустой). У поэкземплярных —
-    # обязателен (проверка в сериализаторе).
-    inventory_number = models.CharField("Учётный номер", max_length=255, blank=True, default="")
-    # Единичное закрепление — только для поэкземплярного учёта. У количественных
-    # Типов остаётся null, раздача ведётся через EquipmentAllocation (см.).
+    inventory_number = models.CharField("Учётный номер", max_length=255)
     employee = models.ForeignKey(
         "employees.Employee", verbose_name="Сотрудник",
         on_delete=models.SET_NULL, null=True, blank=True, related_name="equipment",
     )
-    # Остаток (всего единиц в системе) — только для количественного учёта. У
-    # поэкземплярных Типов остаётся 0 и не используется. «Свободно» = quantity −
-    # сумма закреплений (EquipmentAllocation).
-    quantity = models.PositiveIntegerField("Остаток", default=0)
     is_written_off = models.BooleanField("Признак списания", default=False)
     # Проставляется в момент списания (write_off action) — нужна для колонки
     # «Дата списания» вкладки Архив, отдельно от is_written_off.
@@ -129,12 +107,7 @@ class Equipment(models.Model):
         ordering = ["-created_at"]
         constraints = [
             # Учётный номер уникален по всему Оборудованию (включая списанное).
-            # Пустой номер (количественные карточки) из-под уникальности выведен.
-            models.UniqueConstraint(
-                fields=["inventory_number"],
-                name="uniq_equipment_inventory",
-                condition=~models.Q(inventory_number=""),
-            ),
+            models.UniqueConstraint(fields=["inventory_number"], name="uniq_equipment_inventory"),
         ]
 
     def __str__(self):
@@ -202,63 +175,3 @@ class EquipmentCustomField(models.Model):
 
     def __str__(self):
         return f"{self.equipment} / {self.name}"
-
-
-class EquipmentAllocation(models.Model):
-    """Закрепление части единиц количественной карточки за сотрудником.
-    Одна строка на пару (equipment, employee); количество агрегируется.
-    Свободный остаток = Equipment.quantity − сумма quantity всех закреплений."""
-
-    # PROTECT на employee: пока за сотрудником закреплены единицы — его нельзя
-    # удалить (как и с поэкземплярным оборудованием).
-    equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name="allocations")
-    employee = models.ForeignKey(
-        "employees.Employee", verbose_name="Сотрудник",
-        on_delete=models.PROTECT, related_name="equipment_allocations",
-    )
-    quantity = models.PositiveIntegerField("Количество")
-
-    class Meta:
-        verbose_name = "Закрепление количественного оборудования"
-        verbose_name_plural = "Закрепления количественного оборудования"
-        constraints = [
-            models.UniqueConstraint(fields=["equipment", "employee"], name="uniq_equipment_allocation"),
-        ]
-
-    def __str__(self):
-        return f"{self.equipment} / {self.employee} × {self.quantity}"
-
-
-class EquipmentMovement(models.Model):
-    """Журнал движений количественной карточки — источник «истории движений по
-    количеству». Пишется транзакционно вместе с изменением остатка/закреплений.
-    Текущее состояние хранят Equipment.quantity и EquipmentAllocation."""
-
-    class Kind(models.TextChoices):
-        ADD = "add", "Приход"
-        WRITE_OFF = "write_off", "Списание"
-        ASSIGN = "assign", "Закрепление"
-        UNASSIGN = "unassign", "Открепление"
-
-    equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name="movements")
-    kind = models.CharField("Тип движения", max_length=10, choices=Kind.choices)
-    quantity = models.PositiveIntegerField("Количество")
-    # Заполняется для assign/unassign. SET_NULL — движение остаётся в истории даже
-    # если сотрудник когда-нибудь будет удалён.
-    employee = models.ForeignKey(
-        "employees.Employee", verbose_name="Сотрудник",
-        on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
-    )
-    comment = models.TextField("Комментарий", blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    created_by = models.ForeignKey(
-        "accounts.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
-    )
-
-    class Meta:
-        verbose_name = "Движение количественного оборудования"
-        verbose_name_plural = "Движения количественного оборудования"
-        ordering = ["created_at", "id"]
-
-    def __str__(self):
-        return f"{self.equipment} / {self.get_kind_display()} × {self.quantity}"

@@ -6,6 +6,7 @@ import { Icon } from '../shared/ui/Icon/Icon.jsx'
 const nav = (name) => () => <Icon name={name} size={22} strokeWidth={1.7} />
 
 export const EquipmentIcon = nav('tag')
+export const ToolsIcon = nav('wrench')
 export const LicensesIcon = nav('scroll-text')
 export const PremisesIcon = nav('building-2')
 export const EmployeesIcon = nav('users')

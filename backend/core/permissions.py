@@ -68,6 +68,29 @@ class EquipmentAccessPermission(BasePermission):
         return user.is_observer or obj.employee_id == user.employee_id
 
 
+class ToolAccessPermission(BasePermission):
+    """Инструменты — как Оборудование: Сотрудник видит инструменты, где за ним
+    закреплены единицы (или все — с признаком «Наблюдатель»), только на просмотр.
+    Фильтрация списка под «только своё» — в ToolViewSet.get_queryset()."""
+
+    def has_permission(self, request, view):
+        role = _role(request)
+        if role in ("admin", "accountant"):
+            return True
+        return role == "employee" and request.method in _SAFE_METHODS
+
+    def has_object_permission(self, request, view, obj):
+        role = _role(request)
+        if role in ("admin", "accountant"):
+            return True
+        if role != "employee" or request.method not in _SAFE_METHODS:
+            return False
+        user = request.user
+        return user.is_observer or (
+            bool(user.employee_id) and obj.allocations.filter(employee_id=user.employee_id).exists()
+        )
+
+
 class SimCardAccessPermission(BasePermission):
     """SIM-карты: управление — admin/accountant. Наблюдатель — просмотр всех
     номеров (раздел «Корпоративная связь»); обычный «Сотрудник» — только свои

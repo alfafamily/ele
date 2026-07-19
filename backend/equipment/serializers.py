@@ -6,7 +6,6 @@ from storage.serializers import StoredFileSerializer
 
 from .models import (
     Equipment,
-    EquipmentAllocation,
     EquipmentCustomField,
     EquipmentFieldFile,
     EquipmentFieldValue,
@@ -75,17 +74,7 @@ class EquipmentTypeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EquipmentType
-        fields = ["id", "name", "is_archived", "accounting_type", "fields", "objects_count"]
-
-    def validate_accounting_type(self, value):
-        # Вид учёта нельзя менять, если к Типу уже привязаны объекты — иначе
-        # остаток/закрепления рассогласуются с моделью данных. При создании Типа
-        # (нет instance) выбор свободный.
-        if self.instance and value != self.instance.accounting_type and self.instance.equipment.exists():
-            raise serializers.ValidationError(
-                "Нельзя сменить вид учёта — к Типу уже привязаны объекты."
-            )
-        return value
+        fields = ["id", "name", "is_archived", "fields", "objects_count"]
 
 
 class EquipmentFieldValueInputSerializer(serializers.Serializer):
@@ -134,46 +123,14 @@ class EquipmentCustomFieldSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "value"]
 
 
-class EquipmentAllocationSerializer(serializers.ModelSerializer):
-    """Закрепление части количественной карточки за сотрудником — для карточки
-    оборудования (боковой блок «Закреплено за»)."""
-
-    employee_name = serializers.SerializerMethodField()
-    employee_avatar = serializers.SerializerMethodField()
-    department = serializers.SerializerMethodField()
-
-    class Meta:
-        model = EquipmentAllocation
-        fields = ["id", "employee", "employee_name", "employee_avatar", "department", "quantity"]
-
-    def get_employee_name(self, obj):
-        return str(obj.employee)
-
-    def get_employee_avatar(self, obj):
-        if obj.employee.avatar_id:
-            return StoredFileSerializer(obj.employee.avatar).data
-        return None
-
-    def get_department(self, obj):
-        return obj.employee.department
-
-
 class EquipmentSerializer(serializers.ModelSerializer):
     """Единый сериализатор чтения/записи. Файловые реквизиты — через
     отдельный upload-эндпоинт (см. views.py), в этом payload не участвуют."""
 
     # Объявлено явно, чтобы уникальность проверялась своим сообщением
     # (validate_inventory_number), а не авто-валидатором DRF по UniqueConstraint.
-    # Необязателен на уровне поля: для поэкземплярного учёта обязательность
-    # проверяется в validate() (там известен Тип), у количественного номера нет.
-    inventory_number = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    inventory_number = serializers.CharField(max_length=255)
     equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True)
-    accounting_type = serializers.CharField(source="equipment_type.accounting_type", read_only=True)
-    # quantity — начальный остаток (writable только при создании количественной
-    # карточки); allocated/free — вычисляемые.
-    allocated = serializers.SerializerMethodField()
-    free = serializers.SerializerMethodField()
-    allocations = EquipmentAllocationSerializer(many=True, read_only=True)
     type_and_model = serializers.SerializerMethodField()
     employee_name = serializers.SerializerMethodField()
     employee_avatar = serializers.SerializerMethodField()
@@ -197,11 +154,6 @@ class EquipmentSerializer(serializers.ModelSerializer):
             "written_off_at",
             "equipment_type",
             "equipment_type_name",
-            "accounting_type",
-            "quantity",
-            "allocated",
-            "free",
-            "allocations",
             "type_and_model",
             "status",
             "field_values",
@@ -210,15 +162,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
             "licenses",
             "created_at",
         ]
-        # quantity — записываемый только при создании (unit-операции меняют его
-        # через отдельные экшены); enforced в create/update ниже.
         read_only_fields = ["is_written_off", "written_off_at", "created_at"]
-
-    def get_allocated(self, obj):
-        return sum(a.quantity for a in obj.allocations.all())
-
-    def get_free(self, obj):
-        return obj.quantity - sum(a.quantity for a in obj.allocations.all())
 
     def get_type_and_model(self, obj):
         # «{Тип} {Модель}», без Модели — просто «{Тип}».
@@ -263,12 +207,10 @@ class EquipmentSerializer(serializers.ModelSerializer):
         ).data
 
     def validate_inventory_number(self, value):
-        value = (value or "").strip()
-        # Пустой номер допустим (количественный учёт) — обязательность для
-        # поэкземплярного проверяется в validate(). Уникальность — только для
-        # непустого номера, по всему Оборудованию (включая списанное).
+        value = value.strip()
         if not value:
-            return value
+            raise serializers.ValidationError("Укажите учётный номер.")
+        # Уникальность по всему Оборудованию (включая списанное).
         qs = Equipment.objects.filter(inventory_number=value)
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)
@@ -285,31 +227,12 @@ class EquipmentSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError(
                         {"field_values": [f"Реквизит «{item['field'].name}» не относится к выбранному Типу."]}
                     )
-        is_quantity = equipment_type and equipment_type.accounting_type == EquipmentType.AccountingType.QUANTITY
-        # Остаток осмыслен только у количественных Типов. У поэкземплярных
-        # принудительно обнуляем, чтобы случайно переданное значение не осело.
-        if not is_quantity:
-            attrs["quantity"] = 0
-        # Учётный номер: у количественного всегда пустой (номер не относится ко
-        # всему количеству), у поэкземплярного — обязателен.
-        if is_quantity:
-            attrs["inventory_number"] = ""
-        else:
-            number = attrs.get("inventory_number")
-            if number is None:
-                number = getattr(self.instance, "inventory_number", "")
-            if not (number or "").strip():
-                raise serializers.ValidationError({"inventory_number": ["Укажите учётный номер."]})
         return attrs
 
     @transaction.atomic
     def create(self, validated_data):
         field_values_input = validated_data.pop("field_values_input", [])
         custom_fields_data = validated_data.pop("custom_fields", [])
-        # Количественную карточку всегда создаём свободной: employee игнорируем
-        # (раздача — с карточки через assign-units).
-        if validated_data["equipment_type"].accounting_type == EquipmentType.AccountingType.QUANTITY:
-            validated_data.pop("employee", None)
         instance = Equipment.objects.create(**validated_data)
         if field_values_input:
             apply_field_values(instance, "equipment", EquipmentFieldValue, field_values_input, instance.equipment_type.fields.all())
@@ -323,9 +246,6 @@ class EquipmentSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         field_values_input = validated_data.pop("field_values_input", None)
         custom_fields_data = validated_data.pop("custom_fields", None)
-        # Остаток меняют только unit-операции (add/write-off-units), не форма
-        # редактирования — иначе правка карточки затирала бы историю движений.
-        validated_data.pop("quantity", None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()

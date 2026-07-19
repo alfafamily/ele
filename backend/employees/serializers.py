@@ -194,22 +194,17 @@ def _active_equipment(employee):
     return [eq for eq in employee.equipment.all() if not eq.is_written_off]
 
 
-# Количественные закрепления — за сотрудником может числиться часть единиц
-# количественной карточки (списанные карточки закрепления не имеют).
-def _active_allocations(employee):
-    return [a for a in employee.equipment_allocations.all() if not a.equipment.is_written_off]
+# Закреплённые за сотрудником инструменты (количественные): за ним может числиться
+# часть единиц; списанные карточки закреплений не имеют.
+def _tool_entries(employee):
+    from tools.models import ToolAllocation
 
-
-def _equipment_entries(employee):
-    """Единый список «Выдано»: поэкземплярное оборудование + количественные
-    закрепления (строкой с количеством, флаг is_quantity)."""
-    items = EquipmentMiniSerializer(_active_equipment(employee), many=True).data
-    for alloc in _active_allocations(employee):
-        data = EquipmentMiniSerializer(alloc.equipment).data
-        data["quantity"] = alloc.quantity
-        data["is_quantity"] = True
-        items.append(data)
-    return items
+    allocs = (
+        ToolAllocation.objects.filter(employee=employee, tool__is_written_off=False)
+        .select_related("tool")
+        .order_by("tool__name")
+    )
+    return [{"id": a.tool_id, "name": a.tool.name, "quantity": a.quantity} for a in allocs]
 
 
 class EmployeeListSerializer(serializers.ModelSerializer):
@@ -237,12 +232,13 @@ class EmployeeListSerializer(serializers.ModelSerializer):
         return str(obj)
 
     def get_equipment_count(self, obj):
-        return len(_active_equipment(obj)) + len(_active_allocations(obj))
+        return len(_active_equipment(obj))
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     equipment = serializers.SerializerMethodField()
+    tools = serializers.SerializerMethodField()
     sim_cards = serializers.SerializerMethodField()
     passes = serializers.SerializerMethodField()
     user_email = serializers.SerializerMethodField()
@@ -260,6 +256,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "avatar",
             "is_employed",
             "equipment",
+            "tools",
             "sim_cards",
             "passes",
             "user_email",
@@ -270,7 +267,11 @@ class EmployeeSerializer(serializers.ModelSerializer):
         return str(obj)
 
     def get_equipment(self, obj):
-        return _equipment_entries(obj)
+        return EquipmentMiniSerializer(_active_equipment(obj), many=True).data
+
+    def get_tools(self, obj):
+        # Закреплённые за сотрудником инструменты (строкой «Название · N шт.»).
+        return _tool_entries(obj)
 
     def get_sim_cards(self, obj):
         # Показываем и активные, и деактивированные (для истории). Порядок —

@@ -1,4 +1,4 @@
-from django.db.models import ProtectedError, Q, Sum
+from django.db.models import ProtectedError, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import filters, generics, viewsets
@@ -15,11 +15,9 @@ from storage.service import delete_stored_file, store_uploaded_file
 
 from .models import (
     Equipment,
-    EquipmentAllocation,
     EquipmentCustomField,
     EquipmentFieldFile,
     EquipmentFieldValue,
-    EquipmentMovement,
     EquipmentType,
     EquipmentTypeField,
 )
@@ -103,8 +101,7 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Equipment.objects.select_related("employee", "employee__avatar", "equipment_type").prefetch_related(
-            "field_values__field", "field_values__files__stored_file", "custom_fields",
-            "allocations__employee__avatar",
+            "field_values__field", "field_values__files__stored_file", "custom_fields"
         )
         user = self.request.user
         if user.role == "employee" and not user.is_observer:
@@ -169,37 +166,17 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             for lic in active_licenses:
                 lic.equipment = None
                 lic.save(update_fields=["equipment"])
-        comment = (request.data.get("comment") or "").strip()
-        # Количественная карточка: списание всей карточки убирает из обращения ВЕСЬ
-        # остаток. Сначала по каждому закреплению пишем «Открепление» (возврат
-        # единиц в пул — чтобы архив выдач у сотрудника остался согласованным),
-        # затем весь остаток целиком списываем одним движением «Списание».
-        # Списанное количество показывается строкой «Списано: N шт.» в истории
-        # (см. history_list), поэтому отдельного ledger-движения «Списание» тут
-        # нет — иначе в истории было бы две записи об одном и том же. Остаток
-        # обнуляем ВМЕСТЕ с признаком архива (одним save), чтобы N можно было
-        # восстановить из истории как остаток на момент архивации.
-        is_quantity_card = equipment.equipment_type.accounting_type == EquipmentType.AccountingType.QUANTITY
-        update_fields = ["employee", "is_written_off", "written_off_at"]
-        if is_quantity_card:
-            for alloc in list(equipment.allocations.all()):
-                self._record_movement(
-                    equipment, EquipmentMovement.Kind.UNASSIGN, alloc.quantity,
-                    request.user, comment, employee=alloc.employee,
-                )
-                alloc.delete()
-            equipment.quantity = 0
-            update_fields.append("quantity")
         # Списанное оборудование выходит из обращения — снимаем закрепление за
         # Сотрудником (аналогично тому, как увольнение открепляет оборудование,
         #). Историю «за кем было закреплено» хранит журнал изменений.
         equipment.employee = None
         equipment.is_written_off = True
         equipment.written_off_at = timezone.now()
+        comment = (request.data.get("comment") or "").strip()
         if comment:
             equipment._change_reason = comment
-        equipment.save(update_fields=update_fields)
-        return Response(EquipmentSerializer(self.get_object()).data)
+        equipment.save(update_fields=["employee", "is_written_off", "written_off_at"])
+        return Response(EquipmentSerializer(equipment).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def assign(self, request, pk=None):
@@ -217,114 +194,6 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         equipment.employee = None
         equipment.save(update_fields=["employee"])
         return Response(EquipmentSerializer(equipment).data)
-
-    # ——— Количественный учёт: движения по остатку ———————————————————————————
-
-    def _record_movement(self, equipment, kind, quantity, user, comment, employee=None):
-        return EquipmentMovement.objects.create(
-            equipment=equipment,
-            kind=kind,
-            quantity=quantity,
-            employee=employee,
-            comment=comment or "",
-            created_by=user if getattr(user, "is_authenticated", False) else None,
-        )
-
-    def _quantity_op_guard(self, equipment):
-        """Общие проверки для unit-операций: только количественный Тип и не архив."""
-        if equipment.equipment_type.accounting_type != EquipmentType.AccountingType.QUANTITY:
-            return Response({"detail": "Операция доступна только для количественного учёта."}, status=409)
-        if equipment.is_written_off:
-            return Response({"detail": "Карточка списана — операции недоступны."}, status=409)
-        return None
-
-    def _parse_positive_qty(self, request):
-        try:
-            qty = int(request.data.get("quantity"))
-        except (TypeError, ValueError):
-            return None, Response({"detail": "Укажите количество."}, status=400)
-        if qty <= 0:
-            return None, Response({"detail": "Количество должно быть больше нуля."}, status=400)
-        return qty, None
-
-    def _free_units(self, equipment):
-        allocated = equipment.allocations.aggregate(s=Sum("quantity"))["s"] or 0
-        return equipment.quantity - allocated
-
-    @action(detail=True, methods=["post"], url_path="add-units", permission_classes=[IsAdminOrAccountant])
-    def add_units(self, request, pk=None):
-        equipment = self.get_object()
-        if (err := self._quantity_op_guard(equipment)) is not None:
-            return err
-        qty, err = self._parse_positive_qty(request)
-        if err is not None:
-            return err
-        comment = (request.data.get("comment") or "").strip()
-        equipment.quantity += qty
-        equipment.save(update_fields=["quantity"])
-        self._record_movement(equipment, EquipmentMovement.Kind.ADD, qty, request.user, comment)
-        return Response(EquipmentSerializer(self.get_object()).data)
-
-    @action(detail=True, methods=["post"], url_path="write-off-units", permission_classes=[IsAdminOrAccountant])
-    def write_off_units(self, request, pk=None):
-        equipment = self.get_object()
-        if (err := self._quantity_op_guard(equipment)) is not None:
-            return err
-        qty, err = self._parse_positive_qty(request)
-        if err is not None:
-            return err
-        if qty > self._free_units(equipment):
-            return Response({"detail": "Нельзя списать больше, чем свободный остаток."}, status=409)
-        comment = (request.data.get("comment") or "").strip()
-        equipment.quantity -= qty
-        equipment.save(update_fields=["quantity"])
-        self._record_movement(equipment, EquipmentMovement.Kind.WRITE_OFF, qty, request.user, comment)
-        return Response(EquipmentSerializer(self.get_object()).data)
-
-    @action(detail=True, methods=["post"], url_path="assign-units", permission_classes=[IsAdminOrAccountant])
-    def assign_units(self, request, pk=None):
-        equipment = self.get_object()
-        if (err := self._quantity_op_guard(equipment)) is not None:
-            return err
-        qty, err = self._parse_positive_qty(request)
-        if err is not None:
-            return err
-        employee = get_object_or_404(Employee, pk=request.data.get("employee"))
-        if qty > self._free_units(equipment):
-            return Response({"detail": "Нельзя закрепить больше, чем свободный остаток."}, status=409)
-        comment = (request.data.get("comment") or "").strip()
-        alloc, _ = EquipmentAllocation.objects.get_or_create(
-            equipment=equipment, employee=employee, defaults={"quantity": 0}
-        )
-        alloc.quantity += qty
-        alloc.save(update_fields=["quantity"])
-        self._record_movement(
-            equipment, EquipmentMovement.Kind.ASSIGN, qty, request.user, comment, employee=employee
-        )
-        return Response(EquipmentSerializer(self.get_object()).data)
-
-    @action(detail=True, methods=["post"], url_path="unassign-units", permission_classes=[IsAdminOrAccountant])
-    def unassign_units(self, request, pk=None):
-        equipment = self.get_object()
-        if (err := self._quantity_op_guard(equipment)) is not None:
-            return err
-        qty, err = self._parse_positive_qty(request)
-        if err is not None:
-            return err
-        employee = get_object_or_404(Employee, pk=request.data.get("employee"))
-        alloc = EquipmentAllocation.objects.filter(equipment=equipment, employee=employee).first()
-        if not alloc or qty > alloc.quantity:
-            return Response({"detail": "Нельзя открепить больше, чем закреплено за сотрудником."}, status=409)
-        comment = (request.data.get("comment") or "").strip()
-        alloc.quantity -= qty
-        if alloc.quantity == 0:
-            alloc.delete()
-        else:
-            alloc.save(update_fields=["quantity"])
-        self._record_movement(
-            equipment, EquipmentMovement.Kind.UNASSIGN, qty, request.user, comment, employee=employee
-        )
-        return Response(EquipmentSerializer(self.get_object()).data)
 
     @action(detail=True, methods=["get"], url_path="history")
     def history_list(self, request, pk=None):
@@ -454,57 +323,13 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                         })
                     prev_attached = attached
 
-        # Количественный учёт: движения по остатку (приход/списание/закрепление/
-        # открепление) — из журнала EquipmentMovement. Само поле quantity в
-        # field_specs не включаем: иначе каждое движение дублировалось бы строкой
-        # «Изменено „Остаток"». Начальный остаток уносим в запись «Объект создан».
-        is_quantity = eq.equipment_type.accounting_type == EquipmentType.AccountingType.QUANTITY
-        # Списанное количество (остаток на момент архивации) — для строки
-        # «Списано: N шт.». Восстанавливаем из истории: остаток в записи прямо
-        # перед переводом is_written_off → True (в этот же save остаток обнуляется).
-        written_off_qty = None
-        if is_quantity and eq.is_written_off:
-            recs = list(eq.history.order_by("history_date", "history_id"))
-            for i, r in enumerate(recs):
-                prev_wo = recs[i - 1].is_written_off if i > 0 else False
-                if r.is_written_off and not prev_wo:
-                    written_off_qty = recs[i - 1].quantity if i > 0 else r.quantity
-                    break
-        if is_quantity:
-            def mv_label(m):
-                emp = m.employee or "—"
-                if m.kind == EquipmentMovement.Kind.ADD:
-                    return f"Приход: +{m.quantity} шт."
-                if m.kind == EquipmentMovement.Kind.WRITE_OFF:
-                    return f"Списание: −{m.quantity} шт."
-                if m.kind == EquipmentMovement.Kind.ASSIGN:
-                    return f"Закреплено: {m.quantity} шт. за «{emp}»"
-                return f"Откреплено: {m.quantity} шт. от «{emp}»"
-
-            for m in eq.movements.select_related("created_by", "employee"):
-                related_rows.append({
-                    "date": m.created_at,
-                    "author": m.created_by.email if m.created_by_id else None,
-                    "kind": "movement", "category": "movement",
-                    "label": mv_label(m), "old": None, "new": None,
-                    "secret": False, "comment": m.comment or None,
-                })
-            initial = eq.history.filter(history_type="+").values_list("quantity", flat=True).first()
-            if initial is not None:
-                created_extra.append({"label": "Начальный остаток", "value": f"{initial} шт."})
-
-        # У количественной карточки в записи архивации показываем списанное
-        # количество; у поэкземплярной — просто «Списано».
-        def archived_label(_record):
-            return f"Списано: {written_off_qty} шт." if written_off_qty is not None else "Списано"
-
         rows = build_history_rows(
             eq, field_specs,
             movement_fields={"employee"},
             movement_events=[{
                 "trigger": "is_written_off", "to": True,
-                "consume": ["is_written_off", "written_off_at", "employee", "quantity"],
-                "label": archived_label,
+                "consume": ["is_written_off", "written_off_at", "employee"],
+                "label": "Списано",
             }],
             created_extra_lines=created_extra,
         )

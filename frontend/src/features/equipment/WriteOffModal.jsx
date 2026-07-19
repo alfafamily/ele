@@ -63,16 +63,6 @@ export function WriteOffModal({ equipment, onClose, onDone }) {
             Объект <b style={{ color: 'var(--color-text-primary)' }}>{equipment.type_and_model}</b> будет перемещён в
             архив. Восстановление из архива через интерфейс не предусмотрено.
           </p>
-          {equipment.accounting_type === 'quantity' ? (
-            <p style={{ fontSize: 13.5, color: 'var(--color-text-muted)', lineHeight: 1.5, marginTop: 10 }}>
-              {equipment.allocated > 0 ? (
-                <>Всё закреплённое (<b style={{ color: 'var(--color-text-primary)' }}>{equipment.allocated} шт.</b>) будет откреплено от сотрудников, а весь остаток{' '}</>
-              ) : (
-                <>Весь остаток{' '}</>
-              )}
-              <b style={{ color: 'var(--color-text-primary)' }}>{equipment.quantity} шт.</b> будет списан.
-            </p>
-          ) : null}
           <div style={{ marginTop: 16 }}>
             <Input
               label="Комментарий (необязательно)"

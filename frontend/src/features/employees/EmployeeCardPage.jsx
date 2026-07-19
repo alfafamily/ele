@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useNavigationType, useParams } from 'react-router-dom'
 import { apiPatch } from '../../shared/api/client'
-import { unassignUnits } from '../equipment/equipmentApi.js'
+import { unassignUnits as unassignToolUnits } from '../tools/toolsApi.js'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner, StatusPill, Table, TabBar, TableRow } from '../../shared/ui'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
@@ -96,11 +96,10 @@ export function EmployeeCardPage() {
     load()
   }
 
-  // Открепление количественного оборудования — возвращает все закреплённые за
-  // сотрудником единицы в свободный пул карточки (частичное — на карточке
-  // оборудования).
-  const onDetachQuantity = async (eq) => {
-    await unassignUnits(eq.id, employee.id, eq.quantity)
+  // Открепление инструмента — возвращает все закреплённые за сотрудником единицы
+  // в свободный пул карточки (частичное — на карточке инструмента).
+  const onDetachTool = async (tool) => {
+    await unassignToolUnits(tool.id, employee.id, tool.quantity)
     load()
   }
 
@@ -227,32 +226,63 @@ export function EmployeeCardPage() {
               <div key={eq.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
                 <Link to={`/equipment/${eq.id}`} style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{eq.type_and_model}</div>
-                  {/* Количественное — показываем «N шт.»; поэкземплярное — учётный номер. */}
-                  <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>
-                    {eq.is_quantity ? `${eq.quantity} шт.` : eq.inventory_number}
-                  </div>
+                  <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</div>
                 </Link>
                 <Can perm="canManageEquipment">
                   <Button
                     variant="secondary"
                     onClick={() =>
-                      eq.is_quantity
-                        ? setConfirm({
-                            title: 'Открепить оборудование?',
-                            message: `Все ${eq.quantity} шт. «${eq.type_and_model}» будут откреплены от сотрудника ${employee.full_name} и вернутся в свободный остаток.`,
-                            onConfirm: () => onDetachQuantity(eq),
-                          })
-                        : setConfirm({
-                            title: 'Открепить оборудование?',
-                            message: `«${eq.type_and_model}» больше не будет закреплено за сотрудником ${employee.full_name}.`,
-                            onConfirm: () => onDetachEquipment(eq.id),
-                          })
+                      setConfirm({
+                        title: 'Открепить оборудование?',
+                        message: `«${eq.type_and_model}» больше не будет закреплено за сотрудником ${employee.full_name}.`,
+                        onConfirm: () => onDetachEquipment(eq.id),
+                      })
                     }
                   >
                     Открепить
                   </Button>
                 </Can>
                 <Link to={`/equipment/${eq.id}`} style={{ width: 28, height: 28, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="chevron-right" size={16} strokeWidth={2} style={{ color: '#C7C9D4' }} />
+                </Link>
+              </div>
+            ))
+          )}
+        </Card>
+
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>Инструменты</div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
+              {employee.tools.length}
+            </span>
+          </div>
+          {employee.tools.length === 0 ? (
+            <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплены инструменты.</div>
+          ) : (
+            employee.tools.map((tool) => (
+              <div key={tool.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+                <Link to={`/tools/${tool.id}`} style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{tool.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{tool.quantity} шт.</div>
+                </Link>
+                {employee.is_employed ? (
+                  <Can perm="canManageEquipment">
+                    <Button
+                      variant="secondary"
+                      onClick={() =>
+                        setConfirm({
+                          title: 'Открепить инструмент?',
+                          message: `Все ${tool.quantity} шт. «${tool.name}» будут откреплены от сотрудника ${employee.full_name} и вернутся в свободный остаток.`,
+                          onConfirm: () => onDetachTool(tool),
+                        })
+                      }
+                    >
+                      Открепить
+                    </Button>
+                  </Can>
+                ) : null}
+                <Link to={`/tools/${tool.id}`} style={{ width: 28, height: 28, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Icon name="chevron-right" size={16} strokeWidth={2} style={{ color: '#C7C9D4' }} />
                 </Link>
               </div>
@@ -486,7 +516,7 @@ const ARCHIVE_COLUMNS = [
   { key: 'period', label: 'Дата прикрепления / открепления', width: '160px' },
 ]
 
-const ARCHIVE_OBJECT_PATH = { equipment: 'equipment', sim: 'sim-cards', pass: 'passes' }
+const ARCHIVE_OBJECT_PATH = { equipment: 'equipment', tool: 'tools', sim: 'sim-cards', pass: 'passes' }
 
 function formatDate(iso) {
   if (!iso) return '—'
@@ -497,6 +527,14 @@ function formatDate(iso) {
 function ArchiveObject({ row }) {
   if (row.kind === 'sim') return <SimCardInfo sim={row.object} />
   if (row.kind === 'pass') return <PassInfo pass={row.object} />
+  if (row.kind === 'tool') {
+    return (
+      <div style={{ minWidth: 0 }}>
+        <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600 }}>{row.object.name}</div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2 }}>{row.object.quantity} шт.</div>
+      </div>
+    )
+  }
   return (
     <div style={{ minWidth: 0 }}>
       <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600 }}>{row.object.type_and_model}</div>

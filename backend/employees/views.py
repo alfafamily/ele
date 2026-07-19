@@ -42,8 +42,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         qs = Employee.objects.all().prefetch_related(
             "equipment__equipment_type",
             "equipment__field_values__field",
-            "equipment_allocations__equipment__equipment_type",
-            "equipment_allocations__equipment__field_values__field",
+            "tool_allocations__tool",
             "sim_cards",
             "passes__buildings",
             "passes__rooms",
@@ -69,6 +68,8 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         if instance.equipment.exists():
             return Response({"detail": "Нельзя удалить сотрудника — за ним закреплено оборудование."}, status=409)
+        if instance.tool_allocations.exists():
+            return Response({"detail": "Нельзя удалить сотрудника — за ним закреплены инструменты."}, status=409)
         return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"])
@@ -82,7 +83,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         """
         from django.utils import timezone
 
-        from equipment.models import EquipmentMovement
+        from tools.models import ToolMovement
 
         employee = self.get_object()
         equipment_list = list(employee.equipment.all())
@@ -91,14 +92,13 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             eq.employee = None
             eq.save(update_fields=["employee"])
 
-        # Количественные закрепления возвращаем в свободный пул своих карточек —
-        # по каждому пишем движение «Открепление» (аналогично открепление
-        # поэкземплярного оборудования выше).
-        allocations = list(employee.equipment_allocations.all())
-        for alloc in allocations:
-            EquipmentMovement.objects.create(
-                equipment=alloc.equipment,
-                kind=EquipmentMovement.Kind.UNASSIGN,
+        # Закреплённые за сотрудником инструменты возвращаем в свободный пул своих
+        # карточек — по каждому пишем движение «Открепление».
+        tool_allocations = list(employee.tool_allocations.all())
+        for alloc in tool_allocations:
+            ToolMovement.objects.create(
+                tool=alloc.tool,
+                kind=ToolMovement.Kind.UNASSIGN,
                 quantity=alloc.quantity,
                 employee=employee,
                 created_by=request.user if request.user.is_authenticated else None,
@@ -157,7 +157,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
         data = EmployeeSerializer(employee).data
         data["detached_equipment_count"] = len(equipment_list)
-        data["detached_allocation_count"] = len(allocations)
+        data["detached_tool_count"] = len(tool_allocations)
         data["deactivated_sim_count"] = len(active_sims) - utilized_sim_count
         data["utilized_sim_count"] = utilized_sim_count
         data["deactivated_pass_count"] = len(active_passes) - utilized_pass_count
@@ -202,8 +202,9 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         открепления (свежие выше). Один объект может дать несколько эпизодов
         (повторные выдачи).
         """
-        from equipment.models import Equipment, EquipmentMovement
+        from equipment.models import Equipment
         from equipment.serializers import EquipmentMiniSerializer
+        from tools.models import Tool, ToolMovement
 
         employee = self.get_object()
         eid = employee.id
@@ -244,29 +245,28 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                 exists = False
             results.append({"kind": "equipment", "object": data, "exists": exists, "attached_at": att, "detached_at": det})
 
-        # Количественное оборудование: у поштучных выдач нет employee_id на самой
+        # Инструменты (количественные): у поштучных выдач нет employee_id на самой
         # карточке — эпизоды реконструируем по журналу движений. Для пары
-        # (карточка, сотрудник) проигрываем assign/unassign: баланс 0→N — начало
+        # (инструмент, сотрудник) проигрываем assign/unassign: баланс 0→N — начало
         # владения, N→0 — завершённый эпизод (уходит в архив). Текущий ненулевой
         # баланс — это вкладка «Выдано», в архив не попадает.
-        qty_moves = list(
-            EquipmentMovement.objects.filter(
+        tool_moves = list(
+            ToolMovement.objects.filter(
                 employee_id=eid,
-                kind__in=[EquipmentMovement.Kind.ASSIGN, EquipmentMovement.Kind.UNASSIGN],
+                kind__in=[ToolMovement.Kind.ASSIGN, ToolMovement.Kind.UNASSIGN],
             )
-            .select_related("equipment__equipment_type")
-            .prefetch_related("equipment__field_values__field")
-            .order_by("equipment_id", "created_at", "id")
+            .select_related("tool")
+            .order_by("tool_id", "created_at", "id")
         )
-        by_eq = {}
-        for m in qty_moves:
-            by_eq.setdefault(m.equipment_id, []).append(m)
-        for recs in by_eq.values():
-            equipment = recs[0].equipment
+        by_tool = {}
+        for m in tool_moves:
+            by_tool.setdefault(m.tool_id, []).append(m)
+        for recs in by_tool.values():
+            tool = recs[0].tool
             balance = peak = 0
             attached_at = None
             for m in recs:
-                if m.kind == EquipmentMovement.Kind.ASSIGN:
+                if m.kind == ToolMovement.Kind.ASSIGN:
                     if balance == 0:
                         attached_at = m.created_at
                         peak = 0
@@ -275,11 +275,10 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                 else:
                     balance -= m.quantity
                     if balance <= 0:
-                        data = EquipmentMiniSerializer(equipment).data
-                        data["quantity"] = peak
-                        data["is_quantity"] = True
                         results.append({
-                            "kind": "equipment", "object": data, "exists": not equipment.is_written_off,
+                            "kind": "tool",
+                            "object": {"id": tool.id, "name": tool.name, "type_and_model": tool.name, "quantity": peak},
+                            "exists": not tool.is_written_off,
                             "attached_at": attached_at, "detached_at": m.created_at,
                         })
                         balance = peak = 0

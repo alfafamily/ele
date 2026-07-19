@@ -9,6 +9,9 @@ import { SetupWizardPage } from '../features/auth/setup/SetupWizardPage.jsx'
 import { EquipmentCardPage } from '../features/equipment/EquipmentCardPage.jsx'
 import { EquipmentFormPage } from '../features/equipment/EquipmentFormPage.jsx'
 import { EquipmentListPage } from '../features/equipment/EquipmentListPage.jsx'
+import { ToolCardPage } from '../features/tools/ToolCardPage.jsx'
+import { ToolFormPage } from '../features/tools/ToolFormPage.jsx'
+import { ToolListPage } from '../features/tools/ToolListPage.jsx'
 import { LicenseCardPage } from '../features/licenses/LicenseCardPage.jsx'
 import { LicenseFormPage } from '../features/licenses/LicenseFormPage.jsx'
 import { LicenseListPage } from '../features/licenses/LicenseListPage.jsx'
@@ -124,6 +127,38 @@ export function AppRoutes() {
           element={
             <RequireStaff>
               <TypesEditorPage domain="equipment" title="оборудования" />
+            </RequireStaff>
+          }
+        />
+        <Route
+          path="/tools"
+          element={
+            <RequireViewer>
+              <ToolListPage />
+            </RequireViewer>
+          }
+        />
+        <Route
+          path="/tools/new"
+          element={
+            <RequireStaff>
+              <ToolFormPage />
+            </RequireStaff>
+          }
+        />
+        <Route
+          path="/tools/:id"
+          element={
+            <RequireViewer>
+              <ToolCardPage />
+            </RequireViewer>
+          }
+        />
+        <Route
+          path="/tools/:id/edit"
+          element={
+            <RequireStaff>
+              <ToolFormPage />
             </RequireStaff>
           }
         />
