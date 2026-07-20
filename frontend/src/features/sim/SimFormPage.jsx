@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Banner, Button, Card, Icon, Input, Select, Spinner } from '../../shared/ui'
+import { Banner, Button, Card, Icon, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
 import {
   createSimCard,
   getSimCard,
@@ -25,6 +25,7 @@ export function SimFormPage() {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [networkOperator, setNetworkOperator] = useState('')
   const [provider, setProvider] = useState('')
+  const [storagePlaceId, setStoragePlaceId] = useState('')
   const [comment, setComment] = useState('')
   const [operators, setOperators] = useState([])
   const [providers, setProviders] = useState([])
@@ -67,8 +68,20 @@ export function SimFormPage() {
       network_operator: networkOperator,
       provider,
     }
-    // Из карточки сотрудника создаём сразу привязанной; из раздела — свободной.
-    if (!isEdit && employeeId) payload.employee = Number(employeeId)
+    // Из карточки сотрудника создаём сразу привязанной; из раздела — свободной
+    // на складе (место хранения обязательно).
+    if (!isEdit) {
+      if (employeeId) {
+        payload.employee = Number(employeeId)
+      } else {
+        if (!storagePlaceId) {
+          setError('Укажите место хранения для свободной SIM-карты.')
+          setSubmitting(false)
+          return
+        }
+        payload.storage_place = Number(storagePlaceId)
+      }
+    }
     if (!isEdit && comment.trim()) payload.comment = comment.trim()
     try {
       if (isEdit) {
@@ -155,6 +168,16 @@ export function SimFormPage() {
               </div>
             </div>
           </Card>
+
+          {!isEdit && !employeeId ? (
+            <Card>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Место хранения</div>
+              <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
+                Свободная SIM-карта хранится на складе. Закрепить за сотрудником или оборудованием можно на карточке.
+              </div>
+              <PlaceSelect placeType="storage" required value={storagePlaceId} onChange={setStoragePlaceId} />
+            </Card>
+          ) : null}
 
           {!isEdit ? (
             <Card>

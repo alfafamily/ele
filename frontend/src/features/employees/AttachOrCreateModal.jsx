@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchAllPages } from '../../shared/api/fetchAll'
 import { Button, EmptyState, Icon, Modal } from '../../shared/ui'
 import { KeyTarget } from '../../shared/keyTarget.jsx'
-import { assignEmployee } from '../equipment/equipmentApi.js'
+import { assignEquipment } from '../equipment/equipmentApi.js'
 import { attachPass, attachSimCard } from './employeesApi.js'
 
 // Привязка к сотруднику переиспользуемых объектов (SIM/пропуск): показываем
@@ -39,7 +39,7 @@ const CONFIG = {
     empty: 'Нет свободного оборудования',
     emptyHint: 'Всё оборудование закреплено за сотрудниками или списано. Создайте новое.',
     createLabel: 'Создать оборудование',
-    attach: assignEmployee,
+    attach: (id, employeeId) => assignEquipment(id, { mode: 'mobile', employeeId }),
     match: (o, q) => [o.inventory_number, o.type_and_model].some((v) => (v || '').toLowerCase().includes(q)),
   },
 }

@@ -29,7 +29,9 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         return Response({"detail": "Инструмент не удаляется — только списание."}, status=405)
 
     def get_queryset(self):
-        qs = Tool.objects.prefetch_related("allocations__employee__avatar", "custom_fields")
+        qs = Tool.objects.prefetch_related(
+            "allocations__employee__avatar", "allocations__place__room__building", "custom_fields"
+        )
         user = self.request.user
         if user.role == "employee" and not user.is_observer:
             # Видит только инструменты, где за ним есть закрепление.
@@ -50,12 +52,13 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             qs = qs.filter(Q(name__icontains=search)).distinct()
         return qs
 
-    # ——— движения по остатку ———————————————————————————————————————————————
+    # ——— движения по остатку (B8: остаток лежит на складах) ————————————————
 
-    def _record_movement(self, tool, kind, quantity, user, comment, employee=None):
+    def _record_movement(self, tool, kind, quantity, user, comment,
+                         employee=None, place=None, storage_place=None):
         return ToolMovement.objects.create(
             tool=tool, kind=kind, quantity=quantity, employee=employee,
-            comment=comment or "",
+            place=place, storage_place=storage_place, comment=comment or "",
             created_by=user if getattr(user, "is_authenticated", False) else None,
         )
 
@@ -73,93 +76,155 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             return None, Response({"detail": "Количество должно быть больше нуля."}, status=400)
         return qty, None
 
+    def _assigned_units(self, tool):
+        # Закреплено = сумма размещений за сотрудниками и рабочими местами.
+        s = tool.allocations.filter(
+            Q(employee__isnull=False) | Q(place__place_type="workplace")
+        ).aggregate(s=Sum("quantity"))["s"]
+        return s or 0
+
     def _free_units(self, tool):
-        allocated = tool.allocations.aggregate(s=Sum("quantity"))["s"] or 0
-        return tool.quantity - allocated
+        # Свободно = всё, что лежит на складах (== quantity − закреплено).
+        return tool.quantity - self._assigned_units(tool)
 
-    @action(detail=True, methods=["post"], url_path="add-units", permission_classes=[IsAdminOrAccountant])
-    def add_units(self, request, pk=None):
-        tool = self.get_object()
-        if (err := self._guard(tool)) is not None:
-            return err
-        qty, err = self._parse_positive_qty(request)
-        if err is not None:
-            return err
-        comment = (request.data.get("comment") or "").strip()
-        tool.quantity += qty
-        tool.save(update_fields=["quantity"])
-        self._record_movement(tool, ToolMovement.Kind.ADD, qty, request.user, comment)
-        return Response(ToolSerializer(self.get_object()).data)
+    def _free_at(self, tool, place):
+        alloc = tool.allocations.filter(place=place).first()
+        return alloc.quantity if alloc else 0
 
-    @action(detail=True, methods=["post"], url_path="write-off-units", permission_classes=[IsAdminOrAccountant])
-    def write_off_units(self, request, pk=None):
-        tool = self.get_object()
-        if (err := self._guard(tool)) is not None:
-            return err
-        qty, err = self._parse_positive_qty(request)
-        if err is not None:
-            return err
-        if qty > self._free_units(tool):
-            return Response({"detail": "Нельзя списать больше, чем свободный остаток."}, status=409)
-        comment = (request.data.get("comment") or "").strip()
-        tool.quantity -= qty
-        tool.save(update_fields=["quantity"])
-        self._record_movement(tool, ToolMovement.Kind.WRITE_OFF, qty, request.user, comment)
-        return Response(ToolSerializer(self.get_object()).data)
-
-    @action(detail=True, methods=["post"], url_path="assign-units", permission_classes=[IsAdminOrAccountant])
-    def assign_units(self, request, pk=None):
-        tool = self.get_object()
-        if (err := self._guard(tool)) is not None:
-            return err
-        qty, err = self._parse_positive_qty(request)
-        if err is not None:
-            return err
-        employee = get_object_or_404(Employee, pk=request.data.get("employee"))
-        if qty > self._free_units(tool):
-            return Response({"detail": "Нельзя закрепить больше, чем свободный остаток."}, status=409)
-        comment = (request.data.get("comment") or "").strip()
-        alloc, _ = ToolAllocation.objects.get_or_create(tool=tool, employee=employee, defaults={"quantity": 0})
+    def _inc_alloc(self, tool, qty, *, employee=None, place=None):
+        alloc, _ = ToolAllocation.objects.get_or_create(
+            tool=tool, employee=employee, place=place, defaults={"quantity": 0}
+        )
         alloc.quantity += qty
         alloc.save(update_fields=["quantity"])
-        self._record_movement(tool, ToolMovement.Kind.ASSIGN, qty, request.user, comment, employee=employee)
-        return Response(ToolSerializer(self.get_object()).data)
 
-    @action(detail=True, methods=["post"], url_path="unassign-units", permission_classes=[IsAdminOrAccountant])
-    def unassign_units(self, request, pk=None):
-        tool = self.get_object()
-        if (err := self._guard(tool)) is not None:
-            return err
-        qty, err = self._parse_positive_qty(request)
-        if err is not None:
-            return err
-        employee = get_object_or_404(Employee, pk=request.data.get("employee"))
-        alloc = ToolAllocation.objects.filter(tool=tool, employee=employee).first()
-        if not alloc or qty > alloc.quantity:
-            return Response({"detail": "Нельзя открепить больше, чем закреплено за сотрудником."}, status=409)
-        comment = (request.data.get("comment") or "").strip()
+    def _dec_alloc(self, alloc, qty):
         alloc.quantity -= qty
         if alloc.quantity == 0:
             alloc.delete()
         else:
             alloc.save(update_fields=["quantity"])
-        self._record_movement(tool, ToolMovement.Kind.UNASSIGN, qty, request.user, comment, employee=employee)
+
+    @action(detail=True, methods=["post"], url_path="add-units", permission_classes=[IsAdminOrAccountant])
+    def add_units(self, request, pk=None):
+        """Приход: qty единиц ложится на выбранный склад (место хранения)."""
+        from core.placement import get_storage_place
+
+        tool = self.get_object()
+        if (err := self._guard(tool)) is not None:
+            return err
+        qty, err = self._parse_positive_qty(request)
+        if err is not None:
+            return err
+        storage = get_storage_place(request.data.get("place"), field="place")
+        comment = (request.data.get("comment") or "").strip()
+        tool.quantity += qty
+        tool.save(update_fields=["quantity"])
+        self._inc_alloc(tool, qty, place=storage)
+        self._record_movement(tool, ToolMovement.Kind.ADD, qty, request.user, comment, place=storage)
+        return Response(ToolSerializer(self.get_object()).data)
+
+    @action(detail=True, methods=["post"], url_path="write-off-units", permission_classes=[IsAdminOrAccountant])
+    def write_off_units(self, request, pk=None):
+        """Списание qty со склада (свободного остатка)."""
+        from core.placement import get_storage_place
+
+        tool = self.get_object()
+        if (err := self._guard(tool)) is not None:
+            return err
+        qty, err = self._parse_positive_qty(request)
+        if err is not None:
+            return err
+        storage = get_storage_place(request.data.get("place"), field="place")
+        if qty > self._free_at(tool, storage):
+            return Response({"detail": "Нельзя списать больше, чем лежит на этом складе."}, status=409)
+        comment = (request.data.get("comment") or "").strip()
+        self._dec_alloc(tool.allocations.get(place=storage), qty)
+        tool.quantity -= qty
+        tool.save(update_fields=["quantity"])
+        self._record_movement(tool, ToolMovement.Kind.WRITE_OFF, qty, request.user, comment, place=storage)
+        return Response(ToolSerializer(self.get_object()).data)
+
+    @action(detail=True, methods=["post"], url_path="assign-units", permission_classes=[IsAdminOrAccountant])
+    def assign_units(self, request, pk=None):
+        """Раздача qty со склада: mode=mobile — сотруднику; mode=stationary — на
+        рабочее место. Источник — склад (from place)."""
+        from core.placement import get_storage_place, get_workplace
+
+        tool = self.get_object()
+        if (err := self._guard(tool)) is not None:
+            return err
+        qty, err = self._parse_positive_qty(request)
+        if err is not None:
+            return err
+        storage = get_storage_place(request.data.get("from_place"), field="from_place")
+        if qty > self._free_at(tool, storage):
+            return Response({"detail": "Нельзя выдать больше, чем лежит на этом складе."}, status=409)
+        mode = request.data.get("mode", "mobile")
+        employee = target_place = None
+        if mode == "stationary":
+            target_place = get_workplace(request.data.get("place"))
+        else:
+            employee = get_object_or_404(Employee, pk=request.data.get("employee"))
+        comment = (request.data.get("comment") or "").strip()
+        self._dec_alloc(tool.allocations.get(place=storage), qty)
+        self._inc_alloc(tool, qty, employee=employee, place=target_place)
+        self._record_movement(
+            tool, ToolMovement.Kind.ASSIGN, qty, request.user, comment,
+            employee=employee, place=target_place, storage_place=storage,
+        )
+        return Response(ToolSerializer(self.get_object()).data)
+
+    @action(detail=True, methods=["post"], url_path="unassign-units", permission_classes=[IsAdminOrAccountant])
+    def unassign_units(self, request, pk=None):
+        """Возврат qty от сотрудника/рабочего места обратно на склад (to place)."""
+        from core.placement import get_storage_place, get_workplace
+
+        tool = self.get_object()
+        if (err := self._guard(tool)) is not None:
+            return err
+        qty, err = self._parse_positive_qty(request)
+        if err is not None:
+            return err
+        storage = get_storage_place(request.data.get("to_place"), field="to_place")
+        mode = request.data.get("mode", "mobile")
+        employee = source_place = None
+        if mode == "stationary":
+            source_place = get_workplace(request.data.get("place"))
+            alloc = tool.allocations.filter(place=source_place).first()
+            miss = "Нельзя вернуть больше, чем закреплено за рабочим местом."
+        else:
+            employee = get_object_or_404(Employee, pk=request.data.get("employee"))
+            alloc = tool.allocations.filter(employee=employee).first()
+            miss = "Нельзя вернуть больше, чем закреплено за сотрудником."
+        if not alloc or qty > alloc.quantity:
+            return Response({"detail": miss}, status=409)
+        comment = (request.data.get("comment") or "").strip()
+        self._dec_alloc(alloc, qty)
+        self._inc_alloc(tool, qty, place=storage)
+        self._record_movement(
+            tool, ToolMovement.Kind.UNASSIGN, qty, request.user, comment,
+            employee=employee, place=source_place, storage_place=storage,
+        )
         return Response(ToolSerializer(self.get_object()).data)
 
     @action(detail=True, methods=["post"], url_path="write-off", permission_classes=[IsAdminOrAccountant])
     def write_off(self, request, pk=None):
-        """Списание всей карточки в архив: открепляем все закрепления и обнуляем
+        """Списание всей карточки в архив: снимаем все размещения и обнуляем
         остаток (весь остаток уходит из обращения). Списанное количество
         показывается строкой «Списано: N шт.» в истории (см. history_list)."""
         tool = self.get_object()
         if tool.is_written_off:
             return Response({"detail": "Инструмент уже списан."}, status=409)
         comment = (request.data.get("comment") or "").strip()
-        for alloc in list(tool.allocations.all()):
+        # Фиксируем открепление закреплённых (за сотрудниками/рабочими местами)
+        # частей; свободный складской остаток просто уходит вместе с карточкой.
+        for alloc in list(tool.allocations.filter(Q(employee__isnull=False) | Q(place__place_type="workplace"))):
             self._record_movement(
-                tool, ToolMovement.Kind.UNASSIGN, alloc.quantity, request.user, comment, employee=alloc.employee
+                tool, ToolMovement.Kind.UNASSIGN, alloc.quantity, request.user, comment,
+                employee=alloc.employee, place=alloc.place,
             )
-            alloc.delete()
+        tool.allocations.all().delete()
         tool.quantity = 0
         tool.is_written_off = True
         tool.written_off_at = timezone.now()
@@ -200,17 +265,27 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         created_extra += cf_created
 
         # Движения по количеству
-        def mv_label(m):
-            emp = m.employee or "—"
-            if m.kind == ToolMovement.Kind.ADD:
-                return f"Приход: +{m.quantity} шт."
-            if m.kind == ToolMovement.Kind.WRITE_OFF:
-                return f"Списание: −{m.quantity} шт."
-            if m.kind == ToolMovement.Kind.ASSIGN:
-                return f"Закреплено: {m.quantity} шт. за «{emp}»"
-            return f"Откреплено: {m.quantity} шт. от «{emp}»"
+        def target(m):
+            # Контрагент движения: сотрудник (мобильно) или рабочее место (стац.).
+            if m.employee_id:
+                return f"«{m.employee}»"
+            if m.place_id:
+                return f"рабочее место «{m.place.name}»"
+            return "—"
 
-        for m in tool.movements.select_related("created_by", "employee"):
+        def mv_label(m):
+            if m.kind == ToolMovement.Kind.ADD:
+                where = f" на «{m.place.name}»" if m.place_id else ""
+                return f"Приход: +{m.quantity} шт.{where}"
+            if m.kind == ToolMovement.Kind.WRITE_OFF:
+                where = f" со склада «{m.place.name}»" if m.place_id else ""
+                return f"Списание: −{m.quantity} шт.{where}"
+            store = f" (склад «{m.storage_place.name}»)" if m.storage_place_id else ""
+            if m.kind == ToolMovement.Kind.ASSIGN:
+                return f"Закреплено: {m.quantity} шт. за {target(m)}{store}"
+            return f"Откреплено: {m.quantity} шт. от {target(m)}{store}"
+
+        for m in tool.movements.select_related("created_by", "employee", "place", "storage_place"):
             related_rows.append({
                 "date": m.created_at,
                 "author": m.created_by.email if m.created_by_id else None,

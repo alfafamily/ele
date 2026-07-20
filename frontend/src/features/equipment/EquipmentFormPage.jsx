@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { apiPost } from '../../shared/api/client'
+import { apiGet, apiPost } from '../../shared/api/client'
 import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
-import { Banner, Button, Card, Icon, Input, Select, Spinner } from '../../shared/ui'
+import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
+import { Banner, Button, Card, Icon, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
 import {
-  assignEmployee,
   createEquipment,
   deleteEquipmentFieldFilePath,
   getEquipment,
@@ -42,10 +42,24 @@ export function EquipmentFormPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [genLoading, setGenLoading] = useState(false)
+  // Размещение при создании (B8): мобильно (сотрудник) / стационарно (рабочее
+  // место) / склад. Из карточки сотрудника — сразу мобильно за ним.
+  const [placementMode, setPlacementMode] = useState(employeeId ? 'mobile' : 'storage')
+  const [placementEmployee, setPlacementEmployee] = useState(null)
+  const [placementPlaceId, setPlacementPlaceId] = useState('')
 
   useEffect(() => {
     getEquipmentTypes().then(setTypes)
   }, [])
+
+  // Предзаполнение сотрудника, если создаём из его карточки.
+  useEffect(() => {
+    if (employeeId) {
+      apiGet(`/api/employees/${employeeId}/`)
+        .then((e) => setPlacementEmployee({ id: e.id, full_name: e.full_name }))
+        .catch(() => {})
+    }
+  }, [employeeId])
 
   // Автонумератор: подставить следующий учётный номер (счётчик на сервере
   // сгорает сразу). Только при создании; введённый вручную номер не трогаем.
@@ -104,6 +118,24 @@ export function EquipmentFormPage() {
       custom_fields: customFields.filter((f) => f.name.trim()),
     }
     if (!isEdit && comment.trim()) payload.comment = comment.trim()
+    // Размещение задаём прямо в payload создания (employee XOR place).
+    if (!isEdit) {
+      if (placementMode === 'mobile') {
+        if (!placementEmployee) {
+          setError('Выберите сотрудника для закрепления.')
+          setSubmitting(false)
+          return
+        }
+        payload.employee = placementEmployee.id
+      } else {
+        if (!placementPlaceId) {
+          setError(placementMode === 'stationary' ? 'Выберите рабочее место.' : 'Выберите место хранения.')
+          setSubmitting(false)
+          return
+        }
+        payload.place = Number(placementPlaceId)
+      }
+    }
     try {
       if (isEdit) {
         await updateEquipment(id, payload)
@@ -128,16 +160,6 @@ export function EquipmentFormPage() {
             await apiPost(uploadEquipmentFieldFile(created.id, f.id), formData)
           } catch {
             uploadFailed = true
-          }
-        }
-        // Закрепление за сотрудником (если создаём из его карточки) — отдельным
-        // вызовом, т.к. форма оборудования не задаёт employee в payload.
-        if (employeeId) {
-          try {
-            await assignEmployee(created.id, Number(employeeId))
-          } catch {
-            // Не удалось закрепить — оставим объект свободным; пользователь
-            // сможет закрепить его с карточки оборудования.
           }
         }
         // replace — чтобы форма создания не оставалась в истории. При загрузке
@@ -268,6 +290,61 @@ export function EquipmentFormPage() {
             </div>
             <CustomFieldsEditor items={customFields} onChange={setCustomFields} />
           </Card>
+
+          {!isEdit ? (
+            <Card>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Размещение</div>
+              <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
+                Где находится оборудование: за сотрудником, на рабочем месте или на складе.
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                {[
+                  { value: 'mobile', label: 'За сотрудником' },
+                  { value: 'stationary', label: 'На рабочем месте' },
+                  { value: 'storage', label: 'На складе' },
+                ].map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => setPlacementMode(m.value)}
+                    style={{
+                      flex: 1,
+                      padding: '8px 6px',
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      fontFamily: 'inherit',
+                      cursor: 'pointer',
+                      borderRadius: 8,
+                      border: 'none',
+                      color: placementMode === m.value ? 'var(--color-primary-text)' : 'var(--color-text-secondary)',
+                      background: placementMode === m.value ? 'var(--color-primary)' : 'var(--color-fill-input)',
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+              {placementMode === 'mobile' ? (
+                placementEmployee ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 14 }}>
+                    <span>{placementEmployee.full_name}</span>
+                    <Button variant="secondary" onClick={() => setPlacementEmployee(null)}>
+                      Изменить
+                    </Button>
+                  </div>
+                ) : (
+                  <EmployeePicker onSelect={setPlacementEmployee} />
+                )
+              ) : (
+                <PlaceSelect
+                  placeType={placementMode === 'stationary' ? 'workplace' : 'storage'}
+                  required
+                  value={placementPlaceId}
+                  onChange={setPlacementPlaceId}
+                />
+              )}
+            </Card>
+          ) : null}
 
           {!isEdit ? (
             <Card>

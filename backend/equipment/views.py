@@ -100,7 +100,9 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         return Response({"detail": "Оборудование не удаляется — только списание."}, status=405)
 
     def get_queryset(self):
-        qs = Equipment.objects.select_related("employee", "employee__avatar", "equipment_type").prefetch_related(
+        qs = Equipment.objects.select_related(
+            "employee", "employee__avatar", "equipment_type", "place__room__building"
+        ).prefetch_related(
             "field_values__field", "field_values__files__stored_file", "custom_fields"
         )
         user = self.request.user
@@ -127,9 +129,11 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
         status_param = self.request.query_params.get("status", "all")
         if status_param == "assigned":
-            qs = qs.exclude(employee__isnull=True)
+            qs = qs.filter(employee__isnull=False)
+        elif status_param == "stationary":
+            qs = qs.filter(employee__isnull=True, place__place_type="workplace")
         elif status_param == "free":
-            qs = qs.filter(employee__isnull=True)
+            qs = qs.filter(employee__isnull=True).exclude(place__place_type="workplace")
 
         search = self.request.query_params.get("search")
         if search:
@@ -169,30 +173,54 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         # Списанное оборудование выходит из обращения — снимаем закрепление за
         # Сотрудником (аналогично тому, как увольнение открепляет оборудование,
         #). Историю «за кем было закреплено» хранит журнал изменений.
+        # Списанное выходит из обращения — снимаем любое размещение.
         equipment.employee = None
+        equipment.place = None
         equipment.is_written_off = True
         equipment.written_off_at = timezone.now()
         comment = (request.data.get("comment") or "").strip()
         if comment:
             equipment._change_reason = comment
-        equipment.save(update_fields=["employee", "is_written_off", "written_off_at"])
+        equipment.save(update_fields=["employee", "place", "is_written_off", "written_off_at"])
         return Response(EquipmentSerializer(equipment).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def assign(self, request, pk=None):
+        """Закрепление оборудования: mode=mobile — за сотрудником; mode=stationary
+        — на рабочем месте (без сотрудника). Прежнее размещение очищается."""
+        from core.placement import get_workplace
+
         equipment = self.get_object()
         if equipment.is_written_off:
-            return Response({"detail": "Списанное оборудование нельзя закрепить за сотрудником."}, status=409)
-        employee = get_object_or_404(Employee, pk=request.data.get("employee"))
-        equipment.employee = employee
-        equipment.save(update_fields=["employee"])
+            return Response({"detail": "Списанное оборудование нельзя разместить."}, status=409)
+        mode = request.data.get("mode", "mobile")
+        if mode == "stationary":
+            place = get_workplace(request.data.get("place"))
+            equipment.place = place
+            equipment.employee = None
+        else:
+            employee = get_object_or_404(Employee, pk=request.data.get("employee"))
+            equipment.employee = employee
+            equipment.place = None
+        comment = (request.data.get("comment") or "").strip()
+        if comment:
+            equipment._change_reason = comment
+        equipment.save(update_fields=["employee", "place"])
         return Response(EquipmentSerializer(equipment).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def unassign(self, request, pk=None):
+        """Открепление: оборудование уходит на склад (место хранения обязательно)."""
+        from core.placement import get_storage_place
+
         equipment = self.get_object()
+        place = get_storage_place(request.data.get("place"), field="place")
         equipment.employee = None
-        equipment.save(update_fields=["employee"])
+        equipment.place = place
+        comment = (request.data.get("comment") or "").strip()
+        if comment:
+            equipment._change_reason = comment
+        equipment.save(update_fields=["employee", "place"])
         return Response(EquipmentSerializer(equipment).data)
 
     @action(detail=True, methods=["get"], url_path="history")
@@ -213,9 +241,21 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             t = EquipmentType.objects.filter(pk=v).first() if v else None
             return t.name if t else "—"
 
+        def fmt_place(v):
+            if not v:
+                return "Не размещено"
+            from locations.models import Place
+
+            p = Place.objects.filter(pk=v).first()
+            if not p:
+                return "—"
+            kind = "Рабочее место" if p.place_type == Place.PlaceType.WORKPLACE else "Место хранения"
+            return f"{kind} «{p.name}»"
+
         field_specs = {
             "inventory_number": {"label": "Учётный номер"},
             "employee": {"label": "Закреплённый сотрудник", "format": fmt_employee, "in_created": False},
+            "place": {"label": "Размещение", "format": fmt_place, "in_created": False},
             "is_written_off": {"label": "Признак списания", "format": lambda v: "Да" if v else "Нет", "in_created": False},
             "equipment_type": {"label": "Тип оборудования", "format": fmt_type},
         }
@@ -325,10 +365,10 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
         rows = build_history_rows(
             eq, field_specs,
-            movement_fields={"employee"},
+            movement_fields={"employee", "place"},
             movement_events=[{
                 "trigger": "is_written_off", "to": True,
-                "consume": ["is_written_off", "written_off_at", "employee"],
+                "consume": ["is_written_off", "written_off_at", "employee", "place"],
                 "label": "Списано",
             }],
             created_extra_lines=created_extra,

@@ -45,6 +45,18 @@ class SimCard(models.Model):
         Employee, verbose_name="Сотрудник", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="sim_cards",
     )
+    # Размещение (B8): SIM закрепляется за сотрудником ИЛИ за оборудованием
+    # (симка в модеме для резервного канала). Не более одного из
+    # {employee, equipment}. Свободная (не за сотрудником и не за оборудованием)
+    # лежит на складе — storage_place; legacy-записи допускают NULL.
+    equipment = models.ForeignKey(
+        "equipment.Equipment", verbose_name="Оборудование", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="sim_cards",
+    )
+    storage_place = models.ForeignKey(
+        "locations.Place", verbose_name="Место хранения", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="+",
+    )
     # Утилизация — необратимый статус (аналог списания Оборудования). Отвязанная,
     # но не утилизированная карта — «Неиспользуемая», может быть выдана снова;
     # утилизированная — уходит в отдельный таб и не возвращается.
@@ -73,8 +85,9 @@ class SimCard(models.Model):
 
     @property
     def is_deactivated(self):
-        # «Неиспользуемая»: отвязана, но не утилизирована.
-        return self.employee_id is None and not self.is_utilized
+        # «Неиспользуемая»: не за сотрудником и не в оборудовании, но не
+        # утилизирована (лежит свободной на складе).
+        return self.employee_id is None and self.equipment_id is None and not self.is_utilized
 
     def __str__(self):
         return self.phone_number
@@ -112,6 +125,13 @@ class AccessPass(models.Model):
     employee = models.ForeignKey(
         Employee, verbose_name="Сотрудник", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="passes",
+    )
+    # Размещение (B8): свободный (не за сотрудником) пропуск/ключ лежит на складе.
+    # legacy-записи допускают NULL. Не путать с M2M `places` — это объекты
+    # доступа (какие места открывает пропуск), а не место хранения.
+    storage_place = models.ForeignKey(
+        "locations.Place", verbose_name="Место хранения", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="+",
     )
     # Утилизация — необратимый статус. Отвязанный, но не утилизированный объект —
     # «Неиспользуемый»; утилизированный (выброшен / передан арендодателю) уходит в

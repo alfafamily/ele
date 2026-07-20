@@ -156,8 +156,8 @@ export function ToolCardPage() {
         <QuantityMoveModal
           title={moveModal.title}
           confirmLabel={moveModal.confirmLabel}
-          mode={moveModal.mode}
-          fixedEmployee={moveModal.fixedEmployee}
+          target={moveModal.target}
+          storage={moveModal.storage}
           max={moveModal.max}
           onSubmit={moveModal.onSubmit}
           onClose={() => setMoveModal(null)}
@@ -168,18 +168,21 @@ export function ToolCardPage() {
 }
 
 function QuantityStock({ tool, canManage, setMoveModal, closeMove }) {
+  const storages = (tool.allocations || []).filter((a) => a.kind === 'storage')
   const openAdd = () =>
     setMoveModal({
       title: 'Оприходовать',
       confirmLabel: 'Оприходовать',
-      onSubmit: (qty, comment) => addUnits(tool.id, qty, comment).then(closeMove),
+      storage: 'add',
+      onSubmit: (p) => addUnits(tool.id, { quantity: p.quantity, place: Number(p.storagePlaceId), comment: p.comment }).then(closeMove),
     })
   const openWriteOff = () =>
     setMoveModal({
       title: 'Списать единицы',
       confirmLabel: 'Списать',
+      storage: 'writeoff',
       max: tool.free,
-      onSubmit: (qty, comment) => writeOffUnits(tool.id, qty, comment).then(closeMove),
+      onSubmit: (p) => writeOffUnits(tool.id, { quantity: p.quantity, place: Number(p.storagePlaceId), comment: p.comment }).then(closeMove),
     })
 
   return (
@@ -190,6 +193,21 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove }) {
         <Metric label="Свободно" value={tool.free} />
         <Metric label="Закреплено" value={tool.allocated} />
       </div>
+      {storages.length ? (
+        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>Свободно по складам</div>
+          {storages.map((a) => (
+            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--color-fill-input)', borderRadius: 8 }}>
+              <Icon name="warehouse" size={15} strokeWidth={2} style={{ color: 'var(--color-text-muted)' }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{a.place_name}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>{a.place_location}</div>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{a.quantity} шт.</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {canManage ? (
         <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
           <Button variant="secondary" fullWidth onClick={openAdd} aria-label="Оприходовать">
@@ -216,30 +234,51 @@ function Metric({ label, value }) {
 }
 
 function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
-  const allocations = tool.allocations || []
+  // Закрепления — за сотрудниками и рабочими местами (склад — в блоке остатка).
+  const allocations = (tool.allocations || []).filter((a) => a.kind !== 'storage')
 
   const openAssign = () =>
     setMoveModal({
       title: 'Закрепить',
       confirmLabel: 'Закрепить',
-      mode: 'assign',
+      target: 'both',
+      storage: 'from',
       max: tool.free,
-      onSubmit: (qty, comment, employeeId) => assignUnits(tool.id, employeeId, qty, comment).then(closeMove),
+      onSubmit: (p) =>
+        assignUnits(tool.id, {
+          quantity: p.quantity,
+          mode: p.mode,
+          employeeId: p.employeeId,
+          placeId: p.placeId ? Number(p.placeId) : undefined,
+          fromPlace: Number(p.storagePlaceId),
+          comment: p.comment,
+        }).then(closeMove),
     })
   const openUnassign = (alloc) =>
     setMoveModal({
-      title: 'Открепить',
+      title: 'Открепить на склад',
       confirmLabel: 'Открепить',
-      mode: 'fixed-employee',
-      fixedEmployee: { id: alloc.employee, name: alloc.employee_name },
+      target:
+        alloc.kind === 'workplace'
+          ? { kind: 'workplace', id: alloc.place, name: alloc.place_name }
+          : { kind: 'employee', id: alloc.employee, name: alloc.employee_name },
+      storage: 'to',
       max: alloc.quantity,
-      onSubmit: (qty, comment, employeeId) => unassignUnits(tool.id, employeeId, qty, comment).then(closeMove),
+      onSubmit: (p) =>
+        unassignUnits(tool.id, {
+          quantity: p.quantity,
+          mode: alloc.kind === 'workplace' ? 'stationary' : 'mobile',
+          employeeId: alloc.employee,
+          placeId: alloc.place,
+          toPlace: Number(p.storagePlaceId),
+          comment: p.comment,
+        }).then(closeMove),
     })
 
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ fontSize: 16, fontWeight: 600 }}>Закреплено за</div>
+        <div style={{ fontSize: 16, fontWeight: 600 }}>Закреплено</div>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
           {tool.allocated} / {tool.quantity}
         </span>
@@ -252,17 +291,25 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
           {allocations.map((a) => (
             <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
               <span style={{ width: 36, height: 36, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, overflow: 'hidden' }}>
-                {a.employee_avatar ? (
+                {a.kind === 'workplace' ? (
+                  <Icon name="briefcase" size={16} strokeWidth={2} />
+                ) : a.employee_avatar ? (
                   <img src={a.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   nameInitials(a.employee_name)
                 )}
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <Link className="ele-clamp-2" to={`/employees/${a.employee}`} style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                  {a.employee_name}
-                </Link>
-                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{a.department || '—'} · {a.quantity} шт.</div>
+                {a.kind === 'workplace' ? (
+                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{a.place_name}</div>
+                ) : (
+                  <Link className="ele-clamp-2" to={`/employees/${a.employee}`} style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                    {a.employee_name}
+                  </Link>
+                )}
+                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
+                  {a.kind === 'workplace' ? a.place_location : a.department || '—'} · {a.quantity} шт.
+                </div>
               </div>
               {canManage ? (
                 <button type="button" title="Открепить" onClick={() => openUnassign(a)} style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

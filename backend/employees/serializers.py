@@ -8,12 +8,27 @@ from storage.serializers import StoredFileSerializer
 from .models import AccessPass, Employee, SimCard
 
 
+def place_detail(place):
+    """Краткое описание Места для карточек (склад/рабочее место)."""
+    if place is None:
+        return None
+    return {
+        "id": place.id,
+        "name": place.name,
+        "place_type": place.place_type,
+        "room_name": place.room.name,
+        "building_name": place.room.building.name,
+    }
+
+
 class SimCardSerializer(serializers.ModelSerializer):
     sim_type_display = serializers.CharField(source="get_sim_type_display", read_only=True)
-    # «Неиспользуемая» (отвязана, не утилизирована). Утилизация — отдельный
-    # необратимый статус is_utilized.
+    # «Неиспользуемая» (не за сотрудником и не в оборудовании, не утилизирована).
     is_deactivated = serializers.BooleanField(read_only=True)
     employee_name = serializers.SerializerMethodField()
+    # Размещение (B8): SIM за сотрудником ИЛИ за оборудованием; свободная — на складе.
+    equipment_name = serializers.SerializerMethodField()
+    storage_place_detail = serializers.SerializerMethodField()
     # Объявлено явно, чтобы уникальность проверялась своим сообщением
     # (validate_phone_number), а не авто-валидатором DRF по UniqueConstraint.
     phone_number = serializers.CharField(max_length=32)
@@ -24,6 +39,10 @@ class SimCardSerializer(serializers.ModelSerializer):
             "id",
             "employee",
             "employee_name",
+            "equipment",
+            "equipment_name",
+            "storage_place",
+            "storage_place_detail",
             "sim_type",
             "sim_type_display",
             "phone_number",
@@ -34,13 +53,19 @@ class SimCardSerializer(serializers.ModelSerializer):
             "utilized_at",
             "created_at",
         ]
-        # employee можно задать при создании (сразу привязать) или через
-        # action attach/detach; статусы is_deactivated/is_utilized — read-only,
+        # employee/equipment можно задать при создании (сразу разместить) или
+        # через action attach/detach; статусы is_deactivated/is_utilized — read-only,
         # утилизация только через action utilize.
         read_only_fields = ["created_at", "is_utilized", "utilized_at"]
 
     def get_employee_name(self, obj):
         return str(obj.employee) if obj.employee_id else None
+
+    def get_equipment_name(self, obj):
+        return str(obj.equipment) if obj.equipment_id else None
+
+    def get_storage_place_detail(self, obj):
+        return place_detail(obj.storage_place) if obj.storage_place_id else None
 
     def validate_phone_number(self, value):
         value = value.strip()
@@ -53,6 +78,21 @@ class SimCardSerializer(serializers.ModelSerializer):
         if qs.exists():
             raise serializers.ValidationError("SIM-карта с таким номером уже есть.")
         return value
+
+    def validate(self, attrs):
+        # Размещение: не более одного из {employee, equipment}; при создании
+        # свободной SIM (без сотрудника и оборудования) обязателен склад.
+        employee = attrs.get("employee")
+        equipment = attrs.get("equipment")
+        if employee and equipment:
+            raise serializers.ValidationError(
+                {"equipment": "SIM нельзя одновременно закрепить за сотрудником и за оборудованием."}
+            )
+        # Обязательность склада при создании свободной SIM — на стороне формы.
+        storage = attrs.get("storage_place")
+        if storage is not None and storage.place_type != Place.PlaceType.STORAGE:
+            raise serializers.ValidationError({"storage_place": "Выберите место хранения (склад)."})
+        return attrs
 
 
 class AccessPassSerializer(serializers.ModelSerializer):
@@ -87,6 +127,8 @@ class AccessPassSerializer(serializers.ModelSerializer):
     object_type_display = serializers.CharField(source="get_object_type_display", read_only=True)
     utilization_reason_display = serializers.CharField(source="get_utilization_reason_display", read_only=True)
     employee_name = serializers.SerializerMethodField()
+    # Размещение (B8): свободный пропуск/ключ лежит на складе (место хранения).
+    storage_place_detail = serializers.SerializerMethodField()
     # Явно — чтобы уникальность непустого номера проверялась своим сообщением.
     account_number = serializers.CharField(max_length=64, required=False, allow_blank=True)
 
@@ -107,6 +149,8 @@ class AccessPassSerializer(serializers.ModelSerializer):
             "room_ids",
             "places",
             "place_ids",
+            "storage_place",
+            "storage_place_detail",
             "is_deactivated",
             "is_utilized",
             "utilized_at",
@@ -127,6 +171,9 @@ class AccessPassSerializer(serializers.ModelSerializer):
 
     def get_employee_name(self, obj):
         return str(obj.employee) if obj.employee_id else None
+
+    def get_storage_place_detail(self, obj):
+        return place_detail(obj.storage_place) if obj.storage_place_id else None
 
     def validate_account_number(self, value):
         # Уникальность проверяется в validate() — там уже известен object_type
@@ -185,6 +232,12 @@ class AccessPassSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"room_ids": "У ключа можно выбрать только один объект: помещение или место."}
                 )
+
+        # Размещение (B8): свободный (без сотрудника) пропуск/ключ лежит на складе.
+        # Обязательность выбора склада при создании — на стороне формы.
+        storage = attrs.get("storage_place")
+        if storage is not None and storage.place_type != Place.PlaceType.STORAGE:
+            raise serializers.ValidationError({"storage_place": "Выберите место хранения (склад)."})
         return attrs
 
 
@@ -241,6 +294,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     tools = serializers.SerializerMethodField()
     sim_cards = serializers.SerializerMethodField()
     passes = serializers.SerializerMethodField()
+    workplaces = serializers.SerializerMethodField()
     user_email = serializers.SerializerMethodField()
     avatar = StoredFileSerializer(read_only=True)
 
@@ -259,6 +313,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "tools",
             "sim_cards",
             "passes",
+            "workplaces",
             "user_email",
         ]
         read_only_fields = ["is_employed"]
@@ -281,6 +336,17 @@ class EmployeeSerializer(serializers.ModelSerializer):
     def get_passes(self, obj):
         # И активные, и деактивированные пропуска (для истории).
         return AccessPassSerializer(obj.passes.all(), many=True).data
+
+    def get_workplaces(self, obj):
+        # Рабочие места, за которыми закреплён сотрудник (не архивные).
+        return [
+            {
+                "id": p.id,
+                "name": p.name,
+                "location": f"{p.room.building.name} — {p.room.name}",
+            }
+            for p in obj.workplaces.filter(is_archived=False).select_related("room__building")
+        ]
 
     def get_user_email(self, obj):
         return obj.user.email if hasattr(obj, "user") else None

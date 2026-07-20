@@ -136,6 +136,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
     employee_avatar = serializers.SerializerMethodField()
     department = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
+    place_detail = serializers.SerializerMethodField()
     field_values = EquipmentFieldValueOutSerializer(many=True, read_only=True)
     custom_fields = EquipmentCustomFieldSerializer(many=True, required=False)
     field_values_input = EquipmentFieldValueInputSerializer(many=True, required=False, write_only=True)
@@ -150,6 +151,8 @@ class EquipmentSerializer(serializers.ModelSerializer):
             "employee_name",
             "employee_avatar",
             "department",
+            "place",
+            "place_detail",
             "is_written_off",
             "written_off_at",
             "equipment_type",
@@ -186,7 +189,25 @@ class EquipmentSerializer(serializers.ModelSerializer):
         return obj.employee.department if obj.employee_id else None
 
     def get_status(self, obj):
-        return "assigned" if obj.employee_id else "free"
+        # assigned — за сотрудником (мобильно); stationary — на рабочем месте;
+        # free — свободно (на складе либо legacy без места).
+        if obj.employee_id:
+            return "assigned"
+        if obj.place_id and obj.place.place_type == "workplace":
+            return "stationary"
+        return "free"
+
+    def get_place_detail(self, obj):
+        if not obj.place_id:
+            return None
+        p = obj.place
+        return {
+            "id": p.id,
+            "name": p.name,
+            "place_type": p.place_type,
+            "room_name": p.room.name,
+            "building_name": p.room.building.name,
+        }
 
     def get_licenses(self, obj):
         # Импорт локально — licenses/serializers.py уже импортирует отсюда
@@ -219,6 +240,16 @@ class EquipmentSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
+        # Размещение (B8): не более одного из {employee, place}. Обязательность
+        # выбора размещения при создании — на стороне формы; бэкенд толерантен
+        # (свободное без места допустимо, в т.ч. для legacy-данных).
+        employee = attrs.get("employee")
+        place = attrs.get("place")
+        if employee and place:
+            raise serializers.ValidationError(
+                {"place": "Оборудование нельзя одновременно закрепить за сотрудником и разместить на месте."}
+            )
+
         equipment_type = attrs.get("equipment_type") or getattr(self.instance, "equipment_type", None)
         field_values_input = attrs.get("field_values_input")
         if field_values_input:

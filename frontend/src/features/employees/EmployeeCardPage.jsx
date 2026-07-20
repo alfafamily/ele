@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useNavigationType, useParams } from 'react-router-dom'
-import { apiPatch } from '../../shared/api/client'
+import { unassignEquipment } from '../equipment/equipmentApi.js'
 import { unassignUnits as unassignToolUnits } from '../tools/toolsApi.js'
 import { AssignToolModal } from '../tools/AssignToolModal.jsx'
+import { DetachToStorageModal } from './DetachToStorageModal.jsx'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner, StatusPill, Table, TabBar, TableRow } from '../../shared/ui'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
@@ -44,6 +45,8 @@ export function EmployeeCardPage() {
   const [disposePass, setDisposePass] = useState(null)
   // Подтверждение открепления: { title, message, onConfirm }.
   const [confirm, setConfirm] = useState(null)
+  // Открепление на склад: { kind: 'equipment'|'tool', obj }.
+  const [detach, setDetach] = useState(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const fileInputRef = useRef(null)
 
@@ -93,15 +96,21 @@ export function EmployeeCardPage() {
     }
   }
 
-  const onDetachEquipment = async (equipmentId) => {
-    await apiPatch(`/api/equipment/${equipmentId}/`, { employee: null })
+  // Открепление оборудования на склад (место хранения обязательно, B8).
+  const onDetachEquipment = async (equipmentId, storagePlaceId) => {
+    await unassignEquipment(equipmentId, storagePlaceId)
     load()
   }
 
-  // Открепление инструмента — возвращает все закреплённые за сотрудником единицы
-  // в свободный пул карточки (частичное — на карточке инструмента).
-  const onDetachTool = async (tool) => {
-    await unassignToolUnits(tool.id, employee.id, tool.quantity)
+  // Открепление инструмента на склад — возвращает все закреплённые за сотрудником
+  // единицы на выбранный склад (частичное — на карточке инструмента).
+  const onDetachTool = async (tool, storagePlaceId) => {
+    await unassignToolUnits(tool.id, {
+      quantity: tool.quantity,
+      mode: 'mobile',
+      employeeId: employee.id,
+      toPlace: storagePlaceId,
+    })
     load()
   }
 
@@ -231,16 +240,7 @@ export function EmployeeCardPage() {
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</div>
                 </Link>
                 <Can perm="canManageEquipment">
-                  <Button
-                    variant="secondary"
-                    onClick={() =>
-                      setConfirm({
-                        title: 'Открепить оборудование?',
-                        message: `«${eq.type_and_model}» больше не будет закреплено за сотрудником ${employee.full_name}.`,
-                        onConfirm: () => onDetachEquipment(eq.id),
-                      })
-                    }
-                  >
+                  <Button variant="secondary" onClick={() => setDetach({ kind: 'equipment', obj: eq })}>
                     Открепить
                   </Button>
                 </Can>
@@ -275,16 +275,7 @@ export function EmployeeCardPage() {
                 </Link>
                 {employee.is_employed ? (
                   <Can perm="canManageEquipment">
-                    <Button
-                      variant="secondary"
-                      onClick={() =>
-                        setConfirm({
-                          title: 'Открепить инструмент?',
-                          message: `Все ${tool.quantity} шт. «${tool.name}» будут откреплены от сотрудника ${employee.full_name} и вернутся в свободный остаток.`,
-                          onConfirm: () => onDetachTool(tool),
-                        })
-                      }
-                    >
+                    <Button variant="secondary" onClick={() => setDetach({ kind: 'tool', obj: tool })}>
                       Открепить
                     </Button>
                   </Can>
@@ -296,6 +287,26 @@ export function EmployeeCardPage() {
             ))
           )}
         </Card>
+
+        {employee.workplaces?.length ? (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>Рабочие места</div>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
+                {employee.workplaces.length}
+              </span>
+            </div>
+            {employee.workplaces.map((wp) => (
+              <div key={wp.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+                <Icon name="briefcase" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{wp.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{wp.location}</div>
+                </div>
+              </div>
+            ))}
+          </Card>
+        ) : null}
 
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -475,6 +486,23 @@ export function EmployeeCardPage() {
           message={confirm.message}
           onConfirm={confirm.onConfirm}
           onClose={() => setConfirm(null)}
+        />
+      ) : null}
+
+      {detach ? (
+        <DetachToStorageModal
+          title={detach.kind === 'tool' ? 'Открепить инструмент на склад' : 'Открепить оборудование на склад'}
+          description={
+            detach.kind === 'tool'
+              ? `Все ${detach.obj.quantity} шт. «${detach.obj.name}» вернутся на выбранный склад.`
+              : `«${detach.obj.type_and_model}» будет снято с сотрудника и положено на склад.`
+          }
+          onConfirm={async (storagePlaceId) => {
+            if (detach.kind === 'tool') await onDetachTool(detach.obj, storagePlaceId)
+            else await onDetachEquipment(detach.obj.id, storagePlaceId)
+            setDetach(null)
+          }}
+          onClose={() => setDetach(null)}
         />
       ) : null}
 

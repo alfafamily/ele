@@ -560,3 +560,63 @@ class EquipmentSearchTests(APITestCase):
         resp = self.client.get("/api/equipment/", {"search": "DESKTOP"})
         ids = [row["id"] for row in resp.data["results"]]
         self.assertEqual(ids, [self.eq1])
+
+
+class EquipmentPlacementTests(APITestCase):
+    """B8 — размещение оборудования: мобильно / стационарно / склад."""
+
+    def setUp(self):
+        from locations.models import Building, Place, Room
+
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.emp = Employee.objects.create(first_name="Иван", last_name="Иванов")
+        self.type_id = self.client.post("/api/equipment-types/", {"name": "ПК"}, format="json").data["id"]
+        b = Building.objects.create(name="Главное")
+        r = Room.objects.create(building=b, name="101")
+        self.store = Place.objects.create(room=r, name="Склад", place_type=Place.PlaceType.STORAGE)
+        self.wp = Place.objects.create(room=r, name="РМ-1", place_type=Place.PlaceType.WORKPLACE)
+
+    def _make(self, **extra):
+        payload = {"inventory_number": "INV-1", "equipment_type": self.type_id, **extra}
+        return self.client.post("/api/equipment/", payload, format="json")
+
+    def test_create_on_storage(self):
+        resp = self._make(place=self.store.id)
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(resp.data["status"], "free")
+        self.assertEqual(resp.data["place_detail"]["place_type"], "storage")
+
+    def test_create_mobile(self):
+        resp = self._make(employee=self.emp.id)
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(resp.data["status"], "assigned")
+
+    def test_assign_stationary_then_unassign_to_storage(self):
+        eq_id = self._make(place=self.store.id).data["id"]
+        # Стационарно на рабочее место.
+        r = self.client.post(f"/api/equipment/{eq_id}/assign/", {"mode": "stationary", "place": self.wp.id}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["status"], "stationary")
+        self.assertIsNone(r.data["employee"])
+        # Открепление требует склад.
+        r = self.client.post(f"/api/equipment/{eq_id}/unassign/", {}, format="json")
+        self.assertEqual(r.status_code, 400, r.data)
+        r = self.client.post(f"/api/equipment/{eq_id}/unassign/", {"place": self.wp.id}, format="json")
+        self.assertEqual(r.status_code, 400, r.data)  # рабочее место — не склад
+        r = self.client.post(f"/api/equipment/{eq_id}/unassign/", {"place": self.store.id}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["status"], "free")
+
+    def test_assign_stationary_requires_workplace(self):
+        eq_id = self._make(place=self.store.id).data["id"]
+        r = self.client.post(f"/api/equipment/{eq_id}/assign/", {"mode": "stationary", "place": self.store.id}, format="json")
+        self.assertEqual(r.status_code, 400, r.data)
+
+    def test_status_filter_stationary(self):
+        eq_id = self._make(place=self.store.id).data["id"]
+        self.client.post(f"/api/equipment/{eq_id}/assign/", {"mode": "stationary", "place": self.wp.id}, format="json")
+        ids = [e["id"] for e in self.client.get("/api/equipment/", {"status": "stationary"}).data["results"]]
+        self.assertIn(eq_id, ids)
+        ids_free = [e["id"] for e in self.client.get("/api/equipment/", {"status": "free"}).data["results"]]
+        self.assertNotIn(eq_id, ids_free)

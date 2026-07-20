@@ -1,21 +1,53 @@
 from rest_framework import serializers
 
+from employees.models import Employee
+
 from .models import Building, Place, Room
 from .sorting import room_sort_key
 
 
 class PlaceSerializer(serializers.ModelSerializer):
+    # Сотрудники за рабочим местом (несколько) — принимаем список id, отдаём
+    # ещё и краткие данные для отображения. Осмысленно для place_type=workplace.
+    employees = serializers.PrimaryKeyRelatedField(
+        many=True, required=False, queryset=Employee.objects.all(),
+    )
+    employees_detail = serializers.SerializerMethodField()
+    # Контекст для пикеров размещения (плоский список мест).
+    room_name = serializers.CharField(source="room.name", read_only=True)
+    building = serializers.IntegerField(source="room.building_id", read_only=True)
+    building_name = serializers.CharField(source="room.building.name", read_only=True)
+
     class Meta:
         model = Place
-        fields = ["id", "room", "name", "requires_pass", "is_archived"]
+        fields = [
+            "id", "room", "room_name", "building", "building_name", "name",
+            "place_type", "employees", "employees_detail", "requires_pass", "is_archived",
+        ]
         # Архивирование — только через отдельный action, не записью поля.
         read_only_fields = ["is_archived"]
+
+    def get_employees_detail(self, obj):
+        return [
+            {"id": e.id, "name": f"{e.last_name} {e.first_name}".strip()}
+            for e in obj.employees.all()
+        ]
 
     def validate_name(self, value):
         value = value.strip()
         if not value:
             raise serializers.ValidationError("Укажите название/номер места.")
         return value
+
+    def validate(self, attrs):
+        # Сотрудников закрепляем только за рабочим местом.
+        place_type = attrs.get("place_type", getattr(self.instance, "place_type", None))
+        employees = attrs.get("employees")
+        if employees and place_type != Place.PlaceType.WORKPLACE:
+            raise serializers.ValidationError(
+                {"employees": "Сотрудников можно закреплять только за рабочим местом."}
+            )
+        return attrs
 
 
 class RoomSerializer(serializers.ModelSerializer):
@@ -88,4 +120,4 @@ class PlaceMiniSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Place
-        fields = ["id", "room", "room_name", "building", "name", "is_archived"]
+        fields = ["id", "room", "room_name", "building", "name", "place_type", "is_archived"]

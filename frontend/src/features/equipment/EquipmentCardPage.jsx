@@ -3,13 +3,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { apiPatch } from '../../shared/api/client'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
-import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { AttachLicenseModal } from './AttachLicenseModal.jsx'
+import { EquipmentPlacementModal } from './EquipmentPlacementModal.jsx'
 import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
-import { assignEmployee, getEquipment, getEquipmentHistoryPath, unassignEmployee } from './equipmentApi.js'
+import { getEquipment, getEquipmentHistoryPath } from './equipmentApi.js'
 import { EQUIPMENT_STATUS_LABEL } from './statusLabels.js'
 import { WriteOffModal } from './WriteOffModal.jsx'
 
@@ -20,7 +20,7 @@ export function EquipmentCardPage() {
   const [equipment, setEquipment] = useState(null)
   const [loadError, setLoadError] = useState(false)
   const [showWriteOff, setShowWriteOff] = useState(false)
-  const [showAssignPicker, setShowAssignPicker] = useState(false)
+  const [showPlacement, setShowPlacement] = useState(false)
   const [showAttachLicense, setShowAttachLicense] = useState(false)
   // Счётчик перезагрузок — растёт при каждом load(), сигналит истории обновиться.
   const [historyKey, setHistoryKey] = useState(0)
@@ -59,15 +59,6 @@ export function EquipmentCardPage() {
     )
   }
 
-  const onAssign = async (employee) => {
-    await assignEmployee(equipment.id, employee.id)
-    setShowAssignPicker(false)
-    load()
-  }
-  const onUnassign = async () => {
-    await unassignEmployee(equipment.id)
-    load()
-  }
   const onDetachLicense = async (licenseId) => {
     await apiPatch(`/api/licenses/${licenseId}/`, { equipment: null })
     load()
@@ -174,59 +165,62 @@ export function EquipmentCardPage() {
             оборудования всегда пуст — не показываем (одна колонка). */}
         {!equipment.is_written_off ? (
         <Card className="ele-obj-layout__side ele-card-sticky">
-          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Закреплено за</div>
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Размещение</div>
           {equipment.employee ? (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
-                  {equipment.employee_avatar ? (
-                    <img src={equipment.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    nameInitials(equipment.employee_name)
-                  )}
-                </span>
-                <div style={{ minWidth: 0 }}>
-                  <Link className="ele-clamp-2" to={`/employees/${equipment.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                    {equipment.employee_name}
-                  </Link>
-                  <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>{equipment.department || '—'}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
+                {equipment.employee_avatar ? (
+                  <img src={equipment.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  nameInitials(equipment.employee_name)
+                )}
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>За сотрудником</div>
+                <Link className="ele-clamp-2" to={`/employees/${equipment.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                  {equipment.employee_name}
+                </Link>
+                <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>{equipment.department || '—'}</div>
+              </div>
+            </div>
+          ) : equipment.place_detail ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Icon
+                name={equipment.place_detail.place_type === 'storage' ? 'warehouse' : 'briefcase'}
+                size={20}
+                strokeWidth={2}
+                style={{ color: 'var(--color-text-muted)' }}
+              />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
+                  {equipment.place_detail.place_type === 'storage' ? 'На складе' : 'На рабочем месте'}
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>{equipment.place_detail.name}</div>
+                <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>
+                  {equipment.place_detail.building_name} — {equipment.place_detail.room_name}
                 </div>
               </div>
-              {!equipment.is_written_off ? (
-                <Can perm="canManageEquipment">
-                  <Button
-                    variant="secondary"
-                    fullWidth
-                    style={{ marginTop: 14 }}
-                    onClick={() =>
-                      setConfirm({
-                        title: 'Открепить сотрудника?',
-                        message: `«${equipment.type_and_model}» больше не будет закреплено за ${equipment.employee_name}.`,
-                        confirmLabel: 'Открепить',
-                        onConfirm: onUnassign,
-                      })
-                    }
-                  >
-                    Открепить
-                  </Button>
-                </Can>
-              ) : null}
-            </>
-          ) : showAssignPicker && !equipment.is_written_off ? (
-            <EmployeePicker autoFocus onSelect={onAssign} />
+            </div>
           ) : (
-            <>
-              <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не закреплено</div>
-              {!equipment.is_written_off ? (
-                <Can perm="canManageEquipment">
-                  <Button fullWidth style={{ marginTop: 14 }} onClick={() => setShowAssignPicker(true)}>
-                    <Icon name="plus" size={18} strokeWidth={2.2} />
-                    Закрепить сотрудника
-                  </Button>
-                </Can>
-              ) : null}
-            </>
+            <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не размещено</div>
           )}
+          {!equipment.is_written_off ? (
+            <Can perm="canManageEquipment">
+              <Button
+                variant={equipment.employee || equipment.place_detail ? 'secondary' : 'primary'}
+                fullWidth
+                style={{ marginTop: 14 }}
+                onClick={() => setShowPlacement(true)}
+              >
+                {equipment.employee || equipment.place_detail ? 'Переместить' : (
+                  <>
+                    <Icon name="plus" size={18} strokeWidth={2.2} />
+                    Разместить
+                  </>
+                )}
+              </Button>
+            </Can>
+          ) : null}
 
           <div style={{ borderTop: '1px solid var(--color-border-hairline)', margin: '20px 0 16px' }} />
 
@@ -315,6 +309,16 @@ export function EquipmentCardPage() {
           onClose={() => setShowAttachLicense(false)}
           onAttached={() => {
             setShowAttachLicense(false)
+            load()
+          }}
+        />
+      ) : null}
+      {showPlacement ? (
+        <EquipmentPlacementModal
+          equipment={equipment}
+          onClose={() => setShowPlacement(false)}
+          onDone={() => {
+            setShowPlacement(false)
             load()
           }}
         />

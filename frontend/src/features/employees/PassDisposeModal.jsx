@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Input, Modal } from '../../shared/ui'
+import { Banner, Button, Input, Modal, PlaceSelect } from '../../shared/ui'
 import { detachPass, utilizePass } from './employeesApi.js'
 
 // Открепление/утилизация средства доступа (пропуск или ключ). Если объект
@@ -24,17 +24,22 @@ export function PassDisposeModal({ pass, onClose, onDone }) {
 
   const [choice, setChoice] = useState(OPTIONS[0].value)
   const [comment, setComment] = useState('')
+  const [storagePlaceId, setStoragePlaceId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
   const isUtilize = choice === 'utilized' || choice === 'handed'
 
   const submit = async () => {
+    if (choice === 'detach' && !storagePlaceId) {
+      setError('Выберите место хранения.')
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
       const saved = choice === 'detach'
-        ? await detachPass(pass.id)
+        ? await detachPass(pass.id, Number(storagePlaceId))
         : await utilizePass(pass.id, choice, comment.trim() || undefined)
       onDone(saved)
     } catch (err) {
@@ -61,6 +66,12 @@ export function PassDisposeModal({ pass, onClose, onDone }) {
           </label>
         ))}
       </div>
+
+      {choice === 'detach' ? (
+        <div style={{ marginBottom: 18 }}>
+          <PlaceSelect placeType="storage" required value={storagePlaceId} onChange={setStoragePlaceId} />
+        </div>
+      ) : null}
 
       {isUtilize ? (
         <div style={{ marginBottom: 18 }}>

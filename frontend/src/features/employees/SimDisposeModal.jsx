@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { Banner, Button, Input, Modal } from '../../shared/ui'
+import { Banner, Button, Input, Modal, PlaceSelect } from '../../shared/ui'
 import { detachSimCard, utilizeSimCard } from './employeesApi.js'
 
-// Открепление/утилизация SIM-карты. Закреплённую можно открепить
-// (деактивировать) или утилизировать; свободную — только утилизировать.
-// Комментарий (необязательный, многострочный) для утилизации попадает в историю.
+// Открепление/утилизация SIM-карты. Размещённую (за сотрудником или в
+// оборудовании) можно открепить на склад или утилизировать; свободную — только
+// утилизировать. Комментарий (необязательный) для утилизации попадает в историю.
 export function SimDisposeModal({ sim, onClose, onDone }) {
-  const attached = Boolean(sim.employee)
+  const attached = Boolean(sim.employee || sim.equipment)
+  const [storagePlaceId, setStoragePlaceId] = useState('')
 
   const OPTIONS = attached
     ? [
@@ -23,11 +24,15 @@ export function SimDisposeModal({ sim, onClose, onDone }) {
   const isUtilize = choice === 'utilized'
 
   const submit = async () => {
+    if (choice === 'detach' && !storagePlaceId) {
+      setError('Выберите место хранения.')
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
       const saved = choice === 'detach'
-        ? await detachSimCard(sim.id)
+        ? await detachSimCard(sim.id, Number(storagePlaceId))
         : await utilizeSimCard(sim.id, comment.trim() || undefined)
       onDone(saved)
     } catch (err) {
@@ -54,6 +59,12 @@ export function SimDisposeModal({ sim, onClose, onDone }) {
           </label>
         ))}
       </div>
+
+      {choice === 'detach' ? (
+        <div style={{ marginBottom: 18 }}>
+          <PlaceSelect placeType="storage" required value={storagePlaceId} onChange={setStoragePlaceId} />
+        </div>
+      ) : null}
 
       {isUtilize ? (
         <div style={{ marginBottom: 18 }}>

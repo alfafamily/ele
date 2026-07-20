@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
-import { Banner, Button, Card, Icon, Input, Spinner } from '../../shared/ui'
+import { Banner, Button, Card, Icon, Input, PlaceSelect, Spinner } from '../../shared/ui'
 import { createTool, getTool, updateTool } from './toolsApi.js'
 
 export function ToolFormPage() {
@@ -12,6 +12,7 @@ export function ToolFormPage() {
   const [tool, setTool] = useState(null)
   const [name, setName] = useState('')
   const [initialQuantity, setInitialQuantity] = useState('0')
+  const [initialPlace, setInitialPlace] = useState('')
   const [customFields, setCustomFields] = useState([])
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -44,6 +45,14 @@ export function ToolFormPage() {
     }
     if (!isEdit) {
       payload.quantity = Math.max(0, Number(initialQuantity) || 0)
+      if (payload.quantity > 0) {
+        if (!initialPlace) {
+          setError('Укажите место хранения для начального остатка.')
+          setSubmitting(false)
+          return
+        }
+        payload.place = Number(initialPlace)
+      }
       if (comment.trim()) payload.comment = comment.trim()
     }
     try {
@@ -90,14 +99,19 @@ export function ToolFormPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <Input label="Наименование" required autoFocus value={name} onChange={(e) => setName(e.target.value)} />
               {!isEdit ? (
-                <Input
-                  label="Начальный остаток"
-                  required
-                  type="number"
-                  min="0"
-                  value={initialQuantity}
-                  onChange={(e) => setInitialQuantity(e.target.value)}
-                />
+                <>
+                  <Input
+                    label="Начальный остаток"
+                    required
+                    type="number"
+                    min="0"
+                    value={initialQuantity}
+                    onChange={(e) => setInitialQuantity(e.target.value)}
+                  />
+                  {Number(initialQuantity) > 0 ? (
+                    <PlaceSelect placeType="storage" label="Место хранения (склад)" required value={initialPlace} onChange={setInitialPlace} />
+                  ) : null}
+                </>
               ) : null}
             </div>
           </Card>
