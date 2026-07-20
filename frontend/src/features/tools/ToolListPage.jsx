@@ -132,9 +132,9 @@ export function ToolListPage() {
                 </div>
                 {tab === 'active' ? (
                   <div style={{ minWidth: 0 }}>
-                    <div>Остаток: {row.quantity}</div>
+                    <div>Всего/свободно: {row.quantity}/{row.free}</div>
                     <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>
-                      закреплено: {row.allocated}
+                      Закреплено: {row.allocated}
                     </div>
                   </div>
                 ) : (
