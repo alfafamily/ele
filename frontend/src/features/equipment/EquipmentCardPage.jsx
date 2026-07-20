@@ -7,6 +7,8 @@ import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { AttachLicenseModal } from './AttachLicenseModal.jsx'
+import { DetachToStorageModal } from '../employees/DetachToStorageModal.jsx'
+import { detachSimCard } from '../employees/employeesApi.js'
 import { EquipmentPlacementModal } from './EquipmentPlacementModal.jsx'
 import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
 import { getEquipment, getEquipmentHistoryPath } from './equipmentApi.js'
@@ -22,6 +24,7 @@ export function EquipmentCardPage() {
   const [showWriteOff, setShowWriteOff] = useState(false)
   const [showPlacement, setShowPlacement] = useState(false)
   const [showAttachLicense, setShowAttachLicense] = useState(false)
+  const [detachSim, setDetachSim] = useState(null)
   // Счётчик перезагрузок — растёт при каждом load(), сигналит истории обновиться.
   const [historyKey, setHistoryKey] = useState(0)
   // Подтверждение открепления/отвязки: { title, message, confirmLabel, onConfirm }.
@@ -303,14 +306,25 @@ export function EquipmentCardPage() {
                 </span>
               </div>
               {equipment.sim_cards.map((sim) => (
-                <Link key={sim.id} to={`/sim-cards/${sim.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+                <div key={sim.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
                   <Icon name="radio-tower" size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <Link to={`/sim-cards/${sim.id}`} style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ font: '600 13.5px var(--font-mono)', color: 'var(--color-text-primary)' }}>{sim.phone_number}</div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{sim.sim_type_display}</div>
-                  </div>
-                  <Icon name="chevron-right" size={16} strokeWidth={2} style={{ flex: 'none', color: '#C7C9D4' }} />
-                </Link>
+                  </Link>
+                  {!equipment.is_written_off ? (
+                    <Can perm="canManageEmployees">
+                      <button
+                        type="button"
+                        title="Открепить"
+                        onClick={() => setDetachSim(sim)}
+                        style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Icon name="x" size={16} strokeWidth={2} />
+                      </button>
+                    </Can>
+                  ) : null}
+                </div>
               ))}
             </>
           ) : null}
@@ -360,6 +374,30 @@ export function EquipmentCardPage() {
             setShowPlacement(false)
             load()
           }}
+        />
+      ) : null}
+      {detachSim && detachSim.sim_type === 'esim' ? (
+        <ConfirmModal
+          title="Открепить SIM-карту?"
+          message={`E-SIM ${detachSim.phone_number} будет откреплена от «${equipment.type_and_model}».`}
+          confirmLabel="Открепить"
+          onConfirm={async () => {
+            await detachSimCard(detachSim.id)
+            setDetachSim(null)
+            load()
+          }}
+          onClose={() => setDetachSim(null)}
+        />
+      ) : detachSim ? (
+        <DetachToStorageModal
+          title="Открепить SIM-карту на склад"
+          description={`SIM ${detachSim.phone_number} будет снята с оборудования и положена на склад.`}
+          onConfirm={async (storagePlaceId) => {
+            await detachSimCard(detachSim.id, storagePlaceId)
+            setDetachSim(null)
+            load()
+          }}
+          onClose={() => setDetachSim(null)}
         />
       ) : null}
     </div>

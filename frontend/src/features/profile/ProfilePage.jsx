@@ -270,7 +270,7 @@ export function ProfilePage() {
                     <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>На этом рабочем месте</div>
                     {(wp.equipment || []).map((eq) => (
                       <div key={`e${eq.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                        <Icon name="wrench" size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                        <Icon name="tag" size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
                         <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {eq.type_and_model} · <span style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</span>
                         </span>
@@ -278,7 +278,7 @@ export function ProfilePage() {
                     ))}
                     {(wp.tools || []).map((t) => (
                       <div key={`t${t.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                        <Icon name="blocks" size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                        <Icon name="wrench" size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
                         <span>{t.name} · {t.quantity} шт.</span>
                       </div>
                     ))}
