@@ -227,6 +227,32 @@ class LicenseTypeKindTests(APITestCase):
         field_ids = {fv["field"] for fv in card.data["field_values"]}
         self.assertEqual(field_ids, {key_b.id})
 
+    def test_history_hides_requisites_of_deleted_type(self):
+        # Лицензия переведена со старого типа на новый, старый тип удалён —
+        # его реквизиты (в т.ч. бывший «Номер/ключ») в истории не показываются
+        # и не светятся открытым текстом.
+        a = LicenseType.objects.create(name="Программная", kind="software")
+        b = LicenseType.objects.create(name="Клиентская", kind="software")
+        key_a = a.fields.get(is_locked=True)
+        key_b = b.fields.get(is_locked=True)
+        created = self.client.post(
+            "/api/licenses/",
+            {"license_type": a.id, "field_values_input": [{"field": key_a.id, "value": "OLD-SECRET-KEY"}]},
+            format="json",
+        )
+        self.assertEqual(created.status_code, 201, created.data)
+        lic_id = created.data["id"]
+        moved = self.client.patch(
+            f"/api/licenses/{lic_id}/",
+            {"license_type": b.id, "field_values_input": [{"field": key_b.id, "value": "NEW-KEY"}]},
+            format="json",
+        )
+        self.assertEqual(moved.status_code, 200, moved.data)
+        # Старый тип освободился — удаляем его.
+        self.assertEqual(self.client.delete(f"/api/license-types/{a.id}/").status_code, 204)
+        rows = self.client.get(f"/api/licenses/{lic_id}/history/").data
+        self.assertNotIn("OLD-SECRET-KEY", str(rows))
+
     def test_soft_type_change_cross_kind_rejected(self):
         soft = LicenseType.objects.create(name="Антивирус", kind="software")
         hard = LicenseType.objects.create(name="Токен", kind="hardware")
