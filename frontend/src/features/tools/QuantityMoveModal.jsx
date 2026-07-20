@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { Banner, Button, Input, Modal, PlaceSelect } from '../../shared/ui'
+import { StoragePicker } from './StoragePicker.jsx'
 
 // Модалка движения количественной карточки (B8: остаток на складах). Слоты:
 //   target = null            — без контрагента (приход / списание единиц);
@@ -146,13 +147,16 @@ export function QuantityMoveModal({
         {!needEmployeePick ? (
           <>
             {storage ? (
-              <PlaceSelect
-                placeType="storage"
-                label={storageRequired ? STORAGE_LABEL[storage] : `${STORAGE_LABEL[storage]} — необязательно`}
+              <StoragePicker
+                label={STORAGE_LABEL[storage]}
                 required={storageRequired}
                 value={storagePlaceId}
                 onChange={setStoragePlaceId}
-                placeholder={storageRequired ? 'Выберите склад' : 'Без склада (общий свободный остаток)'}
+                freeMap={storageFreeMap}
+                restrictToStock={sourceCap}
+                showQuantity={sourceCap}
+                allowNone={storage === 'to' ? true : !storageRequired}
+                noneQty={unplacedFree}
               />
             ) : null}
             <Input

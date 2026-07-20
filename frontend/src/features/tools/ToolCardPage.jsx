@@ -196,6 +196,9 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove, onTransfer })
       title: 'Оприходовать',
       confirmLabel: 'Оприходовать',
       storage: 'add',
+      // Приход только на склад; «Без склада» доступно, лишь если у карточки уже
+      // есть неразмещённый остаток (совместимость с обновлением на 1.9.0).
+      storageRequired: tool.free_unplaced <= 0,
       onSubmit: (p) => addUnits(tool.id, { quantity: p.quantity, place: p.storagePlaceId ? Number(p.storagePlaceId) : undefined, comment: p.comment }).then(closeMove),
     })
   const openWriteOff = () =>
