@@ -20,9 +20,11 @@ export function SelectedEmployee({ employee, onClear }) {
           <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subtitle}</span>
         ) : null}
       </span>
-      <button type="button" onClick={onClear} title="Изменить" aria-label="Изменить" style={{ width: 28, height: 28, flex: 'none', borderRadius: 8, background: 'var(--color-surface)', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 1px var(--color-border)' }}>
-        <Icon name="x" size={15} strokeWidth={2} />
-      </button>
+      {onClear ? (
+        <button type="button" onClick={onClear} title="Изменить" aria-label="Изменить" style={{ width: 28, height: 28, flex: 'none', borderRadius: 8, background: 'var(--color-surface)', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 1px var(--color-border)' }}>
+          <Icon name="x" size={15} strokeWidth={2} />
+        </button>
+      ) : null}
     </div>
   )
 }
