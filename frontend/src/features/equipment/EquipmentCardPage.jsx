@@ -254,6 +254,7 @@ export function EquipmentCardPage() {
           </div>
           {(equipment.licenses || []).map((lic) => (
             <div key={lic.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+              <Icon name="scroll-text" size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
               {perms.canManageLicenses ? (
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Link to={`/licenses/${lic.id}`}>
