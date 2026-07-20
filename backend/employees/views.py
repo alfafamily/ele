@@ -356,7 +356,7 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = SimCard.objects.select_related(
-            "employee", "equipment", "storage_place__room__building"
+            "employee", "employee__avatar", "equipment", "storage_place__room__building"
         ).all()
         user = self.request.user
         if user.role == "employee" and not user.is_observer:
