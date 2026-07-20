@@ -3,11 +3,11 @@ import { Banner, Button, Input, Modal } from '../../shared/ui'
 import { StoragePicker } from './StoragePicker.jsx'
 import { transferUnits } from './toolsApi.js'
 
-// Перемещение свободного остатка инструмента на склад. По умолчанию — с одного
-// склада на другой (storages — складские размещения карточки). При fromUnplaced
-// источник — внутренний остаток «без склада» (unplacedQty), выбирается только
-// склад-приёмник (для размещения легаси-остатка после обновления на 1.9.0).
-export function ToolTransferModal({ tool, storages, fromUnplaced = false, unplacedQty = 0, onClose, onDone }) {
+// Перемещение свободного остатка инструмента на склад. Источник — склад с
+// остатком ИЛИ системный остаток «без склада» (unplacedFree>0): «Без склада»
+// доступно как источник (расход), но никогда как приёмник. Приёмник — только
+// реальный склад.
+export function ToolTransferModal({ tool, storages, unplacedFree = 0, onClose, onDone }) {
   const [fromId, setFromId] = useState('')
   const [toId, setToId] = useState('')
   const [quantity, setQuantity] = useState('1')
@@ -19,14 +19,15 @@ export function ToolTransferModal({ tool, storages, fromUnplaced = false, unplac
     () => Object.fromEntries(storages.map((a) => [String(a.place), a.quantity])),
     [storages]
   )
-  const fromMax = fromUnplaced ? unplacedQty : freeMap[String(fromId)] || 0
-  const empty = !fromUnplaced && storages.length === 0
+  const noneAllowed = unplacedFree > 0
+  const fromMax = fromId ? freeMap[String(fromId)] || 0 : unplacedFree
+  const empty = storages.length === 0 && !noneAllowed
 
   const submit = async () => {
     const qty = Number(quantity)
-    if (!fromUnplaced && !fromId) return setError('Выберите склад-источник.')
+    if (!fromId && !noneAllowed) return setError('Выберите склад-источник.')
     if (!toId) return setError('Выберите склад-приёмник.')
-    if (!fromUnplaced && String(fromId) === String(toId)) return setError('Склады должны различаться.')
+    if (fromId && String(fromId) === String(toId)) return setError('Склады должны различаться.')
     if (!Number.isInteger(qty) || qty <= 0) return setError('Количество должно быть больше нуля.')
     if (qty > fromMax) return setError(`Доступно не больше ${fromMax}.`)
     setSubmitting(true)
@@ -34,7 +35,7 @@ export function ToolTransferModal({ tool, storages, fromUnplaced = false, unplac
     try {
       await transferUnits(tool.id, {
         quantity: qty,
-        fromPlace: fromUnplaced ? undefined : Number(fromId),
+        fromPlace: fromId ? Number(fromId) : undefined, // без from_place — источник «без склада»
         toPlace: Number(toId),
         comment: comment.trim(),
       })
@@ -46,29 +47,25 @@ export function ToolTransferModal({ tool, storages, fromUnplaced = false, unplac
   }
 
   return (
-    <Modal open onClose={onClose} title={fromUnplaced ? 'Разместить остаток на склад' : 'Переместить между складами'}>
+    <Modal open onClose={onClose} title="Переместить на склад">
       {error ? <Banner variant="error">{error}</Banner> : null}
       {empty ? (
         <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', padding: '8px 0 4px' }}>
-          Нет остатка на складах для перемещения.
+          Нет остатка для перемещения.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 4 }}>
-          {fromUnplaced ? (
-            <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
-              Источник — остаток без склада: <b>{unplacedQty} шт.</b>
-            </div>
-          ) : (
-            <StoragePicker
-              label="Со склада"
-              required
-              value={fromId}
-              onChange={setFromId}
-              freeMap={freeMap}
-              restrictToStock
-              showQuantity
-            />
-          )}
+          <StoragePicker
+            label="Со склада"
+            required={!noneAllowed}
+            value={fromId}
+            onChange={setFromId}
+            freeMap={freeMap}
+            restrictToStock
+            showQuantity
+            allowNone={noneAllowed}
+            noneQty={unplacedFree}
+          />
           <StoragePicker label="На склад" required value={toId} onChange={setToId} />
           <Input
             label="Количество"
@@ -79,9 +76,9 @@ export function ToolTransferModal({ tool, storages, fromUnplaced = false, unplac
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
           />
-          {fromUnplaced || fromId ? (
-            <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: -8 }}>Доступно: {fromMax}</div>
-          ) : null}
+          <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: -8 }}>
+            Доступно{fromId ? ' на складе' : ' без склада'}: {fromMax}
+          </div>
           <Input
             label="Комментарий"
             multiline
@@ -96,7 +93,7 @@ export function ToolTransferModal({ tool, storages, fromUnplaced = false, unplac
           Отмена
         </Button>
         <Button fullWidth loading={submitting} disabled={empty} onClick={submit}>
-          {fromUnplaced ? 'Разместить' : 'Переместить'}
+          Переместить
         </Button>
       </div>
     </Modal>

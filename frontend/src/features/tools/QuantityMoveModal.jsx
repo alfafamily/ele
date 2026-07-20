@@ -41,6 +41,9 @@ export function QuantityMoveModal({
   // Для операций-расхода (выдача/списание) лимит зависит от выбранного склада:
   // если склад выбран — сколько на нём лежит; иначе — свободный остаток без склада.
   const sourceCap = storage === 'from' || storage === 'writeoff'
+  // «Без склада» — системный остаток апгрейда: доступен только как ИСТОЧНИК
+  // (списать/выдать), и только если он есть. Как приёмник (приход/возврат) — нет.
+  const noneAllowed = sourceCap && (unplacedFree ?? 0) > 0
   const effectiveMax = sourceCap
     ? storagePlaceId
       ? storageFreeMap[String(storagePlaceId)] ?? 0
@@ -55,7 +58,7 @@ export function QuantityMoveModal({
       if (mode === 'mobile' && !employee) return setError('Выберите сотрудника.')
       if (mode === 'stationary' && !placeId) return setError('Выберите рабочее место.')
     }
-    if (storage && !storagePlaceId) return setError('Выберите склад.')
+    if (storage && !noneAllowed && !storagePlaceId) return setError('Выберите склад.')
     setSubmitting(true)
     setError(null)
     try {
@@ -149,12 +152,14 @@ export function QuantityMoveModal({
             {storage ? (
               <StoragePicker
                 label={STORAGE_LABEL[storage]}
-                required
+                required={!noneAllowed}
                 value={storagePlaceId}
                 onChange={setStoragePlaceId}
                 freeMap={storageFreeMap}
                 restrictToStock={sourceCap}
                 showQuantity={sourceCap}
+                allowNone={noneAllowed}
+                noneQty={unplacedFree}
               />
             ) : null}
             <Input

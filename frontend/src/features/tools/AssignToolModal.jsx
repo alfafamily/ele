@@ -31,7 +31,9 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
       ),
     [selected]
   )
-  const sourceMax = fromPlace ? freeMap[String(fromPlace)] || 0 : 0
+  // «Без склада» — системный остаток апгрейда: доступен как источник выдачи.
+  const noneAllowed = Boolean(selected) && selected.free_unplaced > 0
+  const sourceMax = fromPlace ? freeMap[String(fromPlace)] || 0 : selected?.free_unplaced ?? 0
 
   const submit = async () => {
     const qty = Number(quantity)
@@ -43,7 +45,7 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
       setError('Количество должно быть больше нуля.')
       return
     }
-    if (!fromPlace) {
+    if (!noneAllowed && !fromPlace) {
       setError('Выберите склад, с которого выдаётся инструмент.')
       return
     }
@@ -90,12 +92,14 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
           </Select>
           <StoragePicker
             label="Склад (откуда выдать)"
-            required
+            required={!noneAllowed}
             value={fromPlace}
             onChange={setFromPlace}
             freeMap={freeMap}
             restrictToStock
             showQuantity
+            allowNone={noneAllowed}
+            noneQty={selected?.free_unplaced}
           />
           <Input
             label="Количество"
@@ -106,9 +110,9 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
           />
-          {selected && fromPlace ? (
+          {selected ? (
             <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: -8 }}>
-              Доступно на складе: {sourceMax}
+              Доступно{fromPlace ? ' на складе' : ' без склада'}: {sourceMax}
             </div>
           ) : null}
           <Input
