@@ -54,18 +54,39 @@ class Room(models.Model):
 
 
 class Place(models.Model):
-    """Место (рабочее место/точка) — принадлежит одному Помещению."""
+    """Место (рабочее место/точка) — принадлежит одному Помещению.
+
+    Тип места (place_type) задаёт роль места в учёте размещения объектов (B8):
+    - workplace (Рабочее место) — на него можно закрепить Оборудование/Инструмент
+      стационарно (без конкретного сотрудника) и закрепить самих сотрудников;
+    - storage (Место хранения) — «склад», куда кладётся свободный (никому не
+      выданный) остаток объектов; свободный объект всегда лежит на складе.
+    Флаг requires_pass независим от типа — место любого типа может требовать
+    персональный ключ/пропуск.
+    """
+
+    class PlaceType(models.TextChoices):
+        WORKPLACE = "workplace", "Рабочее место"
+        STORAGE = "storage", "Место хранения"
 
     room = models.ForeignKey(
         Room, verbose_name="Помещение/зона", on_delete=models.PROTECT, related_name="places",
     )
     name = models.CharField("Название/номер", max_length=255)
+    place_type = models.CharField(
+        "Тип места", max_length=10, choices=PlaceType.choices, default=PlaceType.WORKPLACE,
+    )
+    # Сотрудники, закреплённые за рабочим местом (несколько). Осмысленно только
+    # для place_type=workplace; для склада не используется.
+    employees = models.ManyToManyField(
+        "employees.Employee", verbose_name="Сотрудники", blank=True, related_name="workplaces",
+    )
     # Место требует персонального ключа/пропуска: только такие места можно
     # выбрать как объект доступа при создании ключа/пропуска (employees.AccessPass).
     requires_pass = models.BooleanField("Требуется ключ/пропуск", default=False)
     is_archived = models.BooleanField("В архиве", default=False)
     created_at = models.DateTimeField(auto_now_add=True)
-    history = HistoricalRecords()
+    history = HistoricalRecords(m2m_fields=[employees])
 
     class Meta:
         verbose_name = "Место"

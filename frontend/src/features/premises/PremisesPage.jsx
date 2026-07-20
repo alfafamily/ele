@@ -475,10 +475,20 @@ function PlaceChip({ place, canManage, onEdit, onArchive, onUnarchive }) {
           opacity: archived ? 0.55 : 1, textDecoration: archived ? 'line-through' : 'none',
         }}
       >
+        <Icon
+          name={place.place_type === 'storage' ? 'warehouse' : 'briefcase'}
+          size={13}
+          strokeWidth={2}
+          title={place.place_type === 'storage' ? 'Место хранения' : 'Рабочее место'}
+          style={{ color: 'var(--color-text-muted)' }}
+        />
         {place.requires_pass ? (
           <Icon name="key-round" size={13} strokeWidth={2} title="Требуется ключ/пропуск" style={{ color: 'var(--color-text-muted)' }} />
         ) : null}
         {place.name}
+        {place.place_type === 'workplace' && place.employees_detail?.length ? (
+          <span style={{ color: 'var(--color-text-placeholder)' }}>· {place.employees_detail.length}</span>
+        ) : null}
       </button>
       {open ? (
         <div className="ele-action-menu__list" style={{ left: 0, right: 'auto', minWidth: 180 }} role="menu">

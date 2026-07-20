@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from simple_history.models import HistoricalRecords
 
 
@@ -45,26 +46,57 @@ class ToolCustomField(models.Model):
 
 
 class ToolAllocation(models.Model):
-    """Закрепление части единиц инструмента за сотрудником. Одна строка на пару
-    (tool, employee); количество агрегируется. Свободный остаток =
-    Tool.quantity − сумма quantity всех закреплений."""
+    """Размещение части единиц инструмента (B8). Ровно один из target-ов:
+    - employee — закреплено мобильно за сотрудником;
+    - place с типом workplace — закреплено стационарно за рабочим местом;
+    - place с типом storage — свободный остаток, лежащий на этом складе.
+
+    Одна строка на пару (tool, target); количество агрегируется. Инвариант:
+    сумма quantity всех размещений == Tool.quantity (каждая единица всегда
+    где-то лежит). «Свободно» = сумма по storage-местам; «Закреплено» =
+    сумма по сотрудникам и рабочим местам."""
 
     tool = models.ForeignKey(Tool, on_delete=models.CASCADE, related_name="allocations")
     employee = models.ForeignKey(
         "employees.Employee", verbose_name="Сотрудник",
-        on_delete=models.PROTECT, related_name="tool_allocations",
+        on_delete=models.PROTECT, null=True, blank=True, related_name="tool_allocations",
+    )
+    place = models.ForeignKey(
+        "locations.Place", verbose_name="Место",
+        on_delete=models.PROTECT, null=True, blank=True, related_name="tool_allocations",
     )
     quantity = models.PositiveIntegerField("Количество")
 
     class Meta:
-        verbose_name = "Закрепление инструмента"
-        verbose_name_plural = "Закрепления инструмента"
+        verbose_name = "Размещение инструмента"
+        verbose_name_plural = "Размещения инструмента"
         constraints = [
-            models.UniqueConstraint(fields=["tool", "employee"], name="uniq_tool_allocation"),
+            models.UniqueConstraint(
+                fields=["tool", "employee"], condition=Q(employee__isnull=False),
+                name="uniq_tool_allocation_employee",
+            ),
+            models.UniqueConstraint(
+                fields=["tool", "place"], condition=Q(place__isnull=False),
+                name="uniq_tool_allocation_place",
+            ),
+            models.CheckConstraint(
+                condition=Q(employee__isnull=False, place__isnull=True)
+                | Q(employee__isnull=True, place__isnull=False),
+                name="tool_allocation_exactly_one_target",
+            ),
         ]
 
+    @property
+    def target_kind(self):
+        # employee — мобильно; workplace — стационарно; storage — свободно на складе.
+        if self.employee_id:
+            return "employee"
+        if self.place and self.place.place_type == "workplace":
+            return "workplace"
+        return "storage"
+
     def __str__(self):
-        return f"{self.tool} / {self.employee} × {self.quantity}"
+        return f"{self.tool} / {self.employee or self.place} × {self.quantity}"
 
 
 class ToolMovement(models.Model):
@@ -82,6 +114,18 @@ class ToolMovement(models.Model):
     quantity = models.PositiveIntegerField("Количество")
     employee = models.ForeignKey(
         "employees.Employee", verbose_name="Сотрудник",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+    )
+    # Контрагент-место движения: для ADD/WRITE_OFF — склад прихода/списания;
+    # для ASSIGN/UNASSIGN стационарного — рабочее место. См. ToolAllocation.
+    place = models.ForeignKey(
+        "locations.Place", verbose_name="Место",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+    )
+    # Склад-источник (ASSIGN) / склад-приёмник (UNASSIGN) — откуда/куда
+    # перекладывается свободный остаток при раздаче/возврате.
+    storage_place = models.ForeignKey(
+        "locations.Place", verbose_name="Склад",
         on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
     )
     comment = models.TextField("Комментарий", blank=True)

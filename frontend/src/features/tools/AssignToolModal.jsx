@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { apiGet } from '../../shared/api/client'
-import { Banner, Button, Input, Modal, Select, Spinner } from '../../shared/ui'
+import { Banner, Button, Input, Modal, PlaceSelect, Select, Spinner } from '../../shared/ui'
 import { assignUnits } from './toolsApi.js'
 
 // Закрепление инструмента за сотрудником с его карточки: выбор инструмента со
@@ -9,6 +9,7 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
   const [tools, setTools] = useState(null)
   const [toolId, setToolId] = useState('')
   const [quantity, setQuantity] = useState('1')
+  const [fromPlace, setFromPlace] = useState('')
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -35,10 +36,20 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
       setError(`Доступно не больше ${selected.free}.`)
       return
     }
+    if (!fromPlace) {
+      setError('Выберите склад, с которого выдаётся инструмент.')
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
-      await assignUnits(Number(toolId), employeeId, qty, comment.trim())
+      await assignUnits(Number(toolId), {
+        quantity: qty,
+        mode: 'mobile',
+        employeeId,
+        fromPlace: Number(fromPlace),
+        comment: comment.trim(),
+      })
       onDone()
     } catch (err) {
       setError(err.detail || 'Не удалось закрепить инструмент.')
@@ -78,6 +89,7 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
           {selected ? (
             <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: -8 }}>Доступно: {selected.free}</div>
           ) : null}
+          <PlaceSelect placeType="storage" label="Склад (откуда выдать)" required value={fromPlace} onChange={setFromPlace} />
           <Input
             label="Комментарий"
             multiline

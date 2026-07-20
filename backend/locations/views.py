@@ -26,7 +26,7 @@ class BuildingViewSet(_NoDeleteViewSet):
     serializer_class = BuildingSerializer
 
     def get_queryset(self):
-        qs = Building.objects.all().prefetch_related("rooms__places")
+        qs = Building.objects.all().prefetch_related("rooms__places__employees")
         # Список слева: по умолчанию только активные; ?include_archived=1
         # подмешивает архивные (детали здания открываются всегда).
         if self.action == "list" and self.request.query_params.get("include_archived") not in ("1", "true"):
@@ -73,7 +73,15 @@ class PlaceViewSet(_NoDeleteViewSet):
     serializer_class = PlaceSerializer
 
     def get_queryset(self):
-        return Place.objects.all()
+        qs = Place.objects.select_related("room__building").prefetch_related("employees")
+        # Плоский список мест для пикеров размещения: ?place_type=storage|workplace,
+        # ?active=1 — только не архивные.
+        place_type = self.request.query_params.get("place_type")
+        if place_type in (Place.PlaceType.STORAGE, Place.PlaceType.WORKPLACE):
+            qs = qs.filter(place_type=place_type)
+        if self.request.query_params.get("active") in ("1", "true"):
+            qs = qs.filter(is_archived=False)
+        return qs
 
     @action(detail=True, methods=["post"])
     def archive(self, request, pk=None):

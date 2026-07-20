@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Badge, Banner, Button, Card, Icon, Input, Spinner } from '../../shared/ui'
+import { Badge, Banner, Button, Card, Icon, Input, PlaceSelect, Spinner } from '../../shared/ui'
 import { getBuildings } from '../premises/premisesApi.js'
 import { createPass, getPass, updatePass } from '../employees/employeesApi.js'
 import { generateNextNumber } from '../settings/settingsApi.js'
@@ -27,6 +27,7 @@ export function PassFormPage() {
   const [selRooms, setSelRooms] = useState(() => new Set())
   const [selPlaces, setSelPlaces] = useState(() => new Set())
   const [comment, setComment] = useState('')
+  const [storagePlaceId, setStoragePlaceId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
@@ -163,8 +164,20 @@ export function PassFormPage() {
       room_ids: [...selRooms],
       place_ids: [...selPlaces],
     }
-    // Из карточки сотрудника создаём сразу привязанным; из раздела — свободным.
-    if (!isEdit && employeeId) payload.employee = Number(employeeId)
+    // Из карточки сотрудника создаём сразу привязанным; из раздела — свободным
+    // на складе (место хранения обязательно).
+    if (!isEdit) {
+      if (employeeId) {
+        payload.employee = Number(employeeId)
+      } else {
+        if (!storagePlaceId) {
+          setError('Укажите место хранения для свободного пропуска/ключа.')
+          setSubmitting(false)
+          return
+        }
+        payload.storage_place = Number(storagePlaceId)
+      }
+    }
     if (!isEdit && comment.trim()) payload.comment = comment.trim()
     try {
       if (isEdit) {
@@ -351,6 +364,16 @@ export function PassFormPage() {
                 </div>
               ) : null}
             </Card>
+
+            {!isEdit && !employeeId ? (
+              <Card>
+                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Место хранения</div>
+                <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
+                  Свободный пропуск/ключ хранится на складе. Закрепить за сотрудником можно на карточке.
+                </div>
+                <PlaceSelect placeType="storage" required value={storagePlaceId} onChange={setStoragePlaceId} />
+              </Card>
+            ) : null}
 
             {!isEdit ? (
               <Card>

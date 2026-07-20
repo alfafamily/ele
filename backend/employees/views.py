@@ -350,7 +350,9 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        qs = SimCard.objects.select_related("employee").all()
+        qs = SimCard.objects.select_related(
+            "employee", "equipment", "storage_place__room__building"
+        ).all()
         user = self.request.user
         if user.role == "employee" and not user.is_observer:
             # Обычный «Сотрудник» — только свои номера (в Профиле); не привязан к
@@ -371,11 +373,13 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 qs = qs.filter(is_utilized=False)
                 status = self.request.query_params.get("status")
                 if status == "attached":
-                    qs = qs.filter(employee__isnull=False)
+                    # В использовании — за сотрудником или в оборудовании.
+                    qs = qs.filter(Q(employee__isnull=False) | Q(equipment__isnull=False))
                 elif status == "free":
-                    qs = qs.filter(employee__isnull=True)
+                    qs = qs.filter(employee__isnull=True, equipment__isnull=True)
             elif tab == "deactivated":
-                qs = qs.filter(employee__isnull=True, is_utilized=False)
+                # Свободные для повторной выдачи: без сотрудника и без оборудования.
+                qs = qs.filter(employee__isnull=True, equipment__isnull=True, is_utilized=False)
             elif tab == "utilized":
                 qs = qs.filter(is_utilized=True)
             search = self.request.query_params.get("search")
@@ -389,26 +393,47 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def detach(self, request, pk=None):
-        """Отвязать от сотрудника (деактивировать). Объект остаётся для истории
-        и повторной выдачи."""
+        """Открепить (от сотрудника или оборудования) — SIM уходит на склад
+        (место хранения обязательно). Остаётся для истории и повторной выдачи."""
+        from core.placement import get_storage_place
+
         sim = self.get_object()
-        if sim.employee_id is not None:
-            sim.employee = None
-            sim.save(update_fields=["employee"])
+        storage = get_storage_place(request.data.get("storage_place"))
+        sim.employee = None
+        sim.equipment = None
+        sim.storage_place = storage
+        comment = (request.data.get("comment") or "").strip()
+        if comment:
+            sim._change_reason = comment
+        sim.save(update_fields=["employee", "equipment", "storage_place"])
         return Response(SimCardSerializer(sim).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def attach(self, request, pk=None):
-        """Привязать к сотруднику (активировать)."""
+        """Разместить SIM: mode=employee — за сотрудником; mode=equipment — в
+        оборудовании (симка в модеме). Прежнее размещение очищается."""
         sim = self.get_object()
-        employee = get_object_or_404(Employee, pk=request.data.get("employee"))
-        sim.employee = employee
-        sim.save(update_fields=["employee"])
+        mode = request.data.get("mode", "employee")
+        if mode == "equipment":
+            from equipment.models import Equipment
+
+            equipment = get_object_or_404(Equipment, pk=request.data.get("equipment"))
+            sim.equipment = equipment
+            sim.employee = None
+        else:
+            employee = get_object_or_404(Employee, pk=request.data.get("employee"))
+            sim.employee = employee
+            sim.equipment = None
+        sim.storage_place = None
+        comment = (request.data.get("comment") or "").strip()
+        if comment:
+            sim._change_reason = comment
+        sim.save(update_fields=["employee", "equipment", "storage_place"])
         return Response(SimCardSerializer(sim).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def utilize(self, request, pk=None):
-        """Утилизировать SIM — необратимый статус. Отвязывает от сотрудника и
+        """Утилизировать SIM — необратимый статус. Снимает любое размещение и
         переводит в таб «Утилизировано». Комментарий (необязательный) попадает в
         историю движений."""
         from django.utils import timezone
@@ -416,12 +441,14 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         sim = self.get_object()
         if not sim.is_utilized:
             sim.employee = None
+            sim.equipment = None
+            sim.storage_place = None
             sim.is_utilized = True
             sim.utilized_at = timezone.now()
             comment = (request.data.get("comment") or "").strip()
             if comment:
                 sim._change_reason = comment
-            sim.save(update_fields=["employee", "is_utilized", "utilized_at"])
+            sim.save(update_fields=["employee", "equipment", "storage_place", "is_utilized", "utilized_at"])
         return Response(SimCardSerializer(sim).data)
 
     @action(detail=True, methods=["get"], url_path="history")
@@ -439,19 +466,37 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         def fmt_sim_type(v):
             return dict(SimCard.SimType.choices).get(v, v or "—")
 
+        def fmt_equipment(v):
+            if not v:
+                return "—"
+            from equipment.models import Equipment
+
+            eq = Equipment.objects.filter(pk=v).first()
+            return str(eq) if eq else "—"
+
+        def fmt_storage(v):
+            if not v:
+                return "—"
+            from locations.models import Place
+
+            p = Place.objects.filter(pk=v).first()
+            return f"Место хранения «{p.name}»" if p else "—"
+
         field_specs = {
             "phone_number": {"label": "Номер телефона"},
             "sim_type": {"label": "Тип", "format": fmt_sim_type},
             "network_operator": {"label": "Оператор"},
             "provider": {"label": "Поставщик услуг связи"},
             "employee": {"label": "Закреплена за", "format": fmt_employee, "in_created": False},
+            "equipment": {"label": "В оборудовании", "format": fmt_equipment, "in_created": False},
+            "storage_place": {"label": "Место хранения", "format": fmt_storage, "in_created": False},
         }
         rows = build_history_rows(
             sim, field_specs,
-            movement_fields={"employee"},
+            movement_fields={"employee", "equipment", "storage_place"},
             movement_events=[{
                 "trigger": "is_utilized", "to": True,
-                "consume": ["is_utilized", "utilized_at", "employee"],
+                "consume": ["is_utilized", "utilized_at", "employee", "equipment", "storage_place"],
                 "label": "Утилизирована",
             }],
         )
@@ -494,7 +539,9 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        qs = AccessPass.objects.select_related("employee").prefetch_related("buildings", "rooms", "places__room")
+        qs = AccessPass.objects.select_related(
+            "employee", "storage_place__room__building"
+        ).prefetch_related("buildings", "rooms", "places__room")
         user = self.request.user
         if user.role == "employee" and not user.is_observer:
             # Обычный «Сотрудник» — только свои пропуска (в Профиле); не привязан
@@ -528,21 +575,31 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def detach(self, request, pk=None):
-        """Отвязать от сотрудника (деактивировать). Остаётся для истории и
-        повторной выдачи."""
+        """Открепить от сотрудника — пропуск/ключ уходит на склад (место
+        хранения обязательно). Остаётся для истории и повторной выдачи."""
+        from core.placement import get_storage_place
+
         access_pass = self.get_object()
-        if access_pass.employee_id is not None:
-            access_pass.employee = None
-            access_pass.save(update_fields=["employee"])
+        storage = get_storage_place(request.data.get("storage_place"))
+        access_pass.employee = None
+        access_pass.storage_place = storage
+        comment = (request.data.get("comment") or "").strip()
+        if comment:
+            access_pass._change_reason = comment
+        access_pass.save(update_fields=["employee", "storage_place"])
         return Response(AccessPassSerializer(access_pass).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def attach(self, request, pk=None):
-        """Привязать к сотруднику (активировать)."""
+        """Привязать к сотруднику (активировать). Снимает со склада."""
         access_pass = self.get_object()
         employee = get_object_or_404(Employee, pk=request.data.get("employee"))
         access_pass.employee = employee
-        access_pass.save(update_fields=["employee"])
+        access_pass.storage_place = None
+        comment = (request.data.get("comment") or "").strip()
+        if comment:
+            access_pass._change_reason = comment
+        access_pass.save(update_fields=["employee", "storage_place"])
         return Response(AccessPassSerializer(access_pass).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
@@ -560,13 +617,14 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             return Response({"detail": "Некорректная причина утилизации."}, status=400)
         if not access_pass.is_utilized:
             access_pass.employee = None
+            access_pass.storage_place = None
             access_pass.is_utilized = True
             access_pass.utilized_at = timezone.now()
             access_pass.utilization_reason = reason
             comment = (request.data.get("comment") or "").strip()
             if comment:
                 access_pass._change_reason = comment
-            access_pass.save(update_fields=["employee", "is_utilized", "utilized_at", "utilization_reason"])
+            access_pass.save(update_fields=["employee", "storage_place", "is_utilized", "utilized_at", "utilization_reason"])
         return Response(AccessPassSerializer(access_pass).data)
 
     @action(detail=True, methods=["get"], url_path="history")
@@ -646,13 +704,20 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             "type_vehicle": {"label": "Тип «Авто»", "format": yes_no},
             "type_pedestrian": {"label": "Тип «Пеший»", "format": yes_no},
             "employee": {"label": "Закреплён за", "format": fmt_employee, "in_created": False},
+            "storage_place": {
+                "label": "Место хранения",
+                "format": lambda v: (
+                    f"«{Place.objects.filter(pk=v).values_list('name', flat=True).first()}»" if v else "—"
+                ),
+                "in_created": False,
+            },
         }
         rows = build_history_rows(
             access_pass, field_specs,
-            movement_fields={"employee"},
+            movement_fields={"employee", "storage_place"},
             movement_events=[{
                 "trigger": "is_utilized", "to": True,
-                "consume": ["is_utilized", "utilized_at", "utilization_reason", "employee"],
+                "consume": ["is_utilized", "utilized_at", "utilization_reason", "employee", "storage_place"],
                 "label": utilize_label,
             }],
             created_extra_lines=_created_access_lines(),

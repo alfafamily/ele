@@ -19,8 +19,13 @@ export const getSimCard = (id) => apiGet(`/api/sim-cards/${id}/`)
 export const createSimCard = (payload) => apiPost('/api/sim-cards/', payload)
 export const updateSimCard = (id, payload) => apiPatch(`/api/sim-cards/${id}/`, payload)
 export const deleteSimCard = (id) => apiRequest(`/api/sim-cards/${id}/`, { method: 'DELETE' })
-export const attachSimCard = (id, employeeId) => apiPost(`/api/sim-cards/${id}/attach/`, { employee: employeeId })
-export const detachSimCard = (id) => apiPost(`/api/sim-cards/${id}/detach/`, {})
+export const attachSimCard = (id, employeeId) =>
+  apiPost(`/api/sim-cards/${id}/attach/`, { mode: 'employee', employee: employeeId })
+export const attachSimToEquipment = (id, equipmentId) =>
+  apiPost(`/api/sim-cards/${id}/attach/`, { mode: 'equipment', equipment: equipmentId })
+// Открепление на склад (место хранения обязательно, B8).
+export const detachSimCard = (id, storagePlaceId) =>
+  apiPost(`/api/sim-cards/${id}/detach/`, { storage_place: storagePlaceId })
 export const utilizeSimCard = (id, comment) => apiPost(`/api/sim-cards/${id}/utilize/`, comment ? { comment } : {})
 export const getSimHistoryPath = (id) => `/api/sim-cards/${id}/history/`
 export const getSimOperators = () => apiGet('/api/sim-cards/operators/')
@@ -32,7 +37,9 @@ export const createPass = (payload) => apiPost('/api/access-passes/', payload)
 export const updatePass = (id, payload) => apiPatch(`/api/access-passes/${id}/`, payload)
 export const deletePass = (id) => apiRequest(`/api/access-passes/${id}/`, { method: 'DELETE' })
 export const attachPass = (id, employeeId) => apiPost(`/api/access-passes/${id}/attach/`, { employee: employeeId })
-export const detachPass = (id) => apiPost(`/api/access-passes/${id}/detach/`, {})
+// Открепление на склад (место хранения обязательно, B8).
+export const detachPass = (id, storagePlaceId) =>
+  apiPost(`/api/access-passes/${id}/detach/`, { storage_place: storagePlaceId })
 export const utilizePass = (id, reason, comment) =>
   apiPost(`/api/access-passes/${id}/utilize/`, comment ? { reason, comment } : { reason })
 export const getPassHistoryPath = (id) => `/api/access-passes/${id}/history/`

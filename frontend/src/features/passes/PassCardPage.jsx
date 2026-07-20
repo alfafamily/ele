@@ -160,7 +160,13 @@ export function PassCardPage() {
             <EmployeePicker autoFocus onSelect={onAttach} />
           ) : (
             <>
-              <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не закреплён</div>
+              {pass.storage_place_detail ? (
+                <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>
+                  На складе «{pass.storage_place_detail.name}» ({pass.storage_place_detail.building_name} — {pass.storage_place_detail.room_name})
+                </div>
+              ) : (
+                <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не закреплён</div>
+              )}
               <Can perm="canManageEmployees">
                 <Button fullWidth style={{ marginTop: 14 }} onClick={() => setShowPicker(true)}><Icon name="plus" size={18} strokeWidth={2.2} />Привязать сотрудника</Button>
               </Can>

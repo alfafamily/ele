@@ -11,8 +11,17 @@ export const writeOffEquipment = (id, detachLicenses, comment) =>
     ...(detachLicenses ? { detach_licenses: true } : {}),
     ...(comment ? { comment } : {}),
   })
-export const assignEmployee = (id, employeeId) => apiPost(`/api/equipment/${id}/assign/`, { employee: employeeId })
-export const unassignEmployee = (id) => apiPost(`/api/equipment/${id}/unassign/`)
+// Размещение (B8): mode=mobile — за сотрудником; mode=stationary — на рабочем
+// месте (placeId — место типа workplace).
+export const assignEquipment = (id, { mode, employeeId, placeId, comment }) =>
+  apiPost(`/api/equipment/${id}/assign/`, {
+    mode,
+    ...(mode === 'stationary' ? { place: placeId } : { employee: employeeId }),
+    ...(comment ? { comment } : {}),
+  })
+// Открепление на склад (placeId — место типа storage, обязателен).
+export const unassignEquipment = (id, placeId, comment) =>
+  apiPost(`/api/equipment/${id}/unassign/`, { place: placeId, ...(comment ? { comment } : {}) })
 export const getEquipmentHistoryPath = (id) => `/api/equipment/${id}/history/`
 export const uploadEquipmentFieldFile = (id, fieldId) => `/api/equipment/${id}/field-values/${fieldId}/file/`
 // Удаление одного из нескольких файлов реквизита (allow_multiple) по id файла.

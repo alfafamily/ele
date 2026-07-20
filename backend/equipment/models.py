@@ -89,6 +89,14 @@ class Equipment(models.Model):
         "employees.Employee", verbose_name="Сотрудник",
         on_delete=models.SET_NULL, null=True, blank=True, related_name="equipment",
     )
+    # Размещение (B8): не более одного из {employee, place}. employee задан —
+    # мобильно (за сотрудником); place с типом workplace — стационарно (на
+    # рабочем месте); place с типом storage — свободно (лежит на складе).
+    # Свободное оборудование должно указывать склад; legacy-записи допускают NULL.
+    place = models.ForeignKey(
+        "locations.Place", verbose_name="Размещение",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="equipment",
+    )
     is_written_off = models.BooleanField("Признак списания", default=False)
     # Проставляется в момент списания (write_off action) — нужна для колонки
     # «Дата списания» вкладки Архив, отдельно от is_written_off.

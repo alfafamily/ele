@@ -147,12 +147,19 @@ class SimCardTests(APITestCase):
         self.assertIn("phone_number", resp.data["errors"])
 
     def test_detach_then_attach(self):
+        from locations.models import Building, Place, Room
+
+        b = Building.objects.create(name="Главное")
+        r = Room.objects.create(building=b, name="101")
+        store = Place.objects.create(room=r, name="Склад", place_type=Place.PlaceType.STORAGE)
         sim = SimCard.objects.create(employee=self.employee, phone_number="+79001112233")
-        resp = self.client.post(f"/api/sim-cards/{sim.id}/detach/", format="json")
+        # Открепление требует место хранения (B8).
+        resp = self.client.post(f"/api/sim-cards/{sim.id}/detach/", {"storage_place": store.id}, format="json")
         self.assertEqual(resp.status_code, 200, resp.data)
         sim.refresh_from_db()
         self.assertTrue(sim.is_deactivated)
         self.assertIsNone(sim.employee_id)
+        self.assertEqual(sim.storage_place_id, store.id)
 
         other = Employee.objects.create(first_name="Пётр", last_name="Сидоров")
         resp = self.client.post(
@@ -333,9 +340,16 @@ class AccessPassTests(APITestCase):
         self.assertIn("account_number", dup.data["errors"])
 
     def test_detach_then_attach(self):
+        from locations.models import Place, Room
+
+        r = Room.objects.create(building=self.building, name="101")
+        store = Place.objects.create(room=r, name="Склад", place_type=Place.PlaceType.STORAGE)
         created = self._create(employee=self.employee.id)
         pass_id = created.data["id"]
-        resp = self.client.post(f"/api/access-passes/{pass_id}/detach/", format="json")
+        # Открепление требует место хранения (B8).
+        resp = self.client.post(
+            f"/api/access-passes/{pass_id}/detach/", {"storage_place": store.id}, format="json"
+        )
         self.assertEqual(resp.status_code, 200, resp.data)
         self.assertTrue(resp.data["is_deactivated"])
         resp = self.client.post(
@@ -447,3 +461,35 @@ class EmployeeSearchTests(APITestCase):
 
     def test_search_by_position(self):
         self.assertEqual(self._search_ids("Водитель"), {self.e2.id})
+
+
+class SimEquipmentPlacementTests(APITestCase):
+    """B8 — SIM за оборудованием + открепление на склад."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        from equipment.models import EquipmentType, Equipment
+        from locations.models import Building, Place, Room
+
+        b = Building.objects.create(name="Главное")
+        r = Room.objects.create(building=b, name="101")
+        self.store = Place.objects.create(room=r, name="Склад", place_type=Place.PlaceType.STORAGE)
+        et = EquipmentType.objects.create(name="Модем")
+        self.eq = Equipment.objects.create(inventory_number="M-1", equipment_type=et)
+
+    def test_attach_to_equipment_then_detach_to_storage(self):
+        sim = SimCard.objects.create(phone_number="+79001112233")
+        r = self.client.post(
+            f"/api/sim-cards/{sim.id}/attach/", {"mode": "equipment", "equipment": self.eq.id}, format="json"
+        )
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["equipment"], self.eq.id)
+        self.assertFalse(r.data["is_deactivated"])
+        # Открепление требует склад.
+        r = self.client.post(f"/api/sim-cards/{sim.id}/detach/", {}, format="json")
+        self.assertEqual(r.status_code, 400, r.data)
+        r = self.client.post(f"/api/sim-cards/{sim.id}/detach/", {"storage_place": self.store.id}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertIsNone(r.data["equipment"])
+        self.assertTrue(r.data["is_deactivated"])

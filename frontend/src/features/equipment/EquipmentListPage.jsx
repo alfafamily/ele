@@ -16,8 +16,9 @@ const TABS = [
 ]
 const FILTERS = [
   { value: 'all', label: 'Все' },
-  { value: 'assigned', label: 'Закреплённое' },
-  { value: 'free', label: 'Свободное' },
+  { value: 'assigned', label: 'За сотрудником' },
+  { value: 'stationary', label: 'На рабочем месте' },
+  { value: 'free', label: 'На складе' },
 ]
 
 const ACTIVE_COLUMNS = [
