@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { apiGet } from '../../shared/api/client'
-import { Banner, Button, Icon, Input, Modal, Spinner } from '../../shared/ui'
+import { Banner, Button, EmptyState, Icon, Input, Modal, Spinner } from '../../shared/ui'
 import { StoragePicker } from './StoragePicker.jsx'
 import { assignUnits } from './toolsApi.js'
 
 // Закрепление инструмента за сотрудником с его карточки: выбор инструмента со
 // свободным остатком (список + поиск, одиночный выбор) + количество + склад.
 export function AssignToolModal({ employeeId, onClose, onDone }) {
+  const navigate = useNavigate()
   const [tools, setTools] = useState(null)
   const [toolId, setToolId] = useState('')
   const [query, setQuery] = useState('')
@@ -93,9 +95,15 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
           <Spinner />
         </div>
       ) : tools.length === 0 ? (
-        <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', padding: '8px 0 4px' }}>
-          Нет инструментов со свободным остатком.
-        </div>
+        <EmptyState
+          title="Нет инструментов со свободным остатком"
+          description="Создайте инструмент в разделе «Инструменты» и оприходуйте остаток."
+          action={
+            <Button onClick={() => navigate('/tools/new')}>
+              <Icon name="plus" size={18} strokeWidth={2.2} />Создать инструмент
+            </Button>
+          }
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
@@ -133,6 +141,9 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
                     ))
                   )}
                 </div>
+                <Button variant="secondary" fullWidth style={{ marginTop: 10 }} onClick={() => navigate('/tools/new')}>
+                  <Icon name="plus" size={18} strokeWidth={2.2} />Создать инструмент
+                </Button>
               </>
             )}
           </div>
