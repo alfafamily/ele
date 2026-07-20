@@ -23,13 +23,11 @@ const DESKTOP_COLUMNS = [
   { key: 'last_name', label: 'ФИО', sortable: true, width: '1fr' },
   { key: 'position', label: 'Должность', width: '190px' },
   { key: 'department', label: 'Отдел', width: '160px' },
-  { key: 'equipment', label: 'Оборудование', width: '140px' },
   { key: 'status', label: 'Статус', width: '120px' },
   { key: 'chevron', label: '', width: '30px' },
 ]
 const MOBILE_COLUMNS = [
   { key: 'last_name', label: 'Сотрудник', sortable: true, width: 'minmax(0, 1fr)' },
-  { key: 'equipment', label: 'Оборуд.', width: '84px' },
 ]
 
 function avatarNode(row) {
@@ -144,22 +142,19 @@ export function EmployeeListPage() {
             <Link key={row.id} to={`/employees/${row.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
               <TableRow columns={columns}>
                 {isMobile ? (
-                  // 2 колонки: «Сотрудник» (ФИО в 2 строки · должность/отдел · статус) и «Оборудование»
-                  <>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11, minWidth: 0 }}>
-                      {avatarNode(row)}
-                      <div style={{ minWidth: 0 }}>
-                        <div className="ele-clamp-2" style={{ fontWeight: 600 }}>{row.full_name}</div>
-                        <div style={{ color: 'var(--color-text-muted)', fontSize: 12, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {[row.position, row.department].filter(Boolean).join(' · ') || '—'}
-                        </div>
-                        <div style={{ marginTop: 6 }}>
-                          <StatusPill variant={row.is_employed ? 'assigned' : 'archived'}>{row.is_employed ? 'Работает' : 'Уволен'}</StatusPill>
-                        </div>
+                  // «Сотрудник»: ФИО в 2 строки · должность/отдел · статус
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11, minWidth: 0 }}>
+                    {avatarNode(row)}
+                    <div style={{ minWidth: 0 }}>
+                      <div className="ele-clamp-2" style={{ fontWeight: 600 }}>{row.full_name}</div>
+                      <div style={{ color: 'var(--color-text-muted)', fontSize: 12, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {[row.position, row.department].filter(Boolean).join(' · ') || '—'}
+                      </div>
+                      <div style={{ marginTop: 6 }}>
+                        <StatusPill variant={row.is_employed ? 'assigned' : 'archived'}>{row.is_employed ? 'Работает' : 'Уволен'}</StatusPill>
                       </div>
                     </div>
-                    <div style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{row.equipment_count} ед.</div>
-                  </>
+                  </div>
                 ) : (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
@@ -168,7 +163,6 @@ export function EmployeeListPage() {
                     </div>
                     <div>{row.position || '—'}</div>
                     <div style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{row.department || '—'}</div>
-                    <div style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{row.equipment_count} ед.</div>
                     <div>
                       <StatusPill variant={row.is_employed ? 'assigned' : 'archived'}>{row.is_employed ? 'Работает' : 'Уволен'}</StatusPill>
                     </div>
