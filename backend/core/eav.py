@@ -55,6 +55,11 @@ def apply_field_values(instance, fk_name: str, field_value_model, items: list[di
         field_value_model.objects.update_or_create(**{fk_name: instance, "field": field}, defaults=defaults)
     if errors:
         raise serializers.ValidationError({"field_values": errors})
+    # Удаляем значения реквизитов, не относящихся к текущему Типу объекта —
+    # например, оставшиеся от прежнего Типа после «мягкой» смены типа. Иначе
+    # карточка показала бы «осиротевшие» реквизиты (в т.ч. дубль ключевого
+    # «Номер/ключ»). allowed_fields здесь — полный набор реквизитов текущего Типа.
+    field_value_model.objects.filter(**{fk_name: instance}).exclude(field_id__in=allowed_ids).delete()
 
 
 def upsert_custom_fields(instance, model, fk_name: str, items: list[dict]) -> None:
