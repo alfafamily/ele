@@ -134,6 +134,7 @@ class AccessPassSerializer(serializers.ModelSerializer):
     object_type_display = serializers.CharField(source="get_object_type_display", read_only=True)
     utilization_reason_display = serializers.CharField(source="get_utilization_reason_display", read_only=True)
     employee_name = serializers.SerializerMethodField()
+    employee_avatar = serializers.SerializerMethodField()
     # Размещение (B8): свободный пропуск/ключ лежит на складе (место хранения).
     storage_place_detail = serializers.SerializerMethodField()
     # Явно — чтобы уникальность непустого номера проверялась своим сообщением.
@@ -147,6 +148,7 @@ class AccessPassSerializer(serializers.ModelSerializer):
             "object_type_display",
             "employee",
             "employee_name",
+            "employee_avatar",
             "account_number",
             "type_vehicle",
             "type_pedestrian",
@@ -178,6 +180,11 @@ class AccessPassSerializer(serializers.ModelSerializer):
 
     def get_employee_name(self, obj):
         return str(obj.employee) if obj.employee_id else None
+
+    def get_employee_avatar(self, obj):
+        if obj.employee_id and obj.employee.avatar_id:
+            return StoredFileSerializer(obj.employee.avatar).data
+        return None
 
     def get_storage_place_detail(self, obj):
         return place_detail(obj.storage_place) if obj.storage_place_id else None

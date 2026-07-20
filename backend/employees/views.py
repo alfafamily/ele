@@ -550,7 +550,7 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = AccessPass.objects.select_related(
-            "employee", "storage_place__room__building"
+            "employee", "employee__avatar", "storage_place__room__building"
         ).prefetch_related("buildings", "rooms", "places__room")
         user = self.request.user
         if user.role == "employee" and not user.is_observer:

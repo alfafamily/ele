@@ -137,8 +137,12 @@ export function PassCardPage() {
           {pass.employee ? (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600 }}>
-                  {nameInitials(pass.employee_name)}
+                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
+                  {pass.employee_avatar ? (
+                    <img src={pass.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    nameInitials(pass.employee_name)
+                  )}
                 </span>
                 <Link className="ele-clamp-2" to={`/employees/${pass.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', minWidth: 0 }}>
                   {pass.employee_name}
