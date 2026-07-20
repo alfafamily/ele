@@ -242,7 +242,9 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="transfer-units", permission_classes=[IsAdminOrAccountant])
     def transfer_units(self, request, pk=None):
-        """Перемещение qty свободного остатка с одного склада на другой."""
+        """Перемещение qty свободного остатка на склад. from_place — склад-источник;
+        если не указан, источник — внутренний остаток «без склада» (размещение
+        легаси-остатка при обновлении на 1.9.0). to_place обязателен."""
         from core.placement import get_storage_place
 
         tool = self.get_object()
@@ -251,14 +253,19 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         qty, err = self._parse_positive_qty(request)
         if err is not None:
             return err
-        from_place = get_storage_place(request.data.get("from_place"), field="from_place")
+        from_place = self._opt_storage(request, "from_place")
         to_place = get_storage_place(request.data.get("to_place"), field="to_place")
-        if from_place.id == to_place.id:
-            return Response({"detail": "Склады должны различаться."}, status=400)
-        if qty > self._free_at(tool, from_place):
-            return Response({"detail": "Нельзя переместить больше, чем лежит на складе-источнике."}, status=409)
+        if from_place is not None:
+            if from_place.id == to_place.id:
+                return Response({"detail": "Склады должны различаться."}, status=400)
+            if qty > self._free_at(tool, from_place):
+                return Response({"detail": "Нельзя переместить больше, чем лежит на складе-источнике."}, status=409)
+            self._dec_alloc(tool.allocations.get(place=from_place), qty)
+        else:
+            # Размещение остатка «без склада» на реальный склад.
+            if qty > self._unplaced_free(tool):
+                return Response({"detail": "Нельзя разместить больше остатка без склада."}, status=409)
         comment = (request.data.get("comment") or "").strip()
-        self._dec_alloc(tool.allocations.get(place=from_place), qty)
         self._inc_alloc(tool, qty, place=to_place)
         self._record_movement(
             tool, ToolMovement.Kind.TRANSFER, qty, request.user, comment,

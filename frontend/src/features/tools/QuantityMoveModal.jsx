@@ -55,7 +55,7 @@ export function QuantityMoveModal({
       if (mode === 'mobile' && !employee) return setError('Выберите сотрудника.')
       if (mode === 'stationary' && !placeId) return setError('Выберите рабочее место.')
     }
-    if (storage && storageRequired && !storagePlaceId) return setError('Выберите склад.')
+    if (storage && !storagePlaceId) return setError('Выберите склад.')
     setSubmitting(true)
     setError(null)
     try {
@@ -149,14 +149,12 @@ export function QuantityMoveModal({
             {storage ? (
               <StoragePicker
                 label={STORAGE_LABEL[storage]}
-                required={storageRequired}
+                required
                 value={storagePlaceId}
                 onChange={setStoragePlaceId}
                 freeMap={storageFreeMap}
                 restrictToStock={sourceCap}
                 showQuantity={sourceCap}
-                allowNone={storage === 'to' ? true : !storageRequired}
-                noneQty={unplacedFree}
               />
             ) : null}
             <Input
