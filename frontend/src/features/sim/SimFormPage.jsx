@@ -176,7 +176,7 @@ export function SimFormPage() {
               <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
                 Свободная SIM-карта хранится на складе. Закрепить за сотрудником или оборудованием можно на карточке.
               </div>
-              <PlaceSelect placeType="storage" required value={storagePlaceId} onChange={setStoragePlaceId} />
+              <PlaceSelect placeType="storage" label={null} required value={storagePlaceId} onChange={setStoragePlaceId} />
             </Card>
           ) : null}
 
