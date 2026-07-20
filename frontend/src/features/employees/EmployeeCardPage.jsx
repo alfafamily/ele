@@ -18,6 +18,11 @@ import { SimCardInfo } from './SimCardInfo.jsx'
 import { SimDisposeModal } from './SimDisposeModal.jsx'
 import { TerminateModal } from './TerminateModal.jsx'
 
+// Стили строк/счётчика/квадратной кнопки в блоках карточки.
+const CNT = { fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }
+const ROW = { display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }
+const SQ = { width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+
 export function EmployeeCardPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -262,157 +267,123 @@ export function EmployeeCardPage() {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Оборудование</div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
-              {employee.equipment.length}
-            </span>
-            {employee.is_employed ? (
-              <Can perm="canManageEquipment">
-                <AddButton isMobile={isMobile} onClick={() => setEquipmentAttach(true)} label="Закрепить оборудование" />
-              </Can>
-            ) : null}
+            <span style={CNT}>{employee.equipment.length}</span>
           </div>
-          {employee.equipment.length === 0 ? (
+          {employee.is_employed ? (
+            <Can perm="canManageEquipment">
+              <Button variant="secondary" fullWidth style={{ marginBottom: employee.equipment.length ? 8 : 0 }} onClick={() => setEquipmentAttach(true)}>
+                <Icon name="plus" size={18} strokeWidth={2.2} />Закрепить оборудование
+              </Button>
+            </Can>
+          ) : employee.equipment.length === 0 ? (
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено оборудование.</div>
-          ) : (
-            employee.equipment.map((eq) => (
-              <div key={eq.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
-                <Link to={`/equipment/${eq.id}`} style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{eq.type_and_model}</div>
-                  <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</div>
-                </Link>
-                <Can perm="canManageEquipment">
-                  <Button variant="secondary" onClick={() => setDetach({ kind: 'equipment', obj: eq })}>
-                    Открепить
-                  </Button>
-                </Can>
-                <Link to={`/equipment/${eq.id}`} style={{ width: 28, height: 28, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name="chevron-right" size={16} strokeWidth={2} style={{ color: '#C7C9D4' }} />
-                </Link>
-              </div>
-            ))
-          )}
+          ) : null}
+          {employee.equipment.map((eq) => (
+            <div key={eq.id} style={ROW}>
+              <Link to={`/equipment/${eq.id}`} style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{eq.type_and_model}</div>
+                <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</div>
+              </Link>
+              <Can perm="canManageEquipment">
+                <button type="button" title="Открепить" aria-label="Открепить" onClick={() => setDetach({ kind: 'equipment', obj: eq })} style={SQ}>
+                  <Icon name="unlink" size={16} strokeWidth={2} />
+                </button>
+              </Can>
+              <Link to={`/equipment/${eq.id}`} style={{ width: 28, height: 28, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="chevron-right" size={16} strokeWidth={2} style={{ color: '#C7C9D4' }} />
+              </Link>
+            </div>
+          ))}
         </Card>
 
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Инструменты</div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
-              {employee.tools.length}
-            </span>
-            {employee.is_employed ? (
-              <Can perm="canManageEquipment">
-                <AddButton isMobile={isMobile} onClick={() => setToolAssign(true)} label="Закрепить инструмент" />
-              </Can>
-            ) : null}
+            <span style={CNT}>{employee.tools.length}</span>
           </div>
-          {employee.tools.length === 0 ? (
+          {employee.is_employed ? (
+            <Can perm="canManageEquipment">
+              <Button variant="secondary" fullWidth style={{ marginBottom: employee.tools.length ? 8 : 0 }} onClick={() => setToolAssign(true)}>
+                <Icon name="plus" size={18} strokeWidth={2.2} />Закрепить инструмент
+              </Button>
+            </Can>
+          ) : employee.tools.length === 0 ? (
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплены инструменты.</div>
-          ) : (
-            employee.tools.map((tool) => (
-              <div key={tool.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
-                <Link to={`/tools/${tool.id}`} style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{tool.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{tool.quantity} шт.</div>
-                </Link>
-                {employee.is_employed ? (
-                  <Can perm="canManageEquipment">
-                    <Button variant="secondary" onClick={() => setDetach({ kind: 'tool', obj: tool })}>
-                      Открепить
-                    </Button>
-                  </Can>
-                ) : null}
-                <Link to={`/tools/${tool.id}`} style={{ width: 28, height: 28, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name="chevron-right" size={16} strokeWidth={2} style={{ color: '#C7C9D4' }} />
-                </Link>
-              </div>
-            ))
-          )}
+          ) : null}
+          {employee.tools.map((tool) => (
+            <div key={tool.id} style={ROW}>
+              <Link to={`/tools/${tool.id}`} style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{tool.name}</div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{tool.quantity} шт.</div>
+              </Link>
+              {employee.is_employed ? (
+                <Can perm="canManageEquipment">
+                  <button type="button" title="Открепить" aria-label="Открепить" onClick={() => setDetach({ kind: 'tool', obj: tool })} style={SQ}>
+                    <Icon name="unlink" size={16} strokeWidth={2} />
+                  </button>
+                </Can>
+              ) : null}
+              <Link to={`/tools/${tool.id}`} style={{ width: 28, height: 28, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="chevron-right" size={16} strokeWidth={2} style={{ color: '#C7C9D4' }} />
+              </Link>
+            </div>
+          ))}
         </Card>
 
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Корпоративная связь</div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
-              {employee.sim_cards.length}
-            </span>
-            {employee.is_employed ? (
-              <Can perm="canManageEmployees">
-                <AddButton isMobile={isMobile} onClick={() => setSimAttach(true)} label="Добавить SIM-карту" />
-              </Can>
-            ) : null}
+            <span style={CNT}>{employee.sim_cards.length}</span>
           </div>
-          {employee.sim_cards.length === 0 ? (
+          {employee.is_employed ? (
+            <Can perm="canManageEmployees">
+              <Button variant="secondary" fullWidth style={{ marginBottom: employee.sim_cards.length ? 8 : 0 }} onClick={() => setSimAttach(true)}>
+                <Icon name="plus" size={18} strokeWidth={2.2} />Добавить SIM-карту
+              </Button>
+            </Can>
+          ) : employee.sim_cards.length === 0 ? (
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено SIM-карт.</div>
-          ) : (
-            employee.sim_cards.map((sim) => (
-              <div key={sim.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
-                <SimCardInfo sim={sim} />
-                {employee.is_employed ? (
-                  <Can perm="canManageEmployees">
-                    <div className="ele-card-actions-desktop">
-                      <Button variant="secondary" onClick={() => navigate(`/sim-cards/${sim.id}/edit`)}>
-                        Изменить
-                      </Button>
-                      <Button variant="secondary" onClick={() => askDetachSim(sim)}>
-                        Открепить
-                      </Button>
-                    </div>
-                    <div className="ele-card-actions-mobile">
-                      <ActionMenu
-                        items={[
-                          { label: 'Изменить', onClick: () => navigate(`/sim-cards/${sim.id}/edit`) },
-                          { label: 'Открепить', onClick: () => askDetachSim(sim) },
-                        ]}
-                      />
-                    </div>
-                  </Can>
-                ) : null}
-              </div>
-            ))
-          )}
+          ) : null}
+          {employee.sim_cards.map((sim) => (
+            <div key={sim.id} style={ROW}>
+              <SimCardInfo sim={sim} />
+              {employee.is_employed ? (
+                <Can perm="canManageEmployees">
+                  <button type="button" title="Открепить" aria-label="Открепить" onClick={() => askDetachSim(sim)} style={SQ}>
+                    <Icon name="unlink" size={16} strokeWidth={2} />
+                  </button>
+                </Can>
+              ) : null}
+            </div>
+          ))}
         </Card>
 
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Средства доступа</div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
-              {employee.passes.length}
-            </span>
-            {employee.is_employed ? (
-              <Can perm="canManageEmployees">
-                <AddButton isMobile={isMobile} onClick={() => setPassAttach(true)} label="Добавить средство доступа" />
-              </Can>
-            ) : null}
+            <span style={CNT}>{employee.passes.length}</span>
           </div>
-          {employee.passes.length === 0 ? (
+          {employee.is_employed ? (
+            <Can perm="canManageEmployees">
+              <Button variant="secondary" fullWidth style={{ marginBottom: employee.passes.length ? 8 : 0 }} onClick={() => setPassAttach(true)}>
+                <Icon name="plus" size={18} strokeWidth={2.2} />Добавить средство доступа
+              </Button>
+            </Can>
+          ) : employee.passes.length === 0 ? (
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено средств доступа.</div>
-          ) : (
-            employee.passes.map((pass) => (
-              <div key={pass.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
-                <PassInfo pass={pass} />
-                {employee.is_employed ? (
-                  <Can perm="canManageEmployees">
-                    <div className="ele-card-actions-desktop">
-                      <Button variant="secondary" onClick={() => navigate(`/passes/${pass.id}/edit`)}>
-                        Изменить
-                      </Button>
-                      <Button variant="secondary" onClick={() => askDetachPass(pass)}>
-                        Открепить
-                      </Button>
-                    </div>
-                    <div className="ele-card-actions-mobile">
-                      <ActionMenu
-                        items={[
-                          { label: 'Изменить', onClick: () => navigate(`/passes/${pass.id}/edit`) },
-                          { label: 'Открепить', onClick: () => askDetachPass(pass) },
-                        ]}
-                      />
-                    </div>
-                  </Can>
-                ) : null}
-              </div>
-            ))
-          )}
+          ) : null}
+          {employee.passes.map((pass) => (
+            <div key={pass.id} style={ROW}>
+              <PassInfo pass={pass} />
+              {employee.is_employed ? (
+                <Can perm="canManageEmployees">
+                  <button type="button" title="Открепить" aria-label="Открепить" onClick={() => askDetachPass(pass)} style={SQ}>
+                    <Icon name="unlink" size={16} strokeWidth={2} />
+                  </button>
+                </Can>
+              ) : null}
+            </div>
+          ))}
         </Card>
         </>
         ) : (
@@ -548,27 +519,6 @@ function Field({ label, value }) {
       <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 14, fontWeight: 500 }}>{value || '—'}</div>
     </div>
-  )
-}
-
-// Кнопка добавления в заголовке блока: на десктопе «+ Добавить»; на мобилке —
-// квадратная кнопка-иконка «+» того же размера, что и кнопки-меню «…».
-function AddButton({ isMobile, onClick, label }) {
-  return (
-    <Button
-      variant="secondary"
-      onClick={onClick}
-      aria-label={label}
-      title={isMobile ? label : undefined}
-      style={
-        isMobile
-          ? { marginLeft: 'auto', flex: 'none', width: 'var(--control-height)', minWidth: 'var(--control-height)', padding: 0 }
-          : { marginLeft: 'auto', flex: 'none' }
-      }
-    >
-      <Icon name="plus" size={isMobile ? 20 : 18} strokeWidth={2.2} />
-      {isMobile ? null : 'Добавить'}
-    </Button>
   )
 }
 
