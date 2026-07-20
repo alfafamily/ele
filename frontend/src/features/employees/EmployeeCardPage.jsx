@@ -218,9 +218,50 @@ export function EmployeeCardPage() {
 
         {tab === 'issued' ? (
         <>
+        {employee.workplaces?.length ? (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>Рабочие места</div>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
+                {employee.workplaces.length}
+              </span>
+            </div>
+            {employee.workplaces.map((wp) => (
+              <div key={wp.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Icon name="briefcase" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600 }}>{wp.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{wp.location}</div>
+                  </div>
+                </div>
+                {wp.equipment?.length || wp.tools?.length ? (
+                  <div style={{ marginTop: 8, paddingLeft: 28, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>На этом рабочем месте</div>
+                    {(wp.equipment || []).map((eq) => (
+                      <Link key={`e${eq.id}`} to={`/equipment/${eq.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-primary)' }}>
+                        <Icon name="tag" size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {eq.type_and_model} · <span style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</span>
+                        </span>
+                      </Link>
+                    ))}
+                    {(wp.tools || []).map((t) => (
+                      <Link key={`t${t.id}`} to={`/tools/${t.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-primary)' }}>
+                        <Icon name="wrench" size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                        <span>{t.name} · {t.quantity} шт.</span>
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </Card>
+        ) : null}
+
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <div style={{ fontSize: 16, fontWeight: 600 }}>Закреплённое оборудование</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>Оборудование</div>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
               {employee.equipment.length}
             </span>
@@ -287,47 +328,6 @@ export function EmployeeCardPage() {
             ))
           )}
         </Card>
-
-        {employee.workplaces?.length ? (
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <div style={{ fontSize: 16, fontWeight: 600 }}>Рабочие места</div>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
-                {employee.workplaces.length}
-              </span>
-            </div>
-            {employee.workplaces.map((wp) => (
-              <div key={wp.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Icon name="briefcase" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600 }}>{wp.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{wp.location}</div>
-                  </div>
-                </div>
-                {wp.equipment?.length || wp.tools?.length ? (
-                  <div style={{ marginTop: 8, paddingLeft: 28, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>На этом рабочем месте</div>
-                    {(wp.equipment || []).map((eq) => (
-                      <Link key={`e${eq.id}`} to={`/equipment/${eq.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-primary)' }}>
-                        <Icon name="tag" size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
-                        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {eq.type_and_model} · <span style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</span>
-                        </span>
-                      </Link>
-                    ))}
-                    {(wp.tools || []).map((t) => (
-                      <Link key={`t${t.id}`} to={`/tools/${t.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-primary)' }}>
-                        <Icon name="wrench" size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
-                        <span>{t.name} · {t.quantity} шт.</span>
-                      </Link>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </Card>
-        ) : null}
 
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
