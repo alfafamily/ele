@@ -99,7 +99,7 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
           title="Нет инструментов со свободным остатком"
           description="Создайте инструмент в разделе «Инструменты» и оприходуйте остаток."
           action={
-            <Button variant="secondary" onClick={() => navigate('/tools/new')}>
+            <Button variant="secondary" onClick={() => navigate(`/tools/new?employee=${employeeId}`)}>
               <Icon name="plus" size={18} strokeWidth={2.2} />Создать инструмент
             </Button>
           }
@@ -190,7 +190,7 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
               Закрепить
             </Button>
           </div>
-          <Button variant="secondary" fullWidth style={{ marginTop: 10 }} onClick={() => navigate('/tools/new')}>
+          <Button variant="secondary" fullWidth style={{ marginTop: 10 }} onClick={() => navigate(`/tools/new?employee=${employeeId}`)}>
             <Icon name="plus" size={18} strokeWidth={2.2} />Создать инструмент
           </Button>
         </>
