@@ -14,4 +14,5 @@ urlpatterns = [
         views.EmployeeAvatarUploadView.as_view(),
         name="employee-avatar",
     ),
+    path("my/work-placement/", views.MyWorkPlacementView.as_view(), name="my-work-placement"),
 ] + router.urls

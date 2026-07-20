@@ -516,3 +516,39 @@ class EsimNoStorageTests(APITestCase):
         sim = SimCard.objects.create(employee=self.emp, phone_number="+79004445566", sim_type="sim")
         r = self.client.post(f"/api/sim-cards/{sim.id}/detach/", {}, format="json")
         self.assertEqual(r.status_code, 400, r.data)
+
+
+class MyWorkPlacementTests(APITestCase):
+    """B8 — профиль сотрудника: свои инструменты и рабочие места с объектами."""
+
+    def setUp(self):
+        from equipment.models import Equipment, EquipmentType
+        from locations.models import Building, Place, Room
+        from tools.models import Tool, ToolAllocation
+
+        self.emp = Employee.objects.create(first_name="Иван", last_name="Иванов")
+        self.user = User.objects.create_user(email="worker@example.com", password="Str0ng!Pass1", employee=self.emp)
+        self.client.force_authenticate(self.user)
+        b = Building.objects.create(name="Главное")
+        r = Room.objects.create(building=b, name="101")
+        wp = Place.objects.create(room=r, name="РМ-1", place_type=Place.PlaceType.WORKPLACE)
+        wp.employees.add(self.emp)
+        et = EquipmentType.objects.create(name="ПК")
+        Equipment.objects.create(inventory_number="I-1", equipment_type=et, place=wp)
+        tool = Tool.objects.create(name="Отвёртка", quantity=5)
+        ToolAllocation.objects.create(tool=tool, employee=self.emp, quantity=2)
+
+    def test_returns_tools_and_workplaces(self):
+        r = self.client.get("/api/my/work-placement/")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(len(r.data["tools"]), 1)
+        self.assertEqual(r.data["tools"][0]["quantity"], 2)
+        self.assertEqual(len(r.data["workplaces"]), 1)
+        self.assertEqual(len(r.data["workplaces"][0]["equipment"]), 1)
+
+    def test_no_employee_returns_empty(self):
+        other = User.objects.create_user(email="noemp@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(other)
+        r = self.client.get("/api/my/work-placement/")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data, {"tools": [], "workplaces": []})
