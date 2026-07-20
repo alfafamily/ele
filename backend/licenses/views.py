@@ -229,8 +229,15 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         related_rows = []
         created_extra = []
 
+        # Реквизиты уже удалённых Типов (в т.ч. прежних базовых «Программная»/
+        # «Аппаратная», которые пользователь удаляет после перевода лицензий на
+        # свои Типы) в историю не выводим: их поле-реквизит удалено, поэтому
+        # название и секретность не определяются — иначе бывший «Номер/ключ»
+        # показался бы как «Реквизит» открытым текстом.
+        existing_field_ids = set(LicenseTypeField.objects.values_list("id", flat=True))
+
         req_rows, req_created = build_related_history_rows(
-            LicenseFieldValue.history.filter(license_id=lic.id),
+            LicenseFieldValue.history.filter(license_id=lic.id, field_id__in=existing_field_ids),
             label_fn=lambda rec: (field_of(rec).name if field_of(rec) else "Реквизит"),
             value_fn=fv_value,
             secret_fn=fv_secret,
