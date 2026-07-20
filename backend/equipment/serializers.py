@@ -242,7 +242,12 @@ class EquipmentSerializer(serializers.ModelSerializer):
         if getattr(view, "action", None) != "retrieve":
             return []
         return [
-            {"id": s.id, "phone_number": s.phone_number, "sim_type_display": s.get_sim_type_display()}
+            {
+                "id": s.id,
+                "phone_number": s.phone_number,
+                "sim_type": s.sim_type,
+                "sim_type_display": s.get_sim_type_display(),
+            }
             for s in obj.sim_cards.all()
         ]
 
