@@ -5,6 +5,7 @@ import { FieldValueDisplay } from '../../shared/eav'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { AttachEquipmentModal } from './AttachEquipmentModal.jsx'
+import { DetachToStorageModal } from '../employees/DetachToStorageModal.jsx'
 import { detachLicenseFromEquipment, getLicense, getLicenseHistoryPath } from './licensesApi.js'
 import { MaskedKeyField } from './MaskedKeyField.jsx'
 import { LICENSE_STATUS_LABEL } from './statusLabels.js'
@@ -19,6 +20,7 @@ export function LicenseCardPage() {
   const [showUtilize, setShowUtilize] = useState(false)
   const [showAttach, setShowAttach] = useState(false)
   const [confirmDetach, setConfirmDetach] = useState(false)
+  const [detachToStorage, setDetachToStorage] = useState(false)
   const [historyKey, setHistoryKey] = useState(0)
 
   const load = useCallback(() => {
@@ -53,8 +55,8 @@ export function LicenseCardPage() {
     )
   }
 
-  const onDetach = async () => {
-    await detachLicenseFromEquipment(license.id)
+  const onDetach = async (storagePlaceId) => {
+    await detachLicenseFromEquipment(license.id, storagePlaceId)
     load()
   }
 
@@ -184,7 +186,7 @@ export function LicenseCardPage() {
               </Link>
               {!license.is_retired ? (
                 <Can perm="canManageLicenses">
-                  <Button variant="secondary" fullWidth style={{ marginTop: 10 }} onClick={() => setConfirmDetach(true)}>
+                  <Button variant="secondary" fullWidth style={{ marginTop: 10 }} onClick={() => (license.is_hardware ? setDetachToStorage(true) : setConfirmDetach(true))}>
                     Отвязать
                   </Button>
                 </Can>
@@ -192,18 +194,29 @@ export function LicenseCardPage() {
             </>
           ) : (
             <>
-              <div
-                style={{
-                  border: '1.5px dashed var(--color-border-strong)',
-                  borderRadius: 10,
-                  padding: 14,
-                  textAlign: 'center',
-                  fontSize: 13,
-                  color: 'var(--color-text-placeholder)',
-                }}
-              >
-                Не привязана к оборудованию
-              </div>
+              {license.is_hardware && license.storage_place_detail ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
+                  <Icon name="warehouse" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>На складе</div>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{license.storage_place_detail.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{license.storage_place_detail.building_name} — {license.storage_place_detail.room_name}</div>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    border: '1.5px dashed var(--color-border-strong)',
+                    borderRadius: 10,
+                    padding: 14,
+                    textAlign: 'center',
+                    fontSize: 13,
+                    color: 'var(--color-text-placeholder)',
+                  }}
+                >
+                  Не привязана к оборудованию
+                </div>
+              )}
               {!license.is_retired ? (
                 <Can perm="canManageLicenses">
                   <Button fullWidth style={{ marginTop: 12 }} onClick={() => setShowAttach(true)}>
@@ -226,8 +239,20 @@ export function LicenseCardPage() {
           title="Отвязать от оборудования?"
           message={`Лицензия «${license.name}» будет отвязана от «${license.equipment_detail.type_and_model}».`}
           confirmLabel="Отвязать"
-          onConfirm={onDetach}
+          onConfirm={() => onDetach()}
           onClose={() => setConfirmDetach(false)}
+        />
+      ) : null}
+
+      {detachToStorage && license.equipment_detail ? (
+        <DetachToStorageModal
+          title="Отвязать и убрать на склад"
+          description={`Аппаратная лицензия «${license.name}» будет отвязана от оборудования и положена на склад.`}
+          onConfirm={async (storagePlaceId) => {
+            await onDetach(storagePlaceId)
+            setDetachToStorage(false)
+          }}
+          onClose={() => setDetachToStorage(false)}
         />
       ) : null}
 

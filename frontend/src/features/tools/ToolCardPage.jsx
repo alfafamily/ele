@@ -181,6 +181,7 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove }) {
       title: 'Списать единицы',
       confirmLabel: 'Списать',
       storage: 'writeoff',
+      storageRequired: tool.free_unplaced <= 0,
       max: tool.free,
       onSubmit: (p) => writeOffUnits(tool.id, { quantity: p.quantity, place: p.storagePlaceId ? Number(p.storagePlaceId) : undefined, comment: p.comment }).then(closeMove),
     })
@@ -250,6 +251,7 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
       confirmLabel: 'Закрепить',
       target: 'both',
       storage: 'from',
+      storageRequired: tool.free_unplaced <= 0,
       max: tool.free,
       onSubmit: (p) =>
         assignUnits(tool.id, {

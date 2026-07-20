@@ -145,17 +145,19 @@ export function PassCardPage() {
         <Card className="ele-obj-layout__side ele-card-sticky">
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Закреплено за</div>
           {pass.employee ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600 }}>
-                {nameInitials(pass.employee_name)}
-              </span>
-              <Link to={`/employees/${pass.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                {pass.employee_name}
-              </Link>
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600 }}>
+                  {nameInitials(pass.employee_name)}
+                </span>
+                <Link className="ele-clamp-2" to={`/employees/${pass.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', minWidth: 0 }}>
+                  {pass.employee_name}
+                </Link>
+              </div>
               <Can perm="canManageEmployees">
-                <Button variant="secondary" style={{ marginLeft: 'auto' }} onClick={() => setDisposeModal(true)}>Открепить</Button>
+                <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>
               </Can>
-            </div>
+            </>
           ) : showPicker ? (
             <EmployeePicker autoFocus onSelect={onAttach} />
           ) : (

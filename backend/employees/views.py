@@ -393,12 +393,17 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def detach(self, request, pk=None):
-        """Открепить (от сотрудника или оборудования) — SIM уходит на склад
-        (место хранения обязательно). Остаётся для истории и повторной выдачи."""
+        """Открепить (от сотрудника или оборудования). Физическая SIM уходит на
+        склад (место хранения обязательно); E-SIM виртуальна — склад не
+        указывается. Остаётся для истории и повторной выдачи."""
         from core.placement import get_storage_place
 
         sim = self.get_object()
-        storage = get_storage_place(request.data.get("storage_place"))
+        sp = request.data.get("storage_place")
+        if sim.sim_type == SimCard.SimType.ESIM:
+            storage = get_storage_place(sp) if sp else None
+        else:
+            storage = get_storage_place(sp)
         sim.employee = None
         sim.equipment = None
         sim.storage_place = storage

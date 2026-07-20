@@ -493,3 +493,26 @@ class SimEquipmentPlacementTests(APITestCase):
         self.assertEqual(r.status_code, 200, r.data)
         self.assertIsNone(r.data["equipment"])
         self.assertTrue(r.data["is_deactivated"])
+
+
+class EsimNoStorageTests(APITestCase):
+    """B8 — E-SIM виртуальна: открепление без места хранения."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.emp = Employee.objects.create(first_name="Иван", last_name="Иванов")
+
+    def test_esim_detach_without_storage(self):
+        sim = SimCard.objects.create(employee=self.emp, phone_number="+79001112233", sim_type="esim")
+        r = self.client.post(f"/api/sim-cards/{sim.id}/detach/", {}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        sim.refresh_from_db()
+        self.assertIsNone(sim.employee_id)
+        self.assertIsNone(sim.storage_place_id)
+        self.assertTrue(sim.is_deactivated)
+
+    def test_physical_sim_detach_requires_storage(self):
+        sim = SimCard.objects.create(employee=self.emp, phone_number="+79004445566", sim_type="sim")
+        r = self.client.post(f"/api/sim-cards/{sim.id}/detach/", {}, format="json")
+        self.assertEqual(r.status_code, 400, r.data)

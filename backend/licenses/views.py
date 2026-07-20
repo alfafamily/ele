@@ -116,7 +116,9 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         return context
 
     def get_queryset(self):
-        qs = License.objects.select_related("equipment", "equipment__equipment_type", "license_type").prefetch_related(
+        qs = License.objects.select_related(
+            "equipment", "equipment__equipment_type", "license_type", "storage_place__room__building"
+        ).prefetch_related(
             "field_values__field", "field_values__files__stored_file", "custom_fields"
         )
         # Фильтры списка — только для list; иначе карточка утилизированной
@@ -151,10 +153,11 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         license_obj.is_retired = True
         license_obj.retired_at = timezone.now()
         license_obj.equipment = None
+        license_obj.storage_place = None
         comment = (request.data.get("comment") or "").strip()
         if comment:
             license_obj._change_reason = comment
-        license_obj.save(update_fields=["is_retired", "retired_at", "equipment"])
+        license_obj.save(update_fields=["is_retired", "retired_at", "equipment", "storage_place"])
         return Response(LicenseSerializer(license_obj).data)
 
     @action(detail=True, methods=["get"], url_path="history")
@@ -175,9 +178,18 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             t = LicenseType.objects.filter(pk=v).first() if v else None
             return t.name if t else "—"
 
+        def fmt_storage(v):
+            if not v:
+                return "—"
+            from locations.models import Place
+
+            p = Place.objects.filter(pk=v).first()
+            return f"Место хранения «{p.name}»" if p else "—"
+
         field_specs = {
             "name": {"label": "Наименование"},
             "equipment": {"label": "Оборудование", "format": fmt_equipment, "in_created": False},
+            "storage_place": {"label": "Место хранения", "format": fmt_storage, "in_created": False},
             "is_retired": {"label": "Признак утилизации", "format": lambda v: "Да" if v else "Нет", "in_created": False},
             "license_type": {"label": "Тип лицензии", "format": fmt_type},
         }
@@ -259,10 +271,10 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
         rows = build_history_rows(
             lic, field_specs,
-            movement_fields={"equipment"},
+            movement_fields={"equipment", "storage_place"},
             movement_events=[{
                 "trigger": "is_retired", "to": True,
-                "consume": ["is_retired", "retired_at", "equipment"],
+                "consume": ["is_retired", "retired_at", "equipment", "storage_place"],
                 "label": "Утилизирована",
             }],
             created_extra_lines=created_extra,
