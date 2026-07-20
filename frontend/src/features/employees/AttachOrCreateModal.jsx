@@ -144,7 +144,7 @@ export function AttachOrCreateModal({ kind, employeeId, onClose, onAttached, onC
           {filtered.length === 0 ? (
             <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)', marginBottom: 16 }}>Ничего не найдено</div>
           ) : (
-            <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden', maxHeight: 300, overflowY: 'auto', marginBottom: 16 }}>
+            <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden', maxHeight: 216, overflowY: 'auto', marginBottom: 16 }}>
               {filtered.map((item, i) => {
                 const checked = selectedIds.includes(item.id)
                 return (

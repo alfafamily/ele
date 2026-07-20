@@ -31,7 +31,6 @@ export function DetachToStorageModal({ title = 'Открепить на скла
           required={!optional}
           value={placeId}
           onChange={setPlaceId}
-          placeholder={optional ? 'Без склада (общий свободный остаток)' : undefined}
         />
       </div>
       <div style={{ display: 'flex', gap: 10 }}>

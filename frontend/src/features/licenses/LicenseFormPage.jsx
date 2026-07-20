@@ -216,7 +216,7 @@ export function LicenseFormPage() {
               <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
                 Необязательно. Свободный физический ключ аппаратной лицензии можно положить на склад.
               </div>
-              <PlaceSelect placeType="storage" label={null} value={storagePlaceId} onChange={setStoragePlaceId} placeholder="Не на складе" />
+              <PlaceSelect placeType="storage" label={null} value={storagePlaceId} onChange={setStoragePlaceId} />
             </Card>
           ) : null}
 

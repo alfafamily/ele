@@ -1,17 +1,18 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { apiGet } from '../../api/client'
 import { Icon } from '../Icon/Icon.jsx'
 
-// Кастомный селект Места нужного типа (B8): показывает название Места, под ним
-// «Здание — Помещение», справа — доступное количество (если showQuantity). Сам
-// подгружает активные места (?place_type=storage|workplace). Единый вид для всех
-// разделов (размещение оборудования/SIM/пропусков/лицензий/инструментов).
+// Выбор Места нужного типа (B8) — всегда-открытый блок с поиском и списком (не
+// выпадающий, чтобы модалка подстраивалась под размер и список не «вылезал»).
+// Название Места, под ним «Здание — Помещение», справа — количество (если
+// showQuantity). Список ограничен ~4 строками по высоте (дальше — скролл/поиск).
+// Сам подгружает активные места (?place_type=storage|workplace).
 //   freeMap        — { place_id: qty } остаток по местам (для количества/фильтра);
 //   restrictToStock — показывать только места с остатком (freeMap[id] > 0);
-//   showQuantity   — показывать количество справа;
 //   allowNone      — вариант «Без склада (общий свободный остаток)»;
 //   noneQty        — количество для варианта «Без склада» (если showQuantity).
 const DEFAULT_LABEL = { storage: 'Место хранения', workplace: 'Рабочее место' }
+const LIST_MAX_HEIGHT = 216 // ≈ 4 строки
 
 export function PlaceSelect({
   placeType,
@@ -28,8 +29,7 @@ export function PlaceSelect({
   noneQty,
 }) {
   const [places, setPlaces] = useState(null)
-  const [open, setOpen] = useState(false)
-  const ref = useRef(null)
+  const [query, setQuery] = useState('')
   const errorText = Array.isArray(error) ? error[0] : error
 
   useEffect(() => {
@@ -42,126 +42,102 @@ export function PlaceSelect({
     }
   }, [placeType])
 
-  useEffect(() => {
-    if (!open) return
-    const onDoc = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onDoc)
-    return () => document.removeEventListener('mousedown', onDoc)
-  }, [open])
+  const list = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return (places || [])
+      .filter((p) => (restrictToStock ? (freeMap[String(p.id)] || 0) > 0 : true))
+      .filter((p) =>
+        !q ||
+        [p.name, p.building_name, p.room_name].some((v) => (v || '').toLowerCase().includes(q)),
+      )
+  }, [places, query, restrictToStock, freeMap])
 
-  const list = (places || []).filter((p) => (restrictToStock ? (freeMap[String(p.id)] || 0) > 0 : true))
-  const selected = (places || []).find((p) => String(p.id) === String(value))
-  const isNone = !value
-  const ph = placeholder ?? (places && list.length === 0 ? 'Нет доступных мест' : 'Выберите место')
-
-  const select = (v) => {
-    onChange(v)
-    setOpen(false)
-  }
-
-  const Row = ({ name, location, qty }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, width: '100%' }}>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+  const row = (name, location, qty, selected, onClick) => (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        width: '100%',
+        padding: '9px 11px',
+        border: 'none',
+        borderRadius: 8,
+        background: selected ? 'var(--color-info-bg)' : 'transparent',
+        cursor: 'pointer',
+        textAlign: 'left',
+        fontFamily: 'inherit',
+      }}
+    >
+      <span
+        style={{
+          width: 18,
+          height: 18,
+          flex: 'none',
+          borderRadius: '50%',
+          background: selected ? 'var(--color-primary)' : 'transparent',
+          boxShadow: selected ? 'none' : 'inset 0 0 0 1.5px var(--color-border-strong)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {selected ? <Icon name="check" size={11} strokeWidth={3} style={{ color: '#fff' }} /> : null}
+      </span>
+      <span style={{ minWidth: 0, flex: 1 }}>
+        <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
         {location ? (
-          <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{location}</div>
+          <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{location}</span>
         ) : null}
-      </div>
+      </span>
       {showQuantity && typeof qty === 'number' ? (
-        <div style={{ fontSize: 13, fontWeight: 600, flex: 'none', color: 'var(--color-text-muted)' }}>{qty} шт.</div>
+        <span style={{ fontSize: 13, fontWeight: 600, flex: 'none', color: 'var(--color-text-muted)' }}>{qty} шт.</span>
       ) : null}
-    </div>
+    </button>
   )
 
-  const selectedContent = () => {
-    if (isNone) {
-      if (allowNone) return <Row name="Без склада" location="Общий свободный остаток" qty={typeof noneQty === 'number' ? noneQty : undefined} />
-      return <span style={{ color: 'var(--color-text-placeholder)', fontSize: 13.5 }}>{ph}</span>
-    }
-    if (!selected) return <span style={{ color: 'var(--color-text-placeholder)', fontSize: 13.5 }}>{ph}</span>
-    return <Row name={selected.name} location={`${selected.building_name} — ${selected.room_name}`} qty={freeMap[String(selected.id)]} />
-  }
-
   return (
-    <div ref={ref} style={{ position: 'relative' }}>
+    <div>
       {label !== null ? (
         <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 6 }}>
           {label ?? DEFAULT_LABEL[placeType]} {required ? <span style={{ color: 'var(--color-danger, #d9455f)' }}>*</span> : null}
         </div>
       ) : null}
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder={placeholder || 'Поиск места'}
         style={{
           width: '100%',
-          minHeight: 46,
-          padding: '8px 12px',
-          background: 'var(--color-fill-input)',
-          border: 'none',
+          height: 40,
+          boxShadow: `inset 0 0 0 1px ${errorText ? 'var(--color-danger, #d9455f)' : 'var(--color-border)'}`,
           borderRadius: 10,
-          cursor: 'pointer',
+          border: 'none',
+          padding: '0 12px',
+          fontSize: 13.5,
           fontFamily: 'inherit',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          textAlign: 'left',
-          boxShadow: errorText ? 'inset 0 0 0 1px var(--color-danger, #d9455f)' : 'none',
         }}
-      >
-        <div style={{ flex: 1, minWidth: 0 }}>{selectedContent()}</div>
-        <Icon name="chevrons-up-down" size={16} strokeWidth={2} style={{ flex: 'none', color: 'var(--color-text-placeholder)' }} />
-      </button>
+      />
       {errorText ? <div style={{ fontSize: 12, color: 'var(--color-danger, #d9455f)', marginTop: 5 }}>{errorText}</div> : null}
-      {open ? (
-        <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 4px)',
-            left: 0,
-            right: 0,
-            zIndex: 30,
-            background: 'var(--color-surface)',
-            borderRadius: 10,
-            boxShadow: '0 8px 28px rgba(0,0,0,0.16), inset 0 0 0 1px var(--color-border)',
-            maxHeight: 260,
-            overflowY: 'auto',
-            padding: 4,
-          }}
-        >
-          {allowNone ? (
-            <button type="button" onClick={() => select('')} style={optionStyle(isNone)}>
-              <Row name="Без склада" location="Общий свободный остаток" qty={typeof noneQty === 'number' ? noneQty : undefined} />
-            </button>
-          ) : null}
-          {places === null ? (
-            <div style={{ padding: 12, fontSize: 13, color: 'var(--color-text-placeholder)', textAlign: 'center' }}>Загрузка…</div>
-          ) : list.length === 0 ? (
-            <div style={{ padding: 12, fontSize: 13, color: 'var(--color-text-placeholder)', textAlign: 'center' }}>Нет доступных мест</div>
-          ) : (
-            list.map((p) => (
-              <button key={p.id} type="button" onClick={() => select(String(p.id))} style={optionStyle(String(p.id) === String(value))}>
-                <Row name={p.name} location={`${p.building_name} — ${p.room_name}`} qty={freeMap[String(p.id)]} />
-              </button>
-            ))
-          )}
-        </div>
-      ) : null}
+      <div style={{ marginTop: 8, border: '1px solid var(--color-border)', borderRadius: 10, overflowY: 'auto', maxHeight: LIST_MAX_HEIGHT, padding: 4 }}>
+        {allowNone
+          ? row('Без склада', 'Общий свободный остаток', typeof noneQty === 'number' ? noneQty : undefined, !value, () => onChange(''))
+          : null}
+        {places === null ? (
+          <div style={{ padding: 12, fontSize: 13, color: 'var(--color-text-placeholder)', textAlign: 'center' }}>Загрузка…</div>
+        ) : list.length === 0 ? (
+          <div style={{ padding: 12, fontSize: 13, color: 'var(--color-text-placeholder)', textAlign: 'center' }}>
+            {query ? 'Ничего не найдено' : 'Нет доступных мест'}
+          </div>
+        ) : (
+          list.map((p) =>
+            <div key={p.id}>
+              {row(p.name, `${p.building_name} — ${p.room_name}`, freeMap[String(p.id)], String(p.id) === String(value), () => onChange(String(p.id)))}
+            </div>,
+          )
+        )}
+      </div>
     </div>
   )
-}
-
-function optionStyle(active) {
-  return {
-    display: 'flex',
-    width: '100%',
-    padding: '9px 10px',
-    background: active ? 'var(--color-fill-active-tint)' : 'transparent',
-    border: 'none',
-    borderRadius: 8,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    textAlign: 'left',
-  }
 }
