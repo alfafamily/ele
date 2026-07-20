@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from employees.models import Employee
+from storage.serializers import StoredFileSerializer
 
 from .models import Building, Place, Room
 from .sorting import room_sort_key
@@ -29,7 +30,11 @@ class PlaceSerializer(serializers.ModelSerializer):
 
     def get_employees_detail(self, obj):
         return [
-            {"id": e.id, "name": f"{e.last_name} {e.first_name}".strip()}
+            {
+                "id": e.id,
+                "name": f"{e.last_name} {e.first_name}".strip(),
+                "avatar": StoredFileSerializer(e.avatar).data if e.avatar_id else None,
+            }
             for e in obj.employees.all()
         ]
 

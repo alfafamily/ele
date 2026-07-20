@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
-import { Banner, Button, Checkbox, Input, Modal, Select } from '../../shared/ui'
+import { nameInitials } from '../../shared/employeeName.js'
+import { Banner, Button, Checkbox, Icon, Input, Modal, Select } from '../../shared/ui'
 import { createPlace, updatePlace } from './premisesApi.js'
 
 // Создание/редактирование Места внутри помещения. Тип места (B8): Рабочее
@@ -77,7 +78,7 @@ export function PlaceModal({ roomId, place, onClose, onDone }) {
 function WorkplaceEmployees({ selected, onChange }) {
   const selectedIds = new Set(selected.map((e) => e.id))
   const add = (emp) => {
-    if (!selectedIds.has(emp.id)) onChange([...selected, { id: emp.id, name: emp.full_name }])
+    if (!selectedIds.has(emp.id)) onChange([...selected, { id: emp.id, name: emp.full_name, avatar: emp.avatar || null }])
   }
   const remove = (id) => onChange(selected.filter((e) => e.id !== id))
 
@@ -85,32 +86,27 @@ function WorkplaceEmployees({ selected, onChange }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Закреплённые сотрудники</div>
       {selected.length ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {selected.map((e) => (
-            <span
-              key={e.id}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 12,
-                fontWeight: 600,
-                color: 'var(--color-badge-text)',
-                background: 'var(--color-badge-bg)',
-                padding: '3px 6px 3px 10px',
-                borderRadius: 20,
-              }}
-            >
-              {e.name}
+            <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+              <span style={{ width: 30, height: 30, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, overflow: 'hidden' }}>
+                {e.avatar ? (
+                  <img src={e.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  nameInitials(e.name)
+                )}
+              </span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}</span>
               <button
                 type="button"
                 onClick={() => remove(e.id)}
+                title="Убрать"
                 aria-label="Убрать"
-                style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', fontSize: 14, lineHeight: 1, padding: 0 }}
+                style={{ width: 28, height: 28, flex: 'none', borderRadius: 8, background: 'var(--color-fill-input)', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                ×
+                <Icon name="x" size={15} strokeWidth={2} />
               </button>
-            </span>
+            </div>
           ))}
         </div>
       ) : null}
