@@ -36,10 +36,6 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
       setError(`Доступно не больше ${selected.free}.`)
       return
     }
-    if (!fromPlace) {
-      setError('Выберите склад, с которого выдаётся инструмент.')
-      return
-    }
     setSubmitting(true)
     setError(null)
     try {
@@ -47,7 +43,7 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
         quantity: qty,
         mode: 'mobile',
         employeeId,
-        fromPlace: Number(fromPlace),
+        fromPlace: fromPlace ? Number(fromPlace) : undefined,
         comment: comment.trim(),
       })
       onDone()
@@ -89,7 +85,7 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
           {selected ? (
             <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: -8 }}>Доступно: {selected.free}</div>
           ) : null}
-          <PlaceSelect placeType="storage" label="Склад (откуда выдать)" required value={fromPlace} onChange={setFromPlace} />
+          <PlaceSelect placeType="storage" label="Склад (откуда выдать) — необязательно" value={fromPlace} onChange={setFromPlace} placeholder="Без склада (общий свободный остаток)" />
           <Input
             label="Комментарий"
             multiline

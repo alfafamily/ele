@@ -42,7 +42,7 @@ export function QuantityMoveModal({
       if (mode === 'mobile' && !employee) return setError('Выберите сотрудника.')
       if (mode === 'stationary' && !placeId) return setError('Выберите рабочее место.')
     }
-    if (storage && !storagePlaceId) return setError('Выберите склад.')
+    // Склад необязателен: без него операция идёт со свободным остатком без склада.
     setSubmitting(true)
     setError(null)
     try {
@@ -134,7 +134,7 @@ export function QuantityMoveModal({
         {!needEmployeePick ? (
           <>
             {storage ? (
-              <PlaceSelect placeType="storage" label={STORAGE_LABEL[storage]} required value={storagePlaceId} onChange={setStoragePlaceId} />
+              <PlaceSelect placeType="storage" label={`${STORAGE_LABEL[storage]} — необязательно`} value={storagePlaceId} onChange={setStoragePlaceId} placeholder="Без склада (общий свободный остаток)" />
             ) : null}
             <Input
               label="Количество"

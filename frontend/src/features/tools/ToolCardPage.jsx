@@ -174,7 +174,7 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove }) {
       title: 'Оприходовать',
       confirmLabel: 'Оприходовать',
       storage: 'add',
-      onSubmit: (p) => addUnits(tool.id, { quantity: p.quantity, place: Number(p.storagePlaceId), comment: p.comment }).then(closeMove),
+      onSubmit: (p) => addUnits(tool.id, { quantity: p.quantity, place: p.storagePlaceId ? Number(p.storagePlaceId) : undefined, comment: p.comment }).then(closeMove),
     })
   const openWriteOff = () =>
     setMoveModal({
@@ -182,7 +182,7 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove }) {
       confirmLabel: 'Списать',
       storage: 'writeoff',
       max: tool.free,
-      onSubmit: (p) => writeOffUnits(tool.id, { quantity: p.quantity, place: Number(p.storagePlaceId), comment: p.comment }).then(closeMove),
+      onSubmit: (p) => writeOffUnits(tool.id, { quantity: p.quantity, place: p.storagePlaceId ? Number(p.storagePlaceId) : undefined, comment: p.comment }).then(closeMove),
     })
 
   return (
@@ -193,7 +193,7 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove }) {
         <Metric label="Свободно" value={tool.free} />
         <Metric label="Закреплено" value={tool.allocated} />
       </div>
-      {storages.length ? (
+      {storages.length || tool.free_unplaced > 0 ? (
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>Свободно по складам</div>
           {storages.map((a) => (
@@ -206,6 +206,13 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove }) {
               <div style={{ fontSize: 13, fontWeight: 600 }}>{a.quantity} шт.</div>
             </div>
           ))}
+          {tool.free_unplaced > 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--color-fill-input)', borderRadius: 8 }}>
+              <Icon name="blocks" size={15} strokeWidth={2} style={{ color: 'var(--color-text-muted)' }} />
+              <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>Без склада</div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{tool.free_unplaced} шт.</div>
+            </div>
+          ) : null}
         </div>
       ) : null}
       {canManage ? (
@@ -250,7 +257,7 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
           mode: p.mode,
           employeeId: p.employeeId,
           placeId: p.placeId ? Number(p.placeId) : undefined,
-          fromPlace: Number(p.storagePlaceId),
+          fromPlace: p.storagePlaceId ? Number(p.storagePlaceId) : undefined,
           comment: p.comment,
         }).then(closeMove),
     })
@@ -270,7 +277,7 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
           mode: alloc.kind === 'workplace' ? 'stationary' : 'mobile',
           employeeId: alloc.employee,
           placeId: alloc.place,
-          toPlace: Number(p.storagePlaceId),
+          toPlace: p.storagePlaceId ? Number(p.storagePlaceId) : undefined,
           comment: p.comment,
         }).then(closeMove),
     })

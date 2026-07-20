@@ -84,12 +84,33 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         return s or 0
 
     def _free_units(self, tool):
-        # Свободно = всё, что лежит на складах (== quantity − закреплено).
+        # Свободно = quantity − закреплено (авторитетно). Часть свободного может
+        # лежать на конкретных складах, часть — «без склада» (нераспределённый пул,
+        # например после обновления инстанса или увольнения сотрудника).
         return tool.quantity - self._assigned_units(tool)
 
     def _free_at(self, tool, place):
         alloc = tool.allocations.filter(place=place).first()
         return alloc.quantity if alloc else 0
+
+    def _placed_free(self, tool):
+        # Свободный остаток, лежащий на складах (сумма storage-размещений).
+        s = tool.allocations.filter(place__place_type="storage").aggregate(s=Sum("quantity"))["s"]
+        return s or 0
+
+    def _unplaced_free(self, tool):
+        # Свободный остаток без привязки к складу.
+        return self._free_units(tool) - self._placed_free(tool)
+
+    def _opt_storage(self, request, key):
+        # Необязательный склад операции: None, если не указан. Если указан —
+        # проверяем, что это место хранения.
+        pk = request.data.get(key)
+        if pk in (None, ""):
+            return None
+        from core.placement import get_storage_place
+
+        return get_storage_place(pk, field=key)
 
     def _inc_alloc(self, tool, qty, *, employee=None, place=None):
         alloc, _ = ToolAllocation.objects.get_or_create(
@@ -107,49 +128,52 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="add-units", permission_classes=[IsAdminOrAccountant])
     def add_units(self, request, pk=None):
-        """Приход: qty единиц ложится на выбранный склад (место хранения)."""
-        from core.placement import get_storage_place
-
+        """Приход: qty единиц. Склад необязателен — если указан, приход ложится
+        на него; иначе пополняет свободный остаток без склада."""
         tool = self.get_object()
         if (err := self._guard(tool)) is not None:
             return err
         qty, err = self._parse_positive_qty(request)
         if err is not None:
             return err
-        storage = get_storage_place(request.data.get("place"), field="place")
+        storage = self._opt_storage(request, "place")
         comment = (request.data.get("comment") or "").strip()
         tool.quantity += qty
         tool.save(update_fields=["quantity"])
-        self._inc_alloc(tool, qty, place=storage)
+        if storage is not None:
+            self._inc_alloc(tool, qty, place=storage)
         self._record_movement(tool, ToolMovement.Kind.ADD, qty, request.user, comment, place=storage)
         return Response(ToolSerializer(self.get_object()).data)
 
     @action(detail=True, methods=["post"], url_path="write-off-units", permission_classes=[IsAdminOrAccountant])
     def write_off_units(self, request, pk=None):
-        """Списание qty со склада (свободного остатка)."""
-        from core.placement import get_storage_place
-
+        """Списание qty из свободного остатка. Склад необязателен: если указан —
+        списываем с него; иначе — из свободного остатка без склада."""
         tool = self.get_object()
         if (err := self._guard(tool)) is not None:
             return err
         qty, err = self._parse_positive_qty(request)
         if err is not None:
             return err
-        storage = get_storage_place(request.data.get("place"), field="place")
-        if qty > self._free_at(tool, storage):
-            return Response({"detail": "Нельзя списать больше, чем лежит на этом складе."}, status=409)
-        comment = (request.data.get("comment") or "").strip()
-        self._dec_alloc(tool.allocations.get(place=storage), qty)
+        storage = self._opt_storage(request, "place")
+        if storage is not None:
+            if qty > self._free_at(tool, storage):
+                return Response({"detail": "Нельзя списать больше, чем лежит на этом складе."}, status=409)
+            self._dec_alloc(tool.allocations.get(place=storage), qty)
+        else:
+            if qty > self._unplaced_free(tool):
+                return Response({"detail": "Нельзя списать больше свободного остатка без склада."}, status=409)
         tool.quantity -= qty
         tool.save(update_fields=["quantity"])
-        self._record_movement(tool, ToolMovement.Kind.WRITE_OFF, qty, request.user, comment, place=storage)
+        self._record_movement(tool, ToolMovement.Kind.WRITE_OFF, qty, request.user, comment=(request.data.get("comment") or "").strip(), place=storage)
         return Response(ToolSerializer(self.get_object()).data)
 
     @action(detail=True, methods=["post"], url_path="assign-units", permission_classes=[IsAdminOrAccountant])
     def assign_units(self, request, pk=None):
-        """Раздача qty со склада: mode=mobile — сотруднику; mode=stationary — на
-        рабочее место. Источник — склад (from place)."""
-        from core.placement import get_storage_place, get_workplace
+        """Раздача qty: mode=mobile — сотруднику; mode=stationary — на рабочее
+        место. Склад-источник (from_place) необязателен: если указан — берём с
+        него; иначе — из свободного остатка без склада."""
+        from core.placement import get_workplace
 
         tool = self.get_object()
         if (err := self._guard(tool)) is not None:
@@ -157,9 +181,13 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         qty, err = self._parse_positive_qty(request)
         if err is not None:
             return err
-        storage = get_storage_place(request.data.get("from_place"), field="from_place")
-        if qty > self._free_at(tool, storage):
-            return Response({"detail": "Нельзя выдать больше, чем лежит на этом складе."}, status=409)
+        storage = self._opt_storage(request, "from_place")
+        if storage is not None:
+            if qty > self._free_at(tool, storage):
+                return Response({"detail": "Нельзя выдать больше, чем лежит на этом складе."}, status=409)
+        else:
+            if qty > self._unplaced_free(tool):
+                return Response({"detail": "Нельзя выдать больше свободного остатка без склада."}, status=409)
         mode = request.data.get("mode", "mobile")
         employee = target_place = None
         if mode == "stationary":
@@ -167,7 +195,8 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         else:
             employee = get_object_or_404(Employee, pk=request.data.get("employee"))
         comment = (request.data.get("comment") or "").strip()
-        self._dec_alloc(tool.allocations.get(place=storage), qty)
+        if storage is not None:
+            self._dec_alloc(tool.allocations.get(place=storage), qty)
         self._inc_alloc(tool, qty, employee=employee, place=target_place)
         self._record_movement(
             tool, ToolMovement.Kind.ASSIGN, qty, request.user, comment,
@@ -177,8 +206,10 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="unassign-units", permission_classes=[IsAdminOrAccountant])
     def unassign_units(self, request, pk=None):
-        """Возврат qty от сотрудника/рабочего места обратно на склад (to place)."""
-        from core.placement import get_storage_place, get_workplace
+        """Возврат qty от сотрудника/рабочего места в свободный остаток. Склад
+        (to_place) необязателен: если указан — кладём на него; иначе — в
+        свободный остаток без склада."""
+        from core.placement import get_workplace
 
         tool = self.get_object()
         if (err := self._guard(tool)) is not None:
@@ -186,7 +217,7 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         qty, err = self._parse_positive_qty(request)
         if err is not None:
             return err
-        storage = get_storage_place(request.data.get("to_place"), field="to_place")
+        storage = self._opt_storage(request, "to_place")
         mode = request.data.get("mode", "mobile")
         employee = source_place = None
         if mode == "stationary":
@@ -201,7 +232,8 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             return Response({"detail": miss}, status=409)
         comment = (request.data.get("comment") or "").strip()
         self._dec_alloc(alloc, qty)
-        self._inc_alloc(tool, qty, place=storage)
+        if storage is not None:
+            self._inc_alloc(tool, qty, place=storage)
         self._record_movement(
             tool, ToolMovement.Kind.UNASSIGN, qty, request.user, comment,
             employee=employee, place=source_place, storage_place=storage,
