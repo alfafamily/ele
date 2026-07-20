@@ -64,11 +64,16 @@ class EquipmentFullLifecycleTests(APITestCase):
         equipment_id = resp.data["id"]
         self.assertEqual(resp.data["type_and_model"], "Ноутбук Latitude 5540")
 
-        resp = self.client.post("/api/license-types/", {"name": "Утилита"}, format="json")
+        resp = self.client.post("/api/license-types/", {"name": "Утилита", "kind": "software"}, format="json")
         license_type_id = resp.data["id"]
+        key_field_id = next(f["id"] for f in resp.data["fields"] if f["is_locked"])
         resp = self.client.post(
             "/api/licenses/",
-            {"name": "Тестовая лицензия", "license_type": license_type_id, "equipment": equipment_id},
+            {
+                "license_type": license_type_id,
+                "equipment": equipment_id,
+                "field_values_input": [{"field": key_field_id, "value": "LIC-KEY-1"}],
+            },
             format="json",
         )
         self.assertEqual(resp.status_code, 201, resp.data)
@@ -76,7 +81,7 @@ class EquipmentFullLifecycleTests(APITestCase):
 
         resp = self.client.get(f"/api/equipment/{equipment_id}/")
         self.assertEqual(len(resp.data["licenses"]), 1)
-        self.assertEqual(resp.data["licenses"][0]["name"], "Тестовая лицензия")
+        self.assertEqual(resp.data["licenses"][0]["license_type_name"], "Утилита")
 
         resp = self.client.post(f"/api/equipment/{equipment_id}/write-off/", format="json")
         self.assertEqual(resp.status_code, 409, resp.data)
