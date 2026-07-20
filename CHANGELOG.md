@@ -831,7 +831,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/alfafamily/ele/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/alfafamily/ele/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/alfafamily/ele/compare/v1.5.1...v1.6.0
 [1.5.1]: https://github.com/alfafamily/ele/compare/v1.5.0...v1.5.1
