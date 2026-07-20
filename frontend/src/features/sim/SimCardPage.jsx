@@ -104,8 +104,12 @@ export function SimCardPage() {
           {sim.employee ? (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600 }}>
-                  {nameInitials(sim.employee_name)}
+                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
+                  {sim.employee_avatar ? (
+                    <img src={sim.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    nameInitials(sim.employee_name)
+                  )}
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>За сотрудником</div>
@@ -122,7 +126,7 @@ export function SimCardPage() {
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name="wrench" size={20} strokeWidth={2} />
+                  <Icon name="tag" size={20} strokeWidth={2} />
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>В оборудовании</div>

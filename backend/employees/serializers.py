@@ -26,6 +26,7 @@ class SimCardSerializer(serializers.ModelSerializer):
     # «Неиспользуемая» (не за сотрудником и не в оборудовании, не утилизирована).
     is_deactivated = serializers.BooleanField(read_only=True)
     employee_name = serializers.SerializerMethodField()
+    employee_avatar = serializers.SerializerMethodField()
     # Размещение (B8): SIM за сотрудником ИЛИ за оборудованием; свободная — на складе.
     equipment_name = serializers.SerializerMethodField()
     storage_place_detail = serializers.SerializerMethodField()
@@ -39,6 +40,7 @@ class SimCardSerializer(serializers.ModelSerializer):
             "id",
             "employee",
             "employee_name",
+            "employee_avatar",
             "equipment",
             "equipment_name",
             "storage_place",
@@ -60,6 +62,11 @@ class SimCardSerializer(serializers.ModelSerializer):
 
     def get_employee_name(self, obj):
         return str(obj.employee) if obj.employee_id else None
+
+    def get_employee_avatar(self, obj):
+        if obj.employee_id and obj.employee.avatar_id:
+            return StoredFileSerializer(obj.employee.avatar).data
+        return None
 
     def get_equipment_name(self, obj):
         return str(obj.equipment) if obj.equipment_id else None
