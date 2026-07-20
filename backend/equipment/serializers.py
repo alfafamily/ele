@@ -141,6 +141,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
     custom_fields = EquipmentCustomFieldSerializer(many=True, required=False)
     field_values_input = EquipmentFieldValueInputSerializer(many=True, required=False, write_only=True)
     licenses = serializers.SerializerMethodField()
+    sim_cards = serializers.SerializerMethodField()
 
     class Meta:
         model = Equipment
@@ -163,6 +164,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
             "field_values_input",
             "custom_fields",
             "licenses",
+            "sim_cards",
             "created_at",
         ]
         read_only_fields = ["is_written_off", "written_off_at", "created_at"]
@@ -232,6 +234,17 @@ class EquipmentSerializer(serializers.ModelSerializer):
             many=True,
             context={"include_key": include_key},
         ).data
+
+    def get_sim_cards(self, obj):
+        # SIM, установленные в это оборудование (симка в модеме и т.п.). Только
+        # на карточке (retrieve), чтобы не плодить запросы в списке.
+        view = self.context.get("view")
+        if getattr(view, "action", None) != "retrieve":
+            return []
+        return [
+            {"id": s.id, "phone_number": s.phone_number, "sim_type_display": s.get_sim_type_display()}
+            for s in obj.sim_cards.all()
+        ]
 
     def validate_inventory_number(self, value):
         value = value.strip()
