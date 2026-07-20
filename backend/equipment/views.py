@@ -103,7 +103,7 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         qs = Equipment.objects.select_related(
             "employee", "employee__avatar", "equipment_type", "place__room__building"
         ).prefetch_related(
-            "field_values__field", "field_values__files__stored_file", "custom_fields"
+            "field_values__field", "field_values__files__stored_file", "custom_fields", "place__employees"
         )
         user = self.request.user
         if user.role == "employee" and not user.is_observer:

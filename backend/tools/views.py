@@ -30,7 +30,8 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Tool.objects.prefetch_related(
-            "allocations__employee__avatar", "allocations__place__room__building", "custom_fields"
+            "allocations__employee__avatar", "allocations__place__room__building",
+            "allocations__place__employees", "custom_fields",
         )
         user = self.request.user
         if user.role == "employee" and not user.is_observer:

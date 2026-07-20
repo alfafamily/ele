@@ -28,12 +28,13 @@ class ToolAllocationSerializer(serializers.ModelSerializer):
     department = serializers.SerializerMethodField()
     place_name = serializers.SerializerMethodField()
     place_location = serializers.SerializerMethodField()
+    place_employees = serializers.SerializerMethodField()
 
     class Meta:
         model = ToolAllocation
         fields = [
             "id", "kind", "employee", "employee_name", "employee_avatar", "department",
-            "place", "place_name", "place_location", "quantity",
+            "place", "place_name", "place_location", "place_employees", "quantity",
         ]
 
     def get_employee_name(self, obj):
@@ -54,6 +55,14 @@ class ToolAllocationSerializer(serializers.ModelSerializer):
         if not obj.place_id:
             return None
         return f"{obj.place.room.building.name} — {obj.place.room.name}"
+
+    def get_place_employees(self, obj):
+        # Сотрудники рабочего места — только для стационарных размещений.
+        if obj.target_kind != "workplace":
+            return None
+        return [
+            {"id": e.id, "name": f"{e.last_name} {e.first_name}".strip()} for e in obj.place.employees.all()
+        ]
 
 
 class ToolSerializer(serializers.ModelSerializer):
