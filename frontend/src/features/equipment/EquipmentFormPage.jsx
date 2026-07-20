@@ -4,6 +4,7 @@ import { apiGet, apiPost } from '../../shared/api/client'
 import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
+import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { Banner, Button, Card, Icon, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
 import {
   createEquipment,
@@ -306,7 +307,10 @@ export function EquipmentFormPage() {
                   <button
                     key={m.value}
                     type="button"
-                    onClick={() => setPlacementMode(m.value)}
+                    onClick={() => {
+                      setPlacementMode(m.value)
+                      setPlacementPlaceId('')
+                    }}
                     style={{
                       flex: 1,
                       padding: '8px 6px',
@@ -326,12 +330,7 @@ export function EquipmentFormPage() {
               </div>
               {placementMode === 'mobile' ? (
                 placementEmployee ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 14 }}>
-                    <span>{placementEmployee.full_name}</span>
-                    <Button variant="secondary" onClick={() => setPlacementEmployee(null)}>
-                      Изменить
-                    </Button>
-                  </div>
+                  <SelectedEmployee employee={placementEmployee} onClear={() => setPlacementEmployee(null)} />
                 ) : (
                   <EmployeePicker onSelect={setPlacementEmployee} />
                 )
