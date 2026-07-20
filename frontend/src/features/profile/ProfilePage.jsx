@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../app/AuthContext.jsx'
 import { roleLabel } from '../../shared/roles.js'
 import { nameInitials } from '../../shared/employeeName.js'
-import { Button, Card, Spinner } from '../../shared/ui'
+import { Button, Card, Icon, Spinner } from '../../shared/ui'
 import { deleteEmployeeAvatar, uploadEmployeeAvatar } from '../employees/employeesApi.js'
 import { PassInfo } from '../employees/PassInfo.jsx'
 import { SimCardInfo } from '../employees/SimCardInfo.jsx'
 import { ChangeEmailModal } from './ChangeEmailModal.jsx'
 import { ChangePasswordModal } from './ChangePasswordModal.jsx'
-import { getMyEquipment, getMyPasses, getMySimCards } from './profileApi.js'
+import { getMyEquipment, getMyPasses, getMySimCards, getMyWorkPlacement } from './profileApi.js'
 
 const avatarMenuItem = {
   border: 'none',
@@ -33,6 +33,8 @@ export function ProfilePage() {
   const [simCards, setSimCards] = useState([])
   const [passes, setPasses] = useState([])
   const [equipment, setEquipment] = useState([])
+  const [tools, setTools] = useState([])
+  const [workplaces, setWorkplaces] = useState([])
   const fileInputRef = useRef(null)
 
   // При открытии профиля перечитываем пользователя — ФИО/аватар связанного
@@ -48,6 +50,10 @@ export function ProfilePage() {
       getMySimCards(employee.id).then(setSimCards)
       getMyPasses(employee.id).then(setPasses)
       getMyEquipment(employee.id).then(setEquipment)
+      getMyWorkPlacement().then((d) => {
+        setTools(d.tools || [])
+        setWorkplaces(d.workplaces || [])
+      })
     }
   }, [employee?.id])
   const displayName = employee?.full_name || user.email
@@ -203,6 +209,22 @@ export function ProfilePage() {
 
         {employee ? (
           <Card>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Инструменты</div>
+            {tools.length === 0 ? (
+              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено инструментов.</div>
+            ) : (
+              tools.map((t) => (
+                <div key={t.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2 }}>{t.quantity} шт.</div>
+                </div>
+              ))
+            )}
+          </Card>
+        ) : null}
+
+        {employee ? (
+          <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Корпоративная связь</div>
             {simCards.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено SIM-карт.</div>
@@ -228,6 +250,42 @@ export function ProfilePage() {
                 </div>
               ))
             )}
+          </Card>
+        ) : null}
+
+        {employee && workplaces.length ? (
+          <Card>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Рабочие места</div>
+            {workplaces.map((wp) => (
+              <div key={wp.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Icon name="briefcase" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600 }}>{wp.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{wp.location}</div>
+                  </div>
+                </div>
+                {wp.equipment?.length || wp.tools?.length ? (
+                  <div style={{ marginTop: 8, paddingLeft: 28, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>На этом рабочем месте</div>
+                    {(wp.equipment || []).map((eq) => (
+                      <div key={`e${eq.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                        <Icon name="wrench" size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {eq.type_and_model} · <span style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</span>
+                        </span>
+                      </div>
+                    ))}
+                    {(wp.tools || []).map((t) => (
+                      <div key={`t${t.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                        <Icon name="blocks" size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                        <span>{t.name} · {t.quantity} шт.</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ))}
           </Card>
         ) : null}
 

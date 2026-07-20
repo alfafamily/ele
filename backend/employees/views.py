@@ -2,7 +2,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -752,6 +752,31 @@ class _CanEditAvatar(BasePermission):
         if user.role in ("admin", "accountant"):
             return True
         return user.employee_id is not None and user.employee_id == view.kwargs.get("employee_pk")
+
+
+class MyWorkPlacementView(APIView):
+    """Профиль сотрудника (роль «Сотрудник»): свои Инструменты и Рабочие места
+    с объектами. Карточка /employees/{id}/ этой роли недоступна, поэтому нужные
+    блоки отдаём отдельным лёгким эндпоинтом для залогиненного пользователя."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        emp_id = getattr(request.user, "employee_id", None)
+        if not emp_id:
+            return Response({"tools": [], "workplaces": []})
+        emp = (
+            Employee.objects.prefetch_related(
+                "tool_allocations__tool",
+                "workplaces__room__building",
+                "workplaces__equipment__equipment_type",
+                "workplaces__equipment__field_values__field",
+                "workplaces__tool_allocations__tool",
+            )
+            .get(pk=emp_id)
+        )
+        data = EmployeeSerializer(emp, context={"request": request}).data
+        return Response({"tools": data["tools"], "workplaces": data["workplaces"]})
 
 
 class EmployeeAvatarUploadView(APIView):

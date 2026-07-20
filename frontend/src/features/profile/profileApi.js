@@ -15,6 +15,10 @@ export const getMyPasses = (employeeId) =>
 export const getMyEquipment = (employeeId) =>
   apiGet(`/api/equipment/?employee=${employeeId}&tab=active`).then((d) => d.results)
 
+// Свои Инструменты и Рабочие места (с объектами) — карточка Сотрудника роли
+// «Сотрудник» недоступна, поэтому эти блоки берём отдельным эндпоинтом.
+export const getMyWorkPlacement = () => apiGet('/api/my/work-placement/')
+
 export const changePassword = (payload) => apiPost('/api/auth/change-password/', payload)
 export const requestEmailChange = (newEmail) => apiPost('/api/auth/change-email/', { new_email: newEmail })
 export const confirmEmailChange = (token) => apiPost('/api/auth/change-email/confirm/', { token })
