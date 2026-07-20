@@ -175,8 +175,10 @@ export function PassListPage() {
                   <div style={{ minWidth: 0 }}>
                     {row.employee_name ? (
                       <div className="ele-clamp-2">{row.employee_name}</div>
+                    ) : row.storage_place_detail ? (
+                      <div className="ele-clamp-2">На складе: {row.storage_place_detail.name}</div>
                     ) : (
-                      <span style={{ color: 'var(--color-text-placeholder)' }}>Не закреплён</span>
+                      <span style={{ color: 'var(--color-text-placeholder)' }}>На хранении</span>
                     )}
                   </div>
                 ) : (
