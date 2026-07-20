@@ -322,3 +322,51 @@ class LicenseKeyExposureTests(APITestCase):
         worker = User.objects.create_user(email="plain@example.com", password="Str0ng!Pass1", employee=emp)
         self.client.force_authenticate(user=worker)
         self.assertEqual(self.client.get("/api/licenses/?tab=active").status_code, 403)
+
+
+class HardwareLicenseStorageTests(APITestCase):
+    """B8 — аппаратная лицензия: хранение на складе, отвязка на склад."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        from equipment.models import Equipment, EquipmentType
+        from locations.models import Building, Place, Room
+
+        b = Building.objects.create(name="Главное")
+        r = Room.objects.create(building=b, name="101")
+        self.store = Place.objects.create(room=r, name="Склад", place_type=Place.PlaceType.STORAGE)
+        et = EquipmentType.objects.create(name="Сервер")
+        self.eq = Equipment.objects.create(inventory_number="SRV-1", equipment_type=et)
+        self.hw_type = LicenseType.objects.get(name="Аппаратная")
+        self.token_field = self.hw_type.fields.get(is_locked=True)
+        self._n = 0
+
+    def _create(self, **extra):
+        self._n += 1
+        payload = {
+            "name": "Токен",
+            "license_type": self.hw_type.id,
+            "field_values_input": [{"field": self.token_field.id, "value": f"SN-{self._n}"}],
+            **extra,
+        }
+        return self.client.post("/api/licenses/", payload, format="json")
+
+    def test_create_hardware_on_storage(self):
+        resp = self._create(storage_place=self.store.id)
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertTrue(resp.data["is_hardware"])
+        self.assertEqual(resp.data["storage_place_detail"]["place_type"], "storage")
+
+    def test_attach_clears_storage_detach_sets_it(self):
+        lic_id = self._create(storage_place=self.store.id).data["id"]
+        # Привязка к оборудованию снимает со склада.
+        r = self.client.patch(f"/api/licenses/{lic_id}/", {"equipment": self.eq.id}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertIsNone(r.data["storage_place"])
+        self.assertEqual(r.data["status"], "assigned")
+        # Отвязка обратно на склад.
+        r = self.client.patch(f"/api/licenses/{lic_id}/", {"equipment": None, "storage_place": self.store.id}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertIsNone(r.data["equipment"])
+        self.assertEqual(r.data["storage_place"], self.store.id)

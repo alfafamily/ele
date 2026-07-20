@@ -20,6 +20,7 @@ export function QuantityMoveModal({
   confirmLabel,
   target = null,
   storage = null,
+  storageRequired = false,
   max,
   onSubmit,
   onClose,
@@ -42,7 +43,7 @@ export function QuantityMoveModal({
       if (mode === 'mobile' && !employee) return setError('Выберите сотрудника.')
       if (mode === 'stationary' && !placeId) return setError('Выберите рабочее место.')
     }
-    // Склад необязателен: без него операция идёт со свободным остатком без склада.
+    if (storage && storageRequired && !storagePlaceId) return setError('Выберите склад.')
     setSubmitting(true)
     setError(null)
     try {
@@ -134,7 +135,14 @@ export function QuantityMoveModal({
         {!needEmployeePick ? (
           <>
             {storage ? (
-              <PlaceSelect placeType="storage" label={`${STORAGE_LABEL[storage]} — необязательно`} value={storagePlaceId} onChange={setStoragePlaceId} placeholder="Без склада (общий свободный остаток)" />
+              <PlaceSelect
+                placeType="storage"
+                label={storageRequired ? STORAGE_LABEL[storage] : `${STORAGE_LABEL[storage]} — необязательно`}
+                required={storageRequired}
+                value={storagePlaceId}
+                onChange={setStoragePlaceId}
+                placeholder={storageRequired ? 'Выберите склад' : 'Без склада (общий свободный остаток)'}
+              />
             ) : null}
             <Input
               label="Количество"

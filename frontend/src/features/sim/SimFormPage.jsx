@@ -73,7 +73,8 @@ export function SimFormPage() {
     if (!isEdit) {
       if (employeeId) {
         payload.employee = Number(employeeId)
-      } else {
+      } else if (simType !== 'esim') {
+        // Физическая свободная SIM хранится на складе; E-SIM виртуальна — без склада.
         if (!storagePlaceId) {
           setError('Укажите место хранения для свободной SIM-карты.')
           setSubmitting(false)
@@ -169,7 +170,7 @@ export function SimFormPage() {
             </div>
           </Card>
 
-          {!isEdit && !employeeId ? (
+          {!isEdit && !employeeId && simType !== 'esim' ? (
             <Card>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Место хранения</div>
               <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>

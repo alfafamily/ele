@@ -88,6 +88,13 @@ class License(models.Model):
         "equipment.Equipment", verbose_name="Оборудование",
         on_delete=models.SET_NULL, null=True, blank=True, related_name="licenses",
     )
+    # Размещение (B8): аппаратная лицензия — физический ключ/донгл, свободный
+    # (не в оборудовании) может лежать на складе. Программная — виртуальна,
+    # склад не используется. legacy-записи допускают NULL.
+    storage_place = models.ForeignKey(
+        "locations.Place", verbose_name="Место хранения", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="+",
+    )
     is_retired = models.BooleanField("Признак утилизации", default=False)
     # Проставляется в момент утилизации (utilize action) — нужна для колонки
     # «Дата утилизации» вкладки Архив, отдельно от is_retired.

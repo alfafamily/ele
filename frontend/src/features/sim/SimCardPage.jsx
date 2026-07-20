@@ -118,32 +118,39 @@ export function SimCardPage() {
         <Card className="ele-obj-layout__side ele-card-sticky">
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Размещение</div>
           {sim.employee ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600 }}>
-                {nameInitials(sim.employee_name)}
-              </span>
-              <Link to={`/employees/${sim.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                {sim.employee_name}
-              </Link>
-              <Can perm="canManageEmployees">
-                <Button variant="secondary" style={{ marginLeft: 'auto' }} onClick={() => setDisposeModal(true)}>Открепить</Button>
-              </Can>
-            </div>
-          ) : sim.equipment ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="wrench" size={20} strokeWidth={2} />
-              </span>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>В оборудовании</div>
-                <Link to={`/equipment/${sim.equipment}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                  {sim.equipment_name}
-                </Link>
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600 }}>
+                  {nameInitials(sim.employee_name)}
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>За сотрудником</div>
+                  <Link className="ele-clamp-2" to={`/employees/${sim.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                    {sim.employee_name}
+                  </Link>
+                </div>
               </div>
               <Can perm="canManageEmployees">
-                <Button variant="secondary" style={{ marginLeft: 'auto' }} onClick={() => setDisposeModal(true)}>Открепить</Button>
+                <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>
               </Can>
-            </div>
+            </>
+          ) : sim.equipment ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="wrench" size={20} strokeWidth={2} />
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>В оборудовании</div>
+                  <Link className="ele-clamp-2" to={`/equipment/${sim.equipment}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                    {sim.equipment_name}
+                  </Link>
+                </div>
+              </div>
+              <Can perm="canManageEmployees">
+                <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>
+              </Can>
+            </>
           ) : showPicker === 'employee' ? (
             <EmployeePicker autoFocus onSelect={onAttachEmployee} />
           ) : showPicker === 'equipment' ? (

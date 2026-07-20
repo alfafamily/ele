@@ -36,6 +36,11 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
       setError(`Доступно не больше ${selected.free}.`)
       return
     }
+    // Склад-источник обязателен, если у инструмента нет свободного остатка без склада.
+    if (selected && selected.free_unplaced <= 0 && !fromPlace) {
+      setError('Выберите склад, с которого выдаётся инструмент.')
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
@@ -85,7 +90,14 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
           {selected ? (
             <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: -8 }}>Доступно: {selected.free}</div>
           ) : null}
-          <PlaceSelect placeType="storage" label="Склад (откуда выдать) — необязательно" value={fromPlace} onChange={setFromPlace} placeholder="Без склада (общий свободный остаток)" />
+          <PlaceSelect
+            placeType="storage"
+            label={selected && selected.free_unplaced <= 0 ? 'Склад (откуда выдать)' : 'Склад (откуда выдать) — необязательно'}
+            required={Boolean(selected) && selected.free_unplaced <= 0}
+            value={fromPlace}
+            onChange={setFromPlace}
+            placeholder={selected && selected.free_unplaced <= 0 ? 'Выберите склад' : 'Без склада (общий свободный остаток)'}
+          />
           <Input
             label="Комментарий"
             multiline

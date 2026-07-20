@@ -7,6 +7,8 @@ import { detachSimCard, utilizeSimCard } from './employeesApi.js'
 // утилизировать. Комментарий (необязательный) для утилизации попадает в историю.
 export function SimDisposeModal({ sim, onClose, onDone }) {
   const attached = Boolean(sim.employee || sim.equipment)
+  // E-SIM виртуальна — на складе не хранится, место при откреплении не нужно.
+  const isEsim = sim.sim_type === 'esim'
   const [storagePlaceId, setStoragePlaceId] = useState('')
 
   const OPTIONS = attached
@@ -24,7 +26,7 @@ export function SimDisposeModal({ sim, onClose, onDone }) {
   const isUtilize = choice === 'utilized'
 
   const submit = async () => {
-    if (choice === 'detach' && !storagePlaceId) {
+    if (choice === 'detach' && !isEsim && !storagePlaceId) {
       setError('Выберите место хранения.')
       return
     }
@@ -60,7 +62,7 @@ export function SimDisposeModal({ sim, onClose, onDone }) {
         ))}
       </div>
 
-      {choice === 'detach' ? (
+      {choice === 'detach' && !isEsim ? (
         <div style={{ marginBottom: 18 }}>
           <PlaceSelect placeType="storage" required value={storagePlaceId} onChange={setStoragePlaceId} />
         </div>

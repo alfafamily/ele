@@ -154,6 +154,9 @@ class LicenseSerializer(serializers.ModelSerializer):
     license_type_name = serializers.CharField(source="license_type.name", read_only=True)
     equipment_detail = EquipmentMiniSerializer(source="equipment", read_only=True)
     status = serializers.SerializerMethodField()
+    # Аппаратная лицензия — физический ключ, свободный может лежать на складе.
+    is_hardware = serializers.SerializerMethodField()
+    storage_place_detail = serializers.SerializerMethodField()
     field_values = LicenseFieldValueOutSerializer(many=True, read_only=True)
     custom_fields = LicenseCustomFieldSerializer(many=True, required=False)
     field_values_input = LicenseFieldValueInputSerializer(many=True, required=False, write_only=True)
@@ -165,6 +168,9 @@ class LicenseSerializer(serializers.ModelSerializer):
             "name",
             "equipment",
             "equipment_detail",
+            "storage_place",
+            "storage_place_detail",
+            "is_hardware",
             "is_retired",
             "retired_at",
             "license_type",
@@ -180,7 +186,29 @@ class LicenseSerializer(serializers.ModelSerializer):
     def get_status(self, obj):
         return "assigned" if obj.equipment_id else "free"
 
+    def get_is_hardware(self, obj):
+        return obj.license_type.name == "Аппаратная"
+
+    def get_storage_place_detail(self, obj):
+        if not obj.storage_place_id:
+            return None
+        p = obj.storage_place
+        return {
+            "id": p.id, "name": p.name, "place_type": p.place_type,
+            "room_name": p.room.name, "building_name": p.room.building.name,
+        }
+
     def validate(self, attrs):
+        # Размещение (B8): в оборудовании — значит не на складе. Свободная
+        # аппаратная лицензия может лежать на складе.
+        from locations.models import Place
+
+        if attrs.get("equipment"):
+            attrs["storage_place"] = None
+        storage = attrs.get("storage_place")
+        if storage is not None and storage.place_type != Place.PlaceType.STORAGE:
+            raise serializers.ValidationError({"storage_place": "Выберите место хранения (склад)."})
+
         license_type = attrs.get("license_type") or getattr(self.instance, "license_type", None)
         field_values_input = attrs.get("field_values_input")
         if field_values_input:

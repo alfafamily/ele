@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { apiPost } from '../../shared/api/client'
 import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
-import { Banner, Button, Card, Icon, Input, Select, Spinner } from '../../shared/ui'
+import { Banner, Button, Card, Icon, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
 import {
   createLicense,
   deleteLicenseFieldFilePath,
@@ -34,6 +34,7 @@ export function LicenseFormPage() {
   const [fileValues, setFileValues] = useState({})
   const [customFields, setCustomFields] = useState([])
   const [comment, setComment] = useState('')
+  const [storagePlaceId, setStoragePlaceId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
@@ -81,6 +82,10 @@ export function LicenseFormPage() {
       license_type: Number(typeId),
       field_values_input: typeFields.filter((f) => f.value_type !== 'file').map((f) => ({ field: f.id, value: values[f.id] ?? null })),
       custom_fields: customFields.filter((f) => f.name.trim()),
+    }
+    // Аппаратная лицензия при создании может лежать на складе (по желанию).
+    if (!isEdit && selectedType?.name === 'Аппаратная' && storagePlaceId) {
+      payload.storage_place = Number(storagePlaceId)
     }
     if (!isEdit && comment.trim()) payload.comment = comment.trim()
     try {
@@ -204,6 +209,16 @@ export function LicenseFormPage() {
             </div>
             <CustomFieldsEditor items={customFields} onChange={setCustomFields} />
           </Card>
+
+          {!isEdit && selectedType?.name === 'Аппаратная' ? (
+            <Card>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Место хранения</div>
+              <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
+                Необязательно. Свободный физический ключ аппаратной лицензии можно положить на склад.
+              </div>
+              <PlaceSelect placeType="storage" value={storagePlaceId} onChange={setStoragePlaceId} placeholder="Без склада" />
+            </Card>
+          ) : null}
 
           {!isEdit ? (
             <Card>
