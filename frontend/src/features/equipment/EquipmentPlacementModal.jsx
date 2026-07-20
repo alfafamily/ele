@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
+import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { Banner, Button, Input, Modal, PlaceSelect } from '../../shared/ui'
 import { assignEquipment, unassignEquipment } from './equipmentApi.js'
 
@@ -53,6 +54,7 @@ export function EquipmentPlacementModal({ equipment, onClose, onDone }) {
               type="button"
               onClick={() => {
                 setMode(m.value)
+                setPlaceId('') // сбрасываем место — у нового режима свой список
                 setError(null)
               }}
               style={{
@@ -75,12 +77,7 @@ export function EquipmentPlacementModal({ equipment, onClose, onDone }) {
 
         {mode === 'mobile' ? (
           employee ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, fontSize: 14 }}>
-              <span>{employee.full_name}</span>
-              <Button variant="secondary" onClick={() => setEmployee(null)}>
-                Изменить
-              </Button>
-            </div>
+            <SelectedEmployee employee={employee} onClear={() => setEmployee(null)} />
           ) : (
             <EmployeePicker autoFocus onSelect={setEmployee} />
           )

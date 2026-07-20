@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
+import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { Banner, Button, Input, Modal, PlaceSelect } from '../../shared/ui'
 import { StoragePicker } from './StoragePicker.jsx'
 
@@ -132,15 +133,7 @@ export function QuantityMoveModal({
         ) : null}
 
         {target === 'both' && mode === 'mobile' && employee ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>Сотрудник</div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>{employee.full_name || employee.name}</div>
-            </div>
-            <Button variant="secondary" onClick={() => setEmployee(null)}>
-              Изменить
-            </Button>
-          </div>
+          <SelectedEmployee employee={employee} onClear={() => setEmployee(null)} />
         ) : null}
 
         {target === 'both' && mode === 'stationary' ? (
