@@ -24,7 +24,6 @@ export function ToolCardPage() {
   const [loadError, setLoadError] = useState(false)
   const [showWriteOff, setShowWriteOff] = useState(false)
   const [showTransfer, setShowTransfer] = useState(false)
-  const [showPlaceUnplaced, setShowPlaceUnplaced] = useState(false)
   const [moveModal, setMoveModal] = useState(null)
   const [historyKey, setHistoryKey] = useState(0)
 
@@ -140,7 +139,7 @@ export function ToolCardPage() {
         {!tool.is_written_off ? (
           <div className="ele-card-sticky" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
             <Card>
-              <QuantityStock tool={tool} canManage={perms.canManageEquipment} setMoveModal={setMoveModal} closeMove={closeMove} onTransfer={() => setShowTransfer(true)} onPlaceUnplaced={() => setShowPlaceUnplaced(true)} />
+              <QuantityStock tool={tool} canManage={perms.canManageEquipment} setMoveModal={setMoveModal} closeMove={closeMove} onTransfer={() => setShowTransfer(true)} />
             </Card>
             <Card>
               <QuantityAssignments tool={tool} canManage={perms.canManageEquipment} setMoveModal={setMoveModal} closeMove={closeMove} />
@@ -164,22 +163,10 @@ export function ToolCardPage() {
         <ToolTransferModal
           tool={tool}
           storages={(tool.allocations || []).filter((a) => a.kind === 'storage')}
+          unplacedFree={tool.free_unplaced}
           onClose={() => setShowTransfer(false)}
           onDone={() => {
             setShowTransfer(false)
-            load()
-          }}
-        />
-      ) : null}
-      {showPlaceUnplaced ? (
-        <ToolTransferModal
-          tool={tool}
-          storages={[]}
-          fromUnplaced
-          unplacedQty={tool.free_unplaced}
-          onClose={() => setShowPlaceUnplaced(false)}
-          onDone={() => {
-            setShowPlaceUnplaced(false)
             load()
           }}
         />
@@ -203,7 +190,7 @@ export function ToolCardPage() {
   )
 }
 
-function QuantityStock({ tool, canManage, setMoveModal, closeMove, onTransfer, onPlaceUnplaced }) {
+function QuantityStock({ tool, canManage, setMoveModal, closeMove, onTransfer }) {
   const storages = (tool.allocations || []).filter((a) => a.kind === 'storage')
   const openAdd = () =>
     setMoveModal({
@@ -251,16 +238,6 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove, onTransfer, o
               <Icon name="blocks" size={15} strokeWidth={2} style={{ color: 'var(--color-text-muted)' }} />
               <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>Без склада</div>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{tool.free_unplaced} шт.</div>
-              {canManage ? (
-                <button
-                  type="button"
-                  onClick={onPlaceUnplaced}
-                  title="Разместить на склад"
-                  style={{ border: 'none', background: 'var(--color-surface)', borderRadius: 8, padding: '4px 8px', fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', cursor: 'pointer', fontFamily: 'inherit', flex: 'none', boxShadow: 'inset 0 0 0 1px var(--color-border)' }}
-                >
-                  Разместить
-                </button>
-              ) : null}
             </div>
           ) : null}
         </div>
@@ -273,7 +250,7 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove, onTransfer, o
           <Button variant="secondary" fullWidth onClick={openWriteOff} disabled={tool.free <= 0} title="Списать" aria-label="Списать">
             <Icon name="minus" size={18} strokeWidth={2.2} />
           </Button>
-          <Button variant="secondary" fullWidth onClick={onTransfer} disabled={storages.length === 0} title="Переместить между складами" aria-label="Переместить между складами">
+          <Button variant="secondary" fullWidth onClick={onTransfer} disabled={storages.length === 0 && tool.free_unplaced <= 0} title="Переместить на склад" aria-label="Переместить на склад">
             <Icon name="arrow-left-right" size={18} strokeWidth={2} />
           </Button>
         </div>
