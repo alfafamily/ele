@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { apiGet } from '../../shared/api/client'
+import { useState } from 'react'
+import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { Banner, Button, Checkbox, Input, Modal, Select } from '../../shared/ui'
 import { createPlace, updatePlace } from './premisesApi.js'
 
@@ -57,7 +57,7 @@ export function PlaceModal({ roomId, place, onClose, onDone }) {
         </Select>
         <Checkbox label="Требуется ключ/пропуск" checked={requiresPass} onChange={setRequiresPass} />
         {placeType === 'workplace' ? (
-          <EmployeePicker selected={selected} onChange={setSelected} error={fieldErrors.employees} />
+          <WorkplaceEmployees selected={selected} onChange={setSelected} />
         ) : null}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -72,34 +72,12 @@ export function PlaceModal({ roomId, place, onClose, onDone }) {
   )
 }
 
-// Поиск и множественный выбор сотрудников за рабочим местом.
-function EmployeePicker({ selected, onChange, error }) {
-  const [search, setSearch] = useState('')
-  const [candidates, setCandidates] = useState([])
-
-  useEffect(() => {
-    const term = search.trim()
-    if (!term) {
-      setCandidates([])
-      return
-    }
-    let alive = true
-    const t = setTimeout(() => {
-      apiGet(`/api/employees/?employment=working&search=${encodeURIComponent(term)}`)
-        .then((data) => alive && setCandidates(data.results || []))
-        .catch(() => alive && setCandidates([]))
-    }, 250)
-    return () => {
-      alive = false
-      clearTimeout(t)
-    }
-  }, [search])
-
+// Множественный выбор сотрудников за рабочим местом — общий подбор (как при
+// закреплении оборудования: список сразу + поиск), плюс чипы уже выбранных.
+function WorkplaceEmployees({ selected, onChange }) {
   const selectedIds = new Set(selected.map((e) => e.id))
   const add = (emp) => {
     if (!selectedIds.has(emp.id)) onChange([...selected, { id: emp.id, name: emp.full_name }])
-    setSearch('')
-    setCandidates([])
   }
   const remove = (id) => onChange(selected.filter((e) => e.id !== id))
 
@@ -136,33 +114,7 @@ function EmployeePicker({ selected, onChange, error }) {
           ))}
         </div>
       ) : null}
-      <Input placeholder="Поиск сотрудника по ФИО" value={search} onChange={(e) => setSearch(e.target.value)} error={error} />
-      {candidates.length ? (
-        <div style={{ border: '1px solid var(--color-border)', borderRadius: 8, maxHeight: 160, overflowY: 'auto' }}>
-          {candidates.map((emp) => (
-            <button
-              key={emp.id}
-              type="button"
-              onClick={() => add(emp)}
-              disabled={selectedIds.has(emp.id)}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                padding: '8px 12px',
-                background: 'none',
-                border: 'none',
-                cursor: selectedIds.has(emp.id) ? 'default' : 'pointer',
-                color: selectedIds.has(emp.id) ? 'var(--color-text-placeholder)' : 'var(--color-text)',
-                fontSize: 13.5,
-              }}
-            >
-              {emp.full_name}
-              {emp.position ? ` · ${emp.position}` : ''}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <EmployeePicker onSelect={add} />
     </div>
   )
 }
