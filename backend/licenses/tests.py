@@ -202,6 +202,31 @@ class LicenseTypeKindTests(APITestCase):
         lic.refresh_from_db()
         self.assertEqual(lic.license_type_id, soft_b.id)
 
+    def test_soft_type_change_removes_stale_field_values(self):
+        # При смене типа значения реквизитов прежнего типа не должны оставаться
+        # (иначе на карточке два «Номер/ключ»).
+        soft_a = LicenseType.objects.create(name="Антивирус", kind="software")
+        soft_b = LicenseType.objects.create(name="Офис", kind="software")
+        key_a = soft_a.fields.get(is_locked=True)
+        key_b = soft_b.fields.get(is_locked=True)
+        created = self.client.post(
+            "/api/licenses/",
+            {"license_type": soft_a.id, "field_values_input": [{"field": key_a.id, "value": "AAA"}]},
+            format="json",
+        )
+        self.assertEqual(created.status_code, 201, created.data)
+        lic_id = created.data["id"]
+        resp = self.client.patch(
+            f"/api/licenses/{lic_id}/",
+            {"license_type": soft_b.id, "field_values_input": [{"field": key_b.id, "value": "BBB"}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        # Осталось ровно одно значение — от нового типа.
+        card = self.client.get(f"/api/licenses/{lic_id}/")
+        field_ids = {fv["field"] for fv in card.data["field_values"]}
+        self.assertEqual(field_ids, {key_b.id})
+
     def test_soft_type_change_cross_kind_rejected(self):
         soft = LicenseType.objects.create(name="Антивирус", kind="software")
         hard = LicenseType.objects.create(name="Токен", kind="hardware")
