@@ -322,32 +322,38 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         related_rows += cf_rows
         created_extra += cf_created
 
-        # Движения по количеству
+        # Движения по количеству. Место показываем как «Название (Здание — Помещение)».
+        def place_label(p):
+            return f"«{p.name}» ({p.room.building.name} — {p.room.name})"
+
         def target(m):
             # Контрагент движения: сотрудник (мобильно) или рабочее место (стац.).
             if m.employee_id:
                 return f"«{m.employee}»"
             if m.place_id:
-                return f"рабочее место «{m.place.name}»"
+                return f"рабочее место {place_label(m.place)}"
             return "—"
 
         def mv_label(m):
             if m.kind == ToolMovement.Kind.ADD:
-                where = f" на «{m.place.name}»" if m.place_id else ""
+                where = f" на {place_label(m.place)}" if m.place_id else ""
                 return f"Приход: +{m.quantity} шт.{where}"
             if m.kind == ToolMovement.Kind.WRITE_OFF:
-                where = f" со склада «{m.place.name}»" if m.place_id else ""
+                where = f" со склада {place_label(m.place)}" if m.place_id else ""
                 return f"Списание: −{m.quantity} шт.{where}"
             if m.kind == ToolMovement.Kind.TRANSFER:
-                src = f"«{m.storage_place.name}»" if m.storage_place_id else "—"
-                dst = f"«{m.place.name}»" if m.place_id else "—"
+                src = place_label(m.storage_place) if m.storage_place_id else "—"
+                dst = place_label(m.place) if m.place_id else "—"
                 return f"Перемещено: {m.quantity} шт. со склада {src} на склад {dst}"
-            store = f" (склад «{m.storage_place.name}»)" if m.storage_place_id else ""
+            store = f" (склад {place_label(m.storage_place)})" if m.storage_place_id else ""
             if m.kind == ToolMovement.Kind.ASSIGN:
                 return f"Закреплено: {m.quantity} шт. за {target(m)}{store}"
             return f"Откреплено: {m.quantity} шт. от {target(m)}{store}"
 
-        for m in tool.movements.select_related("created_by", "employee", "place", "storage_place"):
+        for m in tool.movements.select_related(
+            "created_by", "employee",
+            "place__room__building", "storage_place__room__building",
+        ):
             related_rows.append({
                 "date": m.created_at,
                 "author": m.created_by.email if m.created_by_id else None,
