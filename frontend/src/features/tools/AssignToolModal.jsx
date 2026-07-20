@@ -31,8 +31,7 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
       ),
     [selected]
   )
-  const storageRequired = Boolean(selected) && selected.free_unplaced <= 0
-  const sourceMax = fromPlace ? freeMap[String(fromPlace)] || 0 : selected?.free_unplaced ?? 0
+  const sourceMax = fromPlace ? freeMap[String(fromPlace)] || 0 : 0
 
   const submit = async () => {
     const qty = Number(quantity)
@@ -44,12 +43,11 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
       setError('Количество должно быть больше нуля.')
       return
     }
-    // Склад-источник обязателен, если у инструмента нет свободного остатка без склада.
-    if (storageRequired && !fromPlace) {
+    if (!fromPlace) {
       setError('Выберите склад, с которого выдаётся инструмент.')
       return
     }
-    if (selected && qty > sourceMax) {
+    if (qty > sourceMax) {
       setError(`Доступно не больше ${sourceMax}.`)
       return
     }
@@ -92,14 +90,12 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
           </Select>
           <StoragePicker
             label="Склад (откуда выдать)"
-            required={storageRequired}
+            required
             value={fromPlace}
             onChange={setFromPlace}
             freeMap={freeMap}
             restrictToStock
             showQuantity
-            allowNone={!storageRequired}
-            noneQty={selected?.free_unplaced}
           />
           <Input
             label="Количество"
@@ -110,9 +106,9 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
           />
-          {selected ? (
+          {selected && fromPlace ? (
             <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: -8 }}>
-              Доступно{fromPlace ? ' на складе' : ' без склада'}: {sourceMax}
+              Доступно на складе: {sourceMax}
             </div>
           ) : null}
           <Input

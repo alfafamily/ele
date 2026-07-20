@@ -212,3 +212,18 @@ class ToolTests(APITestCase):
         tid = self._make(quantity=5)["id"]
         r = self._post(tid, "transfer-units", from_place=self.store1.id, to_place=self.store1.id, quantity=1)
         self.assertEqual(r.status_code, 400, r.data)
+
+    def test_place_unplaced_to_warehouse(self):
+        # Размещение легаси-остатка «без склада» на реальный склад (transfer без from_place).
+        tid = self._make(quantity=10, place=None)["id"]
+        self.assertEqual(Tool.objects.get(pk=tid).quantity, 10)
+        r = self._post(tid, "transfer-units", to_place=self.store1.id, quantity=4)
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["free_unplaced"], 6)
+        storages = {a["place"]: a["quantity"] for a in r.data["allocations"] if a["kind"] == "storage"}
+        self.assertEqual(storages[self.store1.id], 4)
+
+    def test_place_unplaced_more_than_rejected(self):
+        tid = self._make(quantity=3, place=None)["id"]
+        r = self._post(tid, "transfer-units", to_place=self.store1.id, quantity=4)
+        self.assertEqual(r.status_code, 409, r.data)
