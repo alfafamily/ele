@@ -46,13 +46,41 @@ class ToolTests(APITestCase):
         self.assertEqual(len(storage), 1)
         self.assertEqual(storage[0]["quantity"], 10)
 
-    def test_create_requires_storage_for_stock(self):
+    def test_create_without_storage_ok(self):
+        # Склад необязателен — остаток становится свободным без склада.
         resp = self.client.post("/api/tools/", {"name": "X", "quantity": 5}, format="json")
-        self.assertEqual(resp.status_code, 400, resp.data)
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(resp.data["free"], 5)
+        self.assertEqual(resp.data["free_unplaced"], 5)
 
     def test_create_zero_stock_no_storage_ok(self):
         resp = self.client.post("/api/tools/", {"name": "X", "quantity": 0}, format="json")
         self.assertEqual(resp.status_code, 201, resp.data)
+
+    def test_operations_on_unplaced_free(self):
+        # Кейс обновлённого инстанса: остаток без склада можно списывать, выдавать
+        # сотруднику и на рабочее место без указания склада.
+        tid = self.client.post("/api/tools/", {"name": "Y", "quantity": 10}, format="json").data["id"]
+        r = self._post(tid, "write-off-units", quantity=2)  # без склада
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["quantity"], 8)
+        r = self._post(tid, "assign-units", employee=self.emp_a.id, quantity=3)  # без склада
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["allocated"], 3)
+        r = self._post(tid, "assign-units", mode="stationary", place=self.wp.id, quantity=1)
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["allocated"], 4)
+        self.assertEqual(r.data["free"], 4)
+        self.assertEqual(r.data["free_unplaced"], 4)
+        # Возврат без склада — снова в свободный без склада.
+        r = self._post(tid, "unassign-units", employee=self.emp_a.id, quantity=3)
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["free_unplaced"], 7)
+
+    def test_write_off_more_than_unplaced_rejected(self):
+        tid = self.client.post("/api/tools/", {"name": "Z", "quantity": 3}, format="json").data["id"]
+        r = self._post(tid, "write-off-units", quantity=4)
+        self.assertEqual(r.status_code, 409, r.data)
 
     def test_name_required(self):
         resp = self.client.post("/api/tools/", {"name": "", "quantity": 1}, format="json")

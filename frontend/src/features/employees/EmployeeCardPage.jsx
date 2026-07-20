@@ -491,10 +491,11 @@ export function EmployeeCardPage() {
 
       {detach ? (
         <DetachToStorageModal
-          title={detach.kind === 'tool' ? 'Открепить инструмент на склад' : 'Открепить оборудование на склад'}
+          title={detach.kind === 'tool' ? 'Открепить инструмент' : 'Открепить оборудование на склад'}
+          optional={detach.kind === 'tool'}
           description={
             detach.kind === 'tool'
-              ? `Все ${detach.obj.quantity} шт. «${detach.obj.name}» вернутся на выбранный склад.`
+              ? `Все ${detach.obj.quantity} шт. «${detach.obj.name}» вернутся в свободный остаток (по желанию — на конкретный склад).`
               : `«${detach.obj.type_and_model}» будет снято с сотрудника и положено на склад.`
           }
           onConfirm={async (storagePlaceId) => {

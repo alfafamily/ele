@@ -45,14 +45,8 @@ export function ToolFormPage() {
     }
     if (!isEdit) {
       payload.quantity = Math.max(0, Number(initialQuantity) || 0)
-      if (payload.quantity > 0) {
-        if (!initialPlace) {
-          setError('Укажите место хранения для начального остатка.')
-          setSubmitting(false)
-          return
-        }
-        payload.place = Number(initialPlace)
-      }
+      // Склад необязателен: без него начальный остаток свободный без склада.
+      if (payload.quantity > 0 && initialPlace) payload.place = Number(initialPlace)
       if (comment.trim()) payload.comment = comment.trim()
     }
     try {
@@ -109,7 +103,7 @@ export function ToolFormPage() {
                     onChange={(e) => setInitialQuantity(e.target.value)}
                   />
                   {Number(initialQuantity) > 0 ? (
-                    <PlaceSelect placeType="storage" label="Место хранения (склад)" required value={initialPlace} onChange={setInitialPlace} />
+                    <PlaceSelect placeType="storage" label="Место хранения (склад) — необязательно" value={initialPlace} onChange={setInitialPlace} placeholder="Без склада (общий свободный остаток)" />
                   ) : null}
                 </>
               ) : null}

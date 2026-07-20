@@ -59,6 +59,8 @@ class ToolAllocationSerializer(serializers.ModelSerializer):
 class ToolSerializer(serializers.ModelSerializer):
     allocated = serializers.SerializerMethodField()
     free = serializers.SerializerMethodField()
+    # Свободный остаток без привязки к складу (после обновления/увольнения).
+    free_unplaced = serializers.SerializerMethodField()
     allocations = ToolAllocationSerializer(many=True, read_only=True)
     custom_fields = ToolCustomFieldSerializer(many=True, required=False)
     # Начальный склад: при создании ненулевой остаток кладётся на это место
@@ -74,6 +76,7 @@ class ToolSerializer(serializers.ModelSerializer):
             "place",
             "allocated",
             "free",
+            "free_unplaced",
             "allocations",
             "custom_fields",
             "is_written_off",
@@ -94,6 +97,11 @@ class ToolSerializer(serializers.ModelSerializer):
         # неразмещённый хвост возможен после массовых откреплений (увольнение).
         return obj.quantity - self.get_allocated(obj)
 
+    def get_free_unplaced(self, obj):
+        # Свободный остаток без склада = свободно − сумма складских размещений.
+        placed = sum(a.quantity for a in obj.allocations.all() if a.target_kind == "storage")
+        return self.get_free(obj) - placed
+
     def validate_name(self, value):
         value = (value or "").strip()
         if not value:
@@ -101,11 +109,11 @@ class ToolSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        # На создании ненулевой начальный остаток требует место хранения.
+        # Место хранения при создании необязательно: если не указано, начальный
+        # остаток — свободный без склада (его можно списать/выдать/разложить по
+        # складам позже). Если указано — должно быть складом.
         if self.instance is None:
             place = attrs.get("place")
-            if attrs.get("quantity") and not place:
-                raise serializers.ValidationError({"place": "Укажите место хранения для начального остатка."})
             if place is not None and place.place_type != Place.PlaceType.STORAGE:
                 raise serializers.ValidationError({"place": "Выберите место хранения (склад)."})
         return attrs
@@ -116,7 +124,8 @@ class ToolSerializer(serializers.ModelSerializer):
         place = validated_data.pop("place", None)
         instance = Tool.objects.create(**validated_data)
         upsert_custom_fields(instance, ToolCustomField, "tool", custom_fields_data)
-        # Весь начальный остаток кладём на выбранный склад одним размещением.
+        # Если указан склад — кладём весь начальный остаток на него; иначе остаток
+        # остаётся свободным без склада.
         if instance.quantity and place is not None:
             ToolAllocation.objects.create(tool=instance, place=place, quantity=instance.quantity)
         return instance
