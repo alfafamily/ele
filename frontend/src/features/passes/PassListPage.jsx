@@ -6,7 +6,7 @@ import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
-import { Badge, Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 import { KeyTarget } from '../../shared/keyTarget.jsx'
 
 const CACHE_KEY = 'pass-list'
@@ -36,6 +36,11 @@ const UTILIZED_COLUMNS = [
 function formatDate(iso) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('ru-RU')
+}
+
+// Тип пропуска для подписи «Пропуск (…)»: Авто / Пеший / Авто, Пеший.
+function passTypes(pass) {
+  return [pass.type_vehicle && 'Авто', pass.type_pedestrian && 'Пеший'].filter(Boolean).join(', ')
 }
 
 // Строки «Доступ в» для пропуска: по строке на здание с перечнем помещений (или
@@ -144,17 +149,11 @@ export function PassListPage() {
                     «Доступ в» (здания/помещения или объект ключа). */}
                 <div style={{ minWidth: 0 }}>
                   <div className="ele-clamp-2" style={{ fontWeight: 600 }}>
-                    {isKey ? 'Ключ' : 'Пропуск'}
+                    {isKey ? 'Ключ' : `Пропуск${passTypes(row) ? ` (${passTypes(row)})` : ''}`}
                   </div>
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>
                     № {row.account_number && row.account_number.trim() ? row.account_number : 'б/н'}
                   </div>
-                  {!isKey && (row.type_vehicle || row.type_pedestrian) ? (
-                    <div style={{ display: 'flex', gap: 5, marginTop: 5 }}>
-                      {row.type_vehicle ? <Badge>Авто</Badge> : null}
-                      {row.type_pedestrian ? <Badge>Пеший</Badge> : null}
-                    </div>
-                  ) : null}
                   <div style={{ marginTop: 5, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {isKey ? (
                       <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', fontWeight: 600 }}>
