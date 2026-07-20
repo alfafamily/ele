@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
-import { nameInitials } from '../../shared/employeeName.js'
-import { Banner, Button, Checkbox, Icon, Input, Modal, Select } from '../../shared/ui'
+import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
+import { Banner, Button, Checkbox, Input, Modal, Select } from '../../shared/ui'
 import { createPlace, updatePlace } from './premisesApi.js'
 
 // Создание/редактирование Места внутри помещения. Тип места (B8): Рабочее
@@ -88,25 +88,7 @@ function WorkplaceEmployees({ selected, onChange }) {
       {selected.length ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {selected.map((e) => (
-            <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-              <span style={{ width: 30, height: 30, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, overflow: 'hidden' }}>
-                {e.avatar ? (
-                  <img src={e.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  nameInitials(e.name)
-                )}
-              </span>
-              <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.name}</span>
-              <button
-                type="button"
-                onClick={() => remove(e.id)}
-                title="Убрать"
-                aria-label="Убрать"
-                style={{ width: 28, height: 28, flex: 'none', borderRadius: 8, background: 'var(--color-fill-input)', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Icon name="x" size={15} strokeWidth={2} />
-              </button>
-            </div>
+            <SelectedEmployee key={e.id} employee={e} onClear={() => remove(e.id)} />
           ))}
         </div>
       ) : null}
