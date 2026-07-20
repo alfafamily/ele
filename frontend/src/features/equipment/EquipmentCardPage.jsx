@@ -7,6 +7,7 @@ import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { AttachLicenseModal } from './AttachLicenseModal.jsx'
+import { AttachSimModal } from './AttachSimModal.jsx'
 import { DetachToStorageModal } from '../employees/DetachToStorageModal.jsx'
 import { detachSimCard } from '../employees/employeesApi.js'
 import { EquipmentPlacementModal } from './EquipmentPlacementModal.jsx'
@@ -24,6 +25,7 @@ export function EquipmentCardPage() {
   const [showWriteOff, setShowWriteOff] = useState(false)
   const [showPlacement, setShowPlacement] = useState(false)
   const [showAttachLicense, setShowAttachLicense] = useState(false)
+  const [showAttachSim, setShowAttachSim] = useState(false)
   const [detachSim, setDetachSim] = useState(null)
   // Счётчик перезагрузок — растёт при каждом load(), сигналит истории обновиться.
   const [historyKey, setHistoryKey] = useState(0)
@@ -296,37 +298,41 @@ export function EquipmentCardPage() {
             </Can>
           ) : null}
 
-          {equipment.sim_cards?.length ? (
-            <>
-              <div style={{ borderTop: '1px solid var(--color-border-hairline)', margin: '20px 0 16px' }} />
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <div style={{ fontSize: 16, fontWeight: 600 }}>SIM-карты</div>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
-                  {equipment.sim_cards.length}
-                </span>
-              </div>
-              {equipment.sim_cards.map((sim) => (
-                <div key={sim.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
-                  <Icon name="radio-tower" size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
-                  <Link to={`/sim-cards/${sim.id}`} style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ font: '600 13.5px var(--font-mono)', color: 'var(--color-text-primary)' }}>{sim.phone_number}</div>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{sim.sim_type_display}</div>
-                  </Link>
-                  {!equipment.is_written_off ? (
-                    <Can perm="canManageEmployees">
-                      <button
-                        type="button"
-                        title="Открепить"
-                        onClick={() => setDetachSim(sim)}
-                        style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        <Icon name="x" size={16} strokeWidth={2} />
-                      </button>
-                    </Can>
-                  ) : null}
-                </div>
-              ))}
-            </>
+          <div style={{ borderTop: '1px solid var(--color-border-hairline)', margin: '20px 0 16px' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>SIM-карты</div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
+              {equipment.sim_cards?.length ?? 0}
+            </span>
+          </div>
+          {(equipment.sim_cards || []).map((sim) => (
+            <div key={sim.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+              <Icon name="radio-tower" size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+              <Link to={`/sim-cards/${sim.id}`} style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ font: '600 13.5px var(--font-mono)', color: 'var(--color-text-primary)' }}>{sim.phone_number}</div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{sim.sim_type_display}</div>
+              </Link>
+              {!equipment.is_written_off ? (
+                <Can perm="canManageEmployees">
+                  <button
+                    type="button"
+                    title="Открепить"
+                    onClick={() => setDetachSim(sim)}
+                    style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Icon name="x" size={16} strokeWidth={2} />
+                  </button>
+                </Can>
+              ) : null}
+            </div>
+          ))}
+          {!equipment.is_written_off ? (
+            <Can perm="canManageEmployees">
+              <Button variant="secondary" fullWidth onClick={() => setShowAttachSim(true)}>
+                <Icon name="plus" size={18} strokeWidth={2.2} />
+                Установить SIM
+              </Button>
+            </Can>
           ) : null}
         </Card>
         ) : null}
@@ -372,6 +378,16 @@ export function EquipmentCardPage() {
           onClose={() => setShowPlacement(false)}
           onDone={() => {
             setShowPlacement(false)
+            load()
+          }}
+        />
+      ) : null}
+      {showAttachSim ? (
+        <AttachSimModal
+          equipment={equipment}
+          onClose={() => setShowAttachSim(false)}
+          onAttached={() => {
+            setShowAttachSim(false)
             load()
           }}
         />
