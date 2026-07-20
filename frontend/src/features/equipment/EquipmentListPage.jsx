@@ -23,7 +23,7 @@ const FILTERS = [
 
 const ACTIVE_COLUMNS = [
   { key: 'equipment_type__name', label: 'Наименование', sortable: true, width: 'minmax(0, 1.3fr)' },
-  { key: 'employee__last_name', label: 'Сотрудник', sortable: true, width: 'minmax(0, 1fr)' },
+  { key: 'employee__last_name', label: 'Сотрудник/Место', sortable: true, width: 'minmax(0, 1fr)' },
   { key: 'chevron', label: '', width: '30px' },
 ]
 const ARCHIVE_COLUMNS = [
@@ -148,15 +148,24 @@ export function EquipmentListPage() {
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{row.inventory_number}</div>
                 </div>
                 {tab === 'active' ? (
-                  // Сотрудник: ФИО в 2 строки + отдел ниже
+                  // Размещение: сотрудник (ФИО + отдел) / рабочее место / склад
                   <div style={{ minWidth: 0 }}>
                     {row.employee_name ? (
                       <>
                         <div className="ele-clamp-2">{row.employee_name}</div>
                         <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>{row.department || '—'}</div>
                       </>
+                    ) : row.place_detail ? (
+                      <>
+                        <div className="ele-clamp-2">
+                          {row.place_detail.place_type === 'workplace' ? 'Рабочее место' : 'Склад'}: {row.place_detail.name}
+                        </div>
+                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>
+                          {row.place_detail.building_name} — {row.place_detail.room_name}
+                        </div>
+                      </>
                     ) : (
-                      <span style={{ color: 'var(--color-text-placeholder)' }}>Не закреплено</span>
+                      <span style={{ color: 'var(--color-text-placeholder)' }}>Не размещено</span>
                     )}
                   </div>
                 ) : (
