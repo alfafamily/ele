@@ -99,7 +99,7 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
           title="Нет инструментов со свободным остатком"
           description="Создайте инструмент в разделе «Инструменты» и оприходуйте остаток."
           action={
-            <Button onClick={() => navigate('/tools/new')}>
+            <Button variant="secondary" onClick={() => navigate('/tools/new')}>
               <Icon name="plus" size={18} strokeWidth={2.2} />Создать инструмент
             </Button>
           }
@@ -141,9 +141,6 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
                     ))
                   )}
                 </div>
-                <Button variant="secondary" fullWidth style={{ marginTop: 10 }} onClick={() => navigate('/tools/new')}>
-                  <Icon name="plus" size={18} strokeWidth={2.2} />Создать инструмент
-                </Button>
               </>
             )}
           </div>
@@ -183,14 +180,21 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
           ) : null}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          Отмена
-        </Button>
-        <Button fullWidth loading={submitting} disabled={!tools || tools.length === 0} onClick={submit}>
-          Закрепить
-        </Button>
-      </div>
+      {tools && tools.length > 0 ? (
+        <>
+          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+            <Button variant="secondary" fullWidth onClick={onClose}>
+              Отмена
+            </Button>
+            <Button fullWidth loading={submitting} onClick={submit}>
+              Закрепить
+            </Button>
+          </div>
+          <Button variant="secondary" fullWidth style={{ marginTop: 10 }} onClick={() => navigate('/tools/new')}>
+            <Icon name="plus" size={18} strokeWidth={2.2} />Создать инструмент
+          </Button>
+        </>
+      ) : null}
     </Modal>
   )
 }

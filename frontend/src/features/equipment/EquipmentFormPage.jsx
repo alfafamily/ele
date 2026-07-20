@@ -296,41 +296,46 @@ export function EquipmentFormPage() {
             <Card>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Размещение</div>
               <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
-                Где находится оборудование: за сотрудником, на рабочем месте или на складе.
+                {employeeId
+                  ? 'Оборудование будет закреплено за сотрудником.'
+                  : 'Где находится оборудование: за сотрудником, на рабочем месте или на складе.'}
               </div>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-                {[
-                  { value: 'mobile', label: 'За сотрудником' },
-                  { value: 'stationary', label: 'На рабочем месте' },
-                  { value: 'storage', label: 'На складе' },
-                ].map((m) => (
-                  <button
-                    key={m.value}
-                    type="button"
-                    onClick={() => {
-                      setPlacementMode(m.value)
-                      setPlacementPlaceId('')
-                    }}
-                    style={{
-                      flex: 1,
-                      padding: '8px 6px',
-                      fontSize: 12.5,
-                      fontWeight: 600,
-                      fontFamily: 'inherit',
-                      cursor: 'pointer',
-                      borderRadius: 8,
-                      border: 'none',
-                      color: placementMode === m.value ? 'var(--color-primary-text)' : 'var(--color-text-secondary)',
-                      background: placementMode === m.value ? 'var(--color-primary)' : 'var(--color-fill-input)',
-                    }}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
+              {/* Из карточки сотрудника — только «За сотрудником», сотрудник фиксирован. */}
+              {!employeeId ? (
+                <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+                  {[
+                    { value: 'mobile', label: 'За сотрудником' },
+                    { value: 'stationary', label: 'На рабочем месте' },
+                    { value: 'storage', label: 'На складе' },
+                  ].map((m) => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => {
+                        setPlacementMode(m.value)
+                        setPlacementPlaceId('')
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '8px 6px',
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        fontFamily: 'inherit',
+                        cursor: 'pointer',
+                        borderRadius: 8,
+                        border: 'none',
+                        color: placementMode === m.value ? 'var(--color-primary-text)' : 'var(--color-text-secondary)',
+                        background: placementMode === m.value ? 'var(--color-primary)' : 'var(--color-fill-input)',
+                      }}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               {placementMode === 'mobile' ? (
                 placementEmployee ? (
-                  <SelectedEmployee employee={placementEmployee} onClear={() => setPlacementEmployee(null)} />
+                  <SelectedEmployee employee={placementEmployee} onClear={employeeId ? undefined : () => setPlacementEmployee(null)} />
                 ) : (
                   <EmployeePicker onSelect={setPlacementEmployee} />
                 )

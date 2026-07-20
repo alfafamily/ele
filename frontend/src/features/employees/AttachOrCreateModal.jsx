@@ -130,7 +130,7 @@ export function AttachOrCreateModal({ kind, employeeId, onClose, onAttached, onC
         <EmptyState
           title={cfg.empty}
           description={cfg.emptyHint}
-          action={<Button onClick={onCreateNew}><Icon name="plus" size={18} strokeWidth={2.2} />{cfg.createLabel}</Button>}
+          action={<Button variant="secondary" onClick={onCreateNew}><Icon name="plus" size={18} strokeWidth={2.2} />{cfg.createLabel}</Button>}
         />
       ) : (
         <>
@@ -196,10 +196,10 @@ export function AttachOrCreateModal({ kind, employeeId, onClose, onAttached, onC
           <div style={{ display: 'flex', gap: 10 }}>
             <Button variant="secondary" fullWidth onClick={onClose}>Отмена</Button>
             <Button fullWidth disabled={selectedIds.length === 0} loading={submitting} onClick={attach}>
-              Привязать{selectedIds.length > 1 ? ` (${selectedIds.length})` : ''}
+              Закрепить{selectedIds.length > 1 ? ` (${selectedIds.length})` : ''}
             </Button>
           </div>
-          <Button fullWidth style={{ marginTop: 10 }} onClick={onCreateNew}><Icon name="plus" size={18} strokeWidth={2.2} />{cfg.createLabel}</Button>
+          <Button variant="secondary" fullWidth style={{ marginTop: 10 }} onClick={onCreateNew}><Icon name="plus" size={18} strokeWidth={2.2} />{cfg.createLabel}</Button>
         </>
       )}
     </Modal>
