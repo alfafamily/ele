@@ -158,7 +158,7 @@ export function PassCardPage() {
                 <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не закреплён</div>
               )}
               <Can perm="canManageEmployees">
-                <Button fullWidth style={{ marginTop: 14 }} onClick={() => setShowAttach(true)}><Icon name="plus" size={18} strokeWidth={2.2} />Привязать сотрудника</Button>
+                <Button fullWidth style={{ marginTop: 14 }} onClick={() => setShowAttach(true)}><Icon name="plus" size={18} strokeWidth={2.2} />Закрепить</Button>
               </Can>
             </>
           )}

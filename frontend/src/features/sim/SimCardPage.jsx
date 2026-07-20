@@ -145,10 +145,10 @@ export function SimCardPage() {
                 <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не закреплена</div>
               )}
               <Can perm="canManageEmployees">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
-                  <Button fullWidth onClick={() => setAttachMode('employee')}><Icon name="plus" size={18} strokeWidth={2.2} />Привязать сотрудника</Button>
-                  <Button variant="secondary" fullWidth onClick={() => setAttachMode('equipment')}><Icon name="wrench" size={17} strokeWidth={2} />Установить в оборудование</Button>
-                </div>
+                <Button fullWidth style={{ marginTop: 14 }} onClick={() => setAttachMode('employee')}>
+                  <Icon name="plus" size={18} strokeWidth={2.2} />
+                  Закрепить
+                </Button>
               </Can>
             </>
           )}
