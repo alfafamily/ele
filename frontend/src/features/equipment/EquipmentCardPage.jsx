@@ -292,6 +292,28 @@ export function EquipmentCardPage() {
               </Button>
             </Can>
           ) : null}
+
+          {equipment.sim_cards?.length ? (
+            <>
+              <div style={{ borderTop: '1px solid var(--color-border-hairline)', margin: '20px 0 16px' }} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ fontSize: 16, fontWeight: 600 }}>SIM-карты</div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
+                  {equipment.sim_cards.length}
+                </span>
+              </div>
+              {equipment.sim_cards.map((sim) => (
+                <Link key={sim.id} to={`/sim-cards/${sim.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+                  <Icon name="radio-tower" size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ font: '600 13.5px var(--font-mono)', color: 'var(--color-text-primary)' }}>{sim.phone_number}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{sim.sim_type_display}</div>
+                  </div>
+                  <Icon name="chevron-right" size={16} strokeWidth={2} style={{ flex: 'none', color: '#C7C9D4' }} />
+                </Link>
+              ))}
+            </>
+          ) : null}
         </Card>
         ) : null}
 

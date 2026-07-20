@@ -116,7 +116,7 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if self.action != "list":
             # На карточке (retrieve) отдаём «Номер/ключ» привязанных лицензий —
             # прогреваем field_values, чтобы не ловить N+1 при сериализации.
-            return qs.prefetch_related("licenses__field_values__field")
+            return qs.prefetch_related("licenses__field_values__field", "sim_cards")
 
         tab = self.request.query_params.get("tab", "active")
         qs = qs.filter(is_written_off=(tab == "archive"))
