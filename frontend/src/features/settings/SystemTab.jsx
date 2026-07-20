@@ -53,6 +53,9 @@ export function SystemTab() {
   // Домен и IP — inline-редактирование каждого поля отдельно, без общей кнопки
   // «Сохранить»: каждое действие сразу пишется в company/settings.
   const [domain, setDomain] = useState('')
+  // B14: открытая регистрация
+  const [openRegistration, setOpenRegistration] = useState(true)
+  const [openRegSaving, setOpenRegSaving] = useState(false)
   const [ipList, setIpList] = useState([]) // сохранённые [{ ip, note }]
   const [addingIp, setAddingIp] = useState(false)
   const [ipDraft, setIpDraft] = useState({ ip: '', note: '' })
@@ -88,6 +91,7 @@ export function SystemTab() {
         setStatus(st)
         setStorageMode(st.storage_mode)
         setDomain(company.domain || '')
+        setOpenRegistration(company.open_registration !== false)
         setIpList(normalizeIps(company.ip_allowlist))
         setMigration(mig)
       })
@@ -166,6 +170,20 @@ export function SystemTab() {
       setDomain(u.domain || '')
     } catch (err) {
       return fieldError(err)
+    }
+  }
+
+  const toggleOpenRegistration = async (val) => {
+    setOpenRegSaving(true)
+    // Оптимистично — checkbox сразу отражает выбор, при ошибке откатываем.
+    setOpenRegistration(val)
+    try {
+      const u = await updateCompanySettings({ open_registration: val })
+      setOpenRegistration(u.open_registration !== false)
+    } catch {
+      setOpenRegistration(!val)
+    } finally {
+      setOpenRegSaving(false)
     }
   }
 
@@ -305,6 +323,23 @@ export function SystemTab() {
           <div style={{ ...sectionTitle, marginBottom: 14 }}>Домен и ограничения входа</div>
 
           <InlineField label="Домен аккаунтов в системе" value={domain} onSave={saveDomain} onClear={() => saveDomain('')} />
+
+          {/* B14: открытая регистрация */}
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 20, cursor: openRegSaving ? 'default' : 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={openRegistration}
+              disabled={openRegSaving}
+              onChange={(e) => toggleOpenRegistration(e.target.checked)}
+              style={{ marginTop: 2, flex: 'none' }}
+            />
+            <span style={{ minWidth: 0 }}>
+              <span style={{ fontSize: 14, fontWeight: 500 }}>Открытая регистрация</span>
+              <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
+                Если функция включена — пользователи могут регистрироваться в системе самостоятельно, с учётом настройки по домену аккаунтов.
+              </span>
+            </span>
+          </label>
 
           <div style={{ ...sectionTitle, marginTop: 20, marginBottom: 6, fontSize: 13 }}>Разрешённые IP-адреса</div>
           <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 12 }}>

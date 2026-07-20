@@ -39,9 +39,8 @@ export function WriteOffModal({ equipment, onClose, onDone }) {
           </p>
           <div style={{ background: 'var(--color-fill-input)', borderRadius: 10, padding: '10px 14px', margin: '14px 0', fontSize: 13.5 }}>
             {conflictLicenses.map((lic) => (
-              <div key={lic.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                <span>{lic.name}</span>
-                <span style={{ color: 'var(--color-text-placeholder)' }}>{lic.license_type_name}</span>
+              <div key={lic.id} style={{ padding: '4px 0' }}>
+                <span>{lic.license_type_name}</span>
               </div>
             ))}
           </div>

@@ -95,6 +95,12 @@ class SimCardSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"equipment": "SIM нельзя одновременно закрепить за сотрудником и за оборудованием."}
             )
+        # B17: установить SIM можно только в оборудование, у типа которого
+        # включён флаг «Установка SIM/E-SIM».
+        if equipment and not equipment.equipment_type.allows_sim:
+            raise serializers.ValidationError(
+                {"equipment": "В этот тип оборудования нельзя устанавливать SIM/E-SIM."}
+            )
         # Обязательность склада при создании свободной SIM — на стороне формы.
         storage = attrs.get("storage_place")
         if storage is not None and storage.place_type != Place.PlaceType.STORAGE:

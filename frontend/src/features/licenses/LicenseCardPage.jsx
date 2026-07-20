@@ -68,13 +68,13 @@ export function LicenseCardPage() {
         <Link to="/licenses" style={{ color: 'var(--color-text-muted)' }}>
           Лицензии
         </Link>{' '}
-        / {license.name}
+        / {license.license_type_name}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
           <BackButton />
-          <h1 className="ele-card-title">{license.name}</h1>
+          <h1 className="ele-card-title">{license.license_type_name}</h1>
         </div>
         {!license.is_retired && perms.canManageLicenses ? (
           <>
@@ -238,7 +238,7 @@ export function LicenseCardPage() {
       {confirmDetach && license.equipment_detail ? (
         <ConfirmModal
           title="Отвязать от оборудования?"
-          message={`Лицензия «${license.name}» будет отвязана от «${license.equipment_detail.type_and_model}».`}
+          message={`Лицензия «${license.license_type_name}» будет отвязана от «${license.equipment_detail.type_and_model}».`}
           confirmLabel="Отвязать"
           onConfirm={() => onDetach()}
           onClose={() => setConfirmDetach(false)}
@@ -248,7 +248,7 @@ export function LicenseCardPage() {
       {detachToStorage && license.equipment_detail ? (
         <DetachToStorageModal
           title="Отвязать и убрать на склад"
-          description={`Аппаратная лицензия «${license.name}» будет отвязана от оборудования и положена на склад.`}
+          description={`Аппаратная лицензия «${license.license_type_name}» будет отвязана от оборудования и положена на склад.`}
           onConfirm={async (storagePlaceId) => {
             await onDetach(storagePlaceId)
             setDetachToStorage(false)

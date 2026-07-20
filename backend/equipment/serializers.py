@@ -74,7 +74,7 @@ class EquipmentTypeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EquipmentType
-        fields = ["id", "name", "is_archived", "fields", "objects_count"]
+        fields = ["id", "name", "is_archived", "allows_sim", "fields", "objects_count"]
 
 
 class EquipmentFieldValueInputSerializer(serializers.Serializer):
@@ -131,6 +131,8 @@ class EquipmentSerializer(serializers.ModelSerializer):
     # (validate_inventory_number), а не авто-валидатором DRF по UniqueConstraint.
     inventory_number = serializers.CharField(max_length=255)
     equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True)
+    # B17: можно ли устанавливать SIM в это оборудование (флаг его Типа).
+    type_allows_sim = serializers.BooleanField(source="equipment_type.allows_sim", read_only=True)
     type_and_model = serializers.SerializerMethodField()
     employee_name = serializers.SerializerMethodField()
     employee_avatar = serializers.SerializerMethodField()
@@ -158,6 +160,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
             "written_off_at",
             "equipment_type",
             "equipment_type_name",
+            "type_allows_sim",
             "type_and_model",
             "status",
             "field_values",

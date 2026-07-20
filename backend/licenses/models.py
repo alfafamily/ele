@@ -6,12 +6,22 @@ from simple_history.models import HistoricalRecords
 class LicenseType(models.Model):
     """Тип лицензии — классификатор реквизитов, не используется как имя объекта.
 
-    Два базовых типа («Программная», «Аппаратная») сеются data-миграцией с
-    is_locked=True — физически не удаляются/не архивируются, имя не редактируется.
+    B18: у каждого Типа есть «вид» — программный или аппаратный (kind). Прежние
+    базовые типы «Программная»/«Аппаратная» упразднены как захардкоженные: теперь
+    вид — свойство любого пользовательского Типа. При создании Типа автоматически
+    сеется зафиксированный (is_locked) обязательный ключевой реквизит: «Номер/ключ»
+    для программного, «Номер/ID/Serial токена» — для аппаратного.
     """
 
+    class Kind(models.TextChoices):
+        SOFTWARE = "software", "Программная"
+        HARDWARE = "hardware", "Аппаратная"
+
     name = models.CharField("Наименование", max_length=255)
+    kind = models.CharField("Вид", max_length=10, choices=Kind.choices, default=Kind.SOFTWARE)
     is_archived = models.BooleanField("Архивный", default=False)
+    # Legacy-флаг прежних базовых типов. Новые типы всегда is_locked=False;
+    # оставлен ради обратной совместимости истории миграций.
     is_locked = models.BooleanField(default=False)
 
     class Meta:
@@ -21,6 +31,19 @@ class LicenseType(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+        if is_new:
+            # Ключевой реквизит зависит от вида; зафиксирован (нельзя удалить/
+            # переименовать/сделать необязательным), секретный и уникальный.
+            key_name = "Номер/ID/Serial токена" if self.kind == self.Kind.HARDWARE else "Номер/ключ"
+            LicenseTypeField.objects.get_or_create(
+                license_type=self,
+                is_locked=True,
+                defaults={"name": key_name, "value_type": "text", "is_required": True},
+            )
 
     def delete(self, *args, **kwargs):
         if self.is_locked:
@@ -81,9 +104,13 @@ class LicenseTypeFieldOption(models.Model):
 
 
 class License(models.Model):
-    """Лицензия — идентифицируется собственным Наименованием, не Типом."""
+    """Лицензия — идентифицируется своим Типом (B18: собственного Наименования
+    больше нет). Колонка name оставлена nullable ради истории: прежние значения
+    перенесены в доп. поле «Прежнее наименование» миграцией, новые — пустые."""
 
-    name = models.CharField("Наименование", max_length=255)
+    # legacy: до B18 лицензия идентифицировалась собственным именем. Оставлено
+    # для истории; в UI не показывается и не редактируется.
+    name = models.CharField("Наименование", max_length=255, blank=True, default="")
     equipment = models.ForeignKey(
         "equipment.Equipment", verbose_name="Оборудование",
         on_delete=models.SET_NULL, null=True, blank=True, related_name="licenses",
@@ -112,7 +139,7 @@ class License(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return self.name
+        return self.name or self.license_type.name
 
 
 class LicenseFieldValue(models.Model):

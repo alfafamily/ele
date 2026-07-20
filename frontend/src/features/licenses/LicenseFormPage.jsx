@@ -28,7 +28,6 @@ export function LicenseFormPage() {
 
   const [types, setTypes] = useState(null)
   const [license, setLicense] = useState(null)
-  const [name, setName] = useState('')
   const [typeId, setTypeId] = useState('')
   const [values, setValues] = useState({})
   const [fileValues, setFileValues] = useState({})
@@ -46,7 +45,6 @@ export function LicenseFormPage() {
     if (!isEdit) return
     getLicense(id).then((data) => {
       setLicense(data)
-      setName(data.name)
       setTypeId(String(data.license_type))
       setValues(buildValueMap(data.field_values))
       const fMap = {}
@@ -66,6 +64,9 @@ export function LicenseFormPage() {
 
   const selectedType = types.find((t) => String(t.id) === String(typeId))
   const typeFields = selectedType?.fields || []
+  // B18: при редактировании тип можно сменить только на тип того же вида
+  // (программный↔программный, аппаратный↔аппаратный).
+  const lockedKind = isEdit ? license?.license_type_kind : null
 
   const handleTypeChange = (newTypeId) => {
     setTypeId(newTypeId)
@@ -78,13 +79,12 @@ export function LicenseFormPage() {
     setSubmitting(true)
     setError(null)
     const payload = {
-      name,
       license_type: Number(typeId),
       field_values_input: typeFields.filter((f) => f.value_type !== 'file').map((f) => ({ field: f.id, value: values[f.id] ?? null })),
       custom_fields: customFields.filter((f) => f.name.trim()),
     }
     // Аппаратная лицензия при создании может лежать на складе (по желанию).
-    if (!isEdit && selectedType?.name === 'Аппаратная' && storagePlaceId) {
+    if (!isEdit && selectedType?.kind === 'hardware' && storagePlaceId) {
       payload.storage_place = Number(storagePlaceId)
     }
     if (!isEdit && comment.trim()) payload.comment = comment.trim()
@@ -151,16 +151,22 @@ export function LicenseFormPage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Input label="Наименование" required value={name} onChange={(e) => setName(e.target.value)} />
               <Select label="Тип лицензии" required placeholder="Выберите тип" value={typeId} onChange={handleTypeChange}>
                 {types
                   .filter((t) => !t.is_archived || String(t.id) === String(typeId))
+                  // При редактировании — только типы того же вида.
+                  .filter((t) => !lockedKind || t.kind === lockedKind)
                   .map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name}
                     </option>
                   ))}
               </Select>
+              {lockedKind ? (
+                <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
+                  Сменить тип можно только на тип того же вида ({lockedKind === 'hardware' ? 'аппаратный' : 'программный'}).
+                </div>
+              ) : null}
               <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>
                 Привязать к оборудованию можно после сохранения — из карточки лицензии.
               </div>
@@ -210,7 +216,7 @@ export function LicenseFormPage() {
             <CustomFieldsEditor items={customFields} onChange={setCustomFields} />
           </Card>
 
-          {!isEdit && selectedType?.name === 'Аппаратная' ? (
+          {!isEdit && selectedType?.kind === 'hardware' ? (
             <Card>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Место хранения</div>
               <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>

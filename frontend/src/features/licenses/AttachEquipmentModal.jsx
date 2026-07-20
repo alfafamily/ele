@@ -44,7 +44,7 @@ export function AttachEquipmentModal({ license, onClose, onAttached }) {
 
   return (
     <Modal open onClose={onClose} title="Привязать к оборудованию">
-      <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 14 }}>{license.name}</div>
+      <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 14 }}>{license.license_type_name}</div>
       {selected ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 16 }}>
           <Icon name="tag" size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />

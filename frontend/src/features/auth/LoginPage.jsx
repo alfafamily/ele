@@ -12,6 +12,7 @@ const YANDEX_ERROR_MESSAGES = {
   email: 'Яндекс ID не вернул email — вход невозможен.',
   domain: 'Домен email не совпадает с доменом компании.',
   inactive: 'Учётная запись деактивирована.',
+  registration_closed: 'Открытая регистрация недоступна, обратитесь к администратору или руководителю.',
 }
 
 function formatCountdown(seconds) {
@@ -136,9 +137,12 @@ export function LoginPage() {
         </>
       ) : null}
 
-      <div className="ele-auth-card__footer">
-        Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
-      </div>
+      {/* B14: ссылка на регистрацию — только при открытой регистрации. */}
+      {bootstrap.registration_open !== false ? (
+        <div className="ele-auth-card__footer">
+          Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
+        </div>
+      ) : null}
     </AuthShell>
   )
 }
