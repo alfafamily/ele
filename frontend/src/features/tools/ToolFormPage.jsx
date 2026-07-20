@@ -103,7 +103,7 @@ export function ToolFormPage() {
                     onChange={(e) => setInitialQuantity(e.target.value)}
                   />
                   {Number(initialQuantity) > 0 ? (
-                    <PlaceSelect placeType="storage" label="Место хранения (склад) — необязательно" value={initialPlace} onChange={setInitialPlace} placeholder="Без склада (общий свободный остаток)" />
+                    <PlaceSelect placeType="storage" label="Место хранения (склад) — необязательно" value={initialPlace} onChange={setInitialPlace} />
                   ) : null}
                 </>
               ) : null}

@@ -58,7 +58,7 @@ export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeI
       ) : results.filter((e) => !excludeSet.has(e.id)).length === 0 ? (
         <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Никого не найдено</div>
       ) : (
-        <div style={{ marginTop: 8, border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', maxHeight: 260, overflowY: 'auto' }}>
+        <div style={{ marginTop: 8, border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', maxHeight: 216, overflowY: 'auto' }}>
           {results.filter((e) => !excludeSet.has(e.id)).map((emp, i) => (
             <button
               key={emp.id}

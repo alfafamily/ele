@@ -75,7 +75,7 @@ export function AttachSimModal({ equipment, onClose, onAttached }) {
           {filtered.length === 0 ? (
             <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)', marginBottom: 16 }}>Ничего не найдено</div>
           ) : (
-            <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden', maxHeight: 260, overflowY: 'auto', marginBottom: 16 }}>
+            <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden', maxHeight: 216, overflowY: 'auto', marginBottom: 16 }}>
               {filtered.map((sim, i) => {
                 const checked = selectedIds.includes(sim.id)
                 const details = [sim.network_operator, sim.provider].filter(Boolean).join(' / ') || 'без поставщика и оператора'
