@@ -240,6 +240,32 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         )
         return Response(ToolSerializer(self.get_object()).data)
 
+    @action(detail=True, methods=["post"], url_path="transfer-units", permission_classes=[IsAdminOrAccountant])
+    def transfer_units(self, request, pk=None):
+        """Перемещение qty свободного остатка с одного склада на другой."""
+        from core.placement import get_storage_place
+
+        tool = self.get_object()
+        if (err := self._guard(tool)) is not None:
+            return err
+        qty, err = self._parse_positive_qty(request)
+        if err is not None:
+            return err
+        from_place = get_storage_place(request.data.get("from_place"), field="from_place")
+        to_place = get_storage_place(request.data.get("to_place"), field="to_place")
+        if from_place.id == to_place.id:
+            return Response({"detail": "Склады должны различаться."}, status=400)
+        if qty > self._free_at(tool, from_place):
+            return Response({"detail": "Нельзя переместить больше, чем лежит на складе-источнике."}, status=409)
+        comment = (request.data.get("comment") or "").strip()
+        self._dec_alloc(tool.allocations.get(place=from_place), qty)
+        self._inc_alloc(tool, qty, place=to_place)
+        self._record_movement(
+            tool, ToolMovement.Kind.TRANSFER, qty, request.user, comment,
+            place=to_place, storage_place=from_place,
+        )
+        return Response(ToolSerializer(self.get_object()).data)
+
     @action(detail=True, methods=["post"], url_path="write-off", permission_classes=[IsAdminOrAccountant])
     def write_off(self, request, pk=None):
         """Списание всей карточки в архив: снимаем все размещения и обнуляем
@@ -312,6 +338,10 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             if m.kind == ToolMovement.Kind.WRITE_OFF:
                 where = f" со склада «{m.place.name}»" if m.place_id else ""
                 return f"Списание: −{m.quantity} шт.{where}"
+            if m.kind == ToolMovement.Kind.TRANSFER:
+                src = f"«{m.storage_place.name}»" if m.storage_place_id else "—"
+                dst = f"«{m.place.name}»" if m.place_id else "—"
+                return f"Перемещено: {m.quantity} шт. со склада {src} на склад {dst}"
             store = f" (склад «{m.storage_place.name}»)" if m.storage_place_id else ""
             if m.kind == ToolMovement.Kind.ASSIGN:
                 return f"Закреплено: {m.quantity} шт. за {target(m)}{store}"

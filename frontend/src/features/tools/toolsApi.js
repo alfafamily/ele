@@ -26,6 +26,15 @@ export const assignUnits = (id, { quantity, mode = 'mobile', employeeId, placeId
     ...(comment ? { comment } : {}),
   })
 
+// Перемещение свободного остатка между складами.
+export const transferUnits = (id, { quantity, fromPlace, toPlace, comment }) =>
+  apiPost(`/api/tools/${id}/transfer-units/`, {
+    quantity,
+    from_place: fromPlace,
+    to_place: toPlace,
+    ...(comment ? { comment } : {}),
+  })
+
 // Возврат от сотрудника (mobile) или рабочего места (stationary). toPlace —
 // склад-приёмник (необязателен: без него возвращается в свободный без склада).
 export const unassignUnits = (id, { quantity, mode = 'mobile', employeeId, placeId, toPlace, comment }) =>

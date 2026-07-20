@@ -194,3 +194,21 @@ class ToolTests(APITestCase):
         self._post(tid, "assign-units", employee=self.emp_a.id, from_place=self.store1.id, quantity=2)
         r = self.client.delete(f"/api/employees/{self.emp_a.id}/")
         self.assertEqual(r.status_code, 409, r.data)
+
+    def test_transfer_between_warehouses(self):
+        tid = self._make(quantity=10)["id"]  # весь остаток на store1
+        r = self._post(tid, "transfer-units", from_place=self.store1.id, to_place=self.store2.id, quantity=4)
+        self.assertEqual(r.status_code, 200, r.data)
+        storages = {a["place"]: a["quantity"] for a in r.data["allocations"] if a["kind"] == "storage"}
+        self.assertEqual(storages[self.store1.id], 6)
+        self.assertEqual(storages[self.store2.id], 4)
+
+    def test_transfer_more_than_source_rejected(self):
+        tid = self._make(quantity=5)["id"]
+        r = self._post(tid, "transfer-units", from_place=self.store1.id, to_place=self.store2.id, quantity=6)
+        self.assertEqual(r.status_code, 409, r.data)
+
+    def test_transfer_same_warehouse_rejected(self):
+        tid = self._make(quantity=5)["id"]
+        r = self._post(tid, "transfer-units", from_place=self.store1.id, to_place=self.store1.id, quantity=1)
+        self.assertEqual(r.status_code, 400, r.data)

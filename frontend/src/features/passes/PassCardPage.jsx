@@ -1,17 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
-import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
-import {
-  attachPass,
-  getPass,
-  getPassHistoryPath,
-} from '../employees/employeesApi.js'
+import { getPass, getPassHistoryPath } from '../employees/employeesApi.js'
 import { KeyTarget } from '../../shared/keyTarget.jsx'
 import { PassDisposeModal } from '../employees/PassDisposeModal.jsx'
+import { PassAttachModal } from './PassAttachModal.jsx'
 
 export function PassCardPage() {
   const { id } = useParams()
@@ -19,7 +15,7 @@ export function PassCardPage() {
   const perms = usePermissions()
   const [pass, setPass] = useState(null)
   const [loadError, setLoadError] = useState(false)
-  const [showPicker, setShowPicker] = useState(false)
+  const [showAttach, setShowAttach] = useState(false)
   const [disposeModal, setDisposeModal] = useState(false)
   const [historyKey, setHistoryKey] = useState(0)
 
@@ -56,12 +52,6 @@ export function PassCardPage() {
   const statusText = pass.is_utilized
     ? (pass.utilization_reason_display ? `Утилизирован (${pass.utilization_reason_display})` : 'Утилизирован')
     : pass.is_deactivated ? 'Не используется' : 'Активен'
-
-  const onAttach = async (employee) => {
-    await attachPass(pass.id, employee.id)
-    setShowPicker(false)
-    load()
-  }
 
   // Наборы действий: активный → открепить (с выбором утилизации); свободный →
   // редактировать/утилизировать; утилизированный → без действий (терминальный
@@ -158,8 +148,6 @@ export function PassCardPage() {
                 <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>
               </Can>
             </>
-          ) : showPicker ? (
-            <EmployeePicker autoFocus onSelect={onAttach} />
           ) : (
             <>
               {pass.storage_place_detail ? (
@@ -170,7 +158,7 @@ export function PassCardPage() {
                 <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не закреплён</div>
               )}
               <Can perm="canManageEmployees">
-                <Button fullWidth style={{ marginTop: 14 }} onClick={() => setShowPicker(true)}><Icon name="plus" size={18} strokeWidth={2.2} />Привязать сотрудника</Button>
+                <Button fullWidth style={{ marginTop: 14 }} onClick={() => setShowAttach(true)}><Icon name="plus" size={18} strokeWidth={2.2} />Привязать сотрудника</Button>
               </Can>
             </>
           )}
@@ -192,7 +180,16 @@ export function PassCardPage() {
           }}
         />
       ) : null}
-
+      {showAttach ? (
+        <PassAttachModal
+          pass={pass}
+          onClose={() => setShowAttach(false)}
+          onDone={() => {
+            setShowAttach(false)
+            load()
+          }}
+        />
+      ) : null}
     </div>
   )
 }

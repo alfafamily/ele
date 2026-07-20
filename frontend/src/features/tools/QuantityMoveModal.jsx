@@ -21,6 +21,8 @@ export function QuantityMoveModal({
   target = null,
   storage = null,
   storageRequired = false,
+  storageFreeMap = {},
+  unplacedFree,
   max,
   onSubmit,
   onClose,
@@ -35,10 +37,19 @@ export function QuantityMoveModal({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
+  // Для операций-расхода (выдача/списание) лимит зависит от выбранного склада:
+  // если склад выбран — сколько на нём лежит; иначе — свободный остаток без склада.
+  const sourceCap = storage === 'from' || storage === 'writeoff'
+  const effectiveMax = sourceCap
+    ? storagePlaceId
+      ? storageFreeMap[String(storagePlaceId)] ?? 0
+      : unplacedFree ?? 0
+    : max
+
   const submit = async () => {
     const qty = Number(quantity)
     if (!Number.isInteger(qty) || qty <= 0) return setError('Количество должно быть больше нуля.')
-    if (typeof max === 'number' && qty > max) return setError(`Доступно не больше ${max}.`)
+    if (typeof effectiveMax === 'number' && qty > effectiveMax) return setError(`Доступно не больше ${effectiveMax}.`)
     if (target === 'both') {
       if (mode === 'mobile' && !employee) return setError('Выберите сотрудника.')
       if (mode === 'stationary' && !placeId) return setError('Выберите рабочее место.')
@@ -149,12 +160,14 @@ export function QuantityMoveModal({
               required
               type="number"
               min="1"
-              {...(typeof max === 'number' ? { max: String(max) } : {})}
+              {...(typeof effectiveMax === 'number' ? { max: String(effectiveMax) } : {})}
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
             />
-            {typeof max === 'number' ? (
-              <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: -8 }}>Доступно: {max}</div>
+            {typeof effectiveMax === 'number' ? (
+              <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: -8 }}>
+                Доступно{sourceCap && storagePlaceId ? ' на складе' : sourceCap ? ' без склада' : ''}: {effectiveMax}
+              </div>
             ) : null}
             <Input
               label="Комментарий"
