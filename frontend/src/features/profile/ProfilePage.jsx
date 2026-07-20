@@ -193,7 +193,7 @@ export function ProfilePage() {
 
         {employee && workplaces.length ? (
           <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Рабочие места</div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Мои рабочие места</div>
             {workplaces.map((wp) => (
               <div key={wp.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -229,7 +229,7 @@ export function ProfilePage() {
 
         {employee ? (
           <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Оборудование</div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданное оборудование</div>
             {equipment.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено оборудования.</div>
             ) : (
@@ -245,7 +245,7 @@ export function ProfilePage() {
 
         {employee ? (
           <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Инструменты</div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданный инструмент</div>
             {tools.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено инструментов.</div>
             ) : (
@@ -261,7 +261,7 @@ export function ProfilePage() {
 
         {employee ? (
           <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Корпоративная связь</div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданные SIM</div>
             {simCards.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено SIM-карт.</div>
             ) : (
@@ -276,7 +276,7 @@ export function ProfilePage() {
 
         {employee ? (
           <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Средства доступа</div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданные средства доступа</div>
             {passes.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено средств доступа.</div>
             ) : (
