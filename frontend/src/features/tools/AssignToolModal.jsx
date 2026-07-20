@@ -102,7 +102,6 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
             <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 6 }}>Инструмент <span style={{ color: 'var(--color-danger, #d9455f)' }}>*</span></div>
             {selected ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
-                <Icon name="wrench" size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
                 <span style={{ minWidth: 0, flex: 1 }}>
                   <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.name}</span>
                   <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>свободно {selected.free}</span>
