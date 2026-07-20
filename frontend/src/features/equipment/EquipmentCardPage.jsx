@@ -234,10 +234,10 @@ export function EquipmentCardPage() {
                 style={{ marginTop: 14 }}
                 onClick={() => setShowPlacement(true)}
               >
-                {equipment.employee || equipment.place_detail ? 'Переместить' : (
+                {equipment.employee || equipment.place_detail ? 'Закрепить' : (
                   <>
                     <Icon name="plus" size={18} strokeWidth={2.2} />
-                    Разместить
+                    Закрепить
                   </>
                 )}
               </Button>
