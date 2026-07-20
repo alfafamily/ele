@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Banner, Button, Input, Modal, PlaceSelect, Select } from '../../shared/ui'
+import { Banner, Button, Input, Modal } from '../../shared/ui'
+import { StoragePicker } from './StoragePicker.jsx'
 import { transferUnits } from './toolsApi.js'
 
 // Перемещение свободного остатка инструмента с одного склада на другой.
@@ -12,10 +13,11 @@ export function ToolTransferModal({ tool, storages, onClose, onDone }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
-  const fromMax = useMemo(() => {
-    const s = storages.find((a) => String(a.place) === String(fromId))
-    return s ? s.quantity : 0
-  }, [storages, fromId])
+  const freeMap = useMemo(
+    () => Object.fromEntries(storages.map((a) => [String(a.place), a.quantity])),
+    [storages]
+  )
+  const fromMax = freeMap[String(fromId)] || 0
 
   const submit = async () => {
     const qty = Number(quantity)
@@ -44,14 +46,16 @@ export function ToolTransferModal({ tool, storages, onClose, onDone }) {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 4 }}>
-          <Select label="Со склада" required placeholder="Выберите склад" value={fromId} onChange={setFromId}>
-            {storages.map((a) => (
-              <option key={a.place} value={a.place}>
-                {a.place_name} · {a.quantity} шт.
-              </option>
-            ))}
-          </Select>
-          <PlaceSelect placeType="storage" label="На склад" required value={toId} onChange={setToId} />
+          <StoragePicker
+            label="Со склада"
+            required
+            value={fromId}
+            onChange={setFromId}
+            freeMap={freeMap}
+            restrictToStock
+            showQuantity
+          />
+          <StoragePicker label="На склад" required value={toId} onChange={setToId} />
           <Input
             label="Количество"
             required

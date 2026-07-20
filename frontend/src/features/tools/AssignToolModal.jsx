@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { apiGet } from '../../shared/api/client'
-import { Banner, Button, Input, Modal, PlaceSelect, Select, Spinner } from '../../shared/ui'
+import { Banner, Button, Input, Modal, Select, Spinner } from '../../shared/ui'
+import { StoragePicker } from './StoragePicker.jsx'
 import { assignUnits } from './toolsApi.js'
 
 // Закрепление инструмента за сотрудником с его карточки: выбор инструмента со
@@ -21,6 +22,17 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
   }, [])
 
   const selected = useMemo(() => (tools || []).find((t) => String(t.id) === String(toolId)), [tools, toolId])
+  const freeMap = useMemo(
+    () =>
+      Object.fromEntries(
+        (selected?.allocations || [])
+          .filter((a) => a.kind === 'storage')
+          .map((a) => [String(a.place), a.quantity])
+      ),
+    [selected]
+  )
+  const storageRequired = Boolean(selected) && selected.free_unplaced <= 0
+  const sourceMax = fromPlace ? freeMap[String(fromPlace)] || 0 : selected?.free_unplaced ?? 0
 
   const submit = async () => {
     const qty = Number(quantity)
@@ -32,13 +44,13 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
       setError('Количество должно быть больше нуля.')
       return
     }
-    if (selected && qty > selected.free) {
-      setError(`Доступно не больше ${selected.free}.`)
+    // Склад-источник обязателен, если у инструмента нет свободного остатка без склада.
+    if (storageRequired && !fromPlace) {
+      setError('Выберите склад, с которого выдаётся инструмент.')
       return
     }
-    // Склад-источник обязателен, если у инструмента нет свободного остатка без склада.
-    if (selected && selected.free_unplaced <= 0 && !fromPlace) {
-      setError('Выберите склад, с которого выдаётся инструмент.')
+    if (selected && qty > sourceMax) {
+      setError(`Доступно не больше ${sourceMax}.`)
       return
     }
     setSubmitting(true)
@@ -78,26 +90,31 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
               </option>
             ))}
           </Select>
+          <StoragePicker
+            label="Склад (откуда выдать)"
+            required={storageRequired}
+            value={fromPlace}
+            onChange={setFromPlace}
+            freeMap={freeMap}
+            restrictToStock
+            showQuantity
+            allowNone={!storageRequired}
+            noneQty={selected?.free_unplaced}
+          />
           <Input
             label="Количество"
             required
             type="number"
             min="1"
-            {...(selected ? { max: String(selected.free) } : {})}
+            {...(selected ? { max: String(sourceMax) } : {})}
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
           />
           {selected ? (
-            <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: -8 }}>Доступно: {selected.free}</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: -8 }}>
+              Доступно{fromPlace ? ' на складе' : ' без склада'}: {sourceMax}
+            </div>
           ) : null}
-          <PlaceSelect
-            placeType="storage"
-            label={selected && selected.free_unplaced <= 0 ? 'Склад (откуда выдать)' : 'Склад (откуда выдать) — необязательно'}
-            required={Boolean(selected) && selected.free_unplaced <= 0}
-            value={fromPlace}
-            onChange={setFromPlace}
-            placeholder={selected && selected.free_unplaced <= 0 ? 'Выберите склад' : 'Без склада (общий свободный остаток)'}
-          />
           <Input
             label="Комментарий"
             multiline
