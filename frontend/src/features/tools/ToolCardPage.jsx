@@ -5,6 +5,7 @@ import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
 import { QuantityMoveModal } from './QuantityMoveModal.jsx'
+import { ToolTransferModal } from './ToolTransferModal.jsx'
 import { ToolWriteOffModal } from './ToolWriteOffModal.jsx'
 import {
   addUnits,
@@ -22,6 +23,7 @@ export function ToolCardPage() {
   const [tool, setTool] = useState(null)
   const [loadError, setLoadError] = useState(false)
   const [showWriteOff, setShowWriteOff] = useState(false)
+  const [showTransfer, setShowTransfer] = useState(false)
   const [moveModal, setMoveModal] = useState(null)
   const [historyKey, setHistoryKey] = useState(0)
 
@@ -60,6 +62,11 @@ export function ToolCardPage() {
     setMoveModal(null)
     load()
   }
+
+  // Остаток по складам {place_id: qty} — для лимита «доступно на складе» в модалках.
+  const storageFreeMap = Object.fromEntries(
+    (tool.allocations || []).filter((a) => a.kind === 'storage').map((a) => [String(a.place), a.quantity])
+  )
 
   return (
     <div>
@@ -132,7 +139,7 @@ export function ToolCardPage() {
         {!tool.is_written_off ? (
           <div className="ele-card-sticky" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
             <Card>
-              <QuantityStock tool={tool} canManage={perms.canManageEquipment} setMoveModal={setMoveModal} closeMove={closeMove} />
+              <QuantityStock tool={tool} canManage={perms.canManageEquipment} setMoveModal={setMoveModal} closeMove={closeMove} onTransfer={() => setShowTransfer(true)} />
             </Card>
             <Card>
               <QuantityAssignments tool={tool} canManage={perms.canManageEquipment} setMoveModal={setMoveModal} closeMove={closeMove} />
@@ -152,12 +159,27 @@ export function ToolCardPage() {
         />
       ) : null}
 
+      {showTransfer ? (
+        <ToolTransferModal
+          tool={tool}
+          storages={(tool.allocations || []).filter((a) => a.kind === 'storage')}
+          onClose={() => setShowTransfer(false)}
+          onDone={() => {
+            setShowTransfer(false)
+            load()
+          }}
+        />
+      ) : null}
+
       {moveModal ? (
         <QuantityMoveModal
           title={moveModal.title}
           confirmLabel={moveModal.confirmLabel}
           target={moveModal.target}
           storage={moveModal.storage}
+          storageRequired={moveModal.storageRequired}
+          storageFreeMap={storageFreeMap}
+          unplacedFree={tool.free_unplaced}
           max={moveModal.max}
           onSubmit={moveModal.onSubmit}
           onClose={() => setMoveModal(null)}
@@ -167,7 +189,7 @@ export function ToolCardPage() {
   )
 }
 
-function QuantityStock({ tool, canManage, setMoveModal, closeMove }) {
+function QuantityStock({ tool, canManage, setMoveModal, closeMove, onTransfer }) {
   const storages = (tool.allocations || []).filter((a) => a.kind === 'storage')
   const openAdd = () =>
     setMoveModal({
@@ -217,14 +239,15 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove }) {
         </div>
       ) : null}
       {canManage ? (
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <Button variant="secondary" fullWidth onClick={openAdd} aria-label="Оприходовать">
+        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+          <Button variant="secondary" fullWidth onClick={openAdd} title="Оприходовать" aria-label="Оприходовать">
             <Icon name="plus" size={18} strokeWidth={2.2} />
-            <span className="ele-only-desktop">Оприходовать</span>
           </Button>
-          <Button variant="secondary" fullWidth onClick={openWriteOff} disabled={tool.free <= 0} aria-label="Списать">
+          <Button variant="secondary" fullWidth onClick={openWriteOff} disabled={tool.free <= 0} title="Списать" aria-label="Списать">
             <Icon name="minus" size={18} strokeWidth={2.2} />
-            <span className="ele-only-desktop">Списать</span>
+          </Button>
+          <Button variant="secondary" fullWidth onClick={onTransfer} disabled={storages.length === 0} title="Переместить между складами" aria-label="Переместить между складами">
+            <Icon name="arrow-left-right" size={18} strokeWidth={2} />
           </Button>
         </div>
       ) : null}

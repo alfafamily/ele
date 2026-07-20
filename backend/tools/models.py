@@ -108,6 +108,7 @@ class ToolMovement(models.Model):
         WRITE_OFF = "write_off", "Списание"
         ASSIGN = "assign", "Закрепление"
         UNASSIGN = "unassign", "Открепление"
+        TRANSFER = "transfer", "Перемещение"
 
     tool = models.ForeignKey(Tool, on_delete=models.CASCADE, related_name="movements")
     kind = models.CharField("Тип движения", max_length=10, choices=Kind.choices)

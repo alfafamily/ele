@@ -1,18 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
-import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
-import { EquipmentPicker } from '../../shared/EquipmentPicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
-import {
-  attachSimCard,
-  attachSimToEquipment,
-  getSimCard,
-  getSimHistoryPath,
-} from '../employees/employeesApi.js'
+import { getSimCard, getSimHistoryPath } from '../employees/employeesApi.js'
 import { SimDisposeModal } from '../employees/SimDisposeModal.jsx'
+import { SimAttachModal } from './SimAttachModal.jsx'
 
 export function SimCardPage() {
   const { id } = useParams()
@@ -20,7 +14,7 @@ export function SimCardPage() {
   const perms = usePermissions()
   const [sim, setSim] = useState(null)
   const [loadError, setLoadError] = useState(false)
-  const [showPicker, setShowPicker] = useState(null) // 'employee' | 'equipment' | null
+  const [attachMode, setAttachMode] = useState(null) // 'employee' | 'equipment' | null → открывает модалку
   const [disposeModal, setDisposeModal] = useState(false)
   const [historyKey, setHistoryKey] = useState(0)
 
@@ -49,16 +43,6 @@ export function SimCardPage() {
 
   const statusText = sim.is_utilized ? 'Утилизирована' : sim.is_deactivated ? 'Не используется' : 'Активна'
 
-  const onAttachEmployee = async (employee) => {
-    await attachSimCard(sim.id, employee.id)
-    setShowPicker(null)
-    load()
-  }
-  const onAttachEquipment = async (equipment) => {
-    await attachSimToEquipment(sim.id, equipment.id)
-    setShowPicker(null)
-    load()
-  }
   const isPlaced = Boolean(sim.employee || sim.equipment)
 
   // Размещённая → открепить/утилизировать; свободная → редактировать/утилизировать;
@@ -151,10 +135,6 @@ export function SimCardPage() {
                 <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>
               </Can>
             </>
-          ) : showPicker === 'employee' ? (
-            <EmployeePicker autoFocus onSelect={onAttachEmployee} />
-          ) : showPicker === 'equipment' ? (
-            <EquipmentPicker autoFocus onSelect={onAttachEquipment} />
           ) : (
             <>
               {sim.storage_place_detail ? (
@@ -166,8 +146,8 @@ export function SimCardPage() {
               )}
               <Can perm="canManageEmployees">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
-                  <Button fullWidth onClick={() => setShowPicker('employee')}><Icon name="plus" size={18} strokeWidth={2.2} />Привязать сотрудника</Button>
-                  <Button variant="secondary" fullWidth onClick={() => setShowPicker('equipment')}><Icon name="wrench" size={17} strokeWidth={2} />Установить в оборудование</Button>
+                  <Button fullWidth onClick={() => setAttachMode('employee')}><Icon name="plus" size={18} strokeWidth={2.2} />Привязать сотрудника</Button>
+                  <Button variant="secondary" fullWidth onClick={() => setAttachMode('equipment')}><Icon name="wrench" size={17} strokeWidth={2} />Установить в оборудование</Button>
                 </div>
               </Can>
             </>
@@ -186,6 +166,17 @@ export function SimCardPage() {
           onClose={() => setDisposeModal(false)}
           onDone={() => {
             setDisposeModal(false)
+            load()
+          }}
+        />
+      ) : null}
+      {attachMode ? (
+        <SimAttachModal
+          sim={sim}
+          initialMode={attachMode}
+          onClose={() => setAttachMode(null)}
+          onDone={() => {
+            setAttachMode(null)
             load()
           }}
         />
