@@ -178,6 +178,7 @@ export function LicenseCardPage() {
                   borderRadius: 10,
                 }}
               >
+                <Icon name="tag" size={16} strokeWidth={2} style={{ flex: 'none', color: 'var(--color-text-muted)' }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="ele-clamp-2" style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>{license.equipment_detail.type_and_model}</div>
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', overflowWrap: 'anywhere' }}>{license.equipment_detail.inventory_number}</div>
