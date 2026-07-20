@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { apiGet } from '../../shared/api/client'
+import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
+import { ModeToggle } from '../../shared/ModeToggle.jsx'
+import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { Badge, Banner, Button, Card, Icon, Input, PlaceSelect, Spinner } from '../../shared/ui'
 import { getBuildings } from '../premises/premisesApi.js'
 import { createPass, getPass, updatePass } from '../employees/employeesApi.js'
@@ -27,6 +31,8 @@ export function PassFormPage() {
   const [selRooms, setSelRooms] = useState(() => new Set())
   const [selPlaces, setSelPlaces] = useState(() => new Set())
   const [comment, setComment] = useState('')
+  const [placementMode, setPlacementMode] = useState(employeeId ? 'employee' : 'storage')
+  const [placementEmployee, setPlacementEmployee] = useState(null)
   const [storagePlaceId, setStoragePlaceId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -53,6 +59,10 @@ export function PassFormPage() {
   useEffect(() => {
     getBuildings().then(setBuildings)
   }, [])
+
+  useEffect(() => {
+    if (employeeId) apiGet(`/api/employees/${employeeId}/`).then(setPlacementEmployee).catch(() => {})
+  }, [employeeId])
 
   useEffect(() => {
     if (!isEdit) return
@@ -164,11 +174,15 @@ export function PassFormPage() {
       room_ids: [...selRooms],
       place_ids: [...selPlaces],
     }
-    // Из карточки сотрудника создаём сразу привязанным; из раздела — свободным
-    // на складе (место хранения обязательно).
+    // Размещение при создании: за сотрудником или на складе.
     if (!isEdit) {
-      if (employeeId) {
-        payload.employee = Number(employeeId)
+      if (placementMode === 'employee') {
+        if (!placementEmployee) {
+          setError('Выберите сотрудника или место хранения.')
+          setSubmitting(false)
+          return
+        }
+        payload.employee = placementEmployee.id
       } else {
         if (!storagePlaceId) {
           setError('Укажите место хранения для свободного пропуска/ключа.')
@@ -365,13 +379,34 @@ export function PassFormPage() {
               ) : null}
             </Card>
 
-            {!isEdit && !employeeId ? (
+            {!isEdit ? (
               <Card>
-                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Место хранения</div>
+                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Размещение</div>
                 <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
-                  Свободный пропуск/ключ хранится на складе. Закрепить за сотрудником можно на карточке.
+                  {employeeId
+                    ? 'Средство доступа будет закреплено за сотрудником.'
+                    : 'За сотрудником или на складе (место хранения).'}
                 </div>
-                <PlaceSelect placeType="storage" label={null} required value={storagePlaceId} onChange={setStoragePlaceId} />
+                {employeeId ? (
+                  placementEmployee ? <SelectedEmployee employee={placementEmployee} /> : null
+                ) : (
+                  <>
+                    <ModeToggle
+                      mode={placementMode}
+                      onChange={(m) => { setPlacementMode(m); setStoragePlaceId('') }}
+                      options={[{ value: 'employee', label: 'За сотрудником' }, { value: 'storage', label: 'На складе' }]}
+                    />
+                    {placementMode === 'employee' ? (
+                      placementEmployee ? (
+                        <SelectedEmployee employee={placementEmployee} onClear={() => setPlacementEmployee(null)} />
+                      ) : (
+                        <EmployeePicker onSelect={setPlacementEmployee} />
+                      )
+                    ) : (
+                      <PlaceSelect placeType="storage" label={null} required value={storagePlaceId} onChange={setStoragePlaceId} />
+                    )}
+                  </>
+                )}
               </Card>
             ) : null}
 

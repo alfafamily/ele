@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { apiGet } from '../../shared/api/client'
 import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
+import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
+import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { Banner, Button, Card, Icon, Input, PlaceSelect, Spinner } from '../../shared/ui'
 import { createTool, getTool, updateTool } from './toolsApi.js'
 
@@ -8,11 +11,16 @@ export function ToolFormPage() {
   const { id } = useParams()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  // Создание из карточки сотрудника — часть остатка сразу выдаётся ему.
+  const employeeId = searchParams.get('employee')
 
   const [tool, setTool] = useState(null)
   const [name, setName] = useState('')
   const [initialQuantity, setInitialQuantity] = useState('0')
   const [initialPlace, setInitialPlace] = useState('')
+  const [employee, setEmployee] = useState(null) // { id, full_name, ... }
+  const [employeeQty, setEmployeeQty] = useState('1')
   const [customFields, setCustomFields] = useState([])
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -27,6 +35,10 @@ export function ToolFormPage() {
     })
   }, [id, isEdit])
 
+  useEffect(() => {
+    if (employeeId) apiGet(`/api/employees/${employeeId}/`).then(setEmployee).catch(() => {})
+  }, [employeeId])
+
   if (isEdit && !tool) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
@@ -35,27 +47,47 @@ export function ToolFormPage() {
     )
   }
 
+  const qty = Math.max(0, Number(initialQuantity) || 0)
+
   const submit = async (e) => {
     e.preventDefault()
-    setSubmitting(true)
     setError(null)
     const payload = {
       name,
       custom_fields: customFields.filter((f) => f.name.trim()),
     }
     if (!isEdit) {
-      payload.quantity = Math.max(0, Number(initialQuantity) || 0)
-      // Склад необязателен: без него начальный остаток свободный без склада.
-      if (payload.quantity > 0 && initialPlace) payload.place = Number(initialPlace)
+      payload.quantity = qty
+      if (qty > 0) {
+        if (!initialPlace) {
+          setError('Укажите место хранения для начального остатка.')
+          return
+        }
+        payload.place = Number(initialPlace)
+        if (employee) {
+          const eq = Number(employeeQty)
+          if (!Number.isInteger(eq) || eq <= 0) {
+            setError('Укажите количество для сотрудника.')
+            return
+          }
+          if (eq > qty) {
+            setError('Нельзя выдать сотруднику больше начального остатка.')
+            return
+          }
+          payload.employee = employee.id
+          payload.employee_quantity = eq
+        }
+      }
       if (comment.trim()) payload.comment = comment.trim()
     }
+    setSubmitting(true)
     try {
       if (isEdit) {
         await updateTool(id, payload)
         navigate(-1)
       } else {
         const created = await createTool(payload)
-        navigate(`/tools/${created.id}`, { replace: true })
+        navigate(employeeId ? `/employees/${employeeId}` : `/tools/${created.id}`, { replace: true })
       }
     } catch (err) {
       if (err.errors) {
@@ -102,13 +134,40 @@ export function ToolFormPage() {
                     value={initialQuantity}
                     onChange={(e) => setInitialQuantity(e.target.value)}
                   />
-                  {Number(initialQuantity) > 0 ? (
-                    <PlaceSelect placeType="storage" label="Место хранения (склад) — необязательно" value={initialPlace} onChange={setInitialPlace} />
+                  {qty > 0 ? (
+                    <PlaceSelect placeType="storage" label="Место хранения (склад)" required value={initialPlace} onChange={setInitialPlace} />
                   ) : null}
                 </>
               ) : null}
             </div>
           </Card>
+
+          {!isEdit && qty > 0 ? (
+            <Card>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Выдать сотруднику</div>
+              <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
+                Необязательно. Часть остатка можно сразу закрепить за сотрудником — остальное останется на складе.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {employee ? (
+                  <>
+                    <SelectedEmployee employee={employee} onClear={employeeId ? undefined : () => setEmployee(null)} />
+                    <Input
+                      label="Сколько выдать"
+                      required
+                      type="number"
+                      min="1"
+                      max={String(qty)}
+                      value={employeeQty}
+                      onChange={(e) => setEmployeeQty(e.target.value)}
+                    />
+                  </>
+                ) : (
+                  <EmployeePicker onSelect={setEmployee} />
+                )}
+              </div>
+            </Card>
+          ) : null}
 
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Дополнительные поля</div>

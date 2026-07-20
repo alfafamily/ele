@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { apiGet } from '../../shared/api/client'
+import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
+import { ModeToggle } from '../../shared/ModeToggle.jsx'
+import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { Banner, Button, Card, Icon, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
 import {
   createSimCard,
@@ -25,6 +29,8 @@ export function SimFormPage() {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [networkOperator, setNetworkOperator] = useState('')
   const [provider, setProvider] = useState('')
+  const [placementMode, setPlacementMode] = useState(employeeId ? 'employee' : 'storage')
+  const [placementEmployee, setPlacementEmployee] = useState(null)
   const [storagePlaceId, setStoragePlaceId] = useState('')
   const [comment, setComment] = useState('')
   const [operators, setOperators] = useState([])
@@ -37,6 +43,16 @@ export function SimFormPage() {
     getSimOperators().then(setOperators)
     getSimProviders().then(setProviders)
   }, [])
+
+  useEffect(() => {
+    if (employeeId) apiGet(`/api/employees/${employeeId}/`).then(setPlacementEmployee).catch(() => {})
+  }, [employeeId])
+
+  // E-SIM виртуальна — на складе не хранится: если был выбран склад, переключаем
+  // на сотрудника (для E-SIM доступно только закрепление за сотрудником).
+  useEffect(() => {
+    if (simType === 'esim' && placementMode === 'storage') setPlacementMode('employee')
+  }, [simType, placementMode])
 
   useEffect(() => {
     if (!isEdit) return
@@ -68,13 +84,18 @@ export function SimFormPage() {
       network_operator: networkOperator,
       provider,
     }
-    // Из карточки сотрудника создаём сразу привязанной; из раздела — свободной
-    // на складе (место хранения обязательно).
+    // Размещение при создании: за сотрудником или на складе (E-SIM — только за
+    // сотрудником или свободна, без склада).
     if (!isEdit) {
-      if (employeeId) {
-        payload.employee = Number(employeeId)
-      } else if (simType !== 'esim') {
-        // Физическая свободная SIM хранится на складе; E-SIM виртуальна — без склада.
+      if (placementMode === 'employee') {
+        if (placementEmployee) {
+          payload.employee = placementEmployee.id
+        } else if (simType !== 'esim') {
+          setError('Выберите сотрудника или место хранения.')
+          setSubmitting(false)
+          return
+        }
+      } else {
         if (!storagePlaceId) {
           setError('Укажите место хранения для свободной SIM-карты.')
           setSubmitting(false)
@@ -170,13 +191,38 @@ export function SimFormPage() {
             </div>
           </Card>
 
-          {!isEdit && !employeeId && simType !== 'esim' ? (
+          {!isEdit ? (
             <Card>
-              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Место хранения</div>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Размещение</div>
               <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
-                Свободная SIM-карта хранится на складе. Закрепить за сотрудником или оборудованием можно на карточке.
+                {employeeId
+                  ? 'SIM-карта будет закреплена за сотрудником.'
+                  : simType === 'esim'
+                    ? 'E-SIM виртуальна: закрепите за сотрудником или оставьте свободной (на хранении у оператора).'
+                    : 'За сотрудником или на складе (место хранения).'}
               </div>
-              <PlaceSelect placeType="storage" label={null} required value={storagePlaceId} onChange={setStoragePlaceId} />
+              {employeeId ? (
+                placementEmployee ? <SelectedEmployee employee={placementEmployee} /> : null
+              ) : (
+                <>
+                  {simType !== 'esim' ? (
+                    <ModeToggle
+                      mode={placementMode}
+                      onChange={(m) => { setPlacementMode(m); setStoragePlaceId('') }}
+                      options={[{ value: 'employee', label: 'За сотрудником' }, { value: 'storage', label: 'На складе' }]}
+                    />
+                  ) : null}
+                  {placementMode === 'employee' ? (
+                    placementEmployee ? (
+                      <SelectedEmployee employee={placementEmployee} onClear={() => setPlacementEmployee(null)} />
+                    ) : (
+                      <EmployeePicker onSelect={setPlacementEmployee} />
+                    )
+                  ) : (
+                    <PlaceSelect placeType="storage" label={null} required value={storagePlaceId} onChange={setStoragePlaceId} />
+                  )}
+                </>
+              )}
             </Card>
           ) : null}
 

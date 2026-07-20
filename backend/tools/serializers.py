@@ -2,10 +2,11 @@ from django.db import transaction
 from rest_framework import serializers
 
 from core.eav import upsert_custom_fields
+from employees.models import Employee
 from locations.models import Place
 from storage.serializers import StoredFileSerializer
 
-from .models import Tool, ToolAllocation, ToolCustomField
+from .models import Tool, ToolAllocation, ToolCustomField, ToolMovement
 
 
 class ToolCustomFieldSerializer(serializers.ModelSerializer):
@@ -73,8 +74,10 @@ class ToolSerializer(serializers.ModelSerializer):
     allocations = ToolAllocationSerializer(many=True, read_only=True)
     custom_fields = ToolCustomFieldSerializer(many=True, required=False)
     # Начальный склад: при создании ненулевой остаток кладётся на это место
-    # хранения (B8 — свободный остаток всегда на складе).
+    # хранения (обязательно). Опционально часть остатка сразу выдаётся сотруднику.
     place = serializers.PrimaryKeyRelatedField(write_only=True, required=False, allow_null=True, queryset=Place.objects.all())
+    employee = serializers.PrimaryKeyRelatedField(write_only=True, required=False, allow_null=True, queryset=Employee.objects.all())
+    employee_quantity = serializers.IntegerField(write_only=True, required=False)
 
     class Meta:
         model = Tool
@@ -83,6 +86,8 @@ class ToolSerializer(serializers.ModelSerializer):
             "name",
             "quantity",
             "place",
+            "employee",
+            "employee_quantity",
             "allocated",
             "free",
             "free_unplaced",
@@ -118,25 +123,56 @@ class ToolSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, attrs):
-        # Место хранения при создании необязательно: если не указано, начальный
-        # остаток — свободный без склада (его можно списать/выдать/разложить по
-        # складам позже). Если указано — должно быть складом.
+        # При создании ненулевой остаток обязательно кладётся на склад; часть
+        # можно сразу выдать сотруднику (employee + employee_quantity).
         if self.instance is None:
+            quantity = attrs.get("quantity") or 0
             place = attrs.get("place")
+            employee = attrs.get("employee")
+            emp_qty = attrs.get("employee_quantity") or 0
+            if quantity > 0 and place is None:
+                raise serializers.ValidationError({"place": "Укажите место хранения для остатка."})
             if place is not None and place.place_type != Place.PlaceType.STORAGE:
                 raise serializers.ValidationError({"place": "Выберите место хранения (склад)."})
+            if employee and emp_qty <= 0:
+                raise serializers.ValidationError({"employee_quantity": "Укажите количество для сотрудника."})
+            if emp_qty > 0 and not employee:
+                raise serializers.ValidationError({"employee": "Выберите сотрудника."})
+            if emp_qty > quantity:
+                raise serializers.ValidationError({"employee_quantity": "Нельзя выдать больше начального остатка."})
         return attrs
 
     @transaction.atomic
     def create(self, validated_data):
         custom_fields_data = validated_data.pop("custom_fields", [])
         place = validated_data.pop("place", None)
+        employee = validated_data.pop("employee", None)
+        emp_qty = validated_data.pop("employee_quantity", 0) or 0
         instance = Tool.objects.create(**validated_data)
         upsert_custom_fields(instance, ToolCustomField, "tool", custom_fields_data)
-        # Если указан склад — кладём весь начальный остаток на него; иначе остаток
-        # остаётся свободным без склада.
+
         if instance.quantity and place is not None:
-            ToolAllocation.objects.create(tool=instance, place=place, quantity=instance.quantity)
+            emp_qty = emp_qty if employee else 0
+            storage_qty = instance.quantity - emp_qty
+            if storage_qty > 0:
+                ToolAllocation.objects.create(tool=instance, place=place, quantity=storage_qty)
+            if employee and emp_qty > 0:
+                ToolAllocation.objects.create(tool=instance, employee=employee, quantity=emp_qty)
+            # История движений при создании с разделением: сколько на хранение и
+            # сколько выдано сотруднику.
+            if employee and emp_qty > 0:
+                request = self.context.get("request")
+                user = getattr(request, "user", None) if request else None
+                created_by = user if getattr(user, "is_authenticated", False) else None
+                if storage_qty > 0:
+                    ToolMovement.objects.create(
+                        tool=instance, kind=ToolMovement.Kind.ADD, quantity=storage_qty,
+                        place=place, created_by=created_by,
+                    )
+                ToolMovement.objects.create(
+                    tool=instance, kind=ToolMovement.Kind.ASSIGN, quantity=emp_qty,
+                    employee=employee, storage_place=place, created_by=created_by,
+                )
         return instance
 
     @transaction.atomic
@@ -145,6 +181,8 @@ class ToolSerializer(serializers.ModelSerializer):
         # Остаток меняют только unit-операции (add/write-off-units), не форма.
         validated_data.pop("quantity", None)
         validated_data.pop("place", None)
+        validated_data.pop("employee", None)
+        validated_data.pop("employee_quantity", None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
