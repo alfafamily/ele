@@ -274,7 +274,12 @@ class LicenseSerializer(serializers.ModelSerializer):
             apply_field_values(instance, "license", LicenseFieldValue, field_values_input, instance.license_type.fields.all())
         if custom_fields_data is not None:
             upsert_custom_fields(instance, LicenseCustomField, "license", custom_fields_data)
-        self._raise_if_missing_required(instance)
+        # Обязательные реквизиты перепроверяем только при фактическом
+        # редактировании реквизитов. Чисто «размещенческие» PATCH (привязка к
+        # оборудованию, склад) не должны спотыкаться о незаполненный ключ у
+        # legacy-лицензий, заведённых до появления обязательного ключа у типа.
+        if field_values_input is not None:
+            self._raise_if_missing_required(instance)
         return instance
 
     def _raise_if_missing_required(self, instance, skip_file_fields=False):
