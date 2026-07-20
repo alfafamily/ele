@@ -29,7 +29,18 @@ const CONFIG = {
     emptyHint: 'Все пропуска и ключи закреплены за сотрудниками. Создайте новое.',
     createLabel: 'Создать средство доступа',
     attach: attachPass,
-    match: (o, q) => [o.account_number].some((v) => (v || '').toLowerCase().includes(q)),
+    // Поиск по типу (Ключ/Пропуск, Авто/Пеший), учётному номеру и названиям
+    // зданий/помещений/мест объекта доступа.
+    match: (o, q) =>
+      [
+        o.object_type === 'key' ? 'ключ' : 'пропуск',
+        o.type_vehicle && 'авто',
+        o.type_pedestrian && 'пеший',
+        o.account_number,
+        ...(o.buildings || []).map((b) => b.name),
+        ...(o.rooms || []).map((r) => r.name),
+        ...(o.places || []).flatMap((p) => [p.name, p.room_name]),
+      ].some((v) => (v || '').toLowerCase().includes(q)),
   },
   equipment: {
     title: 'Закрепить оборудование',
