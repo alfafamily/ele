@@ -284,6 +284,25 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         )
         rows += related_rows
 
+        # «Номер/ключ» (и серийник токена) в истории — секрет: значение уходит
+        # клиенту (там маскируется за «глазиком») только тем, кому можно раскрыть
+        # ключ (admin/accountant). Наблюдателю секретные значения не отдаём вовсе:
+        # заменяем на маску и снимаем флаг secret (раскрывать нечего).
+        can_reveal = getattr(request.user, "role", None) in ("admin", "accountant")
+        if not can_reveal:
+            mask = "••••"
+            for r in rows:
+                if r.get("secret"):
+                    if r.get("old") not in (None, "—"):
+                        r["old"] = mask
+                    if r.get("new") not in (None, "—"):
+                        r["new"] = mask
+                    r["secret"] = False
+                for ln in r.get("lines") or []:
+                    if ln.get("secret"):
+                        ln["value"] = mask
+                        ln["secret"] = False
+
         rows.sort(key=lambda r: r["date"], reverse=True)
         return Response(rows)
 

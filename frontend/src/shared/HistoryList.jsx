@@ -31,6 +31,23 @@ function HistoryValue({ row }) {
   )
 }
 
+// Строка перечня заполненных полей в записи «Объект создан». Секретные
+// (Номер/ключ, серийник токена) маскируются и раскрываются кнопкой-«глаз».
+function HistoryLine({ line }) {
+  const [revealed, setRevealed] = useState(false)
+  const value = line.secret && !revealed ? '••••' : line.value
+  return (
+    <li>
+      <span className="ele-history__line-label">{line.label}:</span> {value}
+      {line.secret ? (
+        <button type="button" className="ele-history__eye" onClick={() => setRevealed((r) => !r)} title={revealed ? 'Скрыть' : 'Показать'} aria-label={revealed ? 'Скрыть' : 'Показать'}>
+          <Icon name={revealed ? 'eye-off' : 'eye'} size={15} />
+        </button>
+      ) : null}
+    </li>
+  )
+}
+
 // Блок «когда/кто» — общий для всех типов строк.
 function HistoryWhen({ row }) {
   return (
@@ -53,9 +70,7 @@ function HistoryEventRow({ row }) {
         {row.lines?.length ? (
           <ul className="ele-history__lines">
             {row.lines.map((ln, i) => (
-              <li key={i}>
-                <span className="ele-history__line-label">{ln.label}:</span> {ln.value}
-              </li>
+              <HistoryLine key={i} line={ln} />
             ))}
           </ul>
         ) : null}

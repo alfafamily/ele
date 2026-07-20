@@ -378,6 +378,22 @@ class LicenseKeyExposureTests(APITestCase):
         self.assertTrue(locked)
         self.assertIsNone(locked[0]["value"])
 
+    def test_history_created_record_marks_key_secret_for_admin(self):
+        rows = self.client.get(f"/api/licenses/{self.lic_id}/history/").data
+        created = next(r for r in rows if r["kind"] == "created")
+        key_line = next(ln for ln in created["lines"] if ln["label"] == "Номер/ключ")
+        self.assertTrue(key_line["secret"])
+        self.assertEqual(key_line["value"], "AAAA-BBBB-CCCC")
+
+    def test_history_key_withheld_from_observer(self):
+        self.client.force_authenticate(user=self._make_observer("obs3@example.com"))
+        rows = self.client.get(f"/api/licenses/{self.lic_id}/history/").data
+        self.assertNotIn("AAAA-BBBB-CCCC", str(rows))
+        created = next(r for r in rows if r["kind"] == "created")
+        key_line = next(ln for ln in created["lines"] if ln["label"] == "Номер/ключ")
+        self.assertFalse(key_line["secret"])
+        self.assertEqual(key_line["value"], "••••")
+
     def test_observer_cannot_create_license(self):
         self.client.force_authenticate(user=self._make_observer("obs2@example.com"))
         resp = self.client.post(
