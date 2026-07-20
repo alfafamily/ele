@@ -348,7 +348,8 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {allocations.map((a) => (
-            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
+            <div key={a.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ width: 36, height: 36, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, overflow: 'hidden' }}>
                 {a.kind === 'workplace' ? (
                   <Icon name="briefcase" size={16} strokeWidth={2} />
@@ -374,6 +375,16 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
                 <button type="button" title="Открепить" onClick={() => openUnassign(a)} style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Icon name="x" size={16} strokeWidth={2} />
                 </button>
+              ) : null}
+              </div>
+              {a.kind === 'workplace' && a.place_employees?.length ? (
+                <div style={{ paddingLeft: 46, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {a.place_employees.map((e) => (
+                    <Link key={e.id} to={`/employees/${e.id}`} style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-badge-text)', background: 'var(--color-badge-bg)', padding: '2px 9px', borderRadius: 20 }}>
+                      {e.name}
+                    </Link>
+                  ))}
+                </div>
               ) : null}
             </div>
           ))}

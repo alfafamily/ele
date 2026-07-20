@@ -201,13 +201,19 @@ class EquipmentSerializer(serializers.ModelSerializer):
         if not obj.place_id:
             return None
         p = obj.place
-        return {
+        data = {
             "id": p.id,
             "name": p.name,
             "place_type": p.place_type,
             "room_name": p.room.name,
             "building_name": p.room.building.name,
         }
+        # Для рабочего места — сотрудники, закреплённые за ним.
+        if p.place_type == "workplace":
+            data["employees"] = [
+                {"id": e.id, "name": f"{e.last_name} {e.first_name}".strip()} for e in p.employees.all()
+            ]
+        return data
 
     def get_licenses(self, obj):
         # Импорт локально — licenses/serializers.py уже импортирует отсюда

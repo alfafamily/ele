@@ -184,23 +184,40 @@ export function EquipmentCardPage() {
               </div>
             </div>
           ) : equipment.place_detail ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Icon
-                name={equipment.place_detail.place_type === 'storage' ? 'warehouse' : 'briefcase'}
-                size={20}
-                strokeWidth={2}
-                style={{ color: 'var(--color-text-muted)' }}
-              />
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
-                  {equipment.place_detail.place_type === 'storage' ? 'На складе' : 'На рабочем месте'}
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 600 }}>{equipment.place_detail.name}</div>
-                <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>
-                  {equipment.place_detail.building_name} — {equipment.place_detail.room_name}
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Icon
+                  name={equipment.place_detail.place_type === 'storage' ? 'warehouse' : 'briefcase'}
+                  size={20}
+                  strokeWidth={2}
+                  style={{ color: 'var(--color-text-muted)' }}
+                />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
+                    {equipment.place_detail.place_type === 'storage' ? 'На складе' : 'На рабочем месте'}
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 600 }}>{equipment.place_detail.name}</div>
+                  <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>
+                    {equipment.place_detail.building_name} — {equipment.place_detail.room_name}
+                  </div>
                 </div>
               </div>
-            </div>
+              {equipment.place_detail.employees?.length ? (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 6 }}>Сотрудники рабочего места</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {equipment.place_detail.employees.map((e) => (
+                      <Link key={e.id} to={`/employees/${e.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: 'var(--color-text-primary)' }}>
+                        <span style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>
+                          {nameInitials(e.name)}
+                        </span>
+                        {e.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </>
           ) : (
             <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не размещено</div>
           )}
