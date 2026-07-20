@@ -227,3 +227,15 @@ class ToolTests(APITestCase):
         tid = self._make(quantity=3, place=None)["id"]
         r = self._post(tid, "transfer-units", to_place=self.store1.id, quantity=4)
         self.assertEqual(r.status_code, 409, r.data)
+
+    def test_stock_filter(self):
+        free_id = self._make(name="Свободный", quantity=10)["id"]
+        empty_id = self._make(name="Пустой", quantity=5)["id"]
+        # У «Пустого» весь остаток выдан — свободного нет.
+        self._post(empty_id, "assign-units", employee=self.emp_a.id, from_place=self.store1.id, quantity=5)
+        has = [t["id"] for t in self.client.get("/api/tools/?tab=active&stock=has_free").data["results"]]
+        self.assertIn(free_id, has)
+        self.assertNotIn(empty_id, has)
+        no = [t["id"] for t in self.client.get("/api/tools/?tab=active&stock=no_free").data["results"]]
+        self.assertIn(empty_id, no)
+        self.assertNotIn(free_id, no)

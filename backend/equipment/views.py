@@ -246,11 +246,11 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 return "Не размещено"
             from locations.models import Place
 
-            p = Place.objects.filter(pk=v).first()
+            p = Place.objects.select_related("room__building").filter(pk=v).first()
             if not p:
                 return "—"
             kind = "Рабочее место" if p.place_type == Place.PlaceType.WORKPLACE else "Место хранения"
-            return f"{kind} «{p.name}»"
+            return f"{kind} «{p.name}» ({p.room.building.name} — {p.room.name})"
 
         field_specs = {
             "inventory_number": {"label": "Учётный номер"},

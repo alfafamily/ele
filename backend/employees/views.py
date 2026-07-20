@@ -484,8 +484,8 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 return "—"
             from locations.models import Place
 
-            p = Place.objects.filter(pk=v).first()
-            return f"Место хранения «{p.name}»" if p else "—"
+            p = Place.objects.select_related("room__building").filter(pk=v).first()
+            return f"Место хранения «{p.name}» ({p.room.building.name} — {p.room.name})" if p else "—"
 
         field_specs = {
             "phone_number": {"label": "Номер телефона"},
@@ -699,6 +699,12 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         yes_no = lambda v: "Да" if v else "Нет"
         fmt_object_type = lambda v: dict(AccessPass.ObjectType.choices).get(v, v or "—")
 
+        def _fmt_storage_place(v):
+            if not v:
+                return "—"
+            p = Place.objects.select_related("room__building").filter(pk=v).first()
+            return f"«{p.name}» ({p.room.building.name} — {p.room.name})" if p else "—"
+
         def utilize_label(record):
             reason = record.utilization_reason
             return dict(AccessPass.UtilizationReason.choices).get(reason, "Утилизирован")
@@ -711,9 +717,7 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             "employee": {"label": "Закреплён за", "format": fmt_employee, "in_created": False},
             "storage_place": {
                 "label": "Место хранения",
-                "format": lambda v: (
-                    f"«{Place.objects.filter(pk=v).values_list('name', flat=True).first()}»" if v else "—"
-                ),
+                "format": lambda v: _fmt_storage_place(v),
                 "in_created": False,
             },
         }

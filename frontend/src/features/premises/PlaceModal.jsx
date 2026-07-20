@@ -114,7 +114,7 @@ function WorkplaceEmployees({ selected, onChange }) {
           ))}
         </div>
       ) : null}
-      <EmployeePicker onSelect={add} />
+      <EmployeePicker onSelect={add} excludeIds={selected.map((e) => e.id)} />
     </div>
   )
 }

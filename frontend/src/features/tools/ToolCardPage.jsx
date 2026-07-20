@@ -355,9 +355,13 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
               ) : null}
               </div>
               {a.kind === 'workplace' && a.place_employees?.length ? (
-                <div style={{ paddingLeft: 46, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                <div style={{ paddingLeft: 46, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>Сотрудники рабочего места</div>
                   {a.place_employees.map((e) => (
-                    <Link key={e.id} to={`/employees/${e.id}`} style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-badge-text)', background: 'var(--color-badge-bg)', padding: '2px 9px', borderRadius: 20 }}>
+                    <Link key={e.id} to={`/employees/${e.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-primary)' }}>
+                      <span style={{ width: 24, height: 24, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 600 }}>
+                        {nameInitials(e.name)}
+                      </span>
                       {e.name}
                     </Link>
                   ))}
