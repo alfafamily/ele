@@ -47,6 +47,11 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             "passes__buildings",
             "passes__rooms",
             "passes__places__room",
+            # Объекты, стоящие на рабочих местах сотрудника (для карточки).
+            "workplaces__room__building",
+            "workplaces__equipment__equipment_type",
+            "workplaces__equipment__field_values__field",
+            "workplaces__tool_allocations__tool",
         )
         # Вкладки списка: Работают / Уволены.
         employment = self.request.query_params.get("employment")

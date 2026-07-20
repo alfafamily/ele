@@ -338,15 +338,24 @@ class EmployeeSerializer(serializers.ModelSerializer):
         return AccessPassSerializer(obj.passes.all(), many=True).data
 
     def get_workplaces(self, obj):
-        # Рабочие места, за которыми закреплён сотрудник (не архивные).
-        return [
-            {
+        # Рабочие места, за которыми закреплён сотрудник (не архивные), с
+        # перечнем объектов, стоящих на каждом месте (оборудование, инструменты).
+        result = []
+        for p in obj.workplaces.filter(is_archived=False).select_related("room__building"):
+            equipment = [eq for eq in p.equipment.all() if not eq.is_written_off]
+            tools = [
+                {"id": a.tool_id, "name": a.tool.name, "quantity": a.quantity}
+                for a in p.tool_allocations.all()
+                if a.place_id == p.id and not a.tool.is_written_off
+            ]
+            result.append({
                 "id": p.id,
                 "name": p.name,
                 "location": f"{p.room.building.name} — {p.room.name}",
-            }
-            for p in obj.workplaces.filter(is_archived=False).select_related("room__building")
-        ]
+                "equipment": EquipmentMiniSerializer(equipment, many=True).data,
+                "tools": tools,
+            })
+        return result
 
     def get_user_email(self, obj):
         return obj.user.email if hasattr(obj, "user") else None
