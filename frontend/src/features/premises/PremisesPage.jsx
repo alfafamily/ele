@@ -432,7 +432,7 @@ function RoomRow({ room, buildingArchived, open, onToggle, canManage, onEdit, on
   )
 }
 
-// Место-чип: клик открывает меню действий (Переименовать / В архив либо
+// Место-чип: клик открывает меню действий (Изменить / В архив либо
 // Вернуть из архива). Иконок-кнопок на самом чипе нет.
 function PlaceChip({ place, canManage, onEdit, onArchive, onUnarchive }) {
   const [open, setOpen] = useState(false)
@@ -458,7 +458,7 @@ function PlaceChip({ place, canManage, onEdit, onArchive, onUnarchive }) {
   const items = archived
     ? [{ label: 'Вернуть из архива', onClick: onUnarchive }]
     : [
-        { label: 'Переименовать', onClick: onEdit },
+        { label: 'Изменить', onClick: onEdit },
         { label: 'В архив', onClick: onArchive },
       ]
 
