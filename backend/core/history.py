@@ -49,7 +49,7 @@ def _created_lines(record, field_specs):
         val = fmt(_raw_field(record, field))
         if val in _EMPTY_CREATED_VALUES:
             continue
-        lines.append({"label": spec["label"], "value": val})
+        lines.append({"label": spec["label"], "value": val, "secret": bool(spec.get("secret"))})
     return lines
 
 
@@ -185,7 +185,7 @@ def build_related_history_rows(
                 and abs((r.history_date - created_at).total_seconds()) <= window
             )
             if is_creation_value:
-                created_lines.append({"label": label_fn(r), "value": cur})
+                created_lines.append({"label": label_fn(r), "value": cur, "secret": secret})
             elif not (prev == "—" and cur == "—"):
                 rows.append({
                     "date": r.history_date, "author": author, "kind": "changed",
