@@ -7,6 +7,10 @@ class EquipmentType(models.Model):
 
     name = models.CharField("Наименование", max_length=255)
     is_archived = models.BooleanField("Архивный", default=False)
+    # B17: SIM/E-SIM можно установить только в оборудование, у типа которого
+    # этот флаг включён. По умолчанию выключен (opt-in) — существующим типам с
+    # уже установленными SIM миграция проставляет True, чтобы не сломать их.
+    allows_sim = models.BooleanField("Установка SIM/E-SIM", default=False)
 
     class Meta:
         verbose_name = "Тип оборудования"

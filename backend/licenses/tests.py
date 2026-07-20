@@ -57,9 +57,9 @@ class LicenseKeyMaskingTests(APITestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
         self.client.force_authenticate(user=self.admin)
-        self.software = LicenseType.objects.get(name="Программная")
+        self.software = LicenseType.objects.create(name="Программная", kind="software")
         self.key_field = self.software.fields.get(is_locked=True)
-        self.hardware = LicenseType.objects.get(name="Аппаратная")
+        self.hardware = LicenseType.objects.create(name="Аппаратная", kind="hardware")
         self.token_field = self.hardware.fields.get(is_locked=True)
 
     def test_key_absent_from_list_present_in_detail(self):
@@ -144,31 +144,78 @@ class LicenseKeyMaskingTests(APITestCase):
         self.assertEqual(resp.status_code, 200, resp.data)
 
 
-class LicenseHardcodedTypesTests(APITestCase):
+class LicenseTypeKindTests(APITestCase):
+    """B18: вид типа + автосев ключевого реквизита + правила смены/удаления."""
+
     def setUp(self):
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
         self.client.force_authenticate(user=self.admin)
 
-    def test_cannot_delete_or_rename_hardcoded_type(self):
-        software = LicenseType.objects.get(name="Программная")
-        resp = self.client.delete(f"/api/license-types/{software.id}/")
-        self.assertEqual(resp.status_code, 409)
+    def test_create_software_type_seeds_key_field(self):
+        resp = self.client.post("/api/license-types/", {"name": "Антивирус", "kind": "software"}, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(resp.data["kind"], "software")
+        locked = [f for f in resp.data["fields"] if f["is_locked"]]
+        self.assertEqual(len(locked), 1)
+        self.assertEqual(locked[0]["name"], "Номер/ключ")
 
-        resp = self.client.patch(f"/api/license-types/{software.id}/", {"name": "Другое имя"}, format="json")
+    def test_create_hardware_type_seeds_token_field(self):
+        resp = self.client.post("/api/license-types/", {"name": "Токен", "kind": "hardware"}, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(resp.data["kind"], "hardware")
+        locked = [f for f in resp.data["fields"] if f["is_locked"]]
+        self.assertEqual(locked[0]["name"], "Номер/ID/Serial токена")
+
+    def test_kind_cannot_change_after_creation(self):
+        t = LicenseType.objects.create(name="Офис", kind="software")
+        resp = self.client.patch(f"/api/license-types/{t.id}/", {"kind": "hardware"}, format="json")
         self.assertEqual(resp.status_code, 400)
 
-    def test_cannot_delete_locked_key_field(self):
-        software = LicenseType.objects.get(name="Программная")
-        key_field = software.fields.get(is_locked=True)
-        resp = self.client.delete(f"/api/license-types/{software.id}/fields/{key_field.id}/")
+    def test_cannot_delete_type_with_objects(self):
+        t = LicenseType.objects.create(name="Антивирус", kind="software")
+        License.objects.create(license_type=t)
+        resp = self.client.delete(f"/api/license-types/{t.id}/")
         self.assertEqual(resp.status_code, 409)
+
+    def test_can_delete_empty_type(self):
+        t = LicenseType.objects.create(name="Пустой", kind="software")
+        resp = self.client.delete(f"/api/license-types/{t.id}/")
+        self.assertEqual(resp.status_code, 204)
+
+    def test_cannot_delete_locked_key_field(self):
+        t = LicenseType.objects.create(name="Антивирус", kind="software")
+        key_field = t.fields.get(is_locked=True)
+        resp = self.client.delete(f"/api/license-types/{t.id}/fields/{key_field.id}/")
+        self.assertEqual(resp.status_code, 409)
+
+    def test_soft_type_change_same_kind_ok(self):
+        soft_a = LicenseType.objects.create(name="Антивирус", kind="software")
+        soft_b = LicenseType.objects.create(name="Офис", kind="software")
+        key_b = soft_b.fields.get(is_locked=True)
+        lic = License.objects.create(license_type=soft_a)
+        ok = self.client.patch(
+            f"/api/licenses/{lic.id}/",
+            {"license_type": soft_b.id, "field_values_input": [{"field": key_b.id, "value": "K-1"}]},
+            format="json",
+        )
+        self.assertEqual(ok.status_code, 200, ok.data)
+        lic.refresh_from_db()
+        self.assertEqual(lic.license_type_id, soft_b.id)
+
+    def test_soft_type_change_cross_kind_rejected(self):
+        soft = LicenseType.objects.create(name="Антивирус", kind="software")
+        hard = LicenseType.objects.create(name="Токен", kind="hardware")
+        lic = License.objects.create(license_type=soft)
+        resp = self.client.patch(f"/api/licenses/{lic.id}/", {"license_type": hard.id}, format="json")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("license_type", resp.data["errors"])
 
 
 class LicenseUtilizeTests(APITestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
         self.client.force_authenticate(user=self.admin)
-        self.hardware = LicenseType.objects.get(name="Аппаратная")
+        self.hardware = LicenseType.objects.create(name="Аппаратная", kind="hardware")
 
     def test_utilize_detaches_and_archives(self):
         from equipment.models import Equipment, EquipmentType
@@ -231,7 +278,7 @@ class LicenseKeyExposureTests(APITestCase):
 
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
         self.client.force_authenticate(user=self.admin)
-        self.soft_type = LicenseType.objects.get(name="Программная")
+        self.soft_type = LicenseType.objects.create(name="Программная", kind="software")
         self.key_field = self.soft_type.fields.get(name="Номер/ключ")
         eq_type = EquipmentType.objects.create(name="ПК")
         self.eq = Equipment.objects.create(inventory_number="PC-1", equipment_type=eq_type)
@@ -338,7 +385,7 @@ class HardwareLicenseStorageTests(APITestCase):
         self.store = Place.objects.create(room=r, name="Склад", place_type=Place.PlaceType.STORAGE)
         et = EquipmentType.objects.create(name="Сервер")
         self.eq = Equipment.objects.create(inventory_number="SRV-1", equipment_type=et)
-        self.hw_type = LicenseType.objects.get(name="Аппаратная")
+        self.hw_type = LicenseType.objects.create(name="Аппаратная", kind="hardware")
         self.token_field = self.hw_type.fields.get(is_locked=True)
         self._n = 0
 

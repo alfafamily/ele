@@ -428,6 +428,11 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             from equipment.models import Equipment
 
             equipment = get_object_or_404(Equipment, pk=request.data.get("equipment"))
+            # B17: SIM можно установить только в оборудование с флагом типа.
+            if not equipment.equipment_type.allows_sim:
+                return Response(
+                    {"detail": "В этот тип оборудования нельзя устанавливать SIM/E-SIM."}, status=400
+                )
             sim.equipment = equipment
             sim.employee = None
         else:

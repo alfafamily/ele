@@ -58,6 +58,8 @@ class BootstrapView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
+        from company.models import Company
+
         setup_required = not User.objects.filter(role=User.Role.ADMIN).exists()
         return Response(
             {
@@ -65,6 +67,9 @@ class BootstrapView(APIView):
                 "yandex_id_enabled": is_yandex_id_enabled(),
                 "captcha_enabled": is_captcha_enabled(),
                 "captcha_site_key": settings.YANDEX_SMARTCAPTCHA_SITE_KEY or None,
+                # B14: открыта ли самостоятельная регистрация (скрывает форму
+                # регистрации на входе, когда выключена).
+                "registration_open": Company.load().open_registration,
             }
         )
 
@@ -88,6 +93,14 @@ class RegisterView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        from company.models import Company
+
+        # B14: самостоятельная регистрация закрыта — только по приглашению.
+        if not Company.load().open_registration:
+            return Response(
+                {"detail": "Открытая регистрация недоступна, обратитесь к администратору или руководителю."},
+                status=403,
+            )
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -458,6 +471,9 @@ class YandexIDCallbackView(APIView):
 
         user = User.objects.filter(email__iexact=email).first()
         if user is None:
+            # B14: закрытая регистрация — Яндекс ID не заводит новый аккаунт.
+            if not company.open_registration:
+                return fail("registration_closed")
             # Первый вход — заводим учётку и связанного Сотрудника из
             # имени/фамилии Яндекса; если их нет — в оба поля логин (до @).
             login_part = email.split("@", 1)[0]

@@ -26,7 +26,7 @@ export function UtilizeModal({ license, onClose, onDone }) {
     <Modal open onClose={onClose} title="Утилизировать лицензию?">
       {error ? <Banner variant="error">{error}</Banner> : null}
       <p style={{ fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-        Лицензия <b style={{ color: 'var(--color-text-primary)' }}>{license.name}</b> будет отвязана от оборудования и
+        Лицензия <b style={{ color: 'var(--color-text-primary)' }}>{license.license_type_name}</b> будет отвязана от оборудования и
         перемещена в архив. Восстановление из интерфейса не предусмотрено.
       </p>
       <div style={{ marginTop: 16 }}>

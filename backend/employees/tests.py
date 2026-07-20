@@ -475,7 +475,8 @@ class SimEquipmentPlacementTests(APITestCase):
         b = Building.objects.create(name="Главное")
         r = Room.objects.create(building=b, name="101")
         self.store = Place.objects.create(room=r, name="Склад", place_type=Place.PlaceType.STORAGE)
-        et = EquipmentType.objects.create(name="Модем")
+        # B17: SIM можно ставить только в тип с флагом.
+        et = EquipmentType.objects.create(name="Модем", allows_sim=True)
         self.eq = Equipment.objects.create(inventory_number="M-1", equipment_type=et)
 
     def test_attach_to_equipment_then_detach_to_storage(self):
@@ -493,6 +494,17 @@ class SimEquipmentPlacementTests(APITestCase):
         self.assertEqual(r.status_code, 200, r.data)
         self.assertIsNone(r.data["equipment"])
         self.assertTrue(r.data["is_deactivated"])
+
+    def test_attach_rejected_when_type_disallows_sim(self):
+        from equipment.models import Equipment, EquipmentType
+
+        et = EquipmentType.objects.create(name="Тумба", allows_sim=False)
+        eq = Equipment.objects.create(inventory_number="T-1", equipment_type=et)
+        sim = SimCard.objects.create(phone_number="+79005556677")
+        r = self.client.post(
+            f"/api/sim-cards/{sim.id}/attach/", {"mode": "equipment", "equipment": eq.id}, format="json"
+        )
+        self.assertEqual(r.status_code, 400, r.data)
 
 
 class EsimNoStorageTests(APITestCase):

@@ -79,7 +79,7 @@ export function SimAttachModal({ sim, initialMode = 'employee', onClose, onDone 
       ) : mode === 'employee' ? (
         <EmployeePicker autoFocus onSelect={setSelected} />
       ) : (
-        <EquipmentPicker autoFocus onSelect={setSelected} />
+        <EquipmentPicker autoFocus simOnly onSelect={setSelected} />
       )}
 
       <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>

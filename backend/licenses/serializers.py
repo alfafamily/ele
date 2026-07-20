@@ -85,12 +85,15 @@ class LicenseTypeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = LicenseType
-        fields = ["id", "name", "is_archived", "is_locked", "fields", "objects_count"]
+        fields = ["id", "name", "kind", "is_archived", "is_locked", "fields", "objects_count"]
         read_only_fields = ["is_locked"]
 
     def validate(self, attrs):
         if self.instance and self.instance.is_locked and "name" in attrs and attrs["name"] != self.instance.name:
             raise serializers.ValidationError({"name": ["Базовый Тип лицензии нельзя переименовать."]})
+        # Вид задаётся при создании и определяет ключевой реквизит — потом не меняется.
+        if self.instance and "kind" in attrs and attrs["kind"] != self.instance.kind:
+            raise serializers.ValidationError({"kind": ["Вид Типа нельзя изменить после создания."]})
         return attrs
 
 
@@ -152,6 +155,9 @@ class LicenseSerializer(serializers.ModelSerializer):
     уже ограничена на уровне permission_classes раздела «Лицензии»)."""
 
     license_type_name = serializers.CharField(source="license_type.name", read_only=True)
+    # B18: вид типа (software/hardware) — определяет поведение (склад, ключевой
+    # реквизит) и допустимую «мягкую» смену типа (только на тот же вид).
+    license_type_kind = serializers.CharField(source="license_type.kind", read_only=True)
     equipment_detail = EquipmentMiniSerializer(source="equipment", read_only=True)
     status = serializers.SerializerMethodField()
     # Аппаратная лицензия — физический ключ, свободный может лежать на складе.
@@ -175,6 +181,7 @@ class LicenseSerializer(serializers.ModelSerializer):
             "retired_at",
             "license_type",
             "license_type_name",
+            "license_type_kind",
             "status",
             "field_values",
             "field_values_input",
@@ -187,7 +194,7 @@ class LicenseSerializer(serializers.ModelSerializer):
         return "assigned" if obj.equipment_id else "free"
 
     def get_is_hardware(self, obj):
-        return obj.license_type.name == "Аппаратная"
+        return obj.license_type.kind == LicenseType.Kind.HARDWARE
 
     def get_storage_place_detail(self, obj):
         if not obj.storage_place_id:
@@ -208,6 +215,15 @@ class LicenseSerializer(serializers.ModelSerializer):
         storage = attrs.get("storage_place")
         if storage is not None and storage.place_type != Place.PlaceType.STORAGE:
             raise serializers.ValidationError({"storage_place": "Выберите место хранения (склад)."})
+
+        # B18: «мягкая» смена типа у существующей лицензии — только на тип того же
+        # вида (программный↔программный, аппаратный↔аппаратный).
+        new_type = attrs.get("license_type")
+        if self.instance and new_type and new_type.pk != self.instance.license_type_id:
+            if new_type.kind != self.instance.license_type.kind:
+                raise serializers.ValidationError(
+                    {"license_type": "Сменить тип можно только на тип того же вида (программный/аппаратный)."}
+                )
 
         license_type = attrs.get("license_type") or getattr(self.instance, "license_type", None)
         field_values_input = attrs.get("field_values_input")
@@ -275,6 +291,7 @@ class LicenseListSerializer(serializers.ModelSerializer):
     списке Лицензий физически отсутствует в выдаче, не просто скрыт на фронте."""
 
     license_type_name = serializers.CharField(source="license_type.name", read_only=True)
+    license_type_kind = serializers.CharField(source="license_type.kind", read_only=True)
     equipment_detail = EquipmentMiniSerializer(source="equipment", read_only=True)
     status = serializers.SerializerMethodField()
     key = serializers.SerializerMethodField()
@@ -286,6 +303,7 @@ class LicenseListSerializer(serializers.ModelSerializer):
             "name",
             "license_type",
             "license_type_name",
+            "license_type_kind",
             "equipment",
             "equipment_detail",
             "status",

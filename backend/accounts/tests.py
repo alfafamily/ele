@@ -47,6 +47,25 @@ class RegistrationTests(APITestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertIn("errors", resp.data)
 
+    def test_register_blocked_when_registration_closed(self):
+        # B14: при выключенной открытой регистрации самостоятельная
+        # регистрация запрещена (403), даже с корректными данными.
+        self.company.open_registration = False
+        self.company.save(update_fields=["open_registration"])
+        resp = self.client.post(
+            "/api/auth/register/",
+            {
+                "email": "user@alpha.family",
+                "password": "Str0ng!Pass1",
+                "password_repeat": "Str0ng!Pass1",
+                "last_name": "Петров",
+                "first_name": "Пётр",
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertFalse(User.objects.filter(email="user@alpha.family").exists())
+
     def test_register_requires_name(self):
         # Фамилия/Имя обязательны — без них не создать Сотрудника.
         resp = self.client.post(

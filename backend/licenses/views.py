@@ -96,7 +96,9 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     # утилизация).
     http_method_names = ["get", "post", "put", "patch", "delete", "head", "options"]
     filter_backends = [filters.OrderingFilter]
-    ordering_fields = ["created_at", "name", "equipment__inventory_number"]
+    # B18: лицензия идентифицируется Типом — сортировка «по наименованию» идёт
+    # по имени Типа. Алиас "name" оставлен для обратной совместимости запросов.
+    ordering_fields = ["created_at", "name", "license_type__name", "equipment__inventory_number"]
     ordering = ["-created_at"]
 
     def destroy(self, request, *args, **kwargs):
@@ -187,7 +189,8 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             return f"Место хранения «{p.name}» ({p.room.building.name} — {p.room.name})" if p else "—"
 
         field_specs = {
-            "name": {"label": "Наименование"},
+            # B18: собственного Наименования у лицензии больше нет — в истории
+            # не показываем (идентификация по Типу).
             "equipment": {"label": "Оборудование", "format": fmt_equipment, "in_created": False},
             "storage_place": {"label": "Место хранения", "format": fmt_storage, "in_created": False},
             "is_retired": {"label": "Признак утилизации", "format": lambda v: "Да" if v else "Нет", "in_created": False},

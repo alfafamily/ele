@@ -5,8 +5,9 @@ import { Icon } from './ui/Icon/Icon.jsx'
 
 // Подбор Оборудования с поиском (например, для установки SIM в модем). Ищет
 // среди активного (не списанного) оборудования по учётному номеру/типу/модели.
-// onSelect(equipment) — выбранная единица.
-export function EquipmentPicker({ onSelect, autoFocus }) {
+// onSelect(equipment) — выбранная единица. simOnly — только типы, у которых
+// разрешена установка SIM/E-SIM (B17).
+export function EquipmentPicker({ onSelect, autoFocus, simOnly = false }) {
   const [query, setQuery] = useState('')
   const debounced = useDebouncedValue(query, 250)
   const [results, setResults] = useState([])
@@ -16,7 +17,8 @@ export function EquipmentPicker({ onSelect, autoFocus }) {
     let cancelled = false
     setLoading(true)
     const qs = debounced ? `&search=${encodeURIComponent(debounced)}` : ''
-    apiGet(`/api/equipment/?tab=active${qs}`)
+    const simFilter = simOnly ? '&allows_sim=1' : ''
+    apiGet(`/api/equipment/?tab=active${qs}${simFilter}`)
       .then((data) => {
         if (!cancelled) setResults(data.results || [])
       })
@@ -26,7 +28,7 @@ export function EquipmentPicker({ onSelect, autoFocus }) {
     return () => {
       cancelled = true
     }
-  }, [debounced])
+  }, [debounced, simOnly])
 
   return (
     <div>

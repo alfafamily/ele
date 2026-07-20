@@ -258,15 +258,13 @@ export function EquipmentCardPage() {
               {perms.canManageLicenses ? (
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Link to={`/licenses/${lic.id}`}>
-                    <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{lic.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{lic.license_type_name}</div>
+                    <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{lic.license_type_name}</div>
                   </Link>
                   {lic.key ? <div style={{ marginTop: 4 }}><InlineMaskedKey value={lic.key} /></div> : null}
                 </div>
               ) : (
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600 }}>{lic.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{lic.license_type_name}</div>
+                  <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600 }}>{lic.license_type_name}</div>
                 </div>
               )}
               {!equipment.is_written_off ? (
@@ -277,7 +275,7 @@ export function EquipmentCardPage() {
                     onClick={() =>
                       setConfirm({
                         title: 'Отвязать лицензию?',
-                        message: `Лицензия «${lic.name}» будет отвязана от «${equipment.type_and_model}».`,
+                        message: `Лицензия «${lic.license_type_name}» будет отвязана от «${equipment.type_and_model}».`,
                         confirmLabel: 'Отвязать',
                         onConfirm: () => onDetachLicense(lic.id),
                       })
@@ -299,6 +297,10 @@ export function EquipmentCardPage() {
             </Can>
           ) : null}
 
+          {/* B17: блок SIM показываем, если тип разрешает установку SIM либо
+              если SIM уже установлены (иначе — лишний пустой блок). */}
+          {(equipment.type_allows_sim || (equipment.sim_cards?.length ?? 0) > 0) ? (
+          <>
           <div style={{ borderTop: '1px solid var(--color-border-hairline)', margin: '20px 0 16px' }} />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>SIM-карты</div>
@@ -327,13 +329,15 @@ export function EquipmentCardPage() {
               ) : null}
             </div>
           ))}
-          {!equipment.is_written_off ? (
+          {!equipment.is_written_off && equipment.type_allows_sim ? (
             <Can perm="canManageEmployees">
               <Button variant="secondary" fullWidth onClick={() => setShowAttachSim(true)}>
                 <Icon name="plus" size={18} strokeWidth={2.2} />
                 Установить SIM
               </Button>
             </Can>
+          ) : null}
+          </>
           ) : null}
         </Card>
         ) : null}

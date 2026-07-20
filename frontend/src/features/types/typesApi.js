@@ -7,7 +7,9 @@ export function makeTypesApi(domain) {
   const base = `/api/${domain}-types/`
   return {
     listTypes: () => apiGet(base),
-    createType: (name) => apiPost(base, { name }),
+    // extra — доменные поля при создании: { allows_sim } (оборудование) или
+    // { kind } (лицензии).
+    createType: (name, extra = {}) => apiPost(base, { name, ...extra }),
     updateType: (id, payload) => apiPatch(`${base}${id}/`, payload),
     deleteType: (id) => apiDelete(`${base}${id}/`),
     createField: (typeId, payload) => apiPost(`${base}${typeId}/fields/`, payload),

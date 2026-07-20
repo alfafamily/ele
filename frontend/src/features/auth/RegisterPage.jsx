@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../app/AuthContext.jsx'
 import { apiPost } from '../../shared/api/client'
 import { Banner, Button, Input } from '../../shared/ui'
 import { AuthShell } from './AuthShell.jsx'
@@ -8,6 +9,7 @@ import { AuthShell } from './AuthShell.jsx'
 // на сервере заводится связанный Сотрудник; Отдел/Должность — по желанию.
 export function RegisterPage() {
   const navigate = useNavigate()
+  const { bootstrap } = useAuth()
   const [lastName, setLastName] = useState('')
   const [firstName, setFirstName] = useState('')
   const [department, setDepartment] = useState('')
@@ -45,6 +47,20 @@ export function RegisterPage() {
     },
     [email, password, passwordRepeat, lastName, firstName, department, position, navigate]
   )
+
+  // B14: регистрация закрыта администратором — форму не показываем.
+  if (bootstrap?.registration_open === false) {
+    return (
+      <AuthShell title="Регистрация недоступна">
+        <div className="ele-auth-centered-text">
+          Открытая регистрация недоступна, обратитесь к администратору или руководителю.
+        </div>
+        <div className="ele-auth-card__footer">
+          Уже есть аккаунт? <Link to="/login">Войти</Link>
+        </div>
+      </AuthShell>
+    )
+  }
 
   return (
     <AuthShell title="Регистрация">

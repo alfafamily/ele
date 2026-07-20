@@ -19,6 +19,10 @@ class Company(models.Model):
     inn = models.CharField("ИНН", max_length=32, blank=True)
     name = models.CharField("Название компании", max_length=255, blank=True)
     domain = models.CharField("Домен компании", max_length=255, blank=True)
+    # B14: разрешена ли самостоятельная регистрация. Выключен — регистрация
+    # только по приглашению администратора; вход через Яндекс ID не заводит
+    # новый аккаунт. По умолчанию включён (текущее поведение сохраняется).
+    open_registration = models.BooleanField("Открытая регистрация", default=True)
     # Список IP/подсетей (CIDR-строки); блокирует весь сервис вне списка.
     ip_allowlist = models.JSONField("Ограничение доступа по IP", default=list, blank=True)
     storage_mode = models.CharField(

@@ -26,7 +26,7 @@ class CompanySettingsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Company
-        fields = ["name", "inn", "domain", "ip_allowlist"]
+        fields = ["name", "inn", "domain", "ip_allowlist", "open_registration"]
 
     def validate_ip_allowlist(self, value):
         import ipaddress

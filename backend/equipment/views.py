@@ -135,6 +135,10 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         elif status_param == "free":
             qs = qs.filter(employee__isnull=True).exclude(place__place_type="workplace")
 
+        # B17: подбор оборудования под установку SIM — только типы с флагом.
+        if self.request.query_params.get("allows_sim") == "1":
+            qs = qs.filter(equipment_type__allows_sim=True)
+
         search = self.request.query_params.get("search")
         if search:
             # Поиск по Учётному номеру, ФИО Сотрудника, Типу и Модели.

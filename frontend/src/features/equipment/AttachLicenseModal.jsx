@@ -5,6 +5,8 @@ import { fetchAllPages } from '../../shared/api/fetchAll'
 import { Button, EmptyState, Icon, Modal } from '../../shared/ui'
 import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
 
+const KIND_LABEL = { software: 'Программная', hardware: 'Аппаратная' }
+
 // D4 — привязка лицензии к оборудованию. При заявленном масштабе дешевле один
 // раз забрать все свободные лицензии и искать на клиенте (по Наименованию и
 // Номеру/ключу), чем заводить отдельный search-эндпоинт ради этой модалки.
@@ -22,7 +24,7 @@ export function AttachLicenseModal({ equipment, onClose, onAttached }) {
 
   const q = query.trim().toLowerCase()
   const filtered = (all || []).filter(
-    (lic) => lic.name.toLowerCase().includes(q) || (lic.key || '').toLowerCase().includes(q),
+    (lic) => (lic.license_type_name || '').toLowerCase().includes(q) || (lic.key || '').toLowerCase().includes(q),
   )
 
   const toggle = (id) =>
@@ -127,8 +129,8 @@ export function AttachLicenseModal({ equipment, onClose, onAttached }) {
                       {checked ? <Icon name="check" size={12} strokeWidth={3} style={{ color: '#fff' }} /> : null}
                     </span>
                     <span style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 600 }}>{lic.name}</div>
-                      <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>{lic.license_type_name} · свободна</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 600 }}>{lic.license_type_name}</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>{[KIND_LABEL[lic.license_type_kind], 'свободна'].filter(Boolean).join(' · ')}</div>
                       {lic.key ? <div style={{ marginTop: 4 }}><InlineMaskedKey value={lic.key} /></div> : null}
                     </span>
                   </div>

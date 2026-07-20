@@ -7,6 +7,8 @@ import { NewTypeModal } from './NewTypeModal.jsx'
 import { RenameTypeModal } from './RenameTypeModal.jsx'
 import { makeTypesApi } from './typesApi.js'
 
+const KIND_LABEL = { software: 'Программная', hardware: 'Аппаратная' }
+
 // Склонение «объект» по числу + примечание, почему удаление типа заблокировано.
 function objectsPlural(n) {
   const d = n % 10
@@ -70,6 +72,12 @@ export function TypesEditorPage({ domain, title }) {
 
   const toggleArchive = async (type) => {
     await api.updateType(type.id, { is_archived: !type.is_archived })
+    load()
+  }
+
+  // B17: включение/выключение установки SIM у типа оборудования.
+  const toggleAllowsSim = async (val) => {
+    await api.updateType(selected.id, { allows_sim: val })
     load()
   }
 
@@ -182,9 +190,31 @@ export function TypesEditorPage({ domain, title }) {
           <Card style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
               <div style={{ fontSize: 18, fontWeight: 600 }}>{selected.name}</div>
+              {/* B18: вид типа лицензии (задан при создании, неизменяем). */}
+              {domain === 'license' && selected.kind ? (
+                <Badge style={{ fontSize: 11, padding: '3px 9px' }}>{KIND_LABEL[selected.kind] || selected.kind}</Badge>
+              ) : null}
               <Badge style={{ fontSize: 11, padding: '3px 9px' }}>{selected.objects_count} объектов</Badge>
               {selected.is_archived ? <Badge style={{ fontSize: 11, padding: '3px 9px' }}>В архиве</Badge> : null}
             </div>
+
+            {/* B17: флаг установки SIM у типа оборудования — редактируемый. */}
+            {domain === 'equipment' ? (
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 18, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={!!selected.allows_sim}
+                  onChange={(e) => toggleAllowsSim(e.target.checked)}
+                  style={{ marginTop: 2, flex: 'none' }}
+                />
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 500 }}>В оборудование можно устанавливать SIM/E-SIM</span>
+                  <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
+                    Разрешает установку SIM/E-SIM в оборудование этого типа.
+                  </span>
+                </span>
+              </label>
+            ) : null}
 
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Реквизиты типа</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -233,9 +263,10 @@ export function TypesEditorPage({ domain, title }) {
 
       {showNewType ? (
         <NewTypeModal
+          domain={domain}
           onClose={() => setShowNewType(false)}
-          onCreate={async (name) => {
-            const created = await api.createType(name)
+          onCreate={async (name, extra) => {
+            const created = await api.createType(name, extra)
             setShowNewType(false)
             setSelectedId(created.id)
             load()
