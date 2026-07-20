@@ -23,7 +23,7 @@ const FILTERS = [
 
 const ACTIVE_COLUMNS = [
   { key: 'phone_number', label: 'Номер', sortable: true, width: 'minmax(0, 1.3fr)' },
-  { key: 'employee__last_name', label: 'Закреплено за', sortable: true, width: 'minmax(0, 1fr)' },
+  { key: 'employee__last_name', label: 'Сотрудник/Место', sortable: true, width: 'minmax(0, 1fr)' },
   { key: 'chevron', label: '', width: '30px' },
 ]
 const UTILIZED_COLUMNS = [

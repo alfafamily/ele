@@ -183,8 +183,8 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 return "—"
             from locations.models import Place
 
-            p = Place.objects.filter(pk=v).first()
-            return f"Место хранения «{p.name}»" if p else "—"
+            p = Place.objects.select_related("room__building").filter(pk=v).first()
+            return f"Место хранения «{p.name}» ({p.room.building.name} — {p.room.name})" if p else "—"
 
         field_specs = {
             "name": {"label": "Наименование"},

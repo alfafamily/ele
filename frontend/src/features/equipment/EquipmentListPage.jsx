@@ -158,7 +158,7 @@ export function EquipmentListPage() {
                     ) : row.place_detail ? (
                       <>
                         <div className="ele-clamp-2">
-                          {row.place_detail.place_type === 'workplace' ? 'Рабочее место' : 'Склад'}: {row.place_detail.name}
+                          {row.place_detail.place_type === 'workplace' ? 'На рабочем месте' : 'На складе'}: {row.place_detail.name}
                         </div>
                         <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>
                           {row.place_detail.building_name} — {row.place_detail.room_name}

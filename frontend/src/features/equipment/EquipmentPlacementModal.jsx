@@ -43,7 +43,7 @@ export function EquipmentPlacementModal({ equipment, onClose, onDone }) {
   }
 
   return (
-    <Modal open onClose={onClose} title="Разместить оборудование">
+    <Modal open onClose={onClose} title="Закрепить / разместить оборудование">
       {error ? <Banner variant="error">{error}</Banner> : null}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, margin: '4px 0 20px' }}>
         <div style={{ display: 'flex', gap: 8 }}>

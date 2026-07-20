@@ -1,4 +1,5 @@
-from django.db.models import Q, Sum
+from django.db.models import F, IntegerField, Q, Sum
+from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import filters, viewsets
@@ -51,6 +52,26 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         search = self.request.query_params.get("search")
         if search:
             qs = qs.filter(Q(name__icontains=search)).distinct()
+
+        # Фильтр по свободному остатку: свободно = остаток − закреплено
+        # (за сотрудниками и рабочими местами; складские размещения — свободны).
+        stock = self.request.query_params.get("stock")
+        if stock in ("has_free", "no_free"):
+            qs = qs.annotate(
+                _assigned=Coalesce(
+                    Sum(
+                        "allocations__quantity",
+                        filter=Q(allocations__employee__isnull=False)
+                        | Q(allocations__place__place_type="workplace"),
+                    ),
+                    0,
+                    output_field=IntegerField(),
+                )
+            )
+            if stock == "has_free":
+                qs = qs.filter(quantity__gt=F("_assigned"))
+            else:
+                qs = qs.filter(quantity__lte=F("_assigned"))
         return qs
 
     # ——— движения по остатку (B8: остаток лежит на складах) ————————————————

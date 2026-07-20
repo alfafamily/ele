@@ -7,11 +7,12 @@ import { Icon } from './ui/Icon/Icon.jsx'
 // Подбор Сотрудника с поиском (C2 «Закрепить сотрудника», форма Оборудования,
 // модалка приглашения) — общий для всех мест, где нужен именно Сотрудник
 // (не Пользователь).
-export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40 }) {
+export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeIds }) {
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query, 250)
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
+  const excludeSet = new Set(excludeIds || [])
 
   useEffect(() => {
     let cancelled = false
@@ -54,11 +55,11 @@ export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40 }) {
       </div>
       {loading && results.length === 0 ? (
         <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Загрузка…</div>
-      ) : results.length === 0 ? (
+      ) : results.filter((e) => !excludeSet.has(e.id)).length === 0 ? (
         <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Никого не найдено</div>
       ) : (
         <div style={{ marginTop: 8, border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', maxHeight: 260, overflowY: 'auto' }}>
-          {results.map((emp, i) => (
+          {results.filter((e) => !excludeSet.has(e.id)).map((emp, i) => (
             <button
               key={emp.id}
               type="button"

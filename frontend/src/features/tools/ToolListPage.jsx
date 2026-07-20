@@ -6,13 +6,18 @@ import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
-import { Button, EmptyState, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 
 const CACHE_KEY = 'tools-list'
 
 const TABS = [
   { value: 'active', label: 'Активные' },
   { value: 'archive', label: 'Списанные' },
+]
+const FILTERS = [
+  { value: 'all', label: 'Все' },
+  { value: 'has_free', label: 'Есть свободный остаток' },
+  { value: 'no_free', label: 'Без остатка' },
 ]
 
 const ACTIVE_COLUMNS = [
@@ -35,18 +40,19 @@ export function ToolListPage() {
   const isPop = useNavigationType() === 'POP'
   const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
   const [tab, setTab] = useState(() => savedUi?.tab ?? 'active')
+  const [stock, setStock] = useState(() => savedUi?.stock ?? 'all')
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
 
   useEffect(() => {
-    writeListCache(CACHE_KEY, { ui: { tab, search, sort } })
-  }, [tab, search, sort])
+    writeListCache(CACHE_KEY, { ui: { tab, stock, search, sort } })
+  }, [tab, stock, search, sort])
 
   const ordering = sort.dir === 'desc' ? `-${sort.key}` : sort.key
   const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList(
     '/api/tools/',
-    { tab, search: debouncedSearch || undefined, ordering },
+    { tab, stock: tab === 'active' && stock !== 'all' ? stock : undefined, search: debouncedSearch || undefined, ordering },
     { cacheKey: CACHE_KEY, restore: isPop },
   )
   useScrollRestoration(CACHE_KEY, isPop && !loading)
@@ -83,6 +89,11 @@ export function ToolListPage() {
         <div className="ele-list-controls__search">
           <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
         </div>
+        {tab === 'active' ? (
+          <div className="ele-list-controls__filter">
+            <FilterButton options={FILTERS} value={stock} onChange={setStock} />
+          </div>
+        ) : null}
       </div>
 
       {error ? (
