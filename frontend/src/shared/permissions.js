@@ -39,6 +39,7 @@ export function computePermissions(user) {
     canViewEquipment,
     canPerformMaintenance,
     canManageMaintenance,
+    canSeeMaintenance,
     // Управление объектами (создание/редактирование/действия) — только staff.
     canManageEquipment: isStaff,
     canManageLicenses: isStaff,
