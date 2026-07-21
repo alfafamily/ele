@@ -242,15 +242,16 @@ export function MaintenanceFormPage() {
                         ) : null}
                       </div>
                     ) : (
-                      // Своя строка — полностью редактируемая, можно удалить.
-                      <div key={row._id} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 90px 32px', gap: 8, alignItems: 'center' }}>
-                        <Select value={row.kind} onChange={(v) => patchRow(row._id, { kind: v })}>
+                      // Своя строка — полностью редактируемая, можно удалить. На
+                      // мобильных раскладывается построчно (см. .ele-maint-row в CSS).
+                      <div key={row._id} className="ele-maint-row">
+                        <Select className="ele-maint-row__kind" value={row.kind} onChange={(v) => patchRow(row._id, { kind: v })}>
                           <option value="work">Работа</option>
                           <option value="material">Материал</option>
                         </Select>
-                        <Input placeholder="Наименование" value={row.name} onChange={(e) => patchRow(row._id, { name: e.target.value })} />
-                        <Input type="number" min="0" step="any" placeholder="Кол-во" value={row.quantity} onChange={(e) => patchRow(row._id, { quantity: e.target.value })} />
-                        <button type="button" title="Удалить строку" onClick={() => removeRow(row._id)} style={rowIconBtn}>
+                        <Input className="ele-maint-row__name" placeholder="Наименование" value={row.name} onChange={(e) => patchRow(row._id, { name: e.target.value })} />
+                        <Input className="ele-maint-row__qty" type="number" min="0" step="any" placeholder="Кол-во" value={row.quantity} onChange={(e) => patchRow(row._id, { quantity: e.target.value })} />
+                        <button type="button" className="ele-maint-row__del" title="Удалить строку" onClick={() => removeRow(row._id)}>
                           <Icon name="trash-2" size={16} strokeWidth={2} />
                         </button>
                       </div>

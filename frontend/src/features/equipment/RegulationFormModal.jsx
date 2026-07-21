@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Banner, Button, Icon, InlineCalendar, Input, Modal, Select } from '../../shared/ui'
+// Раскладка строки «работа/материал» (desktop — в ряд, мобилка — построчно).
+import './MaintenanceFormPage.css'
 
 let nextRowId = 1
 
@@ -108,19 +110,15 @@ export function RegulationFormModal({ regulation, onClose, onSave, title, showFi
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
           {items.map((row) => (
-            <div key={row._id} style={{ display: 'grid', gridTemplateColumns: '120px 1fr 90px 32px', gap: 8, alignItems: 'center' }}>
-              <Select value={row.kind} onChange={(v) => patchRow(row._id, { kind: v })}>
+            // Desktop — в ряд, мобилка — построчно (тип / наименование / кол-во+удаление).
+            <div key={row._id} className="ele-maint-row">
+              <Select className="ele-maint-row__kind" value={row.kind} onChange={(v) => patchRow(row._id, { kind: v })}>
                 <option value="work">Работа</option>
                 <option value="material">Материал</option>
               </Select>
-              <Input placeholder="Наименование" value={row.name} onChange={(e) => patchRow(row._id, { name: e.target.value })} />
-              <Input type="number" min="0" step="any" placeholder="Кол-во" value={row.quantity} onChange={(e) => patchRow(row._id, { quantity: e.target.value })} />
-              <button
-                type="button"
-                title="Удалить позицию"
-                onClick={() => removeRow(row._id)}
-                style={{ width: 32, height: 32, flex: 'none', borderRadius: 8, background: 'var(--color-fill-input)', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
+              <Input className="ele-maint-row__name" placeholder="Наименование" value={row.name} onChange={(e) => patchRow(row._id, { name: e.target.value })} />
+              <Input className="ele-maint-row__qty" type="number" min="0" step="any" placeholder="Кол-во" value={row.quantity} onChange={(e) => patchRow(row._id, { quantity: e.target.value })} />
+              <button type="button" className="ele-maint-row__del" title="Удалить позицию" onClick={() => removeRow(row._id)}>
                 <Icon name="trash-2" size={16} strokeWidth={2} />
               </button>
             </div>
