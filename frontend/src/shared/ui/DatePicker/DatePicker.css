@@ -3,20 +3,22 @@
   position: relative;
 }
 
-/* Поле-триггер оформлено как обычный инпут (.ele-field__box), но это <button>. */
+/* Поле-триггер оформлено как обычный инпут (.ele-field__box), но это <button>:
+   убираем нативную рамку и фокус-контур кнопки (были чёрными) — вид границы
+   даёт box-shadow из .ele-field__box, как у остальных инпутов. */
 .ele-datepicker__box {
   width: 100%;
   cursor: pointer;
   text-align: left;
   font-family: inherit;
   justify-content: space-between;
+  border: none;
+  outline: none;
 }
 
-.ele-datepicker__box:hover {
-  box-shadow: inset 0 0 0 1px var(--color-border-strong);
-}
-
-.ele-datepicker__box.ele-field__box--focused:hover {
+/* Фокус с клавиатуры / открытый календарь — синее кольцо, как у инпута в фокусе. */
+.ele-datepicker__box:focus-visible,
+.ele-datepicker__box.ele-field__box--focused {
   box-shadow: inset 0 0 0 1.5px var(--color-primary);
 }
 
