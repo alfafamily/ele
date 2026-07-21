@@ -1,14 +1,20 @@
 /* Строка позиции ТО: тип · наименование · количество · удалить.
-   Все контролы и кнопка удаления — единой высотой 44px. На desktop — в одну
-   строку, на мобильных — построчно (тип / наименование / количество+удалить). */
+   Раскладка построчная на всех ширинах (тип / наименование / кол-во+удаление):
+   узкая модалка регламента не вмещает всё в один ряд, а расширять её —
+   растягивать остальные элементы и плодить пустоту. Обводка группирует поля
+   одной позиции. */
 .ele-maint-row {
   display: grid;
-  /* Колонки компактные: узкая модалка регламента (~460px) должна оставлять
-     «Наименованию» достаточно ширины. */
-  grid-template-columns: 124px minmax(0, 1fr) 80px 44px;
-  grid-template-areas: 'kind name qty del';
+  grid-template-columns: minmax(0, 1fr) 44px;
+  grid-template-areas:
+    'kind kind'
+    'name name'
+    'qty  del';
   gap: 8px;
   align-items: center;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
 }
 
 .ele-maint-row__kind {
@@ -51,20 +57,4 @@
 .ele-maint-row__del:hover {
   background: var(--color-fill-active-tint);
   color: var(--color-text-primary);
-}
-
-@media (max-width: 560px) {
-  /* Построчно: тип, наименование, затем количество + удаление в один ряд.
-     Обводка группирует три поля одной позиции. */
-  .ele-maint-row {
-    grid-template-columns: minmax(0, 1fr) 44px;
-    grid-template-areas:
-      'kind kind'
-      'name name'
-      'qty  del';
-    gap: 8px;
-    padding: 12px;
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-  }
 }

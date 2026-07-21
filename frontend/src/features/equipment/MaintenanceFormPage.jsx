@@ -252,7 +252,7 @@ export function MaintenanceFormPage() {
                         <Input className="ele-maint-row__name" placeholder="Наименование" value={row.name} onChange={(e) => patchRow(row._id, { name: e.target.value })} />
                         <Input className="ele-maint-row__qty" type="number" min="0" step="any" placeholder="Кол-во" value={row.quantity} onChange={(e) => patchRow(row._id, { quantity: e.target.value })} />
                         <button type="button" className="ele-maint-row__del" title="Удалить строку" onClick={() => removeRow(row._id)}>
-                          <Icon name="trash-2" size={16} strokeWidth={2} />
+                          <Icon name="x" size={18} strokeWidth={2} />
                         </button>
                       </div>
                     ),
