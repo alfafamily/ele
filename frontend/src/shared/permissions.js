@@ -23,6 +23,11 @@ export function computePermissions(user) {
   const canPerformMaintenance = isAdmin || isMaintenance || canMaintainFlag
   // B13+: управление регламентами/планами/датой первого ТО — admin / учётчик с флагом.
   const canManageMaintenance = isAdmin || canMaintainFlag
+  // B13+: видимость ТО-блоков (правый «Обслуживание», раздел «Регламенты» на
+  // карточке, статусы/фильтры ТО в списке оборудования) — все, кто причастен к
+  // ТО (admin / роль ТО / учётчик с флагом) плюс Наблюдатель (сквозной read-only).
+  // Учётчик БЕЗ флага ТО эти блоки не видит — делать с ними он ничего не может.
+  const canSeeMaintenance = canViewEquipment && !(isAccountant && !canMaintainFlag)
 
   return {
     isAdmin,

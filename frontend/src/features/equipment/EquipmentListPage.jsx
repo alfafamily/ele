@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigationType } from 'react-router-dom'
-import { Can } from '../../app/usePermissions.js'
+import { Can, usePermissions } from '../../app/usePermissions.js'
 import { InfiniteScrollSentinel } from '../../shared/InfiniteScrollSentinel.jsx'
 import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
@@ -54,6 +54,7 @@ export function EquipmentListPage() {
   const [tab, setTab] = useState(() => savedUi?.tab ?? 'active')
   const [status, setStatus] = useState(() => savedUi?.status ?? 'all')
   // Мультивыбор ТО: массив из 'due' / 'overdue'.
+  const perms = usePermissions()
   const [toDates, setToDates] = useState(() => savedUi?.toDates ?? [])
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
@@ -126,12 +127,11 @@ export function EquipmentListPage() {
               options={FILTERS}
               value={status}
               onChange={setStatus}
-              extra={{
-                title: 'Техобслуживание',
-                options: MAINTENANCE_FILTERS,
-                values: toDates,
-                onToggle: toggleToDate,
-              }}
+              extra={
+                perms.canSeeMaintenance
+                  ? { title: 'Техобслуживание', options: MAINTENANCE_FILTERS, values: toDates, onToggle: toggleToDate }
+                  : undefined
+              }
             />
           </div>
         ) : null}
@@ -172,7 +172,7 @@ export function EquipmentListPage() {
                     B13: пара иконок статуса ТО (гаечный ключ + часы). */}
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {maintenanceIndicators(row.maintenance_summary).map((ind) => (
+                    {(perms.canSeeMaintenance ? maintenanceIndicators(row.maintenance_summary) : []).map((ind) => (
                       <span
                         key={ind.icon}
                         title={ind.title}
