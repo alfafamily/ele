@@ -85,6 +85,9 @@ const FILTERS = [
   { value: 'movement', label: 'Движения' },
   { value: 'change', label: 'Изменения' },
 ]
+// B13. Фильтр «Выполненные ТО» показываем только на карточках, где такие записи
+// есть (компонент общий — у лицензий/SIM его быть не должно).
+const MAINTENANCE_FILTER = { value: 'maintenance', label: 'Выполненные ТО' }
 
 // «История изменений» — сворачиваемый блок для карточек. Данные грузятся лениво
 // при первом раскрытии. Строки делятся на движения (создание, привязка/
@@ -118,12 +121,17 @@ export function HistoryList({ path, reloadKey }) {
     }
   }, [open, path, reloadKey])
 
+  const filters = useMemo(() => {
+    const hasMaintenance = items?.some((h) => h.category === 'maintenance')
+    return hasMaintenance ? [...FILTERS, MAINTENANCE_FILTER] : FILTERS
+  }, [items])
+
   const filtered = useMemo(() => {
     if (!items) return items
     if (filter === 'all') return items
     // Движения — записи с category==='movement' (создание/привязка/утилизация);
-    // Изменения — правки реквизитов (category==='change'). Старые записи без
-    // category считаем изменениями.
+    // Изменения — правки реквизитов (category==='change'); Выполненные ТО —
+    // category==='maintenance'. Старые записи без category считаем изменениями.
     return items.filter((h) => (h.category || 'change') === filter)
   }, [items, filter])
 
@@ -145,11 +153,15 @@ export function HistoryList({ path, reloadKey }) {
         ) : (
           <>
             <div className="ele-history__filter">
-              <TabBar options={FILTERS} value={filter} onChange={setFilter} size="control" variant="filter" />
+              <TabBar options={filters} value={filter} onChange={setFilter} size="control" variant="filter" />
             </div>
             {filtered.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginTop: 12 }}>
-                {filter === 'movement' ? 'Движений пока нет.' : 'Изменений реквизитов пока нет.'}
+                {filter === 'movement'
+                  ? 'Движений пока нет.'
+                  : filter === 'maintenance'
+                    ? 'Выполненных ТО пока нет.'
+                    : 'Изменений реквизитов пока нет.'}
               </div>
             ) : (
               <div className="ele-history">

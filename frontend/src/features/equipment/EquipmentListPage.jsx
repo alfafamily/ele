@@ -7,8 +7,15 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { MAINTENANCE_STATUS_ICON } from './statusLabels.js'
 
 const CACHE_KEY = 'equipment-list'
+
+// B13. Мультивыбор-фильтры по статусу ТО (можно оба сразу).
+const MAINTENANCE_FILTERS = [
+  { value: 'due', label: 'Подходит дата ТО' },
+  { value: 'overdue', label: 'ТО просрочено' },
+]
 
 const TABS = [
   { value: 'active', label: 'Активное' },
@@ -45,13 +52,18 @@ export function EquipmentListPage() {
   const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
   const [tab, setTab] = useState(() => savedUi?.tab ?? 'active')
   const [status, setStatus] = useState(() => savedUi?.status ?? 'all')
+  // Мультивыбор ТО: массив из 'due' / 'overdue'.
+  const [toDates, setToDates] = useState(() => savedUi?.toDates ?? [])
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
 
   useEffect(() => {
-    writeListCache(CACHE_KEY, { ui: { tab, status, search, sort } })
-  }, [tab, status, search, sort])
+    writeListCache(CACHE_KEY, { ui: { tab, status, toDates, search, sort } })
+  }, [tab, status, toDates, search, sort])
+
+  const toggleToDate = (v) =>
+    setToDates((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]))
 
   const ordering = sort.dir === 'desc' ? `-${sort.key}` : sort.key
   const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList(
@@ -59,6 +71,8 @@ export function EquipmentListPage() {
     {
       tab,
       status: tab === 'active' ? status : undefined,
+      to_due: tab === 'active' && toDates.includes('due') ? '1' : undefined,
+      to_overdue: tab === 'active' && toDates.includes('overdue') ? '1' : undefined,
       search: debouncedSearch || undefined,
       ordering,
     },
@@ -106,7 +120,17 @@ export function EquipmentListPage() {
         </div>
         {tab === 'active' ? (
           <div className="ele-list-controls__filter">
-            <FilterButton options={FILTERS} value={status} onChange={setStatus} />
+            <FilterButton
+              options={FILTERS}
+              value={status}
+              onChange={setStatus}
+              extra={{
+                title: 'Техобслуживание',
+                options: MAINTENANCE_FILTERS,
+                values: toDates,
+                onToggle: toggleToDate,
+              }}
+            />
           </div>
         ) : null}
       </div>
@@ -142,9 +166,21 @@ export function EquipmentListPage() {
           {items.map((row) => (
             <Link key={row.id} to={`/equipment/${row.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
               <TableRow columns={columns}>
-                {/* Наименование (Тип+Модель) в 2 строки + учётный номер ниже */}
+                {/* Наименование (Тип+Модель) в 2 строки + учётный номер ниже.
+                    B13: иконка-индикатор ТО (подходит/просрочено). */}
                 <div style={{ minWidth: 0 }}>
-                  <div className="ele-clamp-2" style={{ fontWeight: 500 }}>{row.type_and_model}</div>
+                  <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {MAINTENANCE_STATUS_ICON[row.maintenance_status] ? (
+                      <Icon
+                        name={MAINTENANCE_STATUS_ICON[row.maintenance_status].name}
+                        size={16}
+                        strokeWidth={2}
+                        title={MAINTENANCE_STATUS_ICON[row.maintenance_status].title}
+                        style={{ color: MAINTENANCE_STATUS_ICON[row.maintenance_status].color, flex: 'none' }}
+                      />
+                    ) : null}
+                    <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.type_and_model}</span>
+                  </div>
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{row.inventory_number}</div>
                 </div>
                 {tab === 'active' ? (

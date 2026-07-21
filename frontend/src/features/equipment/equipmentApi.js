@@ -22,6 +22,13 @@ export const assignEquipment = (id, { mode, employeeId, placeId, comment }) =>
 // Открепление на склад (placeId — место типа storage, обязателен).
 export const unassignEquipment = (id, placeId, comment) =>
   apiPost(`/api/equipment/${id}/unassign/`, { place: placeId, ...(comment ? { comment } : {}) })
+// B13. Провести ТО: дата следующего ТО (необязательна), позиции и комментарий.
+export const performMaintenance = (id, { nextDate, comment, items }) =>
+  apiPost(`/api/equipment/${id}/maintenance/`, {
+    ...(nextDate ? { next_planned_date: nextDate } : {}),
+    ...(comment ? { comment } : {}),
+    items: items || [],
+  })
 export const getEquipmentHistoryPath = (id) => `/api/equipment/${id}/history/`
 export const uploadEquipmentFieldFile = (id, fieldId) => `/api/equipment/${id}/field-values/${fieldId}/file/`
 // Удаление одного из нескольких файлов реквизита (allow_multiple) по id файла.

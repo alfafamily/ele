@@ -75,12 +75,6 @@ export function TypesEditorPage({ domain, title }) {
     load()
   }
 
-  // B17: включение/выключение установки SIM у типа оборудования.
-  const toggleAllowsSim = async (val) => {
-    await api.updateType(selected.id, { allows_sim: val })
-    load()
-  }
-
   const deleteType = async () => {
     try {
       await api.deleteType(deleteTarget.id)
@@ -109,7 +103,9 @@ export function TypesEditorPage({ domain, title }) {
 
   const typeMenu = (t) => {
     const items = [
-      { label: 'Переименовать', onClick: () => setRenameTarget(t) },
+      // У оборудования модалка редактирует и флаги (SIM/ТО), поэтому «Изменить»;
+      // у лицензий меняется только наименование — «Переименовать».
+      { label: domain === 'equipment' ? 'Изменить' : 'Переименовать', onClick: () => setRenameTarget(t) },
       { label: t.is_archived ? 'Вернуть из архива' : 'Архивировать', onClick: () => toggleArchive(t) },
     ]
     // Удаление — только если к типу не привязаны объекты. Иначе пункт остаётся
@@ -198,22 +194,21 @@ export function TypesEditorPage({ domain, title }) {
               {selected.is_archived ? <Badge style={{ fontSize: 11, padding: '3px 9px' }}>В архиве</Badge> : null}
             </div>
 
-            {/* B17: флаг установки SIM у типа оборудования — редактируемый. */}
+            {/* B17/B13: флаги SIM и ТО — только для чтения; изменяются в модалке
+                «Изменить» (и на форме создания). Здесь — текстовый статус. */}
             {domain === 'equipment' ? (
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 18, cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={!!selected.allows_sim}
-                  onChange={(e) => toggleAllowsSim(e.target.checked)}
-                  style={{ marginTop: 2, flex: 'none' }}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 18 }}>
+                <TypeFlagStatus
+                  on={!!selected.allows_sim}
+                  onText="В оборудование можно устанавливать SIM"
+                  offText="В оборудование нельзя устанавливать SIM"
                 />
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ fontSize: 13.5, fontWeight: 500 }}>В оборудование можно устанавливать SIM/E-SIM</span>
-                  <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
-                    Разрешает установку SIM/E-SIM в оборудование этого типа.
-                  </span>
-                </span>
-              </label>
+                <TypeFlagStatus
+                  on={!!selected.maintenance_enabled}
+                  onText="Для оборудования можно проводить ТО"
+                  offText="Для оборудования не доступно проведение ТО"
+                />
+              </div>
             ) : null}
 
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Реквизиты типа</div>
@@ -277,9 +272,10 @@ export function TypesEditorPage({ domain, title }) {
       {renameTarget ? (
         <RenameTypeModal
           type={renameTarget}
+          domain={domain}
           onClose={() => setRenameTarget(null)}
-          onRename={async (name) => {
-            await api.updateType(renameTarget.id, { name })
+          onSave={async (payload) => {
+            await api.updateType(renameTarget.id, payload)
             setRenameTarget(null)
             load()
           }}
@@ -314,6 +310,24 @@ export function TypesEditorPage({ domain, title }) {
           }}
         />
       ) : null}
+    </div>
+  )
+}
+
+// Текст-статус флага Типа оборудования (SIM/ТО) — в блоке реквизитов только для
+// чтения. Иконка-галочка/крестик + подпись, зелёный/приглушённый цвет.
+function TypeFlagStatus({ on, onText, offText }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <Icon
+        name={on ? 'circle-check' : 'circle-x'}
+        size={16}
+        strokeWidth={2}
+        style={{ color: on ? 'var(--color-success)' : 'var(--color-text-placeholder)', flex: 'none' }}
+      />
+      <span style={{ fontSize: 13.5, fontWeight: 500, color: on ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}>
+        {on ? onText : offText}
+      </span>
     </div>
   )
 }

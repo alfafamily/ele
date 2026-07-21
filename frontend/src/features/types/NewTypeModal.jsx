@@ -8,6 +8,7 @@ import { Banner, Button, Input, Modal } from '../../shared/ui'
 export function NewTypeModal({ domain, onClose, onCreate }) {
   const [name, setName] = useState('')
   const [allowsSim, setAllowsSim] = useState(false)
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState(false)
   const [kind, setKind] = useState('software')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -18,7 +19,7 @@ export function NewTypeModal({ domain, onClose, onCreate }) {
     setSubmitting(true)
     setError(null)
     try {
-      const extra = isLicense ? { kind } : { allows_sim: allowsSim }
+      const extra = isLicense ? { kind } : { allows_sim: allowsSim, maintenance_enabled: maintenanceEnabled }
       await onCreate(name, extra)
     } catch (err) {
       setError(err.errors ? Object.values(err.errors).flat().join(' ') : err.detail || 'Не удалось создать тип.')
@@ -54,15 +55,26 @@ export function NewTypeModal({ domain, onClose, onCreate }) {
           </div>
         </div>
       ) : (
-        <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 16, cursor: 'pointer' }}>
-          <input type="checkbox" checked={allowsSim} onChange={(e) => setAllowsSim(e.target.checked)} style={{ marginTop: 2, flex: 'none' }} />
-          <span style={{ minWidth: 0 }}>
-            <span style={{ fontSize: 14, fontWeight: 500 }}>В оборудование можно устанавливать SIM/E-SIM</span>
-            <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
-              Только в оборудование этого типа можно будет устанавливать SIM/E-SIM.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+            <input type="checkbox" checked={allowsSim} onChange={(e) => setAllowsSim(e.target.checked)} style={{ marginTop: 2, flex: 'none' }} />
+            <span style={{ minWidth: 0 }}>
+              <span style={{ fontSize: 14, fontWeight: 500 }}>В оборудование можно устанавливать SIM/E-SIM</span>
+              <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
+                Только в оборудование этого типа можно будет устанавливать SIM/E-SIM.
+              </span>
             </span>
-          </span>
-        </label>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+            <input type="checkbox" checked={maintenanceEnabled} onChange={(e) => setMaintenanceEnabled(e.target.checked)} style={{ marginTop: 2, flex: 'none' }} />
+            <span style={{ minWidth: 0 }}>
+              <span style={{ fontSize: 14, fontWeight: 500 }}>Для оборудования можно проводить ТО</span>
+              <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
+                Включает учёт техобслуживания: кнопку «Провести ТО», статусы и индикаторы в списке.
+              </span>
+            </span>
+          </label>
+        </div>
       )}
 
       <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>

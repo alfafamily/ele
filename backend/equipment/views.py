@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import ProtectedError, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -20,12 +21,15 @@ from .models import (
     EquipmentFieldValue,
     EquipmentType,
     EquipmentTypeField,
+    MaintenanceRecord,
+    MaintenanceRecordItem,
 )
 from .serializers import (
     EquipmentFieldValueOutSerializer,
     EquipmentSerializer,
     EquipmentTypeFieldSerializer,
     EquipmentTypeSerializer,
+    MaintenanceRecordCreateSerializer,
 )
 
 
@@ -139,6 +143,26 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if self.request.query_params.get("allows_sim") == "1":
             qs = qs.filter(equipment_type__allows_sim=True)
 
+        # B13: фильтры по статусу ТО (только типы с включённым ТО). Можно выбрать
+        # оба сразу — тогда объединяем условия через OR.
+        to_due = self.request.query_params.get("to_due") == "1"
+        to_overdue = self.request.query_params.get("to_overdue") == "1"
+        if to_due or to_overdue:
+            from datetime import timedelta
+
+            from equipment.maintenance import DUE_SOON_DAYS
+
+            today = timezone.localdate()
+            cond = Q(pk__in=[])  # пустое условие-заглушка для наращивания через OR
+            if to_overdue:
+                cond |= Q(next_maintenance_date__lt=today)
+            if to_due:
+                cond |= Q(
+                    next_maintenance_date__gte=today,
+                    next_maintenance_date__lte=today + timedelta(days=DUE_SOON_DAYS),
+                )
+            qs = qs.filter(Q(equipment_type__maintenance_enabled=True) & cond)
+
         search = self.request.query_params.get("search")
         if search:
             # Поиск по Учётному номеру, ФИО Сотрудника, Типу и Модели.
@@ -226,6 +250,40 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             equipment._change_reason = comment
         equipment.save(update_fields=["employee", "place"])
         return Response(EquipmentSerializer(equipment).data)
+
+    @action(detail=True, methods=["post"], url_path="maintenance", permission_classes=[IsAdminOrAccountant])
+    def perform_maintenance(self, request, pk=None):
+        """B13. Провести ТО: создаёт запись MaintenanceRecord с позициями,
+        снимает плановую дату «на момент ТО» (prior_planned_date) и переносит
+        новую плановую дату в Equipment.next_maintenance_date."""
+        equipment = self.get_object()
+        if not equipment.equipment_type.maintenance_enabled:
+            return Response({"detail": "Для этого типа оборудования ТО не ведётся."}, status=409)
+        if equipment.is_written_off:
+            return Response({"detail": "По списанному оборудованию ТО не проводится."}, status=409)
+
+        serializer = MaintenanceRecordCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        with transaction.atomic():
+            record = MaintenanceRecord.objects.create(
+                equipment=equipment,
+                next_planned_date=data.get("next_planned_date"),
+                prior_planned_date=equipment.next_maintenance_date,
+                comment=(data.get("comment") or "").strip(),
+                created_by=request.user if request.user.is_authenticated else None,
+            )
+            MaintenanceRecordItem.objects.bulk_create([
+                MaintenanceRecordItem(
+                    record=record, kind=item["kind"], name=item["name"].strip(), quantity=item["quantity"]
+                )
+                for item in data["items"]
+            ])
+            equipment.next_maintenance_date = data.get("next_planned_date")
+            equipment.save(update_fields=["next_maintenance_date"])
+
+        return Response(EquipmentSerializer(equipment, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=["get"], url_path="history")
     def history_list(self, request, pk=None):
@@ -367,6 +425,11 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                         })
                     prev_attached = attached
 
+        # B13. Проведённые ТО — отдельная категория «maintenance» (фильтр
+        # «Выполненные ТО»). Записи собственной simple-history не имеют —
+        # разворачиваем прямо из MaintenanceRecord.
+        related_rows += _maintenance_history_rows(eq)
+
         rows = build_history_rows(
             eq, field_specs,
             movement_fields={"employee", "place"},
@@ -452,3 +515,51 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         field_file.delete()
         delete_stored_file(stored)
         return Response(status=204)
+
+
+def _fmt_quantity(value):
+    """Decimal без хвостовых нулей: 2.000 → «2», 2.500 → «2.5»."""
+    q = value.normalize()
+    # normalize() у целых даёт экспоненту (2E+1) — приводим к обычной записи.
+    if q == q.to_integral():
+        q = q.quantize(1)
+    return f"{q}"
+
+
+def _fmt_date(d):
+    return d.strftime("%d.%m.%Y") if d else "—"
+
+
+def _maintenance_history_rows(equipment):
+    """Строки истории по проведённым ТО (category='maintenance')."""
+    rows = []
+    records = (
+        equipment.maintenance_records.select_related("created_by").prefetch_related("items").all()
+    )
+    for rec in records:
+        performed_date = timezone.localdate(rec.performed_at)
+        # Отметка «вовремя / с просрочкой N дней» — только если была плановая дата.
+        if rec.prior_planned_date is not None:
+            overdue_days = (performed_date - rec.prior_planned_date).days
+            suffix = f" (с просрочкой {overdue_days} дн.)" if overdue_days > 0 else " (вовремя)"
+        else:
+            suffix = ""
+        lines = [
+            {
+                "label": f"{MaintenanceRecordItem.Kind(item.kind).label} «{item.name}»",
+                "value": f"количество: {_fmt_quantity(item.quantity)}",
+                "secret": False,
+            }
+            for item in rec.items.all()
+        ]
+        lines.append({"label": "Следующее ТО", "value": _fmt_date(rec.next_planned_date), "secret": False})
+        rows.append({
+            "date": rec.performed_at,
+            "author": rec.created_by.email if rec.created_by_id else None,
+            "kind": "maintenance", "category": "maintenance",
+            "label": f"Проведено ТО{suffix}",
+            "old": None, "new": None, "secret": False,
+            "comment": rec.comment or None,
+            "lines": lines,
+        })
+    return rows
