@@ -182,7 +182,7 @@ export function MaintenanceFormPage() {
                       <Icon name={ic.icon} size={17} strokeWidth={2} />
                     </span>
                     <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                      <div style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</div>
+                      <div className="ele-clamp-2" style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</div>
                       <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
                         {regulationPeriodLabel(r)}
                         {!r.on_demand ? ` · ${r.plan?.next_planned_date ? `план: ${formatShortDate(r.plan.next_planned_date)}` : 'дата не задана'}` : ''}
@@ -198,10 +198,10 @@ export function MaintenanceFormPage() {
           <>
             <Card>
               {error ? <Banner variant="error">{error}</Banner> : null}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
-                <span style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>Регламент:</span>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>{chosen.unplanned ? 'Внеплановое ТО' : chosen.name}</span>
-                <button type="button" onClick={() => setChosen(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--color-primary)', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 18 }}>
+                <span style={{ fontSize: 13, color: 'var(--color-text-placeholder)', flex: 'none', marginTop: 1 }}>Регламент:</span>
+                <span className="ele-clamp-2" style={{ fontSize: 14, fontWeight: 600, flex: 1, minWidth: 0 }}>{chosen.unplanned ? 'Внеплановое ТО' : chosen.name}</span>
+                <button type="button" onClick={() => setChosen(null)} style={{ flex: 'none', background: 'none', border: 'none', color: 'var(--color-primary)', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                   Изменить
                 </button>
               </div>

@@ -156,11 +156,12 @@ export function EquipmentRegulationsSection({ equipment, regulations, canManage,
                             <Icon name={ic.icon} size={17} strokeWidth={2} />
                           </span>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13.5, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                              {reg.name}
+                            {/* Плашки — перед названием; название обрезается до 2 строк. */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 3 }}>
                               <Badge>{reg.scope === 'individual' ? 'Индивидуальный' : 'Общий'}</Badge>
                               {reg.is_archived ? <Badge>В архиве</Badge> : reg.plan?.is_cancelled ? <Badge>Отменён</Badge> : null}
                             </div>
+                            <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600 }}>{reg.name}</div>
                             <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 1 }}>
                               {regulationPeriodLabel(reg)}
                               {!reg.on_demand ? ` · ${reg.plan?.next_planned_date ? `план: ${formatShortDate(reg.plan.next_planned_date)}` : 'дата не задана'}` : ''}

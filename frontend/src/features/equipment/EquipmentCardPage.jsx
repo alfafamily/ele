@@ -226,7 +226,7 @@ export function EquipmentCardPage() {
                             <Icon name={ic.icon} size={17} strokeWidth={2} />
                           </span>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 13.5, fontWeight: 600 }}>{r.name}</div>
+                            <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600 }}>{r.name}</div>
                             <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
                               {r.plan?.next_planned_date ? `Плановая дата: ${formatShortDate(r.plan.next_planned_date)}` : 'Дата ТО не задана'}
                             </div>
