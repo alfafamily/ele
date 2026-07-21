@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Banner, Button, Card, Icon, Input, Spinner } from '../../shared/ui'
+import { Banner, Card, FormActions, Input, Spinner } from '../../shared/ui'
 import { createEmployee, getDepartments, getEmployee, updateEmployee } from './employeesApi.js'
 
 export function EmployeeFormPage() {
@@ -76,16 +76,6 @@ export function EmployeeFormPage() {
       <div style={{ width: '100%', maxWidth: 600 }}>
         <div className="ele-form-head">
           <h1 className="ele-form-head__title">{isEdit ? 'Редактирование сотрудника' : 'Новый сотрудник'}</h1>
-          <div style={{ display: 'flex', gap: 10, flex: 'none' }}>
-            <Button variant="secondary" onClick={() => navigate(-1)} aria-label="Отмена">
-              <span className="ele-only-desktop">Отмена</span>
-              <Icon className="ele-only-mobile" name="x" size={18} strokeWidth={2} />
-            </Button>
-            <Button loading={submitting} onClick={submit} aria-label="Сохранить">
-              <span className="ele-only-desktop">Сохранить</span>
-              <Icon className="ele-only-mobile" name="check" size={18} strokeWidth={2.2} />
-            </Button>
-          </div>
         </div>
 
         {error ? <Banner variant="error">{error}</Banner> : null}
@@ -115,6 +105,13 @@ export function EmployeeFormPage() {
             </div>
           </Card>
         </form>
+
+        <FormActions
+          onCancel={() => navigate(-1)}
+          onSubmit={submit}
+          submitting={submitting}
+          submitLabel={isEdit ? 'Сохранить' : 'Создать'}
+        />
       </div>
     </div>
   )

@@ -4,7 +4,7 @@ import { apiGet } from '../../shared/api/client'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
-import { Badge, Banner, Button, Card, Icon, Input, PlaceSelect, Spinner } from '../../shared/ui'
+import { Badge, Banner, Card, FormActions, Icon, Input, PlaceSelect, Spinner } from '../../shared/ui'
 import { getBuildings } from '../premises/premisesApi.js'
 import { createPass, getPass, updatePass } from '../employees/employeesApi.js'
 import { generateNextNumber } from '../settings/settingsApi.js'
@@ -275,16 +275,6 @@ export function PassFormPage() {
       <div style={{ width: '100%', maxWidth: 660 }}>
         <div className="ele-form-head">
           <h1 className="ele-form-head__title">{title}</h1>
-          <div style={{ display: 'flex', gap: 10, flex: 'none' }}>
-            <Button variant="secondary" onClick={() => navigate(-1)} aria-label="Отмена">
-              <span className="ele-only-desktop">Отмена</span>
-              <Icon className="ele-only-mobile" name="x" size={18} strokeWidth={2} />
-            </Button>
-            <Button loading={submitting} disabled={!ready || targetCount === 0} onClick={submit} aria-label="Сохранить">
-              <span className="ele-only-desktop">Сохранить</span>
-              <Icon className="ele-only-mobile" name="check" size={18} strokeWidth={2.2} />
-            </Button>
-          </div>
         </div>
 
         {error ? <Banner variant="error">{error}</Banner> : null}
@@ -504,6 +494,15 @@ export function PassFormPage() {
             ) : null}
           </form>
         )}
+        {ready ? (
+          <FormActions
+            onCancel={() => navigate(-1)}
+            onSubmit={submit}
+            submitting={submitting}
+            submitLabel={isEdit ? 'Сохранить' : 'Создать'}
+            submitDisabled={targetCount === 0}
+          />
+        ) : null}
       </div>
     </div>
   )

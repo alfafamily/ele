@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Banner, BackButton, Button, Card, DatePicker, Icon, Input, Select, Spinner } from '../../shared/ui'
+import { Banner, BackButton, Button, Card, DatePicker, FormActions, Icon, Input, Select, Spinner } from '../../shared/ui'
 import { getEquipment, performMaintenance } from './equipmentApi.js'
 import { MAINTENANCE_STATUS_COLOR, MAINTENANCE_STATUS_ICONS, MAINTENANCE_STATUS_LABEL } from './statusLabels.js'
 import './MaintenanceFormPage.css'
@@ -86,16 +86,17 @@ export function MaintenanceFormPage() {
   const statusIcons = MAINTENANCE_STATUS_ICONS[status]
 
   return (
-    <div className="ele-maint-page">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <BackButton />
-        <div style={{ minWidth: 0 }}>
-          <h1 className="ele-card-title">Провести ТО</h1>
-          <div style={{ fontSize: 13.5, color: 'var(--color-text-placeholder)' }}>
-            {equipment.type_and_model} · {equipment.inventory_number}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div style={{ width: '100%', maxWidth: 660 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <BackButton />
+          <div style={{ minWidth: 0 }}>
+            <h1 className="ele-card-title">Провести ТО</h1>
+            <div style={{ fontSize: 13.5, color: 'var(--color-text-placeholder)' }}>
+              {equipment.type_and_model} · {equipment.inventory_number}
+            </div>
           </div>
         </div>
-      </div>
 
       <Card>
         {error ? <Banner variant="error">{error}</Banner> : null}
@@ -178,15 +179,16 @@ export function MaintenanceFormPage() {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-          <Button variant="secondary" onClick={() => navigate(`/equipment/${id}`)}>
-            Отмена
-          </Button>
-          <Button loading={submitting} disabled={!hasContent} onClick={submit}>
-            Провести ТО
-          </Button>
-        </div>
       </Card>
+
+        <FormActions
+          onCancel={() => navigate(`/equipment/${id}`)}
+          onSubmit={submit}
+          submitting={submitting}
+          submitLabel="Провести ТО"
+          submitDisabled={!hasContent}
+        />
+      </div>
     </div>
   )
 }

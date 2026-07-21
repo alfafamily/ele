@@ -54,7 +54,7 @@ export function RoomModal({ buildingId, room, onClose, onDone }) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Button fullWidth loading={submitting} onClick={submit}>
-          Сохранить
+          {isEdit ? 'Сохранить' : 'Создать'}
         </Button>
         <Button variant="secondary" fullWidth onClick={onClose}>
           Отмена
