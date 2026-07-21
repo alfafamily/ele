@@ -18,7 +18,8 @@ export function AttachEquipmentModal({ license, onClose, onAttached }) {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    const qs = new URLSearchParams({ tab: 'active' })
+    // Только оборудование, у типа которого разрешена установка лицензий.
+    const qs = new URLSearchParams({ tab: 'active', allows_license: '1' })
     if (debouncedQuery) qs.set('search', debouncedQuery)
     apiGet(`/api/equipment/?${qs}`)
       .then((data) => {

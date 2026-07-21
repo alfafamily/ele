@@ -80,7 +80,7 @@ class EquipmentTypeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EquipmentType
-        fields = ["id", "name", "is_archived", "allows_sim", "maintenance_enabled", "fields", "objects_count"]
+        fields = ["id", "name", "is_archived", "allows_sim", "allows_license", "maintenance_enabled", "fields", "objects_count"]
 
 
 class EquipmentFieldValueInputSerializer(serializers.Serializer):
@@ -139,6 +139,8 @@ class EquipmentSerializer(serializers.ModelSerializer):
     equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True)
     # B17: можно ли устанавливать SIM в это оборудование (флаг его Типа).
     type_allows_sim = serializers.BooleanField(source="equipment_type.allows_sim", read_only=True)
+    # Можно ли привязывать лицензии к этому оборудованию (флаг его Типа).
+    type_allows_license = serializers.BooleanField(source="equipment_type.allows_license", read_only=True)
     # B13+: ведётся ли ТО (флаг Типа) + сводная индикация по регламентам.
     type_maintenance_enabled = serializers.BooleanField(source="equipment_type.maintenance_enabled", read_only=True)
     maintenance_summary = serializers.SerializerMethodField()
@@ -170,6 +172,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
             "equipment_type",
             "equipment_type_name",
             "type_allows_sim",
+            "type_allows_license",
             "type_maintenance_enabled",
             "maintenance_summary",
             "type_and_model",

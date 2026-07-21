@@ -484,3 +484,37 @@ class HardwareLicenseStorageTests(APITestCase):
         self.assertEqual(r.status_code, 200, r.data)
         self.assertIsNone(r.data["equipment"])
         self.assertEqual(r.data["storage_place"], self.store.id)
+
+
+class LicenseEquipmentAllowsLicenseTests(APITestCase):
+    """Привязать лицензию можно только к оборудованию, у типа которого включён
+    флаг «Установка лицензий»."""
+
+    def setUp(self):
+        from equipment.models import Equipment, EquipmentType
+
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        lt = LicenseType.objects.create(name="Программная", kind="software")
+        self.license = License.objects.create(license_type=lt)
+        self.type_no = EquipmentType.objects.create(name="Стол", allows_license=False)
+        self.type_yes = EquipmentType.objects.create(name="Ноутбук", allows_license=True)
+        self.eq_no = Equipment.objects.create(inventory_number="E-NO", equipment_type=self.type_no)
+        self.eq_yes = Equipment.objects.create(inventory_number="E-YES", equipment_type=self.type_yes)
+
+    def test_attach_rejected_when_type_disallows_license(self):
+        resp = self.client.patch(f"/api/licenses/{self.license.id}/", {"equipment": self.eq_no.id}, format="json")
+        self.assertEqual(resp.status_code, 400, resp.data)
+        self.assertIn("equipment", resp.data.get("errors", resp.data))
+
+    def test_attach_allowed_when_type_allows_license(self):
+        resp = self.client.patch(f"/api/licenses/{self.license.id}/", {"equipment": self.eq_yes.id}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["equipment"], self.eq_yes.id)
+
+    def test_equipment_list_allows_license_filter(self):
+        resp = self.client.get("/api/equipment/?tab=active&allows_license=1")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        ids = {row["id"] for row in resp.data["results"]}
+        self.assertIn(self.eq_yes.id, ids)
+        self.assertNotIn(self.eq_no.id, ids)

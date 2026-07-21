@@ -210,8 +210,15 @@ class LicenseSerializer(serializers.ModelSerializer):
         # аппаратная лицензия может лежать на складе.
         from locations.models import Place
 
-        if attrs.get("equipment"):
+        equipment = attrs.get("equipment")
+        if equipment:
             attrs["storage_place"] = None
+            # Лицензии можно привязывать только к оборудованию, у типа которого
+            # включён флаг «Установка лицензий».
+            if not equipment.equipment_type.allows_license:
+                raise serializers.ValidationError(
+                    {"equipment": "К оборудованию этого типа нельзя привязывать лицензии."}
+                )
         storage = attrs.get("storage_place")
         if storage is not None and storage.place_type != Place.PlaceType.STORAGE:
             raise serializers.ValidationError({"storage_place": "Выберите место хранения (склад)."})

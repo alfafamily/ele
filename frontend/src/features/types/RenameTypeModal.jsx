@@ -10,6 +10,7 @@ export function RenameTypeModal({ type, domain, onClose, onSave }) {
   const isEquipment = domain === 'equipment'
   const [name, setName] = useState(type.name)
   const [allowsSim, setAllowsSim] = useState(!!type.allows_sim)
+  const [allowsLicense, setAllowsLicense] = useState(!!type.allows_license)
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(!!type.maintenance_enabled)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -17,7 +18,10 @@ export function RenameTypeModal({ type, domain, onClose, onSave }) {
   const trimmed = name.trim()
   const dirty =
     trimmed !== type.name ||
-    (isEquipment && (allowsSim !== !!type.allows_sim || maintenanceEnabled !== !!type.maintenance_enabled))
+    (isEquipment &&
+      (allowsSim !== !!type.allows_sim ||
+        allowsLicense !== !!type.allows_license ||
+        maintenanceEnabled !== !!type.maintenance_enabled))
 
   const submit = async () => {
     setSubmitting(true)
@@ -26,6 +30,7 @@ export function RenameTypeModal({ type, domain, onClose, onSave }) {
       const payload = { name: trimmed }
       if (isEquipment) {
         payload.allows_sim = allowsSim
+        payload.allows_license = allowsLicense
         payload.maintenance_enabled = maintenanceEnabled
       }
       await onSave(payload)
@@ -49,6 +54,15 @@ export function RenameTypeModal({ type, domain, onClose, onSave }) {
               <span style={{ fontSize: 14, fontWeight: 500 }}>В оборудование можно устанавливать SIM/E-SIM</span>
               <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
                 Разрешает установку SIM/E-SIM в оборудование этого типа.
+              </span>
+            </span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+            <input type="checkbox" checked={allowsLicense} onChange={(e) => setAllowsLicense(e.target.checked)} style={{ marginTop: 2, flex: 'none' }} />
+            <span style={{ minWidth: 0 }}>
+              <span style={{ fontSize: 14, fontWeight: 500 }}>К оборудованию можно привязывать лицензии</span>
+              <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
+                Разрешает привязку лицензий к оборудованию этого типа (блок «Установленные лицензии»).
               </span>
             </span>
           </label>
