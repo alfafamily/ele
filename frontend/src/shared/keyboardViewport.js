@@ -21,8 +21,11 @@ export function initKeyboardViewport() {
   const update = () => {
     const height = Math.round(vv.height)
     const top = Math.round(vv.offsetTop)
-    // Высота клавиатуры = сколько «съедено» снизу от лейаут-вьюпорта.
-    const keyboard = Math.max(0, Math.round(window.innerHeight - height - top))
+    // Высота клавиатуры = лейаут-вьюпорт минус видимая часть. ВАЖНО: без
+    // vv.offsetTop — он на iOS меняется при прокрутке тела страницы, и если его
+    // вычитать, оценка «плавает», класс kb-open мигает, а завязанный на него
+    // min-height страницы прыгает (пустая область + откат скролла к инпуту).
+    const keyboard = Math.max(0, Math.round(window.innerHeight - height))
     root.style.setProperty('--vvh', `${height}px`)
     root.style.setProperty('--vv-top', `${top}px`)
     root.style.setProperty('--kb-height', `${keyboard}px`)
