@@ -13,8 +13,7 @@ import { detachSimCard } from '../employees/employeesApi.js'
 import { EquipmentPlacementModal } from './EquipmentPlacementModal.jsx'
 import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
 import { getEquipment, getEquipmentHistoryPath } from './equipmentApi.js'
-import { EQUIPMENT_STATUS_LABEL, MAINTENANCE_STATUS_COLOR, MAINTENANCE_STATUS_LABEL } from './statusLabels.js'
-import { MaintenanceModal } from './MaintenanceModal.jsx'
+import { EQUIPMENT_STATUS_LABEL, MAINTENANCE_STATUS_COLOR, MAINTENANCE_STATUS_ICONS, MAINTENANCE_STATUS_LABEL } from './statusLabels.js'
 import { WriteOffModal } from './WriteOffModal.jsx'
 
 function formatShortDate(iso) {
@@ -29,7 +28,6 @@ export function EquipmentCardPage() {
   const [equipment, setEquipment] = useState(null)
   const [loadError, setLoadError] = useState(false)
   const [showWriteOff, setShowWriteOff] = useState(false)
-  const [showMaintenance, setShowMaintenance] = useState(false)
   const [showPlacement, setShowPlacement] = useState(false)
   const [showAttachLicense, setShowAttachLicense] = useState(false)
   const [showAttachSim, setShowAttachSim] = useState(false)
@@ -182,12 +180,11 @@ export function EquipmentCardPage() {
             <>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Обслуживание</div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
-                <Icon
-                  name="wrench"
-                  size={18}
-                  strokeWidth={2}
-                  style={{ color: MAINTENANCE_STATUS_COLOR[equipment.maintenance_status] || 'var(--color-text-muted)', flex: 'none', marginTop: 2 }}
-                />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flex: 'none', marginTop: 1, color: MAINTENANCE_STATUS_COLOR[equipment.maintenance_status] || 'var(--color-text-muted)' }}>
+                  {(MAINTENANCE_STATUS_ICONS[equipment.maintenance_status]?.icons || ['wrench']).map((name) => (
+                    <Icon key={name} name={name} size={18} strokeWidth={2} />
+                  ))}
+                </span>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: MAINTENANCE_STATUS_COLOR[equipment.maintenance_status] }}>
                     {MAINTENANCE_STATUS_LABEL[equipment.maintenance_status] || 'ТО не запланировано'}
@@ -200,7 +197,7 @@ export function EquipmentCardPage() {
                 </div>
               </div>
               <Can perm="canManageEquipment">
-                <Button variant="secondary" fullWidth onClick={() => setShowMaintenance(true)}>
+                <Button variant="secondary" fullWidth onClick={() => navigate(`/equipment/${equipment.id}/maintenance`)}>
                   <Icon name="wrench" size={17} strokeWidth={2} />
                   Провести ТО
                 </Button>
@@ -402,16 +399,6 @@ export function EquipmentCardPage() {
           onClose={() => setShowWriteOff(false)}
           onDone={() => {
             setShowWriteOff(false)
-            load()
-          }}
-        />
-      ) : null}
-      {showMaintenance ? (
-        <MaintenanceModal
-          equipment={equipment}
-          onClose={() => setShowMaintenance(false)}
-          onDone={() => {
-            setShowMaintenance(false)
             load()
           }}
         />

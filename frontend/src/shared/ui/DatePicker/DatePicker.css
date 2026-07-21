@@ -1,0 +1,185 @@
+.ele-datepicker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+}
+
+.ele-datepicker__label {
+  font-size: var(--font-size-field-label);
+  color: var(--color-text-placeholder);
+  line-height: 1.3;
+}
+
+.ele-datepicker__trigger {
+  height: var(--control-height);
+  box-sizing: border-box;
+  width: 100%;
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  border: none;
+  border-radius: var(--radius-control);
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: inherit;
+  font-size: var(--font-size-field-value);
+  cursor: pointer;
+  text-align: left;
+}
+
+.ele-datepicker__trigger:hover {
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+}
+
+.ele-datepicker__trigger--open {
+  box-shadow: inset 0 0 0 1.5px var(--color-primary);
+}
+
+.ele-datepicker__value {
+  color: var(--color-text-primary);
+}
+
+.ele-datepicker__placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.ele-datepicker__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 7px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.ele-datepicker__clear:hover {
+  background: var(--color-fill-active-tint);
+}
+
+/* Календарь-поповер */
+.ele-cal {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  width: 300px;
+  max-width: calc(100vw - 32px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-modal);
+  padding: 14px;
+}
+
+.ele-cal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.ele-cal__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.ele-cal__nav {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ele-cal__nav:hover:not(:disabled) {
+  background: var(--color-fill-active-tint);
+}
+
+.ele-cal__nav:disabled {
+  color: var(--color-border-strong);
+  cursor: default;
+}
+
+.ele-cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.ele-cal__wd {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-placeholder);
+}
+
+.ele-cal__wd--weekend {
+  color: var(--color-error);
+}
+
+.ele-cal__day {
+  height: 38px;
+  width: 38px;
+  margin: 0 auto;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-underline-offset: 3px;
+}
+
+.ele-cal__day:hover:not(:disabled):not(.ele-cal__day--selected) {
+  background: var(--color-fill-active-tint);
+}
+
+.ele-cal__day--weekend {
+  color: var(--color-error);
+}
+
+/* Сегодняшняя дата подчёркнута (в т.ч. если она же выходной или выбранная). */
+.ele-cal__day--today {
+  text-decoration: underline;
+}
+
+/* Недоступные (раньше минимальной) дни — приглушены, не кликаются. */
+.ele-cal__day--disabled {
+  color: var(--color-text-placeholder);
+  opacity: 0.55;
+  cursor: default;
+}
+
+.ele-cal__day--weekend.ele-cal__day--disabled {
+  color: var(--color-error);
+  opacity: 0.4;
+}
+
+/* Выбранный день — чёрный круг, белый текст (перебивает цвет выходного). */
+.ele-cal__day--selected,
+.ele-cal__day--selected.ele-cal__day--weekend {
+  background: var(--color-text-primary);
+  color: #fff;
+}

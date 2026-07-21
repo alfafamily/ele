@@ -9,6 +9,7 @@ import { SetupWizardPage } from '../features/auth/setup/SetupWizardPage.jsx'
 import { EquipmentCardPage } from '../features/equipment/EquipmentCardPage.jsx'
 import { EquipmentFormPage } from '../features/equipment/EquipmentFormPage.jsx'
 import { EquipmentListPage } from '../features/equipment/EquipmentListPage.jsx'
+import { MaintenanceFormPage } from '../features/equipment/MaintenanceFormPage.jsx'
 import { ToolCardPage } from '../features/tools/ToolCardPage.jsx'
 import { ToolFormPage } from '../features/tools/ToolFormPage.jsx'
 import { ToolListPage } from '../features/tools/ToolListPage.jsx'
@@ -119,6 +120,14 @@ export function AppRoutes() {
           element={
             <RequireStaff>
               <EquipmentFormPage />
+            </RequireStaff>
+          }
+        />
+        <Route
+          path="/equipment/:id/maintenance"
+          element={
+            <RequireStaff>
+              <MaintenanceFormPage />
             </RequireStaff>
           }
         />

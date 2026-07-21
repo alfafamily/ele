@@ -696,17 +696,30 @@ class MaintenanceTests(APITestCase):
         today = timezone.localdate()
         type_id = self._make_type()
 
+        # Плановую дату (в т.ч. прошлую — она наступает со временем) выставляем
+        # напрямую через ORM: провести ТО с прошлой датой запрещено (см. отдельный
+        # тест), а «просрочено» возникает, когда запланированная дата истекает.
         cases = {
-            (today - timedelta(days=1)).isoformat(): "overdue",
-            (today + timedelta(days=3)).isoformat(): "due_soon",
-            today.isoformat(): "due_soon",
-            (today + timedelta(days=30)).isoformat(): "scheduled",
+            today - timedelta(days=1): "overdue",
+            today + timedelta(days=3): "due_soon",
+            today: "due_soon",
+            today + timedelta(days=30): "scheduled",
         }
         for i, (date, expected) in enumerate(cases.items()):
             eq_id = self._make_equipment(type_id, inv=f"INV-TH-{i}")
-            resp = self._perform(eq_id, next_planned_date=date)
-            self.assertEqual(resp.status_code, 200, resp.data)
+            Equipment.objects.filter(pk=eq_id).update(next_maintenance_date=date)
+            resp = self.client.get(f"/api/equipment/{eq_id}/")
             self.assertEqual(resp.data["maintenance_status"], expected, f"{date} -> {expected}")
+
+    def test_past_date_rejected(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        type_id = self._make_type()
+        eq_id = self._make_equipment(type_id)
+        resp = self._perform(eq_id, next_planned_date=(timezone.localdate() - timedelta(days=1)).isoformat())
+        self.assertEqual(resp.status_code, 400, resp.data)
 
     def test_list_filters(self):
         from datetime import timedelta
@@ -715,12 +728,14 @@ class MaintenanceTests(APITestCase):
 
         today = timezone.localdate()
         type_id = self._make_type()
+        # Плановые даты (в т.ч. прошлую) выставляем через ORM — «просрочено»
+        # наступает со временем, задать прошлую дату через API нельзя.
         overdue_id = self._make_equipment(type_id, inv="INV-OVD")
-        self._perform(overdue_id, next_planned_date=(today - timedelta(days=2)).isoformat())
+        Equipment.objects.filter(pk=overdue_id).update(next_maintenance_date=today - timedelta(days=2))
         due_id = self._make_equipment(type_id, inv="INV-DUE")
-        self._perform(due_id, next_planned_date=(today + timedelta(days=2)).isoformat())
+        Equipment.objects.filter(pk=due_id).update(next_maintenance_date=today + timedelta(days=2))
         far_id = self._make_equipment(type_id, inv="INV-FAR")
-        self._perform(far_id, next_planned_date=(today + timedelta(days=90)).isoformat())
+        Equipment.objects.filter(pk=far_id).update(next_maintenance_date=today + timedelta(days=90))
 
         ids = lambda params: {e["id"] for e in self.client.get("/api/equipment/", params).data["results"]}
 
@@ -737,9 +752,9 @@ class MaintenanceTests(APITestCase):
         today = timezone.localdate()
         type_id = self._make_type()
 
-        # Просрочка: плановая дата в прошлом, затем новое ТО сегодня.
+        # Просрочка: плановая дата истекла (ставим через ORM), затем новое ТО.
         eq_id = self._make_equipment(type_id, inv="INV-H1")
-        self._perform(eq_id, next_planned_date=(today - timedelta(days=5)).isoformat())
+        Equipment.objects.filter(pk=eq_id).update(next_maintenance_date=today - timedelta(days=5))
         self._perform(eq_id, items=[{"kind": "material", "name": "Фильтр", "quantity": "2"}])
         rows = self.client.get(f"/api/equipment/{eq_id}/history/").data
         maint = [r for r in rows if r["category"] == "maintenance"]

@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 
 from core.eav import apply_field_values, missing_required_fields, upsert_custom_fields
@@ -369,6 +370,12 @@ class MaintenanceRecordCreateSerializer(serializers.Serializer):
     next_planned_date = serializers.DateField(required=False, allow_null=True)
     comment = serializers.CharField(required=False, allow_blank=True, default="")
     items = MaintenanceRecordItemInputSerializer(many=True, required=False, default=list)
+
+    def validate_next_planned_date(self, value):
+        # Дату следующего ТО нельзя ставить в прошлое (только сегодня/будущее).
+        if value is not None and value < timezone.localdate():
+            raise serializers.ValidationError("Дата следующего ТО не может быть в прошлом.")
+        return value
 
     def validate_items(self, value):
         for item in value:
