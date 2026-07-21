@@ -94,6 +94,36 @@
   color: var(--color-primary);
 }
 
+/* Чекбокс-рамка для мультивыбор-секции (в отличие от галочки-radio). */
+.ele-filter-btn__check--box {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1.5px var(--color-border-strong);
+  color: var(--color-primary-text);
+}
+
+.ele-filter-btn__item[aria-checked='true'] .ele-filter-btn__check--box {
+  background: var(--color-primary);
+  box-shadow: none;
+}
+
+/* Разделитель и заголовок дополнительной секции фильтров. */
+.ele-filter-btn__divider {
+  height: 1px;
+  background: var(--color-border-hairline);
+  margin: 6px 8px;
+}
+
+.ele-filter-btn__section-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--color-text-placeholder);
+  padding: 4px 12px 6px;
+}
+
 /* На мобильном — только иконка, без текста; квадратная кнопка как у ActionMenu. */
 @media (max-width: 768px) {
   .ele-filter-btn__trigger {

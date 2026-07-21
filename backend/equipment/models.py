@@ -11,6 +11,9 @@ class EquipmentType(models.Model):
     # этот флаг включён. По умолчанию выключен (opt-in) — существующим типам с
     # уже установленными SIM миграция проставляет True, чтобы не сломать их.
     allows_sim = models.BooleanField("Установка SIM/E-SIM", default=False)
+    # B13: у оборудования этого типа можно проводить техобслуживание (ТО) —
+    # появляется кнопка «Провести ТО», статус ТО и индикаторы в списке.
+    maintenance_enabled = models.BooleanField("Проведение ТО", default=False)
 
     class Meta:
         verbose_name = "Тип оборудования"
@@ -105,6 +108,11 @@ class Equipment(models.Model):
     # Проставляется в момент списания (write_off action) — нужна для колонки
     # «Дата списания» вкладки Архив, отдельно от is_written_off.
     written_off_at = models.DateTimeField("Дата списания", null=True, blank=True)
+    # B13: денормализация — плановая дата следующего ТО = next_planned_date из
+    # последней записи MaintenanceRecord (может быть NULL — «ТО не запланировано»).
+    # Перезаписывается при каждом проведении ТО; в field_specs истории не входит,
+    # поэтому её изменения историю не шумят. Даёт дешёвый статус/фильтр в списке.
+    next_maintenance_date = models.DateField("Плановая дата ТО", null=True, blank=True)
     # PROTECT: удаление Типа с привязанными объектами запрещено на уровне БД
     # — прикладной код (Фаза 4) превращает ProtectedError в 409.
     equipment_type = models.ForeignKey(
@@ -187,3 +195,53 @@ class EquipmentCustomField(models.Model):
 
     def __str__(self):
         return f"{self.equipment} / {self.name}"
+
+
+class MaintenanceRecord(models.Model):
+    """B13. Запись о проведённом ТО единицы оборудования — создаётся, не
+    редактируется (журнал, как ToolMovement). «История изменений» карточки
+    восстанавливает строки ТО из этих записей (собственной simple-history нет).
+
+    performed_at — «факт»: момент создания записи в системе. prior_planned_date —
+    снимок Equipment.next_maintenance_date до этой записи (плановая дата, которая
+    была актуальна), нужен для отметки «вовремя / с просрочкой N дней».
+    next_planned_date — новая плановая дата следующего ТО (переносится в
+    Equipment.next_maintenance_date)."""
+
+    equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name="maintenance_records")
+    performed_at = models.DateTimeField("Проведено", auto_now_add=True)
+    next_planned_date = models.DateField("Дата следующего ТО", null=True, blank=True)
+    prior_planned_date = models.DateField("Плановая дата на момент ТО", null=True, blank=True)
+    comment = models.TextField("Комментарий", blank=True)
+    created_by = models.ForeignKey(
+        "accounts.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+
+    class Meta:
+        verbose_name = "Запись о ТО"
+        verbose_name_plural = "Записи о ТО"
+        ordering = ["performed_at", "id"]
+
+    def __str__(self):
+        return f"ТО {self.equipment} / {self.performed_at:%d.%m.%Y}"
+
+
+class MaintenanceRecordItem(models.Model):
+    """Позиция записи о ТО: выполненная работа или израсходованный материал."""
+
+    class Kind(models.TextChoices):
+        WORK = "work", "Работы"
+        MATERIAL = "material", "Материалы"
+
+    record = models.ForeignKey(MaintenanceRecord, on_delete=models.CASCADE, related_name="items")
+    kind = models.CharField("Тип", max_length=10, choices=Kind.choices)
+    name = models.CharField("Наименование", max_length=255)
+    quantity = models.DecimalField("Количество", max_digits=12, decimal_places=3)
+
+    class Meta:
+        verbose_name = "Позиция ТО"
+        verbose_name_plural = "Позиции ТО"
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} «{self.name}» × {self.quantity}"

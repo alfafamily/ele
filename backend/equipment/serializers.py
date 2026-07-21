@@ -12,7 +12,9 @@ from .models import (
     EquipmentType,
     EquipmentTypeField,
     EquipmentTypeFieldOption,
+    MaintenanceRecordItem,
 )
+from .maintenance import maintenance_status
 
 
 class EquipmentTypeFieldOptionSerializer(serializers.ModelSerializer):
@@ -74,7 +76,7 @@ class EquipmentTypeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EquipmentType
-        fields = ["id", "name", "is_archived", "allows_sim", "fields", "objects_count"]
+        fields = ["id", "name", "is_archived", "allows_sim", "maintenance_enabled", "fields", "objects_count"]
 
 
 class EquipmentFieldValueInputSerializer(serializers.Serializer):
@@ -133,6 +135,9 @@ class EquipmentSerializer(serializers.ModelSerializer):
     equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True)
     # B17: можно ли устанавливать SIM в это оборудование (флаг его Типа).
     type_allows_sim = serializers.BooleanField(source="equipment_type.allows_sim", read_only=True)
+    # B13: ведётся ли ТО (флаг Типа) + плановая дата и статус ТО.
+    type_maintenance_enabled = serializers.BooleanField(source="equipment_type.maintenance_enabled", read_only=True)
+    maintenance_status = serializers.SerializerMethodField()
     type_and_model = serializers.SerializerMethodField()
     employee_name = serializers.SerializerMethodField()
     employee_avatar = serializers.SerializerMethodField()
@@ -161,6 +166,9 @@ class EquipmentSerializer(serializers.ModelSerializer):
             "equipment_type",
             "equipment_type_name",
             "type_allows_sim",
+            "type_maintenance_enabled",
+            "next_maintenance_date",
+            "maintenance_status",
             "type_and_model",
             "status",
             "field_values",
@@ -170,7 +178,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
             "sim_cards",
             "created_at",
         ]
-        read_only_fields = ["is_written_off", "written_off_at", "created_at"]
+        read_only_fields = ["is_written_off", "written_off_at", "created_at", "next_maintenance_date"]
 
     def get_type_and_model(self, obj):
         # «{Тип} {Модель}», без Модели — просто «{Тип}».
@@ -201,6 +209,13 @@ class EquipmentSerializer(serializers.ModelSerializer):
         if obj.place_id and obj.place.place_type == "workplace":
             return "stationary"
         return "free"
+
+    def get_maintenance_status(self, obj):
+        # None — у Типа выключен флаг ТО (не ведётся). Иначе — по плановой дате.
+        return maintenance_status(
+            enabled=obj.equipment_type.maintenance_enabled,
+            next_date=obj.next_maintenance_date,
+        )
 
     def get_place_detail(self, obj):
         if not obj.place_id:
@@ -338,3 +353,35 @@ class EquipmentMiniSerializer(serializers.ModelSerializer):
             None,
         )
         return f"{obj.equipment_type.name} {model_value}" if model_value else obj.equipment_type.name
+
+
+class MaintenanceRecordItemInputSerializer(serializers.Serializer):
+    kind = serializers.ChoiceField(choices=MaintenanceRecordItem.Kind.choices)
+    name = serializers.CharField(max_length=255)
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=3, min_value=0)
+
+
+class MaintenanceRecordCreateSerializer(serializers.Serializer):
+    """B13. Проведение ТО: дата следующего ТО (необязательна), позиции
+    (Работы/Материалы) и комментарий. Пустую запись (без даты, позиций и
+    комментария) не создаём."""
+
+    next_planned_date = serializers.DateField(required=False, allow_null=True)
+    comment = serializers.CharField(required=False, allow_blank=True, default="")
+    items = MaintenanceRecordItemInputSerializer(many=True, required=False, default=list)
+
+    def validate_items(self, value):
+        for item in value:
+            if not item["name"].strip():
+                raise serializers.ValidationError("У позиции не заполнено наименование.")
+        return value
+
+    def validate(self, attrs):
+        has_items = bool(attrs.get("items"))
+        has_comment = bool((attrs.get("comment") or "").strip())
+        has_date = attrs.get("next_planned_date") is not None
+        if not (has_items or has_comment or has_date):
+            raise serializers.ValidationError(
+                "Заполните хотя бы одно: дату следующего ТО, позиции или комментарий."
+            )
+        return attrs

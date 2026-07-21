@@ -9,13 +9,18 @@ import './FilterButton.css'
 // выпадающее меню (desktop) / нижнюю модалку (mobile). На десктопе показывает
 // текст, на мобильном — только иконку. Точка-индикатор появляется, когда выбран
 // не первый (сбросовый) вариант — чтобы применённый фильтр был заметен.
-// options: [{ value, label }] — первый вариант считается «сброшенным».
-export function FilterButton({ options, value, onChange, title = 'Фильтры' }) {
+// options: [{ value, label }] — первый вариант считается «сброшенным» (radio).
+// extra (необязательно): дополнительная мультивыбор-секция —
+//   { title, options: [{ value, label }], values: string[], onToggle: (value) }.
+//   Не закрывает меню при клике (можно отметить несколько).
+export function FilterButton({ options, value, onChange, extra, title = 'Фильтры' }) {
   const [open, setOpen] = useState(false)
   const isMobile = useMediaQuery('(max-width: 768px)')
   const ref = useRef(null)
   const resetValue = options[0]?.value
-  const active = value !== resetValue
+  const extraCount = extra?.values?.length || 0
+  const active = value !== resetValue || extraCount > 0
+  const badgeCount = (value !== resetValue ? 1 : 0) + extraCount
 
   useEffect(() => {
     if (!open || isMobile) return
@@ -49,8 +54,8 @@ export function FilterButton({ options, value, onChange, title = 'Фильтры
     >
       <Icon name="sliders-horizontal" size={18} strokeWidth={1.9} />
       <span className="ele-only-desktop">{title}</span>
-      {/* Бейдж-счётчик применённых фильтров (у нас одиночный выбор — всегда «1»). */}
-      {active ? <span className="ele-filter-btn__badge">1</span> : null}
+      {/* Бейдж-счётчик применённых фильтров (основной radio + мультивыбор). */}
+      {active ? <span className="ele-filter-btn__badge">{badgeCount}</span> : null}
     </button>
   )
 
@@ -72,6 +77,26 @@ export function FilterButton({ options, value, onChange, title = 'Фильтры
                 </Button>
               ))}
             </div>
+            {extra?.options?.length ? (
+              <div style={{ marginTop: 16 }}>
+                {extra.title ? <div className="ele-filter-btn__section-title">{extra.title}</div> : null}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {extra.options.map((opt) => {
+                    const checked = extra.values.includes(opt.value)
+                    return (
+                      <Button
+                        key={opt.value}
+                        variant={checked ? 'primary' : 'secondary'}
+                        fullWidth
+                        onClick={() => extra.onToggle(opt.value)}
+                      >
+                        {opt.label}
+                      </Button>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null}
           </Modal>
         ) : null}
       </div>
@@ -98,6 +123,30 @@ export function FilterButton({ options, value, onChange, title = 'Фильтры
               <span>{opt.label}</span>
             </button>
           ))}
+          {extra?.options?.length ? (
+            <>
+              <div className="ele-filter-btn__divider" />
+              {extra.title ? <div className="ele-filter-btn__section-title">{extra.title}</div> : null}
+              {extra.options.map((opt) => {
+                const checked = extra.values.includes(opt.value)
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={checked}
+                    className={'ele-filter-btn__item' + (checked ? ' ele-filter-btn__item--active' : '')}
+                    onClick={() => extra.onToggle(opt.value)}
+                  >
+                    <span className="ele-filter-btn__check ele-filter-btn__check--box">
+                      {checked ? <Icon name="check" size={13} strokeWidth={2.6} /> : null}
+                    </span>
+                    <span>{opt.label}</span>
+                  </button>
+                )
+              })}
+            </>
+          ) : null}
         </div>
       ) : null}
     </div>

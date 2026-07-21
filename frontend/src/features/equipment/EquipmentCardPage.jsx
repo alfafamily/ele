@@ -13,8 +13,14 @@ import { detachSimCard } from '../employees/employeesApi.js'
 import { EquipmentPlacementModal } from './EquipmentPlacementModal.jsx'
 import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
 import { getEquipment, getEquipmentHistoryPath } from './equipmentApi.js'
-import { EQUIPMENT_STATUS_LABEL } from './statusLabels.js'
+import { EQUIPMENT_STATUS_LABEL, MAINTENANCE_STATUS_COLOR, MAINTENANCE_STATUS_LABEL } from './statusLabels.js'
+import { MaintenanceModal } from './MaintenanceModal.jsx'
 import { WriteOffModal } from './WriteOffModal.jsx'
+
+function formatShortDate(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('ru-RU')
+}
 
 export function EquipmentCardPage() {
   const { id } = useParams()
@@ -23,6 +29,7 @@ export function EquipmentCardPage() {
   const [equipment, setEquipment] = useState(null)
   const [loadError, setLoadError] = useState(false)
   const [showWriteOff, setShowWriteOff] = useState(false)
+  const [showMaintenance, setShowMaintenance] = useState(false)
   const [showPlacement, setShowPlacement] = useState(false)
   const [showAttachLicense, setShowAttachLicense] = useState(false)
   const [showAttachSim, setShowAttachSim] = useState(false)
@@ -170,6 +177,38 @@ export function EquipmentCardPage() {
             оборудования всегда пуст — не показываем (одна колонка). */}
         {!equipment.is_written_off ? (
         <Card className="ele-obj-layout__side ele-card-sticky">
+          {/* B13. Блок ТО — только если у типа включено техобслуживание. */}
+          {equipment.type_maintenance_enabled ? (
+            <>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Обслуживание</div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+                <Icon
+                  name="wrench"
+                  size={18}
+                  strokeWidth={2}
+                  style={{ color: MAINTENANCE_STATUS_COLOR[equipment.maintenance_status] || 'var(--color-text-muted)', flex: 'none', marginTop: 2 }}
+                />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: MAINTENANCE_STATUS_COLOR[equipment.maintenance_status] }}>
+                    {MAINTENANCE_STATUS_LABEL[equipment.maintenance_status] || 'ТО не запланировано'}
+                  </div>
+                  {equipment.next_maintenance_date && equipment.maintenance_status !== 'not_planned' ? (
+                    <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>
+                      Плановая дата: {formatShortDate(equipment.next_maintenance_date)}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              <Can perm="canManageEquipment">
+                <Button variant="secondary" fullWidth onClick={() => setShowMaintenance(true)}>
+                  <Icon name="wrench" size={17} strokeWidth={2} />
+                  Провести ТО
+                </Button>
+              </Can>
+              <div style={{ borderTop: '1px solid var(--color-border-hairline)', margin: '20px 0 16px' }} />
+            </>
+          ) : null}
+
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Размещение</div>
           {equipment.employee ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -363,6 +402,16 @@ export function EquipmentCardPage() {
           onClose={() => setShowWriteOff(false)}
           onDone={() => {
             setShowWriteOff(false)
+            load()
+          }}
+        />
+      ) : null}
+      {showMaintenance ? (
+        <MaintenanceModal
+          equipment={equipment}
+          onClose={() => setShowMaintenance(false)}
+          onDone={() => {
+            setShowMaintenance(false)
             load()
           }}
         />

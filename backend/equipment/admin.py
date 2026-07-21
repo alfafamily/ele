@@ -6,6 +6,8 @@ from .models import (
     EquipmentFieldValue,
     EquipmentType,
     EquipmentTypeField,
+    MaintenanceRecord,
+    MaintenanceRecordItem,
 )
 
 
@@ -33,7 +35,20 @@ class EquipmentCustomFieldInline(admin.TabularInline):
 
 @admin.register(Equipment)
 class EquipmentAdmin(admin.ModelAdmin):
-    list_display = ("inventory_number", "equipment_type", "employee", "is_written_off")
+    list_display = ("inventory_number", "equipment_type", "employee", "is_written_off", "next_maintenance_date")
     list_filter = ("equipment_type", "is_written_off")
     search_fields = ("inventory_number",)
     inlines = [EquipmentFieldValueInline, EquipmentCustomFieldInline]
+
+
+class MaintenanceRecordItemInline(admin.TabularInline):
+    model = MaintenanceRecordItem
+    extra = 0
+
+
+@admin.register(MaintenanceRecord)
+class MaintenanceRecordAdmin(admin.ModelAdmin):
+    list_display = ("equipment", "performed_at", "next_planned_date", "prior_planned_date", "created_by")
+    list_filter = ("performed_at",)
+    search_fields = ("equipment__inventory_number",)
+    inlines = [MaintenanceRecordItemInline]
