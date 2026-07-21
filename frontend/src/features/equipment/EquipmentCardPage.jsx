@@ -177,8 +177,10 @@ export function EquipmentCardPage() {
             )}
           </Card>
 
-          {/* B13+. Регламенты ТО — сворачиваемый раздел перед историей. */}
-          {equipment.type_maintenance_enabled && !equipment.is_written_off ? (
+          {/* B13+. Регламенты ТО — сворачиваемый раздел перед историей. Скрыт для
+              учётчика без флага ТО (ничего не может) и для роли «Ответственный за
+              ТО» (регламенты не настраивает — только проводит ТО). */}
+          {equipment.type_maintenance_enabled && !equipment.is_written_off && perms.canSeeMaintenance && !perms.isMaintenance ? (
             <Card>
               <EquipmentRegulationsSection
                 equipment={equipment}
@@ -200,10 +202,11 @@ export function EquipmentCardPage() {
             оборудования всегда пуст — не показываем (одна колонка). */}
         {!equipment.is_written_off ? (
         <Card className="ele-obj-layout__side ele-card-sticky">
-          {/* B13+. Блок ТО — только если у типа включено техобслуживание.
-              Список активных планов (регламенты типа + индивидуальные, кроме
-              «по потребности» и отменённых) с иконкой статуса + плановой датой. */}
-          {equipment.type_maintenance_enabled ? (
+          {/* B13+. Блок ТО — если у типа включено техобслуживание и пользователь
+              причастен к ТО (учётчик без флага ТО его не видит). Список активных
+              планов (регламенты типа + индивидуальные, кроме «по потребности» и
+              отменённых) с иконкой статуса + плановой датой. */}
+          {equipment.type_maintenance_enabled && perms.canSeeMaintenance ? (
             <>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Обслуживание</div>
               {(() => {
