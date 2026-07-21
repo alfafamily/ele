@@ -13,16 +13,22 @@ export const MAINTENANCE_STATUS_LABEL = {
   not_planned: 'ТО не запланировано',
 }
 
-// Иконка-индикатор в списке: только для «скоро» и «просрочено».
-export const MAINTENANCE_STATUS_ICON = {
-  due_soon: { name: 'clock', color: 'var(--color-warning)', title: 'Подходит дата ТО' },
-  overdue: { name: 'triangle-alert', color: 'var(--color-error)', title: 'ТО просрочено' },
-}
-
-// Цвет статуса в блоке «Обслуживание» на карточке.
+// Цвет статуса ТО (текст на карточке и цвет пары иконок).
 export const MAINTENANCE_STATUS_COLOR = {
-  scheduled: 'var(--color-text-muted)',
+  scheduled: 'var(--color-success)',
   due_soon: 'var(--color-warning)',
   overdue: 'var(--color-error)',
   not_planned: 'var(--color-text-placeholder)',
+}
+
+// Пара иконок статуса ТО (гаечный ключ + часы) — на карточке и в списке.
+//  · просрочено — wrench + clock-4, красные;
+//  · подходит   — wrench + clock, жёлтые;
+//  · запланировано — wrench + clock-4, зелёные;
+//  · не запланировано — wrench-off + clock-fading, серые.
+export const MAINTENANCE_STATUS_ICONS = {
+  overdue: { icons: ['wrench', 'clock-4'], color: MAINTENANCE_STATUS_COLOR.overdue, title: 'ТО просрочено' },
+  due_soon: { icons: ['wrench', 'clock'], color: MAINTENANCE_STATUS_COLOR.due_soon, title: 'Подходит дата ТО' },
+  scheduled: { icons: ['wrench', 'clock-4'], color: MAINTENANCE_STATUS_COLOR.scheduled, title: 'Ближайшее ТО' },
+  not_planned: { icons: ['wrench-off', 'clock-fading'], color: MAINTENANCE_STATUS_COLOR.not_planned, title: 'ТО не запланировано' },
 }

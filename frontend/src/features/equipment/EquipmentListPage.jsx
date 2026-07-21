@@ -7,7 +7,7 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
-import { MAINTENANCE_STATUS_ICON } from './statusLabels.js'
+import { MAINTENANCE_STATUS_ICONS } from './statusLabels.js'
 
 const CACHE_KEY = 'equipment-list'
 
@@ -167,17 +167,18 @@ export function EquipmentListPage() {
             <Link key={row.id} to={`/equipment/${row.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
               <TableRow columns={columns}>
                 {/* Наименование (Тип+Модель) в 2 строки + учётный номер ниже.
-                    B13: иконка-индикатор ТО (подходит/просрочено). */}
+                    B13: пара иконок статуса ТО (гаечный ключ + часы). */}
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {MAINTENANCE_STATUS_ICON[row.maintenance_status] ? (
-                      <Icon
-                        name={MAINTENANCE_STATUS_ICON[row.maintenance_status].name}
-                        size={16}
-                        strokeWidth={2}
-                        title={MAINTENANCE_STATUS_ICON[row.maintenance_status].title}
-                        style={{ color: MAINTENANCE_STATUS_ICON[row.maintenance_status].color, flex: 'none' }}
-                      />
+                    {MAINTENANCE_STATUS_ICONS[row.maintenance_status] ? (
+                      <span
+                        title={MAINTENANCE_STATUS_ICONS[row.maintenance_status].title}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 2, flex: 'none', color: MAINTENANCE_STATUS_ICONS[row.maintenance_status].color }}
+                      >
+                        {MAINTENANCE_STATUS_ICONS[row.maintenance_status].icons.map((name) => (
+                          <Icon key={name} name={name} size={16} strokeWidth={2} />
+                        ))}
+                      </span>
                     ) : null}
                     <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.type_and_model}</span>
                   </div>

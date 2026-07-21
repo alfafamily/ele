@@ -1,0 +1,48 @@
+.ele-maint-page {
+  max-width: 760px;
+}
+
+/* Строка позиции ТО: тип · наименование · количество · удалить.
+   Все контролы и кнопка удаления — единой высотой 44px. */
+.ele-maint-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 96px 44px;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Инпуты/селекты в строке — ровно 44px по высоте. */
+.ele-maint-row .ele-field {
+  gap: 0;
+}
+
+.ele-maint-row .ele-field__box {
+  height: 44px;
+  box-sizing: border-box;
+}
+
+.ele-maint-row__del {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: none;
+  background: var(--color-fill-input);
+  border-radius: var(--radius-control);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ele-maint-row__del:hover {
+  background: var(--color-fill-active-tint);
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 560px) {
+  .ele-maint-row {
+    grid-template-columns: 120px minmax(0, 1fr) 72px 44px;
+    gap: 6px;
+  }
+}
