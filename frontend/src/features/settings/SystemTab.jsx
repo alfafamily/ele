@@ -59,6 +59,8 @@ export function SystemTab() {
   const [ipList, setIpList] = useState([]) // сохранённые [{ ip, note }]
   const [addingIp, setAddingIp] = useState(false)
   const [ipDraft, setIpDraft] = useState({ ip: '', note: '' })
+  const [editingIp, setEditingIp] = useState(null) // индекс редактируемой строки или null
+  const [editDraft, setEditDraft] = useState({ ip: '', note: '' })
   const [ipBusy, setIpBusy] = useState(false)
   const [ipError, setIpError] = useState(null)
 
@@ -199,6 +201,33 @@ export function SystemTab() {
       const u = await updateCompanySettings({ ip_allowlist: [...ipList, entry] })
       setIpList(normalizeIps(u.ip_allowlist))
       setAddingIp(false)
+    } catch (err) {
+      setIpError(fieldError(err))
+    } finally {
+      setIpBusy(false)
+    }
+  }
+
+  const startEditIp = (i) => {
+    setIpError(null)
+    setAddingIp(false)
+    setEditDraft({ ...ipList[i] })
+    setEditingIp(i)
+  }
+
+  const applyEditIp = async () => {
+    const entry = { ip: editDraft.ip.trim(), note: editDraft.note.trim() }
+    if (!entry.ip) {
+      setIpError('Укажите IP-адрес.')
+      return
+    }
+    setIpBusy(true)
+    setIpError(null)
+    try {
+      const next = ipList.map((row, idx) => (idx === editingIp ? entry : row))
+      const u = await updateCompanySettings({ ip_allowlist: next })
+      setIpList(normalizeIps(u.ip_allowlist))
+      setEditingIp(null)
     } catch (err) {
       setIpError(fieldError(err))
     } finally {
@@ -351,14 +380,30 @@ export function SystemTab() {
             </div>
           ) : null}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {ipList.map((row, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-                <div style={{ maxWidth: FIELD_W, minWidth: 0 }}>
-                  <FieldView label={row.note || 'IP-адрес'} value={row.ip} mono />
+            {ipList.map((row, i) =>
+              editingIp === i ? (
+                <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-end', flexDirection: isMobile ? 'column' : 'row' }}>
+                  <div style={{ width: FIELD_W }}>
+                    <Input label="IP или подсеть" placeholder="203.0.113.0/24" value={editDraft.ip} onChange={(e) => setEditDraft({ ...editDraft, ip: e.target.value })} autoFocus style={{ fontFamily: 'var(--font-mono)' }} />
+                  </div>
+                  <div style={{ width: FIELD_W }}>
+                    <Input label="Примечание" placeholder="Офис, VPN…" value={editDraft.note} onChange={(e) => setEditDraft({ ...editDraft, note: e.target.value })} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flex: 'none', alignSelf: isMobile ? 'flex-end' : 'auto' }}>
+                    <IconBtn outlined kind="apply" title="Применить" onClick={applyEditIp} disabled={ipBusy} />
+                    <IconBtn outlined kind="cancel" title="Отменить" onClick={() => { setEditingIp(null); setIpError(null) }} disabled={ipBusy} />
+                  </div>
                 </div>
-                <IconBtn outlined size={36} kind="delete" title="Удалить" onClick={() => deleteIp(i)} disabled={ipBusy} />
-              </div>
-            ))}
+              ) : (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                  <div style={{ maxWidth: FIELD_W, minWidth: 0 }}>
+                    <FieldView label={row.note || 'IP-адрес'} value={row.ip} mono />
+                  </div>
+                  <IconBtn outlined size={36} kind="edit" title="Редактировать" onClick={() => startEditIp(i)} disabled={ipBusy} />
+                  <IconBtn outlined size={36} kind="delete" title="Удалить" onClick={() => deleteIp(i)} disabled={ipBusy} />
+                </div>
+              ),
+            )}
 
             {addingIp ? (
               <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end', flexDirection: isMobile ? 'column' : 'row' }}>
@@ -375,7 +420,7 @@ export function SystemTab() {
               </div>
             ) : (
               <div>
-                <Button type="button" variant="secondary" onClick={() => { setIpDraft({ ip: '', note: '' }); setIpError(null); setAddingIp(true) }}>
+                <Button type="button" variant="secondary" onClick={() => { setIpDraft({ ip: '', note: '' }); setIpError(null); setEditingIp(null); setAddingIp(true) }}>
                   <Icon name="plus" size={18} strokeWidth={2.2} />
                   Добавить IP
                 </Button>
