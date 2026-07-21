@@ -35,7 +35,7 @@ class MeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "email", "role", "is_observer", "employee", "is_email_confirmed", "date_joined", "password_changed_at"]
+        fields = ["id", "email", "role", "is_observer", "can_maintain", "employee", "is_email_confirmed", "date_joined", "password_changed_at"]
 
 
 class UserListSerializer(serializers.ModelSerializer):
@@ -56,6 +56,7 @@ class UserListSerializer(serializers.ModelSerializer):
             "email",
             "role",
             "is_observer",
+            "can_maintain",
             "status",
             "employee",
             "employee_name",
@@ -92,7 +93,7 @@ class UserListSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "email", "role", "is_observer", "employee", "is_active", "is_email_confirmed", "date_joined"]
+        fields = ["id", "email", "role", "is_observer", "can_maintain", "employee", "is_active", "is_email_confirmed", "date_joined"]
         read_only_fields = ["email", "is_active", "is_email_confirmed", "date_joined"]
 
     def validate(self, attrs):
@@ -101,6 +102,11 @@ class UserSerializer(serializers.ModelSerializer):
         if is_observer and role != User.Role.EMPLOYEE:
             raise serializers.ValidationError(
                 {"is_observer": ["Признак «Наблюдатель» применим только к роли «Сотрудник»."]}
+            )
+        can_maintain = attrs.get("can_maintain", getattr(self.instance, "can_maintain", False))
+        if can_maintain and role != User.Role.ACCOUNTANT:
+            raise serializers.ValidationError(
+                {"can_maintain": ["Флаг «Ответственный за регламенты и проведение ТО» применим только к роли «Ответственный за учёт»."]}
             )
         return attrs
 
@@ -182,6 +188,7 @@ class InviteSerializer(serializers.Serializer):
         source="employee", queryset=Employee.objects.all(), required=False, allow_null=True
     )
     is_observer = serializers.BooleanField(required=False, default=False)
+    can_maintain = serializers.BooleanField(required=False, default=False)
     # Создать нового Сотрудника прямо из приглашения (свитч «Добавить сотрудника»
     # в модалке). Взаимоисключающе с выбором существующего employee_id.
     create_employee = serializers.BooleanField(required=False, default=False)
@@ -205,6 +212,10 @@ class InviteSerializer(serializers.Serializer):
         if attrs.get("is_observer") and attrs["role"] != User.Role.EMPLOYEE:
             raise serializers.ValidationError(
                 {"is_observer": ["Признак «Наблюдатель» применим только к роли «Сотрудник»."]}
+            )
+        if attrs.get("can_maintain") and attrs["role"] != User.Role.ACCOUNTANT:
+            raise serializers.ValidationError(
+                {"can_maintain": ["Флаг «Ответственный за регламенты и проведение ТО» применим только к роли «Ответственный за учёт»."]}
             )
         if attrs.get("create_employee"):
             if attrs.get("employee"):
@@ -254,6 +265,7 @@ class InviteSerializer(serializers.Serializer):
             fields = {
                 "role": self.validated_data["role"],
                 "is_observer": self.validated_data.get("is_observer", False),
+                "can_maintain": self.validated_data.get("can_maintain", False),
                 "employee": employee,
             }
             user = User.objects.filter(email__iexact=email).first()

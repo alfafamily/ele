@@ -7,14 +7,15 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
-import { MAINTENANCE_STATUS_ICONS } from './statusLabels.js'
+import { maintenanceIndicators } from './statusLabels.js'
 
 const CACHE_KEY = 'equipment-list'
 
-// B13. Мультивыбор-фильтры по статусу ТО (можно оба сразу).
+// B13+. Мультивыбор-фильтры по статусу ТО (можно несколько сразу).
 const MAINTENANCE_FILTERS = [
+  { value: 'overdue', label: 'Дата ТО просрочена' },
   { value: 'due', label: 'Подходит дата ТО' },
-  { value: 'overdue', label: 'ТО просрочено' },
+  { value: 'unset', label: 'Дата ТО не задана' },
 ]
 
 const TABS = [
@@ -73,6 +74,7 @@ export function EquipmentListPage() {
       status: tab === 'active' ? status : undefined,
       to_due: tab === 'active' && toDates.includes('due') ? '1' : undefined,
       to_overdue: tab === 'active' && toDates.includes('overdue') ? '1' : undefined,
+      to_unset: tab === 'active' && toDates.includes('unset') ? '1' : undefined,
       search: debouncedSearch || undefined,
       ordering,
     },
@@ -170,16 +172,15 @@ export function EquipmentListPage() {
                     B13: пара иконок статуса ТО (гаечный ключ + часы). */}
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {MAINTENANCE_STATUS_ICONS[row.maintenance_status] ? (
+                    {maintenanceIndicators(row.maintenance_summary).map((ind) => (
                       <span
-                        title={MAINTENANCE_STATUS_ICONS[row.maintenance_status].title}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 2, flex: 'none', color: MAINTENANCE_STATUS_ICONS[row.maintenance_status].color }}
+                        key={ind.icon}
+                        title={ind.title}
+                        style={{ display: 'inline-flex', alignItems: 'center', flex: 'none', color: ind.color }}
                       >
-                        {MAINTENANCE_STATUS_ICONS[row.maintenance_status].icons.map((name) => (
-                          <Icon key={name} name={name} size={16} strokeWidth={2} />
-                        ))}
+                        <Icon name={ind.icon} size={16} strokeWidth={2} />
                       </span>
-                    ) : null}
+                    ))}
                     <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.type_and_model}</span>
                   </div>
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{row.inventory_number}</div>

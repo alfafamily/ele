@@ -2,7 +2,7 @@ from django.db import transaction
 from django.db.models import ProtectedError, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from rest_framework import filters, generics, viewsets
+from rest_framework import filters, generics, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -10,26 +10,44 @@ from rest_framework.views import APIView
 from core.eav import count_missing_for_field
 from core.mixins import CreationCommentMixin
 from core.pagination import ELECursorPagination
-from core.permissions import EquipmentAccessPermission, IsAdminOrAccountant
+from core.permissions import (
+    CanManageMaintenance,
+    CanPerformMaintenance,
+    EquipmentAccessPermission,
+    IsAdminOrAccountant,
+    RegulationAccessPermission,
+)
 from employees.models import Employee
 from storage.service import delete_stored_file, store_uploaded_file
 
+from .maintenance import (
+    add_months,
+    archive_equipment_maintenance,
+    create_plan_for_individual_regulation,
+    create_plans_for_type_regulation,
+    plan_sort_key,
+    plan_status,
+    set_regulation_archived,
+)
 from .models import (
     Equipment,
     EquipmentCustomField,
     EquipmentFieldFile,
     EquipmentFieldValue,
+    EquipmentMaintenancePlan,
     EquipmentType,
     EquipmentTypeField,
     MaintenanceRecord,
     MaintenanceRecordItem,
+    MaintenanceRegulation,
 )
 from .serializers import (
     EquipmentFieldValueOutSerializer,
     EquipmentSerializer,
     EquipmentTypeFieldSerializer,
     EquipmentTypeSerializer,
-    MaintenanceRecordCreateSerializer,
+    MaintenanceRegulationSerializer,
+    PerformMaintenanceSerializer,
 )
 
 
@@ -86,6 +104,42 @@ class EquipmentTypeFieldImpactView(APIView):
         return Response({"affected_count": affected})
 
 
+class TypeRegulationListView(generics.ListCreateAPIView):
+    """B13+. Регламенты ТО типа оборудования (наследуются всем оборудованием
+    типа). Создание регламента заводит планы у всего активного оборудования."""
+
+    serializer_class = MaintenanceRegulationSerializer
+    permission_classes = [CanManageMaintenance]
+
+    def get_queryset(self):
+        return MaintenanceRegulation.objects.filter(equipment_type_id=self.kwargs["type_pk"]).prefetch_related("items")
+
+    def perform_create(self, serializer):
+        equipment_type = get_object_or_404(EquipmentType, pk=self.kwargs["type_pk"])
+        regulation = serializer.save(equipment_type=equipment_type)
+        create_plans_for_type_regulation(regulation)
+
+
+class TypeRegulationDetailView(generics.RetrieveUpdateAPIView):
+    """B13+. Правка регламента типа (поля/позиции) или архив/возврат
+    (PATCH is_archived) с каскадом на планы оборудования."""
+
+    serializer_class = MaintenanceRegulationSerializer
+    permission_classes = [CanManageMaintenance]
+
+    def get_queryset(self):
+        return MaintenanceRegulation.objects.filter(equipment_type_id=self.kwargs["type_pk"]).prefetch_related("items")
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # Архив/возврат — отдельной операцией (каскад на планы), не через обычный
+        # апдейт полей (is_archived в сериализаторе read-only).
+        if "is_archived" in request.data and set(request.data.keys()) <= {"is_archived"}:
+            set_regulation_archived(instance, bool(request.data["is_archived"]))
+            return Response(self.get_serializer(instance).data)
+        return super().update(request, *args, **kwargs)
+
+
 class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     """Удаления нет — только списание (write_off)."""
 
@@ -107,7 +161,9 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         qs = Equipment.objects.select_related(
             "employee", "employee__avatar", "equipment_type", "place__room__building"
         ).prefetch_related(
-            "field_values__field", "field_values__files__stored_file", "custom_fields", "place__employees"
+            "field_values__field", "field_values__files__stored_file", "custom_fields", "place__employees",
+            # B13+: планы+регламенты для сводной индикации ТО (без N+1).
+            "maintenance_plans__regulation",
         )
         user = self.request.user
         if user.role == "employee" and not user.is_observer:
@@ -143,25 +199,39 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if self.request.query_params.get("allows_sim") == "1":
             qs = qs.filter(equipment_type__allows_sim=True)
 
-        # B13: фильтры по статусу ТО (только типы с включённым ТО). Можно выбрать
-        # оба сразу — тогда объединяем условия через OR.
+        # B13+: фильтры по статусу ТО считаются по активным планам (регламент не
+        # архивный, план не отменён, регламент не «по потребности»). Можно выбрать
+        # несколько сразу — объединяем через OR по наличию подходящего плана.
         to_due = self.request.query_params.get("to_due") == "1"
         to_overdue = self.request.query_params.get("to_overdue") == "1"
-        if to_due or to_overdue:
+        to_unset = self.request.query_params.get("to_unset") == "1"
+        if to_due or to_overdue or to_unset:
             from datetime import timedelta
+
+            from django.db.models import Exists, OuterRef
 
             from equipment.maintenance import DUE_SOON_DAYS
 
             today = timezone.localdate()
-            cond = Q(pk__in=[])  # пустое условие-заглушка для наращивания через OR
+            active = EquipmentMaintenancePlan.objects.filter(
+                equipment=OuterRef("pk"),
+                is_cancelled=False,
+                regulation__is_archived=False,
+                regulation__on_demand=False,
+            )
+            cond = None
             if to_overdue:
-                cond |= Q(next_maintenance_date__lt=today)
+                cond = Exists(active.filter(next_planned_date__lt=today))
             if to_due:
-                cond |= Q(
-                    next_maintenance_date__gte=today,
-                    next_maintenance_date__lte=today + timedelta(days=DUE_SOON_DAYS),
-                )
-            qs = qs.filter(Q(equipment_type__maintenance_enabled=True) & cond)
+                due = Exists(active.filter(
+                    next_planned_date__gte=today,
+                    next_planned_date__lte=today + timedelta(days=DUE_SOON_DAYS),
+                ))
+                cond = due if cond is None else (cond | due)
+            if to_unset:
+                unset = Exists(active.filter(next_planned_date__isnull=True))
+                cond = unset if cond is None else (cond | unset)
+            qs = qs.filter(equipment_type__maintenance_enabled=True).filter(cond)
 
         search = self.request.query_params.get("search")
         if search:
@@ -210,6 +280,9 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if comment:
             equipment._change_reason = comment
         equipment.save(update_fields=["employee", "place", "is_written_off", "written_off_at"])
+        # B13+: списание выводит ТО из обращения — индивидуальные регламенты в
+        # архив, планы отменены, даты обнулены (контроль/проведение недоступны).
+        archive_equipment_maintenance(equipment)
         return Response(EquipmentSerializer(equipment).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
@@ -251,39 +324,209 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         equipment.save(update_fields=["employee", "place"])
         return Response(EquipmentSerializer(equipment).data)
 
-    @action(detail=True, methods=["post"], url_path="maintenance", permission_classes=[IsAdminOrAccountant])
+    @action(detail=True, methods=["post"], url_path="maintenance", permission_classes=[CanPerformMaintenance])
     def perform_maintenance(self, request, pk=None):
-        """B13. Провести ТО: создаёт запись MaintenanceRecord с позициями,
-        снимает плановую дату «на момент ТО» (prior_planned_date) и переносит
-        новую плановую дату в Equipment.next_maintenance_date."""
+        """B13+. Провести ТО по регламенту (или «Внеплановое» — regulation=null).
+        Создаёт запись MaintenanceRecord со снимком позиций (в т.ч. отменённых с
+        причиной) и, для периодического регламента, переносит новую плановую дату
+        в план (EquipmentMaintenancePlan)."""
         equipment = self.get_object()
         if not equipment.equipment_type.maintenance_enabled:
             return Response({"detail": "Для этого типа оборудования ТО не ведётся."}, status=409)
         if equipment.is_written_off:
             return Response({"detail": "По списанному оборудованию ТО не проводится."}, status=409)
 
-        serializer = MaintenanceRecordCreateSerializer(data=request.data)
+        serializer = PerformMaintenanceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+
+        regulation = data.get("regulation")
+        plan = None
+        if regulation is not None:
+            plan = EquipmentMaintenancePlan.objects.filter(equipment=equipment, regulation=regulation).first()
+            if plan is None or plan.is_cancelled or regulation.is_archived:
+                return Response({"detail": "Регламент недоступен для этого оборудования."}, status=409)
+
+        # Хотя бы одна неотменённая работа/материал обязательна.
+        items = data["items"]
+        active_items = [i for i in items if not i["is_cancelled"]]
+        if not active_items:
+            return Response(
+                {"detail": "Добавьте хотя бы одну (неотменённую) работу или материал."}, status=400
+            )
+
+        # Дата следующего ТО: обязательна и ограничена для периодического
+        # регламента; у «по потребности» и «Внепланового» даты нет.
+        is_periodic = regulation is not None and not regulation.on_demand
+        next_date = data.get("next_planned_date")
+        if is_periodic:
+            today = timezone.localdate()
+            if next_date is None:
+                return Response({"detail": "Укажите дату следующего ТО."}, status=400)
+            if next_date < today:
+                return Response({"detail": "Дата следующего ТО не может быть в прошлом."}, status=400)
+            max_date = add_months(today, regulation.period_months)
+            if next_date > max_date:
+                return Response(
+                    {"detail": f"Дата следующего ТО не может быть позже расчётной ({max_date:%d.%m.%Y})."},
+                    status=400,
+                )
+        else:
+            next_date = None
 
         with transaction.atomic():
             record = MaintenanceRecord.objects.create(
                 equipment=equipment,
-                next_planned_date=data.get("next_planned_date"),
-                prior_planned_date=equipment.next_maintenance_date,
+                regulation=regulation,
+                regulation_name=(regulation.name if regulation else ""),
+                next_planned_date=next_date,
+                prior_planned_date=(plan.next_planned_date if plan else None),
                 comment=(data.get("comment") or "").strip(),
                 created_by=request.user if request.user.is_authenticated else None,
             )
             MaintenanceRecordItem.objects.bulk_create([
                 MaintenanceRecordItem(
-                    record=record, kind=item["kind"], name=item["name"].strip(), quantity=item["quantity"]
+                    record=record,
+                    kind=item["kind"],
+                    name=item["name"].strip(),
+                    quantity=item["quantity"],
+                    from_regulation=item["from_regulation"],
+                    is_cancelled=item["is_cancelled"],
+                    cancel_reason=(item.get("cancel_reason") or "").strip(),
                 )
-                for item in data["items"]
+                for item in items
             ])
-            equipment.next_maintenance_date = data.get("next_planned_date")
-            equipment.save(update_fields=["next_maintenance_date"])
+            if plan is not None and is_periodic:
+                plan.next_planned_date = next_date
+                plan.save(update_fields=["next_planned_date"])
 
         return Response(EquipmentSerializer(equipment, context=self.get_serializer_context()).data)
+
+    @action(detail=True, methods=["get", "post"], url_path="regulations", permission_classes=[RegulationAccessPermission])
+    def regulations(self, request, pk=None):
+        """B13+. GET — сводный список регламентов оборудования (активные типовые +
+        индивидуальные) с планом/статусом, сортировка как у пикера. POST —
+        создать индивидуальный регламент (+ план)."""
+        equipment = self.get_object()
+        if request.method == "POST":
+            serializer = MaintenanceRegulationSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            regulation = serializer.save(equipment=equipment)
+            create_plan_for_individual_regulation(regulation)
+            return Response(self._regulation_payload(equipment), status=201)
+        return Response(self._regulation_payload(equipment))
+
+    def _regulation_payload(self, equipment):
+        """Список регламентов оборудования с планами, отсортированный как пикер."""
+        # Активные типовые регламенты его типа + все индивидуальные (в т.ч.
+        # архивные — чтобы можно было вернуть из архива).
+        regs = list(
+            MaintenanceRegulation.objects.filter(
+                Q(equipment_type_id=equipment.equipment_type_id, is_archived=False)
+                | Q(equipment_id=equipment.id)
+            ).prefetch_related("items")
+        )
+        plans = {
+            p.regulation_id: p
+            for p in EquipmentMaintenancePlan.objects.filter(equipment=equipment, regulation__in=regs)
+        }
+        today = timezone.localdate()
+        rows = []
+        for reg in regs:
+            plan = plans.get(reg.id)
+            status = None
+            if plan is not None and not plan.is_cancelled and not reg.is_archived and not reg.on_demand:
+                status = plan_status(plan.next_planned_date, today)
+            rows.append({
+                "id": reg.id,
+                "name": reg.name,
+                "scope": reg.scope,
+                "period_months": reg.period_months,
+                "on_demand": reg.on_demand,
+                "is_archived": reg.is_archived,
+                "items": MaintenanceRegulationSerializer(reg).data["items"],
+                "plan": {
+                    "next_planned_date": plan.next_planned_date.isoformat() if plan and plan.next_planned_date else None,
+                    "is_cancelled": plan.is_cancelled if plan else False,
+                },
+                "status": status,
+            })
+        # Сортировка как у пикера: overdue→due→scheduled→без даты→по потребности;
+        # отменённые для экземпляра/архивные — в конец.
+        def sort_key(row):
+            plan = plans.get(row["id"])
+            inactive = row["is_archived"] or (plan.is_cancelled if plan else True)
+            return (1 if inactive else 0,) + (plan_sort_key(plan, today) if plan else (99, today, 0))
+        rows.sort(key=sort_key)
+        return rows
+
+    @action(
+        detail=True,
+        methods=["patch", "delete"],
+        url_path=r"regulations/(?P<reg_pk>[^/.]+)",
+        permission_classes=[CanManageMaintenance],
+    )
+    def regulation_detail(self, request, pk=None, reg_pk=None):
+        """B13+. Индивидуальный регламент оборудования: правка (PATCH полей) или
+        архив/возврат (PATCH is_archived). Типовые регламенты правятся в редакторе
+        Типов — здесь для них доступна только операция плана (см. regulation_plan)."""
+        equipment = self.get_object()
+        regulation = get_object_or_404(MaintenanceRegulation, pk=reg_pk, equipment=equipment)
+        if request.method == "DELETE":
+            set_regulation_archived(regulation, True)
+            return Response(self._regulation_payload(equipment))
+        if "is_archived" in request.data and set(request.data.keys()) <= {"is_archived"}:
+            set_regulation_archived(regulation, bool(request.data["is_archived"]))
+            return Response(self._regulation_payload(equipment))
+        serializer = MaintenanceRegulationSerializer(regulation, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(self._regulation_payload(equipment))
+
+    @action(
+        detail=True,
+        methods=["patch"],
+        url_path=r"regulations/(?P<reg_pk>[^/.]+)/plan",
+        permission_classes=[CanManageMaintenance],
+    )
+    def regulation_plan(self, request, pk=None, reg_pk=None):
+        """B13+. Per-equipment действия над планом регламента (типового или
+        индивидуального): отмена/возврат для этого оборудования (is_cancelled) и
+        установка даты первого/ближайшего ТО (next_planned_date, ≥ сегодня)."""
+        equipment = self.get_object()
+        regulation = get_object_or_404(
+            MaintenanceRegulation,
+            Q(equipment_type_id=equipment.equipment_type_id) | Q(equipment=equipment),
+            pk=reg_pk,
+        )
+        plan, _ = EquipmentMaintenancePlan.objects.get_or_create(equipment=equipment, regulation=regulation)
+        if regulation.is_archived:
+            return Response({"detail": "Регламент в архиве."}, status=409)
+
+        if "is_cancelled" in request.data:
+            cancelled = bool(request.data["is_cancelled"])
+            plan.is_cancelled = cancelled
+            # Отмена для экземпляра снимает плановую дату; возврат — заново назначить.
+            plan.next_planned_date = None
+            plan.save(update_fields=["is_cancelled", "next_planned_date"])
+            return Response(self._regulation_payload(equipment))
+
+        if "next_planned_date" in request.data:
+            if plan.is_cancelled:
+                return Response({"detail": "Регламент отменён для этого оборудования."}, status=409)
+            if regulation.on_demand:
+                return Response({"detail": "Для регламента «по потребности» дата не задаётся."}, status=409)
+            raw = request.data.get("next_planned_date")
+            date = serializers.DateField().to_internal_value(raw) if raw else None
+            if date is None:
+                return Response({"detail": "Укажите дату."}, status=400)
+            if date < timezone.localdate():
+                return Response({"detail": "Дата не может быть в прошлом."}, status=400)
+            plan.next_planned_date = date
+            plan.save(update_fields=["next_planned_date"])
+            return Response(self._regulation_payload(equipment))
+
+        return Response({"detail": "Нет изменений."}, status=400)
 
     @action(detail=True, methods=["get"], url_path="history")
     def history_list(self, request, pk=None):
@@ -544,20 +787,32 @@ def _maintenance_history_rows(equipment):
             suffix = f" (с просрочкой {overdue_days} дн.)" if overdue_days > 0 else " (вовремя)"
         else:
             suffix = ""
-        lines = [
-            {
-                "label": f"{MaintenanceRecordItem.Kind(item.kind).label} «{item.name}»",
-                "value": f"количество: {_fmt_quantity(item.quantity)}",
-                "secret": False,
-            }
-            for item in rec.items.all()
-        ]
-        lines.append({"label": "Следующее ТО", "value": _fmt_date(rec.next_planned_date), "secret": False})
+        lines = []
+        for item in rec.items.all():
+            kind_label = MaintenanceRecordItem.Kind(item.kind).label
+            if item.is_cancelled:
+                # Отменённая позиция регламента: причина отмены в истории.
+                reason = item.cancel_reason or "без причины"
+                lines.append({
+                    "label": f"{kind_label} «{item.name}» — отменено",
+                    "value": f"причина: {reason}",
+                    "secret": False,
+                })
+            else:
+                lines.append({
+                    "label": f"{kind_label} «{item.name}»",
+                    "value": f"количество: {_fmt_quantity(item.quantity)}",
+                    "secret": False,
+                })
+        if rec.next_planned_date:
+            lines.append({"label": "Следующее ТО", "value": _fmt_date(rec.next_planned_date), "secret": False})
+        # Заголовок: имя регламента (снимок) либо «внеплановое».
+        title = f"Проведено ТО «{rec.regulation_name}»" if rec.regulation_name else "Проведено внеплановое ТО"
         rows.append({
             "date": rec.performed_at,
             "author": rec.created_by.email if rec.created_by_id else None,
             "kind": "maintenance", "category": "maintenance",
-            "label": f"Проведено ТО{suffix}",
+            "label": f"{title}{suffix}",
             "old": None, "new": None, "secret": False,
             "comment": rec.comment or None,
             "lines": lines,

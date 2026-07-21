@@ -4,10 +4,13 @@ from .models import (
     Equipment,
     EquipmentCustomField,
     EquipmentFieldValue,
+    EquipmentMaintenancePlan,
     EquipmentType,
     EquipmentTypeField,
     MaintenanceRecord,
     MaintenanceRecordItem,
+    MaintenanceRegulation,
+    MaintenanceRegulationItem,
 )
 
 
@@ -35,7 +38,7 @@ class EquipmentCustomFieldInline(admin.TabularInline):
 
 @admin.register(Equipment)
 class EquipmentAdmin(admin.ModelAdmin):
-    list_display = ("inventory_number", "equipment_type", "employee", "is_written_off", "next_maintenance_date")
+    list_display = ("inventory_number", "equipment_type", "employee", "is_written_off")
     list_filter = ("equipment_type", "is_written_off")
     search_fields = ("inventory_number",)
     inlines = [EquipmentFieldValueInline, EquipmentCustomFieldInline]
@@ -48,7 +51,25 @@ class MaintenanceRecordItemInline(admin.TabularInline):
 
 @admin.register(MaintenanceRecord)
 class MaintenanceRecordAdmin(admin.ModelAdmin):
-    list_display = ("equipment", "performed_at", "next_planned_date", "prior_planned_date", "created_by")
+    list_display = ("equipment", "regulation_name", "performed_at", "next_planned_date", "prior_planned_date", "created_by")
     list_filter = ("performed_at",)
     search_fields = ("equipment__inventory_number",)
     inlines = [MaintenanceRecordItemInline]
+
+
+class MaintenanceRegulationItemInline(admin.TabularInline):
+    model = MaintenanceRegulationItem
+    extra = 0
+
+
+@admin.register(MaintenanceRegulation)
+class MaintenanceRegulationAdmin(admin.ModelAdmin):
+    list_display = ("name", "equipment_type", "equipment", "period_months", "on_demand", "is_archived")
+    list_filter = ("on_demand", "is_archived")
+    inlines = [MaintenanceRegulationItemInline]
+
+
+@admin.register(EquipmentMaintenancePlan)
+class EquipmentMaintenancePlanAdmin(admin.ModelAdmin):
+    list_display = ("equipment", "regulation", "next_planned_date", "is_cancelled")
+    list_filter = ("is_cancelled",)

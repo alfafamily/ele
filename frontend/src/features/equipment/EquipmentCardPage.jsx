@@ -12,8 +12,9 @@ import { DetachToStorageModal } from '../employees/DetachToStorageModal.jsx'
 import { detachSimCard } from '../employees/employeesApi.js'
 import { EquipmentPlacementModal } from './EquipmentPlacementModal.jsx'
 import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
-import { getEquipment, getEquipmentHistoryPath } from './equipmentApi.js'
-import { EQUIPMENT_STATUS_LABEL, MAINTENANCE_STATUS_COLOR, MAINTENANCE_STATUS_ICONS, MAINTENANCE_STATUS_LABEL } from './statusLabels.js'
+import { EquipmentRegulationsSection } from './EquipmentRegulationsSection.jsx'
+import { getEquipment, getEquipmentHistoryPath, getEquipmentRegulations } from './equipmentApi.js'
+import { EQUIPMENT_STATUS_LABEL, planStatusIcon } from './statusLabels.js'
 import { WriteOffModal } from './WriteOffModal.jsx'
 
 function formatShortDate(iso) {
@@ -26,6 +27,7 @@ export function EquipmentCardPage() {
   const navigate = useNavigate()
   const perms = usePermissions()
   const [equipment, setEquipment] = useState(null)
+  const [regulations, setRegulations] = useState(null)
   const [loadError, setLoadError] = useState(false)
   const [showWriteOff, setShowWriteOff] = useState(false)
   const [showPlacement, setShowPlacement] = useState(false)
@@ -43,6 +45,12 @@ export function EquipmentCardPage() {
       .then((data) => {
         setEquipment(data)
         setHistoryKey((k) => k + 1)
+        // B13+: регламенты ТО — только если у типа включено ТО и объект не списан.
+        if (data.type_maintenance_enabled && !data.is_written_off) {
+          getEquipmentRegulations(id).then(setRegulations).catch(() => setRegulations([]))
+        } else {
+          setRegulations(null)
+        }
       })
       .catch(() => setLoadError(true))
   }, [id])
@@ -169,6 +177,18 @@ export function EquipmentCardPage() {
             )}
           </Card>
 
+          {/* B13+. Регламенты ТО — сворачиваемый раздел перед историей. */}
+          {equipment.type_maintenance_enabled && !equipment.is_written_off ? (
+            <Card>
+              <EquipmentRegulationsSection
+                equipment={equipment}
+                regulations={regulations}
+                canManage={perms.canManageMaintenance}
+                onChanged={load}
+              />
+            </Card>
+          ) : null}
+
           {/* История — в основной колонке (следует сразу за блоками), чтобы не
               оставался большой отступ, когда боковой блок выше основного. */}
           <Card>
@@ -180,28 +200,44 @@ export function EquipmentCardPage() {
             оборудования всегда пуст — не показываем (одна колонка). */}
         {!equipment.is_written_off ? (
         <Card className="ele-obj-layout__side ele-card-sticky">
-          {/* B13. Блок ТО — только если у типа включено техобслуживание. */}
+          {/* B13+. Блок ТО — только если у типа включено техобслуживание.
+              Список активных планов (регламенты типа + индивидуальные, кроме
+              «по потребности» и отменённых) с иконкой статуса + плановой датой. */}
           {equipment.type_maintenance_enabled ? (
             <>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Обслуживание</div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flex: 'none', marginTop: 1, color: MAINTENANCE_STATUS_COLOR[equipment.maintenance_status] || 'var(--color-text-muted)' }}>
-                  {(MAINTENANCE_STATUS_ICONS[equipment.maintenance_status]?.icons || ['wrench']).map((name) => (
-                    <Icon key={name} name={name} size={18} strokeWidth={2} />
-                  ))}
-                </span>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: MAINTENANCE_STATUS_COLOR[equipment.maintenance_status] }}>
-                    {MAINTENANCE_STATUS_LABEL[equipment.maintenance_status] || 'ТО не запланировано'}
+              {(() => {
+                const active = (regulations || []).filter(
+                  (r) => !r.is_archived && !r.plan?.is_cancelled && !r.on_demand,
+                )
+                if (regulations === null) {
+                  return <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginBottom: 12 }}>Загрузка…</div>
+                }
+                if (active.length === 0) {
+                  return <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginBottom: 12 }}>Нет активных регламентов ТО.</div>
+                }
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                    {active.map((r) => {
+                      const ic = planStatusIcon(r.status)
+                      return (
+                        <div key={r.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                          <span style={{ flex: 'none', marginTop: 1, color: ic.color }} title={ic.title}>
+                            <Icon name={ic.icon} size={17} strokeWidth={2} />
+                          </span>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 600 }}>{r.name}</div>
+                            <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
+                              {r.plan?.next_planned_date ? `Плановая дата: ${formatShortDate(r.plan.next_planned_date)}` : 'Дата ТО не задана'}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                  {equipment.next_maintenance_date && equipment.maintenance_status !== 'not_planned' ? (
-                    <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>
-                      Плановая дата: {formatShortDate(equipment.next_maintenance_date)}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-              <Can perm="canManageEquipment">
+                )
+              })()}
+              <Can perm="canPerformMaintenance">
                 <Button variant="secondary" fullWidth onClick={() => navigate(`/equipment/${equipment.id}/maintenance`)}>
                   <Icon name="wrench" size={17} strokeWidth={2} />
                   Провести ТО

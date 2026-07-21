@@ -628,8 +628,9 @@ class EquipmentPlacementTests(APITestCase):
 
 
 class MaintenanceTests(APITestCase):
-    """B13. Техобслуживание оборудования: флаг типа, проведение ТО, статусы,
-    фильтры списка, отметка «вовремя/просрочка» в истории, запреты и доступ."""
+    """B13+. Регламентное техобслуживание: регламенты типа/индивидуальные,
+    наследование планов, проведение ТО (в т.ч. отмена позиций), внеплановое ТО,
+    статусы/индикация, фильтры, каскады архива/списания, права ролей."""
 
     def setUp(self):
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
@@ -652,6 +653,27 @@ class MaintenanceTests(APITestCase):
         self.assertEqual(resp.status_code, 201, resp.data)
         return resp.data["id"]
 
+    def _make_type_regulation(self, type_id, name="Плановое ТО", period_months=3, on_demand=False, items=None):
+        payload = {
+            "name": name,
+            "period_months": period_months,
+            "on_demand": on_demand,
+            "items": items if items is not None else [{"kind": "work", "name": "Чистка", "quantity": "1"}],
+        }
+        resp = self.client.post(f"/api/equipment-types/{type_id}/regulations/", payload, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        return resp.data["id"]
+
+    def _regs(self, eq_id):
+        resp = self.client.get(f"/api/equipment/{eq_id}/regulations/")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        return {r["id"]: r for r in resp.data}
+
+    def _set_date(self, eq_id, reg_id, date):
+        return self.client.patch(
+            f"/api/equipment/{eq_id}/regulations/{reg_id}/plan/", {"next_planned_date": date}, format="json"
+        )
+
     def _perform(self, eq_id, **payload):
         return self.client.post(f"/api/equipment/{eq_id}/maintenance/", payload, format="json")
 
@@ -663,145 +685,340 @@ class MaintenanceTests(APITestCase):
         self.assertEqual(resp.status_code, 200, resp.data)
         self.assertTrue(resp.data["maintenance_enabled"])
 
-    def test_status_none_when_flag_off(self):
+    def test_summary_disabled_when_flag_off(self):
         type_id = self._make_type(maintenance_enabled=False)
         eq_id = self._make_equipment(type_id)
         resp = self.client.get(f"/api/equipment/{eq_id}/")
-        self.assertIsNone(resp.data["maintenance_status"])
+        self.assertFalse(resp.data["maintenance_summary"]["enabled"])
         self.assertFalse(resp.data["type_maintenance_enabled"])
 
-    def test_perform_updates_next_date_and_status(self):
+    def test_type_regulation_inherited_by_equipment(self):
+        type_id = self._make_type()
+        # Оборудование, созданное ДО регламента — план заводится при создании рег.
+        eq_before = self._make_equipment(type_id, inv="INV-BEFORE")
+        reg_id = self._make_type_regulation(type_id)
+        regs = self._regs(eq_before)
+        self.assertIn(reg_id, regs)
+        # Оборудование, созданное ПОСЛЕ регламента — план при создании экземпляра.
+        eq_after = self._make_equipment(type_id, inv="INV-AFTER")
+        self.assertIn(reg_id, self._regs(eq_after))
+
+    def test_perform_by_regulation_sets_plan_date(self):
         from datetime import timedelta
 
         from django.utils import timezone
 
         type_id = self._make_type()
+        reg_id = self._make_type_regulation(type_id, period_months=3)
         eq_id = self._make_equipment(type_id)
 
-        # Без ТО — не запланировано.
-        resp = self.client.get(f"/api/equipment/{eq_id}/")
-        self.assertEqual(resp.data["maintenance_status"], "not_planned")
-
         future = (timezone.localdate() + timedelta(days=30)).isoformat()
-        resp = self._perform(eq_id, next_planned_date=future, items=[{"kind": "work", "name": "Чистка", "quantity": "1"}])
+        resp = self._perform(
+            eq_id,
+            regulation=reg_id,
+            next_planned_date=future,
+            items=[{"kind": "work", "name": "Чистка", "quantity": "1", "from_regulation": True}],
+        )
         self.assertEqual(resp.status_code, 200, resp.data)
-        self.assertEqual(resp.data["next_maintenance_date"], future)
-        self.assertEqual(resp.data["maintenance_status"], "scheduled")
+        regs = self._regs(eq_id)
+        self.assertEqual(regs[reg_id]["plan"]["next_planned_date"], future)
+        self.assertEqual(regs[reg_id]["status"], "scheduled")
+        # В истории — имя регламента.
+        rows = self.client.get(f"/api/equipment/{eq_id}/history/").data
+        maint = [r for r in rows if r["category"] == "maintenance"]
+        self.assertTrue(any("Плановое ТО" in r["label"] for r in maint), maint)
 
-    def test_status_thresholds(self):
+    def test_perform_requires_active_item(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        type_id = self._make_type()
+        reg_id = self._make_type_regulation(type_id)
+        eq_id = self._make_equipment(type_id)
+        future = (timezone.localdate() + timedelta(days=10)).isoformat()
+        # Все позиции отменены — нельзя провести.
+        resp = self._perform(
+            eq_id,
+            regulation=reg_id,
+            next_planned_date=future,
+            items=[{"kind": "work", "name": "Чистка", "quantity": "1", "from_regulation": True, "is_cancelled": True, "cancel_reason": "не требуется"}],
+        )
+        self.assertEqual(resp.status_code, 400, resp.data)
+
+    def test_cancel_item_requires_reason_and_hits_history(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        type_id = self._make_type()
+        reg_id = self._make_type_regulation(
+            type_id,
+            items=[{"kind": "work", "name": "Чистка", "quantity": "1"}, {"kind": "material", "name": "Фильтр", "quantity": "1"}],
+        )
+        eq_id = self._make_equipment(type_id)
+        future = (timezone.localdate() + timedelta(days=10)).isoformat()
+        # Отмена без причины — 400.
+        bad = self._perform(
+            eq_id, regulation=reg_id, next_planned_date=future,
+            items=[
+                {"kind": "work", "name": "Чистка", "quantity": "1", "from_regulation": True},
+                {"kind": "material", "name": "Фильтр", "quantity": "1", "from_regulation": True, "is_cancelled": True},
+            ],
+        )
+        self.assertEqual(bad.status_code, 400, bad.data)
+        # С причиной — ок, причина в истории.
+        ok = self._perform(
+            eq_id, regulation=reg_id, next_planned_date=future,
+            items=[
+                {"kind": "work", "name": "Чистка", "quantity": "1", "from_regulation": True},
+                {"kind": "material", "name": "Фильтр", "quantity": "1", "from_regulation": True, "is_cancelled": True, "cancel_reason": "остался с прошлого раза"},
+            ],
+        )
+        self.assertEqual(ok.status_code, 200, ok.data)
+        rows = self.client.get(f"/api/equipment/{eq_id}/history/").data
+        maint = [r for r in rows if r["category"] == "maintenance"]
+        text = str(maint)
+        self.assertIn("отменено", text)
+        self.assertIn("остался с прошлого раза", text)
+
+    def test_date_range_validation(self):
         from datetime import timedelta
 
         from django.utils import timezone
 
         today = timezone.localdate()
         type_id = self._make_type()
+        reg_id = self._make_type_regulation(type_id, period_months=3)
+        eq_id = self._make_equipment(type_id)
+        item = [{"kind": "work", "name": "Чистка", "quantity": "1", "from_regulation": True}]
+        # Прошлое — 400.
+        r1 = self._perform(eq_id, regulation=reg_id, next_planned_date=(today - timedelta(days=1)).isoformat(), items=item)
+        self.assertEqual(r1.status_code, 400, r1.data)
+        # Позже расчётной (сегодня + 3 мес ≈ 90 дн) — 400.
+        r2 = self._perform(eq_id, regulation=reg_id, next_planned_date=(today + timedelta(days=200)).isoformat(), items=item)
+        self.assertEqual(r2.status_code, 400, r2.data)
+        # Без даты для периодического — 400.
+        r3 = self._perform(eq_id, regulation=reg_id, items=item)
+        self.assertEqual(r3.status_code, 400, r3.data)
 
-        # Плановую дату (в т.ч. прошлую — она наступает со временем) выставляем
-        # напрямую через ORM: провести ТО с прошлой датой запрещено (см. отдельный
-        # тест), а «просрочено» возникает, когда запланированная дата истекает.
-        cases = {
-            today - timedelta(days=1): "overdue",
-            today + timedelta(days=3): "due_soon",
-            today: "due_soon",
-            today + timedelta(days=30): "scheduled",
-        }
-        for i, (date, expected) in enumerate(cases.items()):
-            eq_id = self._make_equipment(type_id, inv=f"INV-TH-{i}")
-            Equipment.objects.filter(pk=eq_id).update(next_maintenance_date=date)
-            resp = self.client.get(f"/api/equipment/{eq_id}/")
-            self.assertEqual(resp.data["maintenance_status"], expected, f"{date} -> {expected}")
+    def test_unplanned_maintenance(self):
+        type_id = self._make_type()
+        eq_id = self._make_equipment(type_id)
+        # Внеплановое: regulation=null, без даты.
+        resp = self._perform(
+            eq_id, regulation=None, comment="Аварийно",
+            items=[{"kind": "work", "name": "Ремонт", "quantity": "1"}],
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        rows = self.client.get(f"/api/equipment/{eq_id}/history/").data
+        maint = [r for r in rows if r["category"] == "maintenance"]
+        self.assertTrue(any("внеплановое" in r["label"].lower() for r in maint), maint)
 
-    def test_past_date_rejected(self):
+    def test_on_demand_regulation(self):
+        type_id = self._make_type()
+        reg_id = self._make_type_regulation(type_id, name="По потребности", on_demand=True, period_months=None)
+        eq_id = self._make_equipment(type_id)
+        regs = self._regs(eq_id)
+        self.assertTrue(regs[reg_id]["on_demand"])
+        self.assertIsNone(regs[reg_id]["status"])
+        # Проведение без даты — ок.
+        resp = self._perform(
+            eq_id, regulation=reg_id, items=[{"kind": "work", "name": "Осмотр", "quantity": "1", "from_regulation": True}]
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        # По потребности не влияет на индикацию.
+        summary = self.client.get(f"/api/equipment/{eq_id}/").data["maintenance_summary"]
+        self.assertIsNone(summary["critical"])
+        self.assertFalse(summary["has_unplanned"])
+
+    def test_summary_critical_and_unplanned(self):
         from datetime import timedelta
 
         from django.utils import timezone
 
+        from .models import EquipmentMaintenancePlan
+
+        today = timezone.localdate()
         type_id = self._make_type()
+        reg_overdue = self._make_type_regulation(type_id, name="Просроч")
+        reg_unset = self._make_type_regulation(type_id, name="Без даты")
         eq_id = self._make_equipment(type_id)
-        resp = self._perform(eq_id, next_planned_date=(timezone.localdate() - timedelta(days=1)).isoformat())
-        self.assertEqual(resp.status_code, 400, resp.data)
+        # Один регламент просрочен (через ORM), другой — без даты.
+        EquipmentMaintenancePlan.objects.filter(equipment_id=eq_id, regulation_id=reg_overdue).update(
+            next_planned_date=today - timedelta(days=3)
+        )
+        summary = self.client.get(f"/api/equipment/{eq_id}/").data["maintenance_summary"]
+        self.assertEqual(summary["critical"], "overdue")
+        self.assertTrue(summary["has_unplanned"])
 
     def test_list_filters(self):
         from datetime import timedelta
 
         from django.utils import timezone
 
+        from .models import EquipmentMaintenancePlan
+
         today = timezone.localdate()
         type_id = self._make_type()
-        # Плановые даты (в т.ч. прошлую) выставляем через ORM — «просрочено»
-        # наступает со временем, задать прошлую дату через API нельзя.
+        reg_id = self._make_type_regulation(type_id)
+
         overdue_id = self._make_equipment(type_id, inv="INV-OVD")
-        Equipment.objects.filter(pk=overdue_id).update(next_maintenance_date=today - timedelta(days=2))
+        EquipmentMaintenancePlan.objects.filter(equipment_id=overdue_id, regulation_id=reg_id).update(
+            next_planned_date=today - timedelta(days=2)
+        )
         due_id = self._make_equipment(type_id, inv="INV-DUE")
-        Equipment.objects.filter(pk=due_id).update(next_maintenance_date=today + timedelta(days=2))
-        far_id = self._make_equipment(type_id, inv="INV-FAR")
-        Equipment.objects.filter(pk=far_id).update(next_maintenance_date=today + timedelta(days=90))
+        EquipmentMaintenancePlan.objects.filter(equipment_id=due_id, regulation_id=reg_id).update(
+            next_planned_date=today + timedelta(days=2)
+        )
+        unset_id = self._make_equipment(type_id, inv="INV-UNSET")  # план без даты
 
         ids = lambda params: {e["id"] for e in self.client.get("/api/equipment/", params).data["results"]}
 
         self.assertEqual(ids({"to_overdue": "1"}), {overdue_id})
         self.assertEqual(ids({"to_due": "1"}), {due_id})
-        # Оба сразу — объединение.
+        self.assertEqual(ids({"to_unset": "1"}), {unset_id})
         self.assertEqual(ids({"to_due": "1", "to_overdue": "1"}), {overdue_id, due_id})
 
-    def test_history_on_time_and_overdue(self):
+    def test_archive_type_regulation_cascade(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from .models import EquipmentMaintenancePlan
+
+        today = timezone.localdate()
+        type_id = self._make_type()
+        reg_id = self._make_type_regulation(type_id)
+        eq_id = self._make_equipment(type_id)
+        self._set_date(eq_id, reg_id, (today + timedelta(days=10)).isoformat())
+
+        # Архивируем регламент типа — исчезает из списка оборудования, план
+        # отменён и дата обнулена (проверяем через ORM).
+        resp = self.client.patch(
+            f"/api/equipment-types/{type_id}/regulations/{reg_id}/", {"is_archived": True}, format="json"
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertNotIn(reg_id, self._regs(eq_id))
+        plan = EquipmentMaintenancePlan.objects.get(equipment_id=eq_id, regulation_id=reg_id)
+        self.assertTrue(plan.is_cancelled)
+        self.assertIsNone(plan.next_planned_date)
+
+        # Возврат — снова активен у оборудования, но дата не задана.
+        self.client.patch(
+            f"/api/equipment-types/{type_id}/regulations/{reg_id}/", {"is_archived": False}, format="json"
+        )
+        regs = self._regs(eq_id)
+        self.assertIn(reg_id, regs)
+        self.assertFalse(regs[reg_id]["plan"]["is_cancelled"])
+        self.assertIsNone(regs[reg_id]["plan"]["next_planned_date"])
+
+    def test_cancel_regulation_for_equipment(self):
         from datetime import timedelta
 
         from django.utils import timezone
 
         today = timezone.localdate()
         type_id = self._make_type()
+        reg_id = self._make_type_regulation(type_id)
+        eq_id = self._make_equipment(type_id)
+        self._set_date(eq_id, reg_id, (today + timedelta(days=2)).isoformat())
 
-        # Просрочка: плановая дата истекла (ставим через ORM), затем новое ТО.
-        eq_id = self._make_equipment(type_id, inv="INV-H1")
-        Equipment.objects.filter(pk=eq_id).update(next_maintenance_date=today - timedelta(days=5))
-        self._perform(eq_id, items=[{"kind": "material", "name": "Фильтр", "quantity": "2"}])
-        rows = self.client.get(f"/api/equipment/{eq_id}/history/").data
-        maint = [r for r in rows if r["category"] == "maintenance"]
-        self.assertTrue(any("с просрочкой" in r["label"] for r in maint), maint)
+        # Отмена регламента для экземпляра — из индикации уходит.
+        resp = self.client.patch(
+            f"/api/equipment/{eq_id}/regulations/{reg_id}/plan/", {"is_cancelled": True}, format="json"
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        summary = self.client.get(f"/api/equipment/{eq_id}/").data["maintenance_summary"]
+        self.assertIsNone(summary["critical"])
+        self.assertFalse(summary["has_unplanned"])
+        # Проведение по отменённому — 409.
+        bad = self._perform(
+            eq_id, regulation=reg_id, next_planned_date=(today + timedelta(days=5)).isoformat(),
+            items=[{"kind": "work", "name": "x", "quantity": "1"}],
+        )
+        self.assertEqual(bad.status_code, 409, bad.data)
 
-        # Вовремя: плановая дата в будущем, затем ТО сегодня.
-        eq2 = self._make_equipment(type_id, inv="INV-H2")
-        self._perform(eq2, next_planned_date=(today + timedelta(days=5)).isoformat(), comment="Плановое")
-        self._perform(eq2, comment="Внеплановое")
-        rows2 = self.client.get(f"/api/equipment/{eq2}/history/").data
-        maint2 = [r for r in rows2 if r["category"] == "maintenance"]
-        self.assertTrue(any("вовремя" in r["label"] for r in maint2), maint2)
-
-    def test_empty_payload_rejected(self):
+    def test_individual_regulation(self):
         type_id = self._make_type()
         eq_id = self._make_equipment(type_id)
-        resp = self._perform(eq_id, items=[])
-        self.assertEqual(resp.status_code, 400, resp.data)
+        resp = self.client.post(
+            f"/api/equipment/{eq_id}/regulations/",
+            {"name": "Личный", "period_months": 6, "items": [{"kind": "work", "name": "Смазка", "quantity": "1"}]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        regs = self._regs(eq_id)
+        individual = [r for r in regs.values() if r["scope"] == "individual"]
+        self.assertEqual(len(individual), 1)
+        reg_id = individual[0]["id"]
+        # Архивирование индивидуального — план отменён.
+        self.client.delete(f"/api/equipment/{eq_id}/regulations/{reg_id}/")
+        self.assertTrue(self._regs(eq_id)[reg_id]["plan"]["is_cancelled"])
 
-    def test_date_only_rejected(self):
-        # Одной даты следующего ТО недостаточно — нужен комментарий или позиция.
+    def test_write_off_cascade(self):
+        type_id = self._make_type()
+        reg_id = self._make_type_regulation(type_id)
+        eq_id = self._make_equipment(type_id)
+        self.client.post(
+            f"/api/equipment/{eq_id}/regulations/",
+            {"name": "Личный", "period_months": 6, "items": [{"kind": "work", "name": "Смазка", "quantity": "1"}]},
+            format="json",
+        )
+        self.client.post(f"/api/equipment/{eq_id}/write-off/", {}, format="json")
+        regs = self._regs(eq_id)
+        # Все планы отменены; индивидуальный регламент — в архиве.
+        self.assertTrue(all(r["plan"]["is_cancelled"] for r in regs.values()))
+        self.assertTrue(any(r["scope"] == "individual" and r["is_archived"] for r in regs.values()))
+        # ТО по списанному — 409.
+        resp = self._perform(eq_id, regulation=reg_id, items=[{"kind": "work", "name": "x", "quantity": "1"}])
+        self.assertEqual(resp.status_code, 409, resp.data)
+
+    def test_permissions_matrix(self):
         from datetime import timedelta
 
         from django.utils import timezone
 
+        today = timezone.localdate()
         type_id = self._make_type()
+        reg_id = self._make_type_regulation(type_id)
         eq_id = self._make_equipment(type_id)
-        resp = self._perform(eq_id, next_planned_date=(timezone.localdate() + timedelta(days=5)).isoformat())
-        self.assertEqual(resp.status_code, 400, resp.data)
+        item = [{"kind": "work", "name": "Чистка", "quantity": "1", "from_regulation": True}]
+        future = (today + timedelta(days=10)).isoformat()
 
-    def test_flag_off_rejected(self):
-        type_id = self._make_type(maintenance_enabled=False)
-        eq_id = self._make_equipment(type_id)
-        resp = self._perform(eq_id, comment="x")
-        self.assertEqual(resp.status_code, 409, resp.data)
+        maint = User.objects.create_user(email="maint@example.com", password="Str0ng!Pass1", role="maintenance")
+        acc = User.objects.create_user(email="acc@example.com", password="Str0ng!Pass1", role="accountant")
+        emp = User.objects.create_user(email="emp@example.com", password="Str0ng!Pass1", role="employee")
 
-    def test_written_off_rejected(self):
-        type_id = self._make_type()
-        eq_id = self._make_equipment(type_id)
-        self.client.post(f"/api/equipment/{eq_id}/write-off/", {}, format="json")
-        resp = self._perform(eq_id, comment="x")
-        self.assertEqual(resp.status_code, 409, resp.data)
+        # Роль ТО: проводит, но не управляет регламентами/планом.
+        self.client.force_authenticate(user=maint)
+        self.assertEqual(self._perform(eq_id, regulation=reg_id, next_planned_date=future, items=item).status_code, 200)
+        self.assertEqual(
+            self.client.post(f"/api/equipment-types/{type_id}/regulations/", {"name": "x", "period_months": 1, "items": item}, format="json").status_code,
+            403,
+        )
+        self.assertEqual(
+            self.client.patch(f"/api/equipment/{eq_id}/regulations/{reg_id}/plan/", {"is_cancelled": True}, format="json").status_code,
+            403,
+        )
 
-    def test_employee_cannot_perform(self):
-        type_id = self._make_type()
-        eq_id = self._make_equipment(type_id)
-        emp_user = User.objects.create_user(email="emp@example.com", password="Str0ng!Pass1", role="employee")
-        self.client.force_authenticate(user=emp_user)
-        resp = self._perform(eq_id, comment="x")
-        self.assertIn(resp.status_code, (403, 404), resp.data)
+        # Ответственный за учёт без флага — ни провести, ни управлять.
+        self.client.force_authenticate(user=acc)
+        self.assertEqual(self._perform(eq_id, regulation=reg_id, next_planned_date=future, items=item).status_code, 403)
+        self.assertEqual(
+            self.client.patch(f"/api/equipment/{eq_id}/regulations/{reg_id}/plan/", {"is_cancelled": True}, format="json").status_code,
+            403,
+        )
+
+        # С флагом can_maintain — можно всё.
+        acc.can_maintain = True
+        acc.save(update_fields=["can_maintain"])
+        self.assertEqual(self._perform(eq_id, regulation=reg_id, next_planned_date=future, items=item).status_code, 200)
+        self.assertEqual(
+            self.client.patch(f"/api/equipment/{eq_id}/regulations/{reg_id}/plan/", {"is_cancelled": True}, format="json").status_code,
+            200,
+        )
+
+        # Обычный сотрудник — не проводит.
+        self.client.force_authenticate(user=emp)
+        self.assertIn(self._perform(eq_id, regulation=reg_id, items=item).status_code, (403, 404))

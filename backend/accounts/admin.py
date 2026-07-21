@@ -14,8 +14,8 @@ class UserAdmin(BaseUserAdmin):
     add_form = UserCreationForm
 
     ordering = ("email",)
-    list_display = ("email", "role", "is_observer", "is_active", "is_email_confirmed", "employee")
-    list_filter = ("role", "is_observer", "is_active", "is_email_confirmed")
+    list_display = ("email", "role", "is_observer", "can_maintain", "is_active", "is_email_confirmed", "employee")
+    list_filter = ("role", "is_observer", "can_maintain", "is_active", "is_email_confirmed")
     search_fields = ("email",)
 
     fieldsets = (
@@ -26,6 +26,7 @@ class UserAdmin(BaseUserAdmin):
                 "fields": (
                     "role",
                     "is_observer",
+                    "can_maintain",
                     "employee",
                     "is_active",
                     "is_email_confirmed",

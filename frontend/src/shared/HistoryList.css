@@ -73,11 +73,19 @@
 
 .ele-history__row {
   display: grid;
-  grid-template-columns: 140px minmax(0, 1fr) minmax(0, 1.2fr);
+  grid-template-columns: 140px minmax(0, 1fr);
   gap: 12px;
   padding: 10px 0;
   border-top: 1px solid var(--color-border-hairline);
   align-items: start;
+}
+
+/* Правая колонка строки-изменения: «что» и под ним значение «было→стало». */
+.ele-history__change {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .ele-history__row:first-child {

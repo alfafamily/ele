@@ -108,11 +108,8 @@ class Equipment(models.Model):
     # Проставляется в момент списания (write_off action) — нужна для колонки
     # «Дата списания» вкладки Архив, отдельно от is_written_off.
     written_off_at = models.DateTimeField("Дата списания", null=True, blank=True)
-    # B13: денормализация — плановая дата следующего ТО = next_planned_date из
-    # последней записи MaintenanceRecord (может быть NULL — «ТО не запланировано»).
-    # Перезаписывается при каждом проведении ТО; в field_specs истории не входит,
-    # поэтому её изменения историю не шумят. Даёт дешёвый статус/фильтр в списке.
-    next_maintenance_date = models.DateField("Плановая дата ТО", null=True, blank=True)
+    # B13+: плановые даты ТО теперь по-регламентно (EquipmentMaintenancePlan),
+    # прежняя денормализация next_maintenance_date упразднена.
     # PROTECT: удаление Типа с привязанными объектами запрещено на уровне БД
     # — прикладной код (Фаза 4) превращает ProtectedError в 409.
     equipment_type = models.ForeignKey(
@@ -197,18 +194,122 @@ class EquipmentCustomField(models.Model):
         return f"{self.equipment} / {self.name}"
 
 
+class MaintenanceKind(models.TextChoices):
+    """Вид позиции ТО — общий для шаблона регламента и записи о проведении."""
+
+    WORK = "work", "Работы"
+    MATERIAL = "material", "Материалы"
+
+
+class MaintenanceRegulation(models.Model):
+    """B13+. Регламент ТО — именованный набор работ/материалов с периодичностью.
+
+    Ровно один владелец: `equipment_type` (регламент типа, наследуется всем
+    оборудованием типа) ИЛИ `equipment` (индивидуальный регламент конкретного
+    экземпляра). Периодичность — либо `period_months` (раз в N месяцев), либо
+    `on_demand` (по потребности — плановая дата не назначается, контроля нет)."""
+
+    equipment_type = models.ForeignKey(
+        EquipmentType, on_delete=models.CASCADE, null=True, blank=True, related_name="regulations"
+    )
+    equipment = models.ForeignKey(
+        Equipment, on_delete=models.CASCADE, null=True, blank=True, related_name="regulations"
+    )
+    name = models.CharField("Наименование", max_length=255)
+    period_months = models.PositiveSmallIntegerField("Периодичность, мес.", null=True, blank=True)
+    on_demand = models.BooleanField("По потребности", default=False)
+    is_archived = models.BooleanField("Отменён (архив)", default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Регламент ТО"
+        verbose_name_plural = "Регламенты ТО"
+        ordering = ["id"]
+        constraints = [
+            # Ровно один владелец: тип XOR экземпляр.
+            models.CheckConstraint(
+                name="regulation_one_owner",
+                condition=(
+                    models.Q(equipment_type__isnull=False, equipment__isnull=True)
+                    | models.Q(equipment_type__isnull=True, equipment__isnull=False)
+                ),
+            ),
+        ]
+
+    @property
+    def scope(self):
+        return "type" if self.equipment_type_id else "individual"
+
+    def __str__(self):
+        return f"Регламент «{self.name}»"
+
+
+class MaintenanceRegulationItem(models.Model):
+    """Шаблонная позиция регламента: работа или материал с плановым количеством.
+    При проведении ТО копируется в MaintenanceRecordItem (снимок) — правка
+    шаблона на уже проведённые ТО не влияет."""
+
+    regulation = models.ForeignKey(MaintenanceRegulation, on_delete=models.CASCADE, related_name="items")
+    kind = models.CharField("Тип", max_length=10, choices=MaintenanceKind.choices)
+    name = models.CharField("Наименование", max_length=255)
+    quantity = models.DecimalField("Количество", max_digits=12, decimal_places=3)
+
+    class Meta:
+        verbose_name = "Позиция регламента ТО"
+        verbose_name_plural = "Позиции регламента ТО"
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} «{self.name}» × {self.quantity}"
+
+
+class EquipmentMaintenancePlan(models.Model):
+    """B13+. Состояние регламента для конкретного экземпляра оборудования —
+    единая точка контроля (статус/индикация/фильтры считаются по планам).
+
+    Заводится на каждую пару (оборудование, регламент): для регламента типа —
+    по одному плану на каждый экземпляр типа; для индивидуального — один план на
+    его оборудование. `next_planned_date` — плановая дата ближайшего ТО по этому
+    регламенту (None — не назначена). `is_cancelled` — регламент отменён для
+    этого экземпляра (не контролируется, ТО по нему не проводится)."""
+
+    equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name="maintenance_plans")
+    regulation = models.ForeignKey(MaintenanceRegulation, on_delete=models.CASCADE, related_name="plans")
+    next_planned_date = models.DateField("Плановая дата ТО", null=True, blank=True)
+    is_cancelled = models.BooleanField("Отменён для экземпляра", default=False)
+
+    class Meta:
+        verbose_name = "План ТО оборудования"
+        verbose_name_plural = "Планы ТО оборудования"
+        ordering = ["id"]
+        constraints = [
+            models.UniqueConstraint(fields=["equipment", "regulation"], name="uniq_equipment_regulation_plan"),
+        ]
+
+    def __str__(self):
+        return f"План {self.equipment} / {self.regulation}"
+
+
 class MaintenanceRecord(models.Model):
     """B13. Запись о проведённом ТО единицы оборудования — создаётся, не
     редактируется (журнал, как ToolMovement). «История изменений» карточки
     восстанавливает строки ТО из этих записей (собственной simple-history нет).
 
-    performed_at — «факт»: момент создания записи в системе. prior_planned_date —
-    снимок Equipment.next_maintenance_date до этой записи (плановая дата, которая
-    была актуальна), нужен для отметки «вовремя / с просрочкой N дней».
-    next_planned_date — новая плановая дата следующего ТО (переносится в
-    Equipment.next_maintenance_date)."""
+    performed_at — «факт»: момент создания записи в системе. `regulation` — по
+    какому регламенту проведено ТО (None — «Внеплановое ТО»). `regulation_name` —
+    снимок имени регламента на момент ТО (переживает переименование/удаление).
+    prior_planned_date — снимок плановой даты плана до этой записи (нужен для
+    отметки «вовремя / с просрочкой N дней»). next_planned_date — новая плановая
+    дата (переносится в EquipmentMaintenancePlan.next_planned_date)."""
+
+    # Общий алиас, чтобы не переписывать существующие ссылки Kind в коде/тестах.
+    Kind = MaintenanceKind
 
     equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name="maintenance_records")
+    regulation = models.ForeignKey(
+        MaintenanceRegulation, on_delete=models.SET_NULL, null=True, blank=True, related_name="records"
+    )
+    regulation_name = models.CharField("Регламент (снимок)", max_length=255, blank=True)
     performed_at = models.DateTimeField("Проведено", auto_now_add=True)
     next_planned_date = models.DateField("Дата следующего ТО", null=True, blank=True)
     prior_planned_date = models.DateField("Плановая дата на момент ТО", null=True, blank=True)
@@ -227,16 +328,20 @@ class MaintenanceRecord(models.Model):
 
 
 class MaintenanceRecordItem(models.Model):
-    """Позиция записи о ТО: выполненная работа или израсходованный материал."""
+    """Позиция записи о ТО: выполненная работа или израсходованный материал.
+    Строки, взятые из регламента, можно отменить (is_cancelled) с обязательной
+    причиной (cancel_reason) — они остаются в записи как отменённые."""
 
-    class Kind(models.TextChoices):
-        WORK = "work", "Работы"
-        MATERIAL = "material", "Материалы"
+    Kind = MaintenanceKind
 
     record = models.ForeignKey(MaintenanceRecord, on_delete=models.CASCADE, related_name="items")
-    kind = models.CharField("Тип", max_length=10, choices=Kind.choices)
+    kind = models.CharField("Тип", max_length=10, choices=MaintenanceKind.choices)
     name = models.CharField("Наименование", max_length=255)
     quantity = models.DecimalField("Количество", max_digits=12, decimal_places=3)
+    # Строка пришла из шаблона регламента (в отличие от добавленной вручную).
+    from_regulation = models.BooleanField("Из регламента", default=False)
+    is_cancelled = models.BooleanField("Отменена", default=False)
+    cancel_reason = models.TextField("Причина отмены", blank=True)
 
     class Meta:
         verbose_name = "Позиция ТО"
