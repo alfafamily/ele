@@ -16,6 +16,13 @@ const STORAGE_LABEL = {
   to: 'Склад (куда вернуть)',
   writeoff: 'Склад (откуда списать)',
 }
+// Сообщение, когда обязательный склад не выбран (по типу операции).
+const STORAGE_MISSING = {
+  add: 'Не выбрано место хранения, на которое оприходуется инструмент.',
+  from: 'Не выбрано место хранения, с которого выдаётся инструмент.',
+  to: 'Не выбрано место хранения, на которое возвращается инструмент.',
+  writeoff: 'Не выбрано место хранения, с которого списывается инструмент.',
+}
 
 export function QuantityMoveModal({
   title,
@@ -54,12 +61,14 @@ export function QuantityMoveModal({
   const submit = async () => {
     const qty = Number(quantity)
     if (!Number.isInteger(qty) || qty <= 0) return setError('Количество должно быть больше нуля.')
-    if (typeof effectiveMax === 'number' && qty > effectiveMax) return setError(`Доступно не больше ${effectiveMax}.`)
     if (target === 'both') {
       if (mode === 'mobile' && !employee) return setError('Выберите сотрудника.')
       if (mode === 'stationary' && !placeId) return setError('Выберите рабочее место.')
     }
-    if (storage && !noneAllowed && !storagePlaceId) return setError('Выберите склад.')
+    // Склад проверяем ДО лимита: без выбранного склада-источника лимит равен 0,
+    // иначе пользователь видел бы «Доступно не больше 0» вместо понятной причины.
+    if (storage && !noneAllowed && !storagePlaceId) return setError(STORAGE_MISSING[storage] || 'Выберите склад.')
+    if (typeof effectiveMax === 'number' && qty > effectiveMax) return setError(`Доступно не больше ${effectiveMax}.`)
     setSubmitting(true)
     setError(null)
     try {
