@@ -64,7 +64,7 @@ export function EquipmentRegulationsSection({ equipment, regulations, canManage,
     }
     const items = []
     if (!reg.on_demand && !reg.plan?.next_planned_date) {
-      items.push({ label: 'Задать дату ТО', icon: 'calendar-days', onClick: () => openDate(reg) })
+      items.push({ label: 'Задать дату ТО', onClick: () => openDate(reg) })
     }
     if (reg.scope === 'individual') {
       items.push({ label: 'Изменить', onClick: () => setRegModal(reg) })
