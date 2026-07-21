@@ -27,7 +27,7 @@ class EquipmentFullLifecycleTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
 
     def test_full_lifecycle(self):
-        resp = self.client.post("/api/equipment-types/", {"name": "Ноутбук"}, format="json")
+        resp = self.client.post("/api/equipment-types/", {"name": "Ноутбук", "allows_license": True}, format="json")
         self.assertEqual(resp.status_code, 201, resp.data)
         type_id = resp.data["id"]
         model_field_id = next(f["id"] for f in resp.data["fields"] if f["name"] == "Модель")

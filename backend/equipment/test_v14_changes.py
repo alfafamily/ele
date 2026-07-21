@@ -108,7 +108,9 @@ class LicenseAttachHistoryTests(APITestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
         self.client.force_authenticate(self.admin)
-        self.type_id = self.client.post("/api/equipment-types/", {"name": "ПК"}, format="json").data["id"]
+        self.type_id = self.client.post(
+            "/api/equipment-types/", {"name": "ПК", "allows_license": True}, format="json"
+        ).data["id"]
         self.eq_id = self.client.post(
             "/api/equipment/",
             {"inventory_number": "INV-1", "equipment_type": self.type_id},
