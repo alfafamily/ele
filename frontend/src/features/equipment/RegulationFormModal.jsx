@@ -32,8 +32,11 @@ export function RegulationFormModal({ regulation, onClose, onSave, title, showFi
   const patchRow = (rid, patch) => setItems((prev) => prev.map((r) => (r._id === rid ? { ...r, ...patch } : r)))
 
   const filledItems = items.filter((r) => r.name.trim())
+  // Дата первого ТО обязательна при создании индивидуального периодического
+  // регламента (для «по потребности» даты нет).
+  const firstDateOk = !showFirstDate || onDemand || Boolean(firstDate)
   const canSubmit =
-    name.trim() && filledItems.length > 0 && (onDemand || Number(periodMonths) >= 1)
+    name.trim() && filledItems.length > 0 && (onDemand || Number(periodMonths) >= 1) && firstDateOk
 
   const submit = async () => {
     setSubmitting(true)
@@ -93,7 +96,7 @@ export function RegulationFormModal({ regulation, onClose, onSave, title, showFi
       {showFirstDate && !onDemand ? (
         <div style={{ marginTop: 18 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 8 }}>
-            Дата первого ТО <span style={{ fontWeight: 400 }}>(необязательно)</span>
+            Дата первого ТО <span style={{ color: 'var(--color-error)' }}>*</span>
           </div>
           <InlineCalendar value={firstDate} onChange={setFirstDate} minDate={todayISO()} />
         </div>
