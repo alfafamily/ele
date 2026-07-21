@@ -44,7 +44,9 @@ export function MaintenanceFormPage() {
   const patchRow = (rid, patch) => setItems((prev) => prev.map((r) => (r._id === rid ? { ...r, ...patch } : r)))
 
   const filledItems = items.filter((r) => r.name.trim())
-  const hasContent = Boolean(nextDate) || Boolean(comment.trim()) || filledItems.length > 0
+  // Провести ТО можно, если есть комментарий ИЛИ хотя бы одна работа/материал.
+  // Одной даты следующего ТО недостаточно.
+  const hasContent = Boolean(comment.trim()) || filledItems.length > 0
 
   const submit = async () => {
     setSubmitting(true)

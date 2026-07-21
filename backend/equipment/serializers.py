@@ -384,11 +384,12 @@ class MaintenanceRecordCreateSerializer(serializers.Serializer):
         return value
 
     def validate(self, attrs):
+        # Нужно заполнить комментарий ИЛИ хотя бы одну работу/материал. Одной
+        # даты следующего ТО недостаточно для создания записи.
         has_items = bool(attrs.get("items"))
         has_comment = bool((attrs.get("comment") or "").strip())
-        has_date = attrs.get("next_planned_date") is not None
-        if not (has_items or has_comment or has_date):
+        if not (has_items or has_comment):
             raise serializers.ValidationError(
-                "Заполните хотя бы одно: дату следующего ТО, позиции или комментарий."
+                "Заполните комментарий или добавьте хотя бы одну работу/материал."
             )
         return attrs
