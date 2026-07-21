@@ -332,7 +332,7 @@ export function TypesEditorPage({ domain, title }) {
                           <ActionMenu
                             items={[
                               { label: 'Изменить', onClick: () => setRegModal(reg) },
-                              { label: 'Отменить', icon: 'ban', danger: true, onClick: () => setArchiveReg(reg) },
+                              { label: 'Отменить', danger: true, onClick: () => setArchiveReg(reg) },
                             ]}
                           />
                         )}

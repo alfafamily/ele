@@ -68,9 +68,9 @@ export function EquipmentRegulationsSection({ equipment, regulations, canManage,
     }
     if (reg.scope === 'individual') {
       items.push({ label: 'Изменить', onClick: () => setRegModal(reg) })
-      items.push({ label: 'Отменить', icon: 'ban', danger: true, onClick: () => askCancel(reg, true) })
+      items.push({ label: 'Отменить', danger: true, onClick: () => askCancel(reg, true) })
     } else {
-      items.push({ label: 'Отменить для оборудования', icon: 'ban', danger: true, onClick: () => askCancel(reg, false) })
+      items.push({ label: 'Отменить для оборудования', danger: true, onClick: () => askCancel(reg, false) })
     }
     return <ActionMenu items={items} />
   }
