@@ -1,10 +1,25 @@
 /* Строка позиции ТО: тип · наименование · количество · удалить.
-   Все контролы и кнопка удаления — единой высотой 44px. */
+   Все контролы и кнопка удаления — единой высотой 44px. На desktop — в одну
+   строку, на мобильных — построчно (тип / наименование / количество+удалить). */
 .ele-maint-row {
   display: grid;
   grid-template-columns: 150px minmax(0, 1fr) 96px 44px;
+  grid-template-areas: 'kind name qty del';
   gap: 8px;
   align-items: center;
+}
+
+.ele-maint-row__kind {
+  grid-area: kind;
+}
+.ele-maint-row__name {
+  grid-area: name;
+}
+.ele-maint-row__qty {
+  grid-area: qty;
+}
+.ele-maint-row__del {
+  grid-area: del;
 }
 
 /* Инпуты/селекты в строке — ровно 44px по высоте. */
@@ -37,8 +52,17 @@
 }
 
 @media (max-width: 560px) {
+  /* Построчно: тип, наименование, затем количество + удаление в один ряд.
+     Обводка группирует три поля одной позиции. */
   .ele-maint-row {
-    grid-template-columns: 120px minmax(0, 1fr) 72px 44px;
-    gap: 6px;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    grid-template-areas:
+      'kind kind'
+      'name name'
+      'qty  del';
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
   }
 }

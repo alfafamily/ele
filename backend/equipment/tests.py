@@ -762,7 +762,7 @@ class MaintenanceTests(APITestCase):
 
         # Вовремя: плановая дата в будущем, затем ТО сегодня.
         eq2 = self._make_equipment(type_id, inv="INV-H2")
-        self._perform(eq2, next_planned_date=(today + timedelta(days=5)).isoformat())
+        self._perform(eq2, next_planned_date=(today + timedelta(days=5)).isoformat(), comment="Плановое")
         self._perform(eq2, comment="Внеплановое")
         rows2 = self.client.get(f"/api/equipment/{eq2}/history/").data
         maint2 = [r for r in rows2 if r["category"] == "maintenance"]
@@ -772,6 +772,17 @@ class MaintenanceTests(APITestCase):
         type_id = self._make_type()
         eq_id = self._make_equipment(type_id)
         resp = self._perform(eq_id, items=[])
+        self.assertEqual(resp.status_code, 400, resp.data)
+
+    def test_date_only_rejected(self):
+        # Одной даты следующего ТО недостаточно — нужен комментарий или позиция.
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        type_id = self._make_type()
+        eq_id = self._make_equipment(type_id)
+        resp = self._perform(eq_id, next_planned_date=(timezone.localdate() + timedelta(days=5)).isoformat())
         self.assertEqual(resp.status_code, 400, resp.data)
 
     def test_flag_off_rejected(self):
