@@ -9,16 +9,31 @@ export function computePermissions(user) {
   // Наблюдатель — «Сотрудник» с признаком is_observer: сквозной просмотр всех
   // бизнес-разделов (кроме «Настроек» и редактора Типов), строго read-only.
   const isObserver = role === 'employee' && !!user?.is_observer
+  // B13+: роль «Ответственный за ТО» — ограничена разделом Оборудование,
+  // только чтение объектов + проведение ТО (регламенты не настраивает).
+  const isMaintenance = role === 'maintenance'
+  // B13+: «Ответственный за учёт» с флагом can_maintain.
+  const canMaintainFlag = isAccountant && !!user?.can_maintain
   // Право открыть бизнес-раздел (Оборудование/Лицензии/Сотрудники/Связь/
   // Средства доступа/Помещения) — staff или Наблюдатель.
   const canViewBusiness = isStaff || isObserver
+  // Раздел Оборудование дополнительно видит роль «Ответственный за ТО».
+  const canViewEquipment = canViewBusiness || isMaintenance
+  // B13+: проведение ТО — admin / роль ТО / учётчик с флагом.
+  const canPerformMaintenance = isAdmin || isMaintenance || canMaintainFlag
+  // B13+: управление регламентами/планами/датой первого ТО — admin / учётчик с флагом.
+  const canManageMaintenance = isAdmin || canMaintainFlag
 
   return {
     isAdmin,
     isAccountant,
     isStaff,
     isObserver,
+    isMaintenance,
     canViewBusiness,
+    canViewEquipment,
+    canPerformMaintenance,
+    canManageMaintenance,
     // Управление объектами (создание/редактирование/действия) — только staff.
     canManageEquipment: isStaff,
     canManageLicenses: isStaff,

@@ -5,15 +5,15 @@ export const EQUIPMENT_STATUS_LABEL = {
 }
 export const EQUIPMENT_STATUS_VARIANT = { assigned: 'assigned', stationary: 'assigned', free: 'free' }
 
-// B13. Статус ТО (maintenance_status с бэкенда). null — у типа выключено ТО.
+// B13+. Статус одного плана ТО (по регламенту). null — не контролируется
+// (регламент «по потребности», отменён или ещё нет активных регламентов).
 export const MAINTENANCE_STATUS_LABEL = {
-  scheduled: 'Ближайшее ТО',
-  due_soon: 'Подходит дата планируемого ТО',
+  scheduled: 'Запланировано',
+  due_soon: 'Подходит дата ТО',
   overdue: 'ТО просрочено',
-  not_planned: 'ТО не запланировано',
+  not_planned: 'Дата ТО не задана',
 }
 
-// Цвет статуса ТО (текст на карточке и цвет пары иконок).
 export const MAINTENANCE_STATUS_COLOR = {
   scheduled: 'var(--color-success)',
   due_soon: 'var(--color-warning)',
@@ -21,14 +21,31 @@ export const MAINTENANCE_STATUS_COLOR = {
   not_planned: 'var(--color-text-placeholder)',
 }
 
-// Пара иконок статуса ТО (гаечный ключ + часы) — на карточке и в списке.
-//  · просрочено — wrench + clock-4, красные;
-//  · подходит   — wrench + clock, жёлтые;
-//  · запланировано — wrench + clock-4, зелёные;
-//  · не запланировано — wrench-off + clock-fading, серые.
-export const MAINTENANCE_STATUS_ICONS = {
-  overdue: { icons: ['wrench', 'clock-4'], color: MAINTENANCE_STATUS_COLOR.overdue, title: 'ТО просрочено' },
-  due_soon: { icons: ['wrench', 'clock'], color: MAINTENANCE_STATUS_COLOR.due_soon, title: 'Подходит дата ТО' },
-  scheduled: { icons: ['wrench', 'clock-4'], color: MAINTENANCE_STATUS_COLOR.scheduled, title: 'Ближайшее ТО' },
-  not_planned: { icons: ['wrench-off', 'clock-fading'], color: MAINTENANCE_STATUS_COLOR.not_planned, title: 'ТО не запланировано' },
+// Иконка одного плана ТО (одиночный гаечный ключ; «не задана» — перечёркнутый).
+export function planStatusIcon(status) {
+  if (status === 'not_planned') {
+    return { icon: 'wrench-off', color: MAINTENANCE_STATUS_COLOR.not_planned, title: MAINTENANCE_STATUS_LABEL.not_planned }
+  }
+  const color = MAINTENANCE_STATUS_COLOR[status] || 'var(--color-text-muted)'
+  return { icon: 'wrench', color, title: MAINTENANCE_STATUS_LABEL[status] || 'ТО' }
+}
+
+// B13+. Сводная индикация по экземпляру (maintenance_summary с бэкенда):
+// {critical, has_unplanned, enabled} → массив иконок {icon,color,title}.
+//  · самый критичный статус (overdue→due_soon→scheduled) — цветной wrench;
+//  · есть регламент без даты — дополнительно серый wrench-off (может рядом с 1-3).
+export function maintenanceIndicators(summary) {
+  if (!summary || !summary.enabled) return []
+  const out = []
+  if (summary.critical) {
+    out.push({
+      icon: 'wrench',
+      color: MAINTENANCE_STATUS_COLOR[summary.critical],
+      title: MAINTENANCE_STATUS_LABEL[summary.critical],
+    })
+  }
+  if (summary.has_unplanned) {
+    out.push({ icon: 'wrench-off', color: MAINTENANCE_STATUS_COLOR.not_planned, title: 'Есть регламент без даты ТО' })
+  }
+  return out
 }

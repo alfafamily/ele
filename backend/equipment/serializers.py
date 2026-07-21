@@ -13,9 +13,12 @@ from .models import (
     EquipmentType,
     EquipmentTypeField,
     EquipmentTypeFieldOption,
+    MaintenanceKind,
+    MaintenanceRegulation,
+    MaintenanceRegulationItem,
     MaintenanceRecordItem,
 )
-from .maintenance import maintenance_status
+from .maintenance import create_plans_for_equipment, equipment_maintenance_summary
 
 
 class EquipmentTypeFieldOptionSerializer(serializers.ModelSerializer):
@@ -136,9 +139,9 @@ class EquipmentSerializer(serializers.ModelSerializer):
     equipment_type_name = serializers.CharField(source="equipment_type.name", read_only=True)
     # B17: можно ли устанавливать SIM в это оборудование (флаг его Типа).
     type_allows_sim = serializers.BooleanField(source="equipment_type.allows_sim", read_only=True)
-    # B13: ведётся ли ТО (флаг Типа) + плановая дата и статус ТО.
+    # B13+: ведётся ли ТО (флаг Типа) + сводная индикация по регламентам.
     type_maintenance_enabled = serializers.BooleanField(source="equipment_type.maintenance_enabled", read_only=True)
-    maintenance_status = serializers.SerializerMethodField()
+    maintenance_summary = serializers.SerializerMethodField()
     type_and_model = serializers.SerializerMethodField()
     employee_name = serializers.SerializerMethodField()
     employee_avatar = serializers.SerializerMethodField()
@@ -168,8 +171,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
             "equipment_type_name",
             "type_allows_sim",
             "type_maintenance_enabled",
-            "next_maintenance_date",
-            "maintenance_status",
+            "maintenance_summary",
             "type_and_model",
             "status",
             "field_values",
@@ -179,7 +181,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
             "sim_cards",
             "created_at",
         ]
-        read_only_fields = ["is_written_off", "written_off_at", "created_at", "next_maintenance_date"]
+        read_only_fields = ["is_written_off", "written_off_at", "created_at"]
 
     def get_type_and_model(self, obj):
         # «{Тип} {Модель}», без Модели — просто «{Тип}».
@@ -211,12 +213,10 @@ class EquipmentSerializer(serializers.ModelSerializer):
             return "stationary"
         return "free"
 
-    def get_maintenance_status(self, obj):
-        # None — у Типа выключен флаг ТО (не ведётся). Иначе — по плановой дате.
-        return maintenance_status(
-            enabled=obj.equipment_type.maintenance_enabled,
-            next_date=obj.next_maintenance_date,
-        )
+    def get_maintenance_summary(self, obj):
+        # Сводная индикация по активным регламентам (см. maintenance.py):
+        # {critical, has_unplanned, enabled}. enabled=False — у Типа выключено ТО.
+        return equipment_maintenance_summary(obj)
 
     def get_place_detail(self, obj):
         if not obj.place_id:
@@ -308,6 +308,8 @@ class EquipmentSerializer(serializers.ModelSerializer):
         field_values_input = validated_data.pop("field_values_input", [])
         custom_fields_data = validated_data.pop("custom_fields", [])
         instance = Equipment.objects.create(**validated_data)
+        # B13+: экземпляр наследует планы всех активных регламентов своего типа.
+        create_plans_for_equipment(instance)
         if field_values_input:
             apply_field_values(instance, "equipment", EquipmentFieldValue, field_values_input, instance.equipment_type.fields.all())
         upsert_custom_fields(instance, EquipmentCustomField, "equipment", custom_fields_data)
@@ -356,40 +358,106 @@ class EquipmentMiniSerializer(serializers.ModelSerializer):
         return f"{obj.equipment_type.name} {model_value}" if model_value else obj.equipment_type.name
 
 
-class MaintenanceRecordItemInputSerializer(serializers.Serializer):
-    kind = serializers.ChoiceField(choices=MaintenanceRecordItem.Kind.choices)
+# --- Регламенты ТО ---------------------------------------------------------
+
+class MaintenanceRegulationItemSerializer(serializers.ModelSerializer):
+    # id — записываемый, но синхронизация всё равно delete+recreate (позиции без
+    # истории); id отдаём наружу для устойчивого key на фронте.
+    id = serializers.IntegerField(required=False)
+
+    class Meta:
+        model = MaintenanceRegulationItem
+        fields = ["id", "kind", "name", "quantity"]
+
+
+class MaintenanceRegulationSerializer(serializers.ModelSerializer):
+    items = MaintenanceRegulationItemSerializer(many=True)
+    scope = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = MaintenanceRegulation
+        fields = ["id", "name", "period_months", "on_demand", "is_archived", "scope", "items", "created_at"]
+        read_only_fields = ["is_archived", "created_at"]
+
+    def validate_name(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise serializers.ValidationError("Укажите наименование регламента.")
+        return value
+
+    def validate(self, attrs):
+        on_demand = attrs.get("on_demand", getattr(self.instance, "on_demand", False))
+        period = attrs.get("period_months", getattr(self.instance, "period_months", None))
+        if on_demand:
+            attrs["period_months"] = None
+        elif not period or period < 1:
+            raise serializers.ValidationError(
+                {"period_months": ["Укажите периодичность в месяцах или отметьте «по потребности»."]}
+            )
+        items = attrs.get("items")
+        if items is not None:
+            cleaned = [i for i in items if (i.get("name") or "").strip()]
+            if not cleaned:
+                raise serializers.ValidationError({"items": ["Добавьте хотя бы одну работу или материал."]})
+            attrs["items"] = cleaned
+        return attrs
+
+    def create(self, validated_data):
+        items = validated_data.pop("items", [])
+        regulation = super().create(validated_data)
+        self._sync_items(regulation, items)
+        return regulation
+
+    def update(self, instance, validated_data):
+        items = validated_data.pop("items", None)
+        regulation = super().update(instance, validated_data)
+        if items is not None:
+            self._sync_items(regulation, items)
+        return regulation
+
+    def _sync_items(self, regulation, items):
+        # Позиции без собственной истории — пересоздаём целиком. Уже проведённые
+        # ТО хранят снимок позиций (MaintenanceRecordItem), правка шаблона на них
+        # не влияет.
+        regulation.items.all().delete()
+        MaintenanceRegulationItem.objects.bulk_create([
+            MaintenanceRegulationItem(
+                regulation=regulation,
+                kind=i["kind"],
+                name=i["name"].strip(),
+                quantity=i["quantity"],
+            )
+            for i in items
+        ])
+
+
+# --- Проведение ТО ---------------------------------------------------------
+
+class MaintenancePerformItemSerializer(serializers.Serializer):
+    kind = serializers.ChoiceField(choices=MaintenanceKind.choices)
     name = serializers.CharField(max_length=255)
     quantity = serializers.DecimalField(max_digits=12, decimal_places=3, min_value=0)
+    from_regulation = serializers.BooleanField(required=False, default=False)
+    is_cancelled = serializers.BooleanField(required=False, default=False)
+    cancel_reason = serializers.CharField(required=False, allow_blank=True, default="")
 
 
-class MaintenanceRecordCreateSerializer(serializers.Serializer):
-    """B13. Проведение ТО: дата следующего ТО (необязательна), позиции
-    (Работы/Материалы) и комментарий. Пустую запись (без даты, позиций и
-    комментария) не создаём."""
+class PerformMaintenanceSerializer(serializers.Serializer):
+    """B13+. Проведение ТО по выбранному регламенту (или «Внеплановое» —
+    regulation=null). Кросс-валидация (доступность регламента/плана, диапазон
+    даты) — во вью, где загружены equipment/plan/период."""
 
+    regulation = serializers.PrimaryKeyRelatedField(
+        queryset=MaintenanceRegulation.objects.all(), required=False, allow_null=True
+    )
     next_planned_date = serializers.DateField(required=False, allow_null=True)
     comment = serializers.CharField(required=False, allow_blank=True, default="")
-    items = MaintenanceRecordItemInputSerializer(many=True, required=False, default=list)
-
-    def validate_next_planned_date(self, value):
-        # Дату следующего ТО нельзя ставить в прошлое (только сегодня/будущее).
-        if value is not None and value < timezone.localdate():
-            raise serializers.ValidationError("Дата следующего ТО не может быть в прошлом.")
-        return value
+    items = MaintenancePerformItemSerializer(many=True, required=False, default=list)
 
     def validate_items(self, value):
         for item in value:
             if not item["name"].strip():
                 raise serializers.ValidationError("У позиции не заполнено наименование.")
+            if item["is_cancelled"] and not (item.get("cancel_reason") or "").strip():
+                raise serializers.ValidationError("Для отменённой позиции укажите причину отмены.")
         return value
-
-    def validate(self, attrs):
-        # Нужно заполнить комментарий ИЛИ хотя бы одну работу/материал. Одной
-        # даты следующего ТО недостаточно для создания записи.
-        has_items = bool(attrs.get("items"))
-        has_comment = bool((attrs.get("comment") or "").strip())
-        if not (has_items or has_comment):
-            raise serializers.ValidationError(
-                "Заполните комментарий или добавьте хотя бы одну работу/материал."
-            )
-        return attrs

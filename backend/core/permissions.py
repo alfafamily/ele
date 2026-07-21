@@ -18,6 +18,54 @@ def _is_observer(request):
     return _role(request) == "employee" and getattr(user, "is_observer", False)
 
 
+def can_perform_maintenance(request):
+    """B13+. Кто может проводить ТО (создавать записи о проведении):
+    Администратор, роль «Ответственный за ТО», либо «Ответственный за учёт» с
+    флагом can_maintain."""
+    role = _role(request)
+    if role in ("admin", "maintenance"):
+        return True
+    if role == "accountant":
+        return bool(getattr(request.user, "can_maintain", False))
+    return False
+
+
+def can_manage_maintenance(request):
+    """B13+. Кто может настраивать ТО (регламенты, план, дата первого ТО):
+    Администратор либо «Ответственный за учёт» с флагом can_maintain. Роль
+    «Ответственный за ТО» сюда НЕ входит — она только проводит ТО."""
+    role = _role(request)
+    if role == "admin":
+        return True
+    if role == "accountant":
+        return bool(getattr(request.user, "can_maintain", False))
+    return False
+
+
+class CanPerformMaintenance(BasePermission):
+    """Проведение ТО — admin / роль maintenance / accountant+can_maintain."""
+
+    def has_permission(self, request, view):
+        return can_perform_maintenance(request)
+
+
+class CanManageMaintenance(BasePermission):
+    """Управление регламентами/планами — admin / accountant+can_maintain."""
+
+    def has_permission(self, request, view):
+        return can_manage_maintenance(request)
+
+
+class RegulationAccessPermission(BasePermission):
+    """Регламенты оборудования: чтение — кто видит раздел Оборудование
+    (admin/accountant/maintenance/Наблюдатель); запись — управление ТО."""
+
+    def has_permission(self, request, view):
+        if request.method in _SAFE_METHODS:
+            return _role(request) in ("admin", "accountant", "maintenance") or _is_observer(request)
+        return can_manage_maintenance(request)
+
+
 class IsAdmin(BasePermission):
     """Администратор — единственная роль с доступом к разделу «Настройки»."""
 
@@ -56,12 +104,19 @@ class EquipmentAccessPermission(BasePermission):
         role = _role(request)
         if role in ("admin", "accountant"):
             return True
+        # B13+: роль «Ответственный за ТО» видит раздел Оборудование (только
+        # чтение самих объектов); проведение ТО — отдельный экшен со своей
+        # проверкой CanPerformMaintenance.
+        if role == "maintenance":
+            return request.method in _SAFE_METHODS
         return role == "employee" and request.method in _SAFE_METHODS
 
     def has_object_permission(self, request, view, obj):
         role = _role(request)
         if role in ("admin", "accountant"):
             return True
+        if role == "maintenance":
+            return request.method in _SAFE_METHODS
         if role != "employee" or request.method not in _SAFE_METHODS:
             return False
         user = request.user

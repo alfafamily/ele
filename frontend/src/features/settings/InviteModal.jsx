@@ -6,6 +6,7 @@ import { inviteUser } from './settingsApi.js'
 const ROLE_OPTIONS = [
   { value: 'admin', label: 'Администратор' },
   { value: 'accountant', label: 'Ответственный за учёт' },
+  { value: 'maintenance', label: 'Ответственный за ТО' },
   { value: 'employee', label: 'Сотрудник' },
 ]
 
@@ -18,6 +19,7 @@ export function InviteModal({ onClose, onInvited }) {
   const [employee, setEmployee] = useState(null)
   const [showEmployeePicker, setShowEmployeePicker] = useState(false)
   const [isObserver, setIsObserver] = useState(false)
+  const [canMaintain, setCanMaintain] = useState(false)
   // Свитч «Добавить сотрудника»: создаём нового Сотрудника вместе с приглашением
   // (взаимоисключающе с выбором существующего).
   const [createEmployee, setCreateEmployee] = useState(false)
@@ -46,6 +48,7 @@ export function InviteModal({ onClose, onInvited }) {
         email,
         role,
         is_observer: role === 'employee' ? isObserver : false,
+        can_maintain: role === 'accountant' ? canMaintain : false,
         confirm_domain: needsDomainConfirm,
         ...(createEmployee
           ? {
@@ -138,6 +141,9 @@ export function InviteModal({ onClose, onInvited }) {
 
         {role === 'employee' ? (
           <Checkbox label="Признак «Наблюдатель» (только для роли «Сотрудник»)" checked={isObserver} onChange={setIsObserver} />
+        ) : null}
+        {role === 'accountant' ? (
+          <Checkbox label="Ответственный за регламенты и проведение ТО" checked={canMaintain} onChange={setCanMaintain} />
         ) : null}
       </div>
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22 }}>

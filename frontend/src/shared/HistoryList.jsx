@@ -167,12 +167,15 @@ export function HistoryList({ path, reloadKey }) {
               <div className="ele-history">
                 {filtered.map((h, i) =>
                   h.kind === 'changed' ? (
+                    // 2 колонки: слева дата/кто, справа «что» и под ним «было→стало».
                     <div className="ele-history__row" key={i}>
                       <HistoryWhen row={h} />
-                      <div className="ele-history__what">{`Изменено «${h.label}»`}</div>
-                      <div className="ele-history__value">
-                        <HistoryValue row={h} />
-                        {h.comment ? <div className="ele-history__comment">Комментарий: {h.comment}</div> : null}
+                      <div className="ele-history__change">
+                        <div className="ele-history__what">{`Изменено «${h.label}»`}</div>
+                        <div className="ele-history__value">
+                          <HistoryValue row={h} />
+                          {h.comment ? <div className="ele-history__comment">Комментарий: {h.comment}</div> : null}
+                        </div>
                       </div>
                     </div>
                   ) : (

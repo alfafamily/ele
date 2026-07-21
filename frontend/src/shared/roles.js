@@ -3,6 +3,7 @@
 export const ROLE_LABELS = {
   admin: 'Администратор',
   accountant: 'Ответственный за учёт',
+  maintenance: 'Ответственный за ТО',
   employee: 'Сотрудник',
 }
 

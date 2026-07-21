@@ -23,4 +23,14 @@ urlpatterns = router.urls + [
         views.EquipmentTypeFieldImpactView.as_view(),
         name="equipment-type-field-impact",
     ),
+    path(
+        "equipment-types/<int:type_pk>/regulations/",
+        views.TypeRegulationListView.as_view(),
+        name="equipment-type-regulation-list",
+    ),
+    path(
+        "equipment-types/<int:type_pk>/regulations/<int:pk>/",
+        views.TypeRegulationDetailView.as_view(),
+        name="equipment-type-regulation-detail",
+    ),
 ]

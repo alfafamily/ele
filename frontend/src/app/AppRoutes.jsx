@@ -33,7 +33,7 @@ import { ProfilePage } from '../features/profile/ProfilePage.jsx'
 import { GuidePage } from '../features/guide/GuidePage.jsx'
 import { AppLayout } from './AppLayout.jsx'
 import { NotFoundPage } from './NotFoundPage.jsx'
-import { RequireAdmin, RequireAuth, RequireGuest, RequireSetupPending, RequireStaff, RequireViewer } from './guards.jsx'
+import { RequireAdmin, RequireAuth, RequireEquipmentViewer, RequireGuest, RequireMaintainer, RequireSetupPending, RequireStaff, RequireViewer } from './guards.jsx'
 
 export function AppRoutes() {
   return (
@@ -94,9 +94,9 @@ export function AppRoutes() {
         <Route
           path="/"
           element={
-            <RequireViewer>
+            <RequireEquipmentViewer>
               <EquipmentListPage />
-            </RequireViewer>
+            </RequireEquipmentViewer>
           }
         />
         <Route
@@ -110,9 +110,9 @@ export function AppRoutes() {
         <Route
           path="/equipment/:id"
           element={
-            <RequireViewer>
+            <RequireEquipmentViewer>
               <EquipmentCardPage />
-            </RequireViewer>
+            </RequireEquipmentViewer>
           }
         />
         <Route
@@ -126,9 +126,9 @@ export function AppRoutes() {
         <Route
           path="/equipment/:id/maintenance"
           element={
-            <RequireStaff>
+            <RequireMaintainer>
               <MaintenanceFormPage />
-            </RequireStaff>
+            </RequireMaintainer>
           }
         />
         <Route

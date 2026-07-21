@@ -13,12 +13,17 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
         ADMIN = "admin", "Администратор"
         ACCOUNTANT = "accountant", "Ответственный за учёт"
+        MAINTENANCE = "maintenance", "Ответственный за ТО"
         EMPLOYEE = "employee", "Сотрудник"
 
     email = models.EmailField("Email", unique=True)
     role = models.CharField("Уровень доступа", max_length=20, choices=Role.choices, default=Role.EMPLOYEE)
     # Применимо только при role=EMPLOYEE — проверка вне модели (Фаза 3/4).
     is_observer = models.BooleanField("Наблюдатель", default=False)
+    # B13+: применимо только при role=ACCOUNTANT — «Ответственный за регламенты и
+    # проведение ТО». Даёт проведение ТО, создание/правку/отмену регламентов и
+    # назначение даты первого ТО. У роли ACCOUNTANT без флага эти действия закрыты.
+    can_maintain = models.BooleanField("Ответственный за регламенты и проведение ТО", default=False)
     is_active = models.BooleanField("Активен", default=True)
     is_email_confirmed = models.BooleanField("Email подтверждён", default=False)
     employee = models.OneToOneField(

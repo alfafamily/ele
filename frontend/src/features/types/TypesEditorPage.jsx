@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { usePermissions } from '../../app/usePermissions.js'
 import { VALUE_TYPE_LABELS } from '../../shared/eav'
 import { ActionMenu, Badge, Banner, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
+import { RegulationFormModal } from '../equipment/RegulationFormModal.jsx'
 import { DeleteTypeModal } from './DeleteTypeModal.jsx'
 import { FieldFormModal } from './FieldFormModal.jsx'
 import { NewTypeModal } from './NewTypeModal.jsx'
@@ -37,6 +39,12 @@ export function TypesEditorPage({ domain, title }) {
   const [deleteFieldTarget, setDeleteFieldTarget] = useState(null) // реквизит, который удаляем
   const [fieldModal, setFieldModal] = useState(null) // null | 'new' | field object
   const [error, setError] = useState(null)
+  const perms = usePermissions()
+  // B13+: регламенты ТО выбранного типа (только оборудование). Грузятся отдельно
+  // от типов (в списке типов их нет).
+  const [regulations, setRegulations] = useState(null)
+  const [regModal, setRegModal] = useState(null) // null | 'new' | regulation object
+  const [archiveReg, setArchiveReg] = useState(null) // регламент для архивирования
 
   // По умолчанию выбираем первый активный тип (архивные скрыты).
   const pickDefaultId = (data) => (data.find((t) => !t.is_archived) || data[0])?.id ?? null
@@ -55,6 +63,28 @@ export function TypesEditorPage({ domain, title }) {
     load(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [domain])
+
+  // Регламенты выбранного типа — только для оборудования с включённым ТО.
+  useEffect(() => {
+    const sel = types?.find((t) => t.id === selectedId)
+    if (domain !== 'equipment' || !sel || !sel.maintenance_enabled || !perms.canManageMaintenance) {
+      setRegulations(null)
+      return
+    }
+    let cancelled = false
+    setRegulations(null)
+    api.listRegulations(sel.id).then((data) => {
+      if (!cancelled) setRegulations(data)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [domain, selectedId, types])
+
+  const reloadRegulations = async (typeId) => {
+    setRegulations(await api.listRegulations(typeId))
+  }
 
   if (types === null) {
     return (
@@ -99,6 +129,11 @@ export function TypesEditorPage({ domain, title }) {
       setDeleteFieldTarget(null)
       setError(err.detail || 'Не удалось удалить реквизит.')
     }
+  }
+
+  const toggleRegArchive = async (reg, archived) => {
+    await api.archiveRegulation(selected.id, reg.id, archived)
+    reloadRegulations(selected.id)
   }
 
   const typeMenu = (t) => {
@@ -252,6 +287,58 @@ export function TypesEditorPage({ domain, title }) {
               <Icon name="plus" size={18} strokeWidth={2.2} />
               Добавить реквизит
             </Button>
+
+            {/* B13+: регламенты ТО — только для оборудования с включённым ТО и
+                только для тех, кто управляет ТО (admin / учётчик с флагом). */}
+            {domain === 'equipment' && selected.maintenance_enabled && perms.canManageMaintenance ? (
+              <div style={{ marginTop: 28 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Регламенты ТО</div>
+                {regulations === null ? (
+                  <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Загрузка…</div>
+                ) : regulations.length === 0 ? (
+                  <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginBottom: 10 }}>
+                    Регламенты пока не созданы.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {regulations.map((reg) => (
+                      <div
+                        key={reg.id}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 12,
+                          background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)',
+                          borderRadius: 10, padding: '11px 13px', opacity: reg.is_archived ? 0.6 : 1,
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {reg.name}
+                            {reg.is_archived ? <Badge>В архиве</Badge> : null}
+                          </div>
+                          <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 1 }}>
+                            {regulationPeriodLabel(reg)} · позиций: {reg.items.length}
+                          </div>
+                        </div>
+                        <ActionMenu
+                          items={
+                            reg.is_archived
+                              ? [{ label: 'Вернуть из архива', icon: 'undo-2', onClick: () => toggleRegArchive(reg, false) }]
+                              : [
+                                  { label: 'Изменить', onClick: () => setRegModal(reg) },
+                                  { label: 'Отменить (в архив)', icon: 'ban', danger: true, onClick: () => setArchiveReg(reg) },
+                                ]
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Button variant="secondary" fullWidth style={{ marginTop: 12 }} onClick={() => setRegModal('new')}>
+                  <Icon name="plus" size={18} strokeWidth={2.2} />
+                  Добавить регламент
+                </Button>
+              </div>
+            ) : null}
           </Card>
         ) : null}
       </div>
@@ -310,8 +397,47 @@ export function TypesEditorPage({ domain, title }) {
           }}
         />
       ) : null}
+
+      {regModal ? (
+        <RegulationFormModal
+          regulation={regModal === 'new' ? null : regModal}
+          onClose={() => setRegModal(null)}
+          onSave={async (payload) => {
+            if (regModal === 'new') {
+              await api.createRegulation(selected.id, payload)
+            } else {
+              await api.updateRegulation(selected.id, regModal.id, payload)
+            }
+            setRegModal(null)
+            reloadRegulations(selected.id)
+          }}
+        />
+      ) : null}
+
+      {archiveReg ? (
+        <ConfirmModal
+          title="Отменить регламент?"
+          message={`Регламент «${archiveReg.name}» будет отменён (в архив) для всего оборудования этого типа. Плановые даты ТО по нему обнулятся; вернуть регламент можно позже.`}
+          confirmLabel="Отменить"
+          onConfirm={async () => {
+            await toggleRegArchive(archiveReg, true)
+            setArchiveReg(null)
+          }}
+          onClose={() => setArchiveReg(null)}
+        />
+      ) : null}
     </div>
   )
+}
+
+// «раз в N мес.» / «по потребности» — подпись периодичности регламента.
+export function regulationPeriodLabel(reg) {
+  if (reg.on_demand) return 'По потребности'
+  const n = reg.period_months
+  const d = n % 10
+  const h = n % 100
+  const word = d === 1 && h !== 11 ? 'месяц' : d >= 2 && d <= 4 && (h < 10 || h >= 20) ? 'месяца' : 'месяцев'
+  return `Раз в ${n} ${word}`
 }
 
 // Текст-статус флага Типа оборудования (SIM/ТО) — в блоке реквизитов только для

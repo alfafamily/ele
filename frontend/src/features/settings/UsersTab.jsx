@@ -26,7 +26,7 @@ const MOBILE_COLUMNS = [
 ]
 
 const STATUS_LABEL = { active: 'Активен', invited: 'Приглашён', deactivated: 'Деактивирован' }
-const ROLE_PILL_VARIANT = { admin: 'role-admin', accountant: 'free', employee: 'archived' }
+const ROLE_PILL_VARIANT = { admin: 'role-admin', accountant: 'free', maintenance: 'assigned', employee: 'archived' }
 
 function Avatar({ user }) {
   return (
@@ -147,6 +147,7 @@ export function UsersTab() {
                   <StatusPill variant={ROLE_PILL_VARIANT[u.role]} className="ele-pill--clip">
                     {roleLabel(u.role)}
                     {u.is_observer ? ' · Наблюдатель' : ''}
+                    {u.can_maintain ? ' · ТО' : ''}
                   </StatusPill>
                 </div>
               </div>

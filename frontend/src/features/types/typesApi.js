@@ -16,5 +16,11 @@ export function makeTypesApi(domain) {
     updateField: (typeId, fieldId, payload) => apiPatch(`${base}${typeId}/fields/${fieldId}/`, payload),
     deleteField: (typeId, fieldId) => apiDelete(`${base}${typeId}/fields/${fieldId}/`),
     getFieldImpact: (typeId, fieldId) => apiGet(`${base}${typeId}/fields/${fieldId}/impact/`),
+    // B13+: регламенты ТО типа (только оборудование).
+    listRegulations: (typeId) => apiGet(`${base}${typeId}/regulations/`),
+    createRegulation: (typeId, payload) => apiPost(`${base}${typeId}/regulations/`, payload),
+    updateRegulation: (typeId, regId, payload) => apiPatch(`${base}${typeId}/regulations/${regId}/`, payload),
+    archiveRegulation: (typeId, regId, isArchived) =>
+      apiPatch(`${base}${typeId}/regulations/${regId}/`, { is_archived: isArchived }),
   }
 }

@@ -46,9 +46,36 @@ export function RequireStaff({ children }) {
 // Просмотр бизнес-разделов (Оборудование/Лицензии/Сотрудники/Связь/Средства
 // доступа/Помещения) — Admin/Accountant или Наблюдатель. Обычному «Сотруднику»
 // (без признака) бизнес-разделы недоступны — его посадочная страница Профиль.
+// Роль «Ответственный за ТО» ограничена разделом Оборудование — прочие разделы
+// уводят её на список Оборудования.
 export function RequireViewer({ children }) {
   const { user } = useAuth()
   const canView = user.role === 'admin' || user.role === 'accountant' || (user.role === 'employee' && user.is_observer)
+  if (!canView) return <Navigate to={user.role === 'maintenance' ? '/' : '/profile'} replace />
+  return children
+}
+
+// B13+. Раздел Оборудование (список/карточка) — как RequireViewer, но
+// дополнительно пускает роль «Ответственный за ТО».
+export function RequireEquipmentViewer({ children }) {
+  const { user } = useAuth()
+  const canView =
+    user.role === 'admin' ||
+    user.role === 'accountant' ||
+    user.role === 'maintenance' ||
+    (user.role === 'employee' && user.is_observer)
   if (!canView) return <Navigate to="/profile" replace />
+  return children
+}
+
+// B13+. Проведение ТО — Admin / роль «Ответственный за ТО» / «Ответственный за
+// учёт» с флагом can_maintain.
+export function RequireMaintainer({ children }) {
+  const { user } = useAuth()
+  const canPerform =
+    user.role === 'admin' ||
+    user.role === 'maintenance' ||
+    (user.role === 'accountant' && user.can_maintain)
+  if (!canPerform) return <Navigate to="/" replace />
   return children
 }

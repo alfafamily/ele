@@ -8,6 +8,7 @@ import { activateUser, deactivateUser, updateUser } from './settingsApi.js'
 const ROLE_OPTIONS = [
   { value: 'admin', label: 'Администратор' },
   { value: 'accountant', label: 'Ответственный за учёт' },
+  { value: 'maintenance', label: 'Ответственный за ТО' },
   { value: 'employee', label: 'Сотрудник' },
 ]
 
@@ -23,6 +24,7 @@ export function EditUserModal({ user, onClose, onSaved }) {
   )
   const [showEmployeePicker, setShowEmployeePicker] = useState(false)
   const [isObserver, setIsObserver] = useState(user.is_observer)
+  const [canMaintain, setCanMaintain] = useState(!!user.can_maintain)
   // Статус доступа: приглашённый пользователь тоже активен (is_active=True).
   const currentlyActive = user.status !== 'deactivated'
   const [status, setStatus] = useState(currentlyActive ? 'active' : 'deactivated')
@@ -43,6 +45,7 @@ export function EditUserModal({ user, onClose, onSaved }) {
           role,
           employee: employee?.id ?? null,
           is_observer: role === 'employee' ? isObserver : false,
+          can_maintain: role === 'accountant' ? canMaintain : false,
         })
         if (status === 'active' && !currentlyActive) await activateUser(user.id)
       }
@@ -169,6 +172,13 @@ export function EditUserModal({ user, onClose, onSaved }) {
 
         {role === 'employee' ? (
           <Checkbox label="Признак «Наблюдатель» (только для роли «Сотрудник»)" checked={isObserver} onChange={setIsObserver} />
+        ) : null}
+        {role === 'accountant' ? (
+          <Checkbox
+            label="Ответственный за регламенты и проведение ТО"
+            checked={canMaintain}
+            onChange={setCanMaintain}
+          />
         ) : null}
           </>
         ) : currentlyActive && employee ? (
