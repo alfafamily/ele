@@ -4,7 +4,7 @@ import { apiGet } from '../../shared/api/client'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
-import { Banner, Button, Card, Icon, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
+import { Banner, Card, FormActions, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
 import {
   createSimCard,
   getSimCard,
@@ -131,16 +131,6 @@ export function SimFormPage() {
       <div style={{ width: '100%', maxWidth: 660 }}>
         <div className="ele-form-head">
           <h1 className="ele-form-head__title">{isEdit ? 'Редактирование SIM-карты' : 'Новая SIM-карта'}</h1>
-          <div style={{ display: 'flex', gap: 10, flex: 'none' }}>
-            <Button variant="secondary" onClick={() => navigate(-1)} aria-label="Отмена">
-              <span className="ele-only-desktop">Отмена</span>
-              <Icon className="ele-only-mobile" name="x" size={18} strokeWidth={2} />
-            </Button>
-            <Button loading={submitting} onClick={submit} aria-label="Сохранить">
-              <span className="ele-only-desktop">Сохранить</span>
-              <Icon className="ele-only-mobile" name="check" size={18} strokeWidth={2.2} />
-            </Button>
-          </div>
         </div>
 
         {error ? <Banner variant="error">{error}</Banner> : null}
@@ -241,6 +231,13 @@ export function SimFormPage() {
             </Card>
           ) : null}
         </form>
+
+        <FormActions
+          onCancel={() => navigate(-1)}
+          onSubmit={submit}
+          submitting={submitting}
+          submitLabel={isEdit ? 'Сохранить' : 'Создать'}
+        />
       </div>
     </div>
   )

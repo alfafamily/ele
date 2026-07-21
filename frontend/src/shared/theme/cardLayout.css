@@ -126,6 +126,15 @@
   overflow-wrap: break-word;
 }
 
+/* Ряд действий формы (создание/редактирование): «Отмена» + основная кнопка
+   справа, внизу формы. Одинаково на desktop и мобильных. */
+.ele-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
 /* Кнопки действий в шапке карточки: на desktop — обычные кнопки, на мобильных
    — одно меню «…» вместо них. */
 .ele-card-actions-desktop {
