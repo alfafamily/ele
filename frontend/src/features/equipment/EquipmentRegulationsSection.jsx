@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ActionMenu, Badge, Button, ConfirmModal, DatePicker, Icon, Modal } from '../../shared/ui'
+import { ActionMenu, Badge, Button, ConfirmModal, Icon, InlineCalendar, Modal } from '../../shared/ui'
 import { regulationPeriodLabel } from '../types/TypesEditorPage.jsx'
 import {
   archiveEquipmentRegulation,
@@ -54,11 +54,11 @@ export function EquipmentRegulationsSection({ equipment, regulations, canManage,
   const rowActions = (reg) => {
     if (!canManage || writtenOff) return null
     const cancelled = reg.plan?.is_cancelled
-    // Отменённый/архивный — только возврат.
+    // Отменённый/архивный — только возврат (кнопка 44×44, без меню «…»).
     if (reg.is_archived || cancelled) {
       return (
-        <button type="button" title="Вернуть" onClick={() => restore(reg)} style={iconBtn}>
-          <Icon name="undo-2" size={16} strokeWidth={2} />
+        <button type="button" title="Вернуть из архива" onClick={() => restore(reg)} style={returnBtn}>
+          <Icon name="undo-2" size={18} strokeWidth={2} />
         </button>
       )
     }
@@ -68,7 +68,7 @@ export function EquipmentRegulationsSection({ equipment, regulations, canManage,
     }
     if (reg.scope === 'individual') {
       items.push({ label: 'Изменить', onClick: () => setRegModal(reg) })
-      items.push({ label: 'Отменить (в архив)', icon: 'ban', danger: true, onClick: () => askCancel(reg, true) })
+      items.push({ label: 'Отменить', icon: 'ban', danger: true, onClick: () => askCancel(reg, true) })
     } else {
       items.push({ label: 'Отменить для оборудования', icon: 'ban', danger: true, onClick: () => askCancel(reg, false) })
     }
@@ -125,43 +125,54 @@ export function EquipmentRegulationsSection({ equipment, regulations, canManage,
           <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginTop: 12 }}>Загрузка…</div>
         ) : (
           <div style={{ marginTop: 12 }}>
-            {count === 0 ? (
-              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>
-                Для этого оборудования нет регламентов ТО.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {regulations.map((reg) => {
-                  const inactive = reg.is_archived || reg.plan?.is_cancelled
-                  const ic = reg.on_demand || inactive ? null : planStatusIcon(reg.status)
-                  return (
-                    <div key={reg.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--color-fill-input)', borderRadius: 10, padding: '10px 12px', opacity: inactive ? 0.6 : 1 }}>
-                      <span style={{ flex: 'none', width: 20, display: 'flex', justifyContent: 'center', color: ic ? ic.color : 'var(--color-text-placeholder)' }} title={ic?.title || ''}>
-                        <Icon name={ic ? ic.icon : reg.on_demand ? 'wrench' : 'wrench-off'} size={17} strokeWidth={2} />
-                      </span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13.5, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          {reg.name}
-                          {reg.scope === 'individual' ? <Badge>Индивидуальный</Badge> : null}
-                          {reg.is_archived ? <Badge>В архиве</Badge> : reg.plan?.is_cancelled ? <Badge>Отменён</Badge> : null}
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 1 }}>
-                          {regulationPeriodLabel(reg)}
-                          {!reg.on_demand ? ` · ${reg.plan?.next_planned_date ? `план: ${formatShortDate(reg.plan.next_planned_date)}` : 'дата не задана'}` : ''}
-                        </div>
-                      </div>
-                      {rowActions(reg)}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+            {/* Кнопка добавления — над списком. */}
             {canManage && !writtenOff ? (
-              <Button variant="secondary" fullWidth style={{ marginTop: 12 }} onClick={() => setRegModal('new')}>
+              <Button variant="secondary" fullWidth style={{ marginBottom: count === 0 ? 0 : 12 }} onClick={() => setRegModal('new')}>
                 <Icon name="plus" size={18} strokeWidth={2.2} />
                 Индивидуальный регламент
               </Button>
             ) : null}
+            {count === 0 ? (
+              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginTop: 12 }}>
+                Для этого оборудования нет регламентов ТО.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {/* Сортировка: сначала индивидуальные, затем типовые («общие»). */}
+                {[...regulations]
+                  .sort((a, b) => (a.scope === 'individual' ? 0 : 1) - (b.scope === 'individual' ? 0 : 1))
+                  .map((reg) => {
+                    const inactive = reg.is_archived || reg.plan?.is_cancelled
+                    const ic = inactive
+                      ? { icon: 'wrench', color: 'var(--color-text-placeholder)', title: '' }
+                      : reg.on_demand
+                        ? { icon: 'wrench', color: 'var(--color-text-muted)', title: 'По потребности' }
+                        : planStatusIcon(reg.status)
+                    return (
+                      <div key={reg.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--color-fill-input)', borderRadius: 10, padding: '10px 12px' }}>
+                        {/* Содержимое приглушается у отменённых; кнопка действия — нет. */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, opacity: inactive ? 0.55 : 1 }}>
+                          <span style={{ flex: 'none', width: 20, display: 'flex', justifyContent: 'center', color: ic.color }} title={ic.title || ''}>
+                            <Icon name={ic.icon} size={17} strokeWidth={2} />
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              {reg.name}
+                              <Badge>{reg.scope === 'individual' ? 'Индивидуальный' : 'Общий'}</Badge>
+                              {reg.is_archived ? <Badge>В архиве</Badge> : reg.plan?.is_cancelled ? <Badge>Отменён</Badge> : null}
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 1 }}>
+                              {regulationPeriodLabel(reg)}
+                              {!reg.on_demand ? ` · ${reg.plan?.next_planned_date ? `план: ${formatShortDate(reg.plan.next_planned_date)}` : 'дата не задана'}` : ''}
+                            </div>
+                          </div>
+                        </div>
+                        {rowActions(reg)}
+                      </div>
+                    )
+                  })}
+              </div>
+            )}
           </div>
         )
       ) : null}
@@ -169,8 +180,8 @@ export function EquipmentRegulationsSection({ equipment, regulations, canManage,
       {dateTarget ? (
         <Modal open onClose={() => setDateTarget(null)} title="Дата ближайшего ТО">
           <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 14 }}>{dateTarget.name}</div>
-          <DatePicker label="Дата ТО" value={dateValue} onChange={setDateValue} minDate={todayISO()} />
-          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <InlineCalendar value={dateValue} onChange={setDateValue} minDate={todayISO()} />
+          <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
             <Button variant="secondary" fullWidth onClick={() => setDateTarget(null)}>Отмена</Button>
             <Button fullWidth loading={busy} disabled={!dateValue} onClick={saveDate}>Сохранить</Button>
           </div>
@@ -180,6 +191,7 @@ export function EquipmentRegulationsSection({ equipment, regulations, canManage,
       {regModal ? (
         <RegulationFormModal
           regulation={regModal === 'new' ? null : regModal}
+          showFirstDate={regModal === 'new'}
           title={regModal === 'new' ? 'Индивидуальный регламент' : 'Редактирование регламента'}
           onClose={() => setRegModal(null)}
           onSave={async (payload) => {
@@ -207,7 +219,7 @@ export function EquipmentRegulationsSection({ equipment, regulations, canManage,
   )
 }
 
-const iconBtn = {
-  width: 30, height: 30, flex: 'none', borderRadius: 8, background: 'var(--color-surface)', border: 'none',
+const returnBtn = {
+  width: 44, height: 44, flex: 'none', borderRadius: 10, background: 'var(--color-surface)', border: 'none',
   color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
 }

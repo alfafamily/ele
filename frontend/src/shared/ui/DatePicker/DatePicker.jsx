@@ -141,7 +141,7 @@ export function DatePicker({ label, value, onChange, minDate, id }) {
       </button>
 
       {open ? (
-        <div className="ele-cal" role="dialog">
+        <div className="ele-cal ele-cal--popover" role="dialog">
           <div className="ele-cal__head">
             <button
               type="button"
@@ -197,6 +197,75 @@ export function DatePicker({ label, value, onChange, minDate, id }) {
           </div>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+// Всегда открытый календарь без поля-триггера — для модалок, где нужен сразу
+// видимый календарь (напр. назначение даты первого ТО). value/onChange/minDate —
+// как у DatePicker.
+export function InlineCalendar({ value, onChange, minDate }) {
+  const selected = useMemo(() => parseISO(value), [value])
+  const min = useMemo(() => parseISO(minDate) || todayParts(), [minDate])
+  const today = useMemo(() => todayParts(), [])
+  const [view, setView] = useState(() => {
+    const base = parseISO(value) || parseISO(minDate) || todayParts()
+    return { y: base.y, m: base.m }
+  })
+
+  const atMinMonth = view.y === min.y && view.m === min.m
+  const prevMonth = () => {
+    if (atMinMonth) return
+    setView((v) => (v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 }))
+  }
+  const nextMonth = () => setView((v) => (v.m === 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m: v.m + 1 }))
+
+  const total = daysInMonth(view.y, view.m)
+  const lead = mondayIndex(view.y, view.m, 1)
+  const cells = []
+  for (let i = 0; i < lead; i++) cells.push(null)
+  for (let d = 1; d <= total; d++) cells.push(d)
+
+  return (
+    <div className="ele-cal ele-cal--inline" role="dialog">
+      <div className="ele-cal__head">
+        <button type="button" className="ele-cal__nav" onClick={prevMonth} disabled={atMinMonth} aria-label="Предыдущий месяц">
+          <Icon name="chevron-left" size={18} strokeWidth={2} />
+        </button>
+        <div className="ele-cal__title">
+          {MONTHS[view.m]} {view.y}
+        </div>
+        <button type="button" className="ele-cal__nav" onClick={nextMonth} aria-label="Следующий месяц">
+          <Icon name="chevron-right" size={18} strokeWidth={2} />
+        </button>
+      </div>
+      <div className="ele-cal__grid">
+        {WEEKDAYS.map((wd, i) => (
+          <div key={wd} className={'ele-cal__wd' + (i >= 5 ? ' ele-cal__wd--weekend' : '')}>
+            {wd}
+          </div>
+        ))}
+        {cells.map((d, i) => {
+          if (d === null) return <div key={`b${i}`} />
+          const parts = { y: view.y, m: view.m, d }
+          const weekend = mondayIndex(view.y, view.m, d) >= 5
+          const disabled = cmp(parts, min) < 0
+          const isToday = cmp(parts, today) === 0
+          const isSelected = selected && cmp(parts, selected) === 0
+          const cls = [
+            'ele-cal__day',
+            weekend ? 'ele-cal__day--weekend' : '',
+            disabled ? 'ele-cal__day--disabled' : '',
+            isToday ? 'ele-cal__day--today' : '',
+            isSelected ? 'ele-cal__day--selected' : '',
+          ].filter(Boolean).join(' ')
+          return (
+            <button key={d} type="button" className={cls} disabled={disabled} onClick={() => onChange(toISO(view.y, view.m, d))}>
+              {d}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

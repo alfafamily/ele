@@ -271,6 +271,9 @@ function Metric({ label, value }) {
 function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
   // Закрепления — за сотрудниками и рабочими местами (склад — в блоке остатка).
   const allocations = (tool.allocations || []).filter((a) => a.kind !== 'storage')
+  // По умолчанию показываем первые 3 закрепления — список не растягивает страницу.
+  const [expanded, setExpanded] = useState(false)
+  const visibleAllocations = expanded ? allocations : allocations.slice(0, 3)
 
   const openAssign = () =>
     setMoveModal({
@@ -324,7 +327,7 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
         <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не закреплено</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {allocations.map((a) => (
+          {visibleAllocations.map((a) => (
             <div key={a.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ width: 36, height: 36, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, overflow: 'hidden' }}>
@@ -371,6 +374,17 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
           ))}
         </div>
       )}
+
+      {allocations.length > 3 ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          style={{ marginTop: 10, background: 'none', border: 'none', color: 'var(--color-primary)', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+        >
+          {expanded ? 'Свернуть' : `Показать все (${allocations.length})`}
+          <Icon name="chevron-right" size={15} strokeWidth={2} style={{ transform: expanded ? 'rotate(-90deg)' : 'rotate(90deg)', transition: 'transform .15s ease' }} />
+        </button>
+      ) : null}
 
       {canManage ? (
         <Button fullWidth style={{ marginTop: 14 }} onClick={openAssign} disabled={tool.free <= 0}>

@@ -21,11 +21,8 @@ export const MAINTENANCE_STATUS_COLOR = {
   not_planned: 'var(--color-text-placeholder)',
 }
 
-// Иконка одного плана ТО (одиночный гаечный ключ; «не задана» — перечёркнутый).
+// Иконка одного плана ТО (одиночный гаечный ключ; «дата не задана» — серый).
 export function planStatusIcon(status) {
-  if (status === 'not_planned') {
-    return { icon: 'wrench-off', color: MAINTENANCE_STATUS_COLOR.not_planned, title: MAINTENANCE_STATUS_LABEL.not_planned }
-  }
   const color = MAINTENANCE_STATUS_COLOR[status] || 'var(--color-text-muted)'
   return { icon: 'wrench', color, title: MAINTENANCE_STATUS_LABEL[status] || 'ТО' }
 }
@@ -45,7 +42,7 @@ export function maintenanceIndicators(summary) {
     })
   }
   if (summary.has_unplanned) {
-    out.push({ icon: 'wrench-off', color: MAINTENANCE_STATUS_COLOR.not_planned, title: 'Есть регламент без даты ТО' })
+    out.push({ icon: 'wrench', color: MAINTENANCE_STATUS_COLOR.not_planned, title: 'Есть регламент без даты ТО' })
   }
   return out
 }

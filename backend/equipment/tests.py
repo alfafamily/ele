@@ -940,11 +940,21 @@ class MaintenanceTests(APITestCase):
         self.assertEqual(bad.status_code, 409, bad.data)
 
     def test_individual_regulation(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
         type_id = self._make_type()
         eq_id = self._make_equipment(type_id)
+        first_date = (timezone.localdate() + timedelta(days=20)).isoformat()
         resp = self.client.post(
             f"/api/equipment/{eq_id}/regulations/",
-            {"name": "Личный", "period_months": 6, "items": [{"kind": "work", "name": "Смазка", "quantity": "1"}]},
+            {
+                "name": "Личный",
+                "period_months": 6,
+                "items": [{"kind": "work", "name": "Смазка", "quantity": "1"}],
+                "next_planned_date": first_date,  # дата первого ТО сразу при создании
+            },
             format="json",
         )
         self.assertEqual(resp.status_code, 201, resp.data)
@@ -952,6 +962,8 @@ class MaintenanceTests(APITestCase):
         individual = [r for r in regs.values() if r["scope"] == "individual"]
         self.assertEqual(len(individual), 1)
         reg_id = individual[0]["id"]
+        # Дата первого ТО задана при создании.
+        self.assertEqual(regs[reg_id]["plan"]["next_planned_date"], first_date)
         # Архивирование индивидуального — план отменён.
         self.client.delete(f"/api/equipment/{eq_id}/regulations/{reg_id}/")
         self.assertTrue(self._regs(eq_id)[reg_id]["plan"]["is_cancelled"])
