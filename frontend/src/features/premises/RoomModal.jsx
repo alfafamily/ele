@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Input, Modal } from '../../shared/ui'
+import { Banner, Button, Checkbox, Input, Modal } from '../../shared/ui'
 import { createRoom, updateRoom } from './premisesApi.js'
 
 // Создание/редактирование Помещения/зоны внутри здания. Название обязательно;
@@ -8,6 +8,7 @@ export function RoomModal({ buildingId, room, onClose, onDone }) {
   const isEdit = Boolean(room)
   const [name, setName] = useState(room?.name || '')
   const [floor, setFloor] = useState(room?.floor || '')
+  const [requiresPass, setRequiresPass] = useState(room?.requires_pass || false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
@@ -16,7 +17,7 @@ export function RoomModal({ buildingId, room, onClose, onDone }) {
     setSubmitting(true)
     setError(null)
     setFieldErrors({})
-    const payload = { building: buildingId, name, floor }
+    const payload = { building: buildingId, name, floor, requires_pass: requiresPass }
     try {
       const saved = isEdit ? await updateRoom(room.id, payload) : await createRoom(payload)
       onDone(saved)
@@ -49,6 +50,7 @@ export function RoomModal({ buildingId, room, onClose, onDone }) {
           onChange={(e) => setFloor(e.target.value)}
           error={fieldErrors.floor}
         />
+        <Checkbox label="Требуется ключ/пропуск" checked={requiresPass} onChange={setRequiresPass} />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Button fullWidth loading={submitting} onClick={submit}>

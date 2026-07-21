@@ -16,6 +16,10 @@ class Building(models.Model):
     address = models.CharField("Адрес", max_length=500, blank=True)
     # Число этажей — справочно; может отсутствовать (не всегда известно).
     floor_count = models.PositiveSmallIntegerField("Этажность", null=True, blank=True)
+    # Здание требует персонального ключа/пропуска: только такие здания можно
+    # выбрать как объект доступа при создании ключа/пропуска (employees.AccessPass).
+    # Флаг независим от аналогичных флагов у помещений/мест (B15).
+    requires_pass = models.BooleanField("Требуется ключ/пропуск", default=False)
     is_archived = models.BooleanField("В архиве", default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     history = HistoricalRecords()
@@ -40,6 +44,10 @@ class Room(models.Model):
     # Всегда начинается с цифр (в т.ч. отрицательных) — используется при
     # сортировке помещений внутри здания (см. sorting.room_sort_key).
     floor = models.CharField("Номер этажа", max_length=16, blank=True)
+    # Помещение требует персонального ключа/пропуска — только такие помещения
+    # можно выбрать как объект доступа ключа/пропуска (B15). Независим от флага
+    # здания-родителя и от флагов вложенных мест.
+    requires_pass = models.BooleanField("Требуется ключ/пропуск", default=False)
     is_archived = models.BooleanField("В архиве", default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     history = HistoricalRecords()
@@ -62,7 +70,8 @@ class Place(models.Model):
     - storage (Место хранения) — «склад», куда кладётся свободный (никому не
       выданный) остаток объектов; свободный объект всегда лежит на складе.
     Флаг requires_pass независим от типа — место любого типа может требовать
-    персональный ключ/пропуск.
+    персональный ключ/пропуск (и независим от одноимённых флагов у
+    здания/помещения-родителей, см. B15).
     """
 
     class PlaceType(models.TextChoices):

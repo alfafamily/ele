@@ -14,6 +14,13 @@ import { generateNextNumber } from '../settings/settingsApi.js'
 // в нескольких зданиях/помещениях; ключ — строго один объект (радио-поведение).
 // При создании из карточки сотрудника ?employee=<id> — создаём сразу привязанным
 // и возвращаемся на карточку сотрудника.
+//
+// Объектом доступа (B15) можно выбрать только здание/помещение/место с флагом
+// «Требуется ключ/пропуск». Невыбираемые родители (без флага, но с отмеченным
+// вложенным объектом) показываются задизейбленными — чтобы до вложенного объекта
+// можно было раскрыться; здание, внутри которого выбрано помещение/место, идёт в
+// набор как контейнер (собственный флаг ему не нужен). Ветви без единого флага не
+// показываются вовсе.
 export function PassFormPage() {
   const { id } = useParams()
   const isEdit = Boolean(id)
@@ -27,9 +34,13 @@ export function PassFormPage() {
   const [accountNumber, setAccountNumber] = useState('')
   const [typeVehicle, setTypeVehicle] = useState(false)
   const [typePedestrian, setTypePedestrian] = useState(false)
+  // selBuildings — только «здания целиком»; помещения/места хранятся отдельно.
+  // Итоговый набор зданий (building_ids) вычисляется при отправке объединением
+  // с родителями выбранных помещений/мест (см. submit).
   const [selBuildings, setSelBuildings] = useState(() => new Set())
   const [selRooms, setSelRooms] = useState(() => new Set())
   const [selPlaces, setSelPlaces] = useState(() => new Set())
+  const [expanded, setExpanded] = useState(() => new Set()) // ключи 'b:<id>' / 'r:<id>'
   const [comment, setComment] = useState('')
   const [placementMode, setPlacementMode] = useState(employeeId ? 'employee' : 'storage')
   const [placementEmployee, setPlacementEmployee] = useState(null)
@@ -71,21 +82,49 @@ export function PassFormPage() {
       setAccountNumber(pass.account_number || '')
       setTypeVehicle(pass.type_vehicle || false)
       setTypePedestrian(pass.type_pedestrian || false)
-      setSelBuildings(new Set((pass.buildings || []).map((b) => b.id)))
-      setSelRooms(new Set((pass.rooms || []).map((r) => r.id)))
-      setSelPlaces(new Set((pass.places || []).map((p) => p.id)))
+      // Реконструкция «здания целиком»: здание считается выбранным целиком, только
+      // если внутри него не выбрано ни одного помещения/места (иначе это контейнер).
+      const rooms = pass.rooms || []
+      const places = pass.places || []
+      const narrowedBuildings = new Set([...rooms.map((r) => r.building), ...places.map((p) => p.building)])
+      setSelBuildings(new Set((pass.buildings || []).filter((b) => !narrowedBuildings.has(b.id)).map((b) => b.id)))
+      setSelRooms(new Set(rooms.map((r) => r.id)))
+      setSelPlaces(new Set(places.map((p) => p.id)))
+      // Раскрываем ветви с выбранными вложенными объектами.
+      const exp = new Set()
+      rooms.forEach((r) => exp.add(`b:${r.building}`))
+      places.forEach((p) => { exp.add(`b:${p.building}`); exp.add(`r:${p.room}`) })
+      setExpanded(exp)
       setPrefilled(true)
     })
   }, [id, isEdit])
 
-  const activeRoomsOf = (b) => (b.rooms || []).filter((r) => !r.is_archived)
-  // Места, которые можно выбрать как объект доступа: только с флагом
-  // «Требуется ключ/пропуск» и не в архиве.
-  const passPlacesOf = (r) => (r.places || []).filter((p) => p.requires_pass && !p.is_archived)
+  // Видимость и выбираемость (B15). Объект выбираем только с флагом; уже выбранные
+  // показываем всегда (обратная совместимость при редактировании). Родитель виден,
+  // если у него есть флаг или внутри есть видимый (флажковый/выбранный) объект.
+  const placeVisible = (p) => !p.is_archived && (p.requires_pass || selPlaces.has(p.id))
+  const visiblePlacesOf = (r) => (r.places || []).filter(placeVisible)
+  const roomVisible = (r) => !r.is_archived && (r.requires_pass || selRooms.has(r.id) || visiblePlacesOf(r).length > 0)
+  const visibleRoomsOf = (b) => (b.rooms || []).filter(roomVisible)
+  const buildingVisible = (b) => b.requires_pass || selBuildings.has(b.id) || visibleRoomsOf(b).length > 0
+  const visibleBuildings = () => (buildings || []).filter(buildingVisible)
+  const roomSelectable = (r) => r.requires_pass || selRooms.has(r.id)
+  const buildingSelectable = (b) => b.requires_pass || selBuildings.has(b.id)
 
+  const isExpanded = (key) => expanded.has(key)
+  const toggleExpand = (key) =>
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+
+  const setOnly = (setter, value) => setter(value == null ? new Set() : new Set([value]))
+
+  // Выбор «здания целиком».
   const toggleBuilding = (b, checked) => {
     if (isKey) {
-      // Ключ: одно здание целиком, помещения и места сбрасываются.
       setSelBuildings(checked ? new Set([b.id]) : new Set())
       setSelRooms(new Set())
       setSelPlaces(new Set())
@@ -97,51 +136,50 @@ export function PassFormPage() {
       else next.delete(b.id)
       return next
     })
-    if (!checked) {
-      const rooms = activeRoomsOf(b)
-      const roomIds = new Set(rooms.map((r) => r.id))
-      const placeIds = new Set(rooms.flatMap((r) => passPlacesOf(r).map((p) => p.id)))
+    if (checked) {
+      // «Здание целиком» перекрывает точечные выборы внутри него — снимаем их.
+      const roomIds = new Set((b.rooms || []).map((r) => r.id))
+      const placeIds = new Set((b.rooms || []).flatMap((r) => (r.places || []).map((p) => p.id)))
       setSelRooms((prev) => new Set([...prev].filter((rid) => !roomIds.has(rid))))
       setSelPlaces((prev) => new Set([...prev].filter((pid) => !placeIds.has(pid))))
     }
   }
 
-  const toggleRoom = (b, roomId, checked) => {
+  const toggleRoom = (b, room, checked) => {
     if (isKey) {
-      // Ключ: одно помещение (его здание — родитель), место сбрасывается.
-      if (checked) {
-        setSelBuildings(new Set([b.id]))
-        setSelRooms(new Set([roomId]))
-        setSelPlaces(new Set())
-      } else {
-        setSelRooms(new Set())
-      }
+      setSelBuildings(new Set())
+      setSelPlaces(new Set())
+      setOnly(setSelRooms, checked ? room.id : null)
       return
     }
+    // Выбор помещения означает, что здание — контейнер (не «целиком»).
+    setSelBuildings((prev) => new Set([...prev].filter((bid) => bid !== b.id)))
     setSelRooms((prev) => {
       const next = new Set(prev)
-      if (checked) next.add(roomId)
-      else next.delete(roomId)
+      if (checked) next.add(room.id)
+      else next.delete(room.id)
       return next
     })
+    if (checked) {
+      // Помещение целиком перекрывает выбор мест внутри него.
+      const placeIds = new Set((room.places || []).map((p) => p.id))
+      setSelPlaces((prev) => new Set([...prev].filter((pid) => !placeIds.has(pid))))
+    }
   }
 
-  const togglePlace = (b, placeId, checked) => {
+  const togglePlace = (b, room, place, checked) => {
     if (isKey) {
-      // Ключ: одно место (его здание — родитель), помещение сбрасывается.
-      if (checked) {
-        setSelBuildings(new Set([b.id]))
-        setSelRooms(new Set())
-        setSelPlaces(new Set([placeId]))
-      } else {
-        setSelPlaces(new Set())
-      }
+      setSelBuildings(new Set())
+      setSelRooms(new Set())
+      setOnly(setSelPlaces, checked ? place.id : null)
       return
     }
+    setSelBuildings((prev) => new Set([...prev].filter((bid) => bid !== b.id)))
+    setSelRooms((prev) => new Set([...prev].filter((rid) => rid !== room.id)))
     setSelPlaces((prev) => {
       const next = new Set(prev)
-      if (checked) next.add(placeId)
-      else next.delete(placeId)
+      if (checked) next.add(place.id)
+      else next.delete(place.id)
       return next
     })
   }
@@ -149,8 +187,8 @@ export function PassFormPage() {
   const changeObjectType = (type) => {
     if (type === objectType) return
     setObjectType(type)
-    // При переключении на ключ оставляем максимум одно здание, помещения/места
-    // сбрасываем (у ключа объект доступа один).
+    // У ключа объект доступа один — при переключении оставляем максимум одно
+    // «здание целиком», помещения/места сбрасываем.
     if (type === 'key') {
       setTypeVehicle(false)
       setTypePedestrian(false)
@@ -160,17 +198,32 @@ export function PassFormPage() {
     }
   }
 
+  const targetCount = selBuildings.size + selRooms.size + selPlaces.size
+
   const submit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
     setError(null)
     setFieldErrors({})
+    // Итоговый набор зданий: «здания целиком» + здания-контейнеры выбранных
+    // помещений/мест.
+    const roomBuilding = new Map()
+    const placeBuilding = new Map()
+    ;(buildings || []).forEach((b) =>
+      (b.rooms || []).forEach((r) => {
+        roomBuilding.set(r.id, b.id)
+        ;(r.places || []).forEach((p) => placeBuilding.set(p.id, b.id))
+      })
+    )
+    const buildingIds = new Set(selBuildings)
+    selRooms.forEach((rid) => { if (roomBuilding.has(rid)) buildingIds.add(roomBuilding.get(rid)) })
+    selPlaces.forEach((pid) => { if (placeBuilding.has(pid)) buildingIds.add(placeBuilding.get(pid)) })
     const payload = {
       object_type: objectType,
       account_number: accountNumber,
       type_vehicle: isKey ? false : typeVehicle,
       type_pedestrian: isKey ? false : typePedestrian,
-      building_ids: [...selBuildings],
+      building_ids: [...buildingIds],
       room_ids: [...selRooms],
       place_ids: [...selPlaces],
     }
@@ -227,7 +280,7 @@ export function PassFormPage() {
               <span className="ele-only-desktop">Отмена</span>
               <Icon className="ele-only-mobile" name="x" size={18} strokeWidth={2} />
             </Button>
-            <Button loading={submitting} disabled={!ready || selBuildings.size === 0} onClick={submit} aria-label="Сохранить">
+            <Button loading={submitting} disabled={!ready || targetCount === 0} onClick={submit} aria-label="Сохранить">
               <span className="ele-only-desktop">Сохранить</span>
               <Icon className="ele-only-mobile" name="check" size={18} strokeWidth={2.2} />
             </Button>
@@ -313,48 +366,73 @@ export function PassFormPage() {
                   У ключа доступен строго один объект: отметьте здание целиком, одно помещение или одно место.
                 </div>
               ) : null}
-              {buildings.length === 0 ? (
-                <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Зданий пока нет.</div>
+              {visibleBuildings().length === 0 ? (
+                <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
+                  Нет зданий/помещений/мест, для которых требуется ключ/пропуск.
+                </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {buildings.map((b) => {
-                    const checked = selBuildings.has(b.id)
-                    const rooms = activeRoomsOf(b)
+                  {visibleBuildings().map((b) => {
+                    const wholeB = selBuildings.has(b.id)
+                    const rooms = visibleRoomsOf(b)
+                    const collapsible = buildingSelectable(b)
+                    const showRooms = rooms.length > 0 && (!collapsible || isExpanded(`b:${b.id}`))
                     return (
                       <div key={b.id}>
-                        <CheckRow checked={checked} onChange={(v) => toggleBuilding(b, v)}>
-                          <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</span>
-                        </CheckRow>
-                        {checked ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <ExpandToggle
+                            shown={rooms.length > 0 && collapsible}
+                            open={isExpanded(`b:${b.id}`)}
+                            onClick={() => toggleExpand(`b:${b.id}`)}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <CheckRow checked={wholeB} disabled={!collapsible} onChange={(v) => toggleBuilding(b, v)}>
+                              <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</span>
+                            </CheckRow>
+                          </div>
+                        </div>
+                        {showRooms ? (
                           <div style={{ marginLeft: 15, marginTop: 6, paddingLeft: 14, borderLeft: '2px solid var(--color-border-strong)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {rooms.length === 0 ? (
-                              <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
-                                {isKey ? 'В здании нет помещений — ключ действует на всё здание.' : 'В здании нет помещений — пропуск действует на всё здание.'}
-                              </div>
-                            ) : (
-                              <>
-                                {rooms.map((r) => {
-                                  const places = passPlacesOf(r)
-                                  return (
-                                    <div key={r.id}>
-                                      <CheckRow small checked={selRooms.has(r.id)} onChange={(v) => toggleRoom(b, r.id, v)}>
+                            {rooms.map((r) => {
+                              const wholeR = selRooms.has(r.id)
+                              const places = visiblePlacesOf(r)
+                              const roomEnabled = roomSelectable(r) && !wholeB
+                              const roomCollapsible = roomSelectable(r)
+                              const showPlaces = places.length > 0 && (!roomCollapsible || isExpanded(`r:${r.id}`))
+                              return (
+                                <div key={r.id}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <ExpandToggle
+                                      shown={places.length > 0 && roomCollapsible}
+                                      open={isExpanded(`r:${r.id}`)}
+                                      onClick={() => toggleExpand(`r:${r.id}`)}
+                                      small
+                                    />
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <CheckRow small checked={wholeR} disabled={!roomEnabled} onChange={(v) => toggleRoom(b, r, v)}>
                                         {r.floor ? <Badge>эт. {r.floor}</Badge> : null}
                                         <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
                                       </CheckRow>
-                                      {places.length ? (
-                                        <div style={{ marginLeft: 14, marginTop: 6, paddingLeft: 12, borderLeft: '2px solid var(--color-border-hairline)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                          {places.map((p) => (
-                                            <CheckRow key={p.id} small checked={selPlaces.has(p.id)} onChange={(v) => togglePlace(b, p.id, v)}>
-                                              <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
-                                            </CheckRow>
-                                          ))}
-                                        </div>
-                                      ) : null}
                                     </div>
-                                  )
-                                })}
-                              </>
-                            )}
+                                  </div>
+                                  {showPlaces ? (
+                                    <div style={{ marginLeft: 21, marginTop: 6, paddingLeft: 12, borderLeft: '2px solid var(--color-border-hairline)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                      {places.map((p) => (
+                                        <CheckRow
+                                          key={p.id}
+                                          small
+                                          checked={selPlaces.has(p.id)}
+                                          disabled={wholeB || wholeR}
+                                          onChange={(v) => togglePlace(b, r, p, v)}
+                                        >
+                                          <span style={{ flex: 1, minWidth: 0, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                                        </CheckRow>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              )
+                            })}
                           </div>
                         ) : null}
                       </div>
@@ -431,15 +509,34 @@ export function PassFormPage() {
   )
 }
 
+// Кнопка-раскрытие (шеврон) слева от строки. Когда раскрывать нечего или ветвь
+// раскрыта принудительно (родитель-контейнер) — рисуем распорку, чтобы строки
+// не «прыгали» по горизонтали.
+function ExpandToggle({ shown, open, onClick, small }) {
+  const box = small ? 20 : 22
+  if (!shown) return <span style={{ width: box, flex: 'none' }} />
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={open ? 'Свернуть' : 'Развернуть'}
+      style={{ width: box, height: box, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'var(--color-text-placeholder)' }}
+    >
+      <Icon name="chevron-right" size={16} strokeWidth={2.2} style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .16s' }} />
+    </button>
+  )
+}
+
 // Строка-чекбокс в стиле дизайн-системы (белая заливка, рамка). small — для
-// вложенных строк помещений (чуть ниже).
-function CheckRow({ checked, onChange, small, children }) {
+// вложенных строк помещений/мест (чуть ниже). disabled — невыбираемый объект
+// (родитель без флага либо перекрытый выбором «целиком»): только для раскрытия.
+function CheckRow({ checked, onChange, small, disabled, children }) {
   return (
     <label
       className={'ele-checkbox' + (checked ? ' ele-option--selected' : '')}
-      style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: small ? 40 : 44, padding: small ? '8px 12px' : '9px 14px', background: checked ? undefined : 'var(--color-surface)', borderRadius: 'var(--radius-control)', boxShadow: checked ? undefined : 'inset 0 0 0 1.5px var(--color-border-strong)', cursor: 'pointer' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: small ? 40 : 44, padding: small ? '8px 12px' : '9px 14px', background: checked ? undefined : 'var(--color-surface)', borderRadius: 'var(--radius-control)', boxShadow: checked ? undefined : 'inset 0 0 0 1.5px var(--color-border-strong)', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.55 : 1 }}
     >
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
       <span className="ele-checkbox__box" style={{ flex: 'none' }}>
         {checked ? <Icon name="check" size={12} strokeWidth={3} style={{ color: '#fff' }} /> : null}
       </span>
