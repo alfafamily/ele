@@ -3,7 +3,9 @@
    строку, на мобильных — построчно (тип / наименование / количество+удалить). */
 .ele-maint-row {
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr) 96px 44px;
+  /* Колонки компактные: узкая модалка регламента (~460px) должна оставлять
+     «Наименованию» достаточно ширины. */
+  grid-template-columns: 124px minmax(0, 1fr) 80px 44px;
   grid-template-areas: 'kind name qty del';
   gap: 8px;
   align-items: center;
