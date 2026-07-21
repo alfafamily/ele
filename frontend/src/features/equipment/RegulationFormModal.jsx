@@ -67,7 +67,7 @@ export function RegulationFormModal({ regulation, onClose, onSave, title, showFi
       <Input label="Наименование" required autoFocus value={name} onChange={(e) => setName(e.target.value)} />
 
       <div style={{ marginTop: 18 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 8 }}>Периодичность</div>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Периодичность</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
           <PeriodOption label="Периодический" active={!onDemand} onClick={() => setOnDemand(false)} />
           <PeriodOption
@@ -95,7 +95,7 @@ export function RegulationFormModal({ regulation, onClose, onSave, title, showFi
 
       {showFirstDate && !onDemand ? (
         <div style={{ marginTop: 18 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
             Дата первого ТО <span style={{ color: 'var(--color-error)' }}>*</span>
           </div>
           <InlineCalendar value={firstDate} onChange={setFirstDate} minDate={todayISO()} />
