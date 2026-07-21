@@ -1,50 +1,63 @@
+/* Контейнер — position:relative для поповера-календаря (поверх .ele-field). */
 .ele-datepicker {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  width: 100%;
 }
 
-.ele-datepicker__label {
-  font-size: var(--font-size-field-label);
-  color: var(--color-text-placeholder);
-  line-height: 1.3;
-}
-
-.ele-datepicker__trigger {
-  height: var(--control-height);
-  box-sizing: border-box;
+/* Поле-триггер оформлено как обычный инпут (.ele-field__box), но это <button>. */
+.ele-datepicker__box {
   width: 100%;
-  background: var(--color-surface);
-  box-shadow: inset 0 0 0 1px var(--color-border);
-  border: none;
-  border-radius: var(--radius-control);
-  padding: 0 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  font-family: inherit;
-  font-size: var(--font-size-field-value);
   cursor: pointer;
   text-align: left;
+  font-family: inherit;
+  justify-content: space-between;
 }
 
-.ele-datepicker__trigger:hover {
+.ele-datepicker__box:hover {
   box-shadow: inset 0 0 0 1px var(--color-border-strong);
 }
 
-.ele-datepicker__trigger--open {
+.ele-datepicker__box.ele-field__box--focused:hover {
   box-shadow: inset 0 0 0 1.5px var(--color-primary);
 }
 
-.ele-datepicker__value {
-  color: var(--color-text-primary);
+/* Внутренняя обёртка лейбла/значения: плавающий лейбл как у Input. */
+.ele-datepicker__inner {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding-top: 16px;
 }
 
-.ele-datepicker__placeholder {
+.ele-datepicker__inner .ele-field__label {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-field-value);
+  line-height: 1.3;
   color: var(--color-text-placeholder);
+  pointer-events: none;
+  transition: top 0.14s ease, transform 0.14s ease, font-size 0.14s ease;
+}
+
+/* Заполнено/открыто — лейбл уезжает наверх и уменьшается. */
+.ele-datepicker__inner--floated .ele-field__label {
+  top: 0;
+  transform: none;
+  font-size: var(--font-size-field-label);
+}
+
+.ele-datepicker__value {
+  display: block;
+  font-size: var(--font-size-field-value);
+  line-height: 1.3;
+  /* Строка значения зарезервирована всегда — высота поля не меняется при выборе. */
+  min-height: calc(var(--font-size-field-value) * 1.3);
+  color: var(--color-text-primary);
 }
 
 .ele-datepicker__clear {
