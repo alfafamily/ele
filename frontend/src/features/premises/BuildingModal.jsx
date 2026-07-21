@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Input, Modal } from '../../shared/ui'
+import { Banner, Button, Checkbox, Input, Modal } from '../../shared/ui'
 import { createBuilding, updateBuilding } from './premisesApi.js'
 
 // Создание/редактирование Здания. Наименование обязательно; адрес и
@@ -11,6 +11,7 @@ export function BuildingModal({ building, onClose, onDone }) {
   const [floorCount, setFloorCount] = useState(
     building?.floor_count != null ? String(building.floor_count) : ''
   )
+  const [requiresPass, setRequiresPass] = useState(building?.requires_pass || false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
@@ -23,6 +24,7 @@ export function BuildingModal({ building, onClose, onDone }) {
       name,
       address,
       floor_count: floorCount === '' ? null : Number(floorCount),
+      requires_pass: requiresPass,
     }
     try {
       const saved = isEdit ? await updateBuilding(building.id, payload) : await createBuilding(payload)
@@ -58,6 +60,7 @@ export function BuildingModal({ building, onClose, onDone }) {
           onChange={(e) => setFloorCount(e.target.value)}
           error={fieldErrors.floor_count}
         />
+        <Checkbox label="Требуется ключ/пропуск" checked={requiresPass} onChange={setRequiresPass} />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Button fullWidth loading={submitting} onClick={submit}>

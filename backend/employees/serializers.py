@@ -112,6 +112,12 @@ class AccessPassSerializer(serializers.ModelSerializer):
     # Здания/помещения на чтение — вложенно; на запись — по id. Один пропуск
     # может действовать в нескольких зданиях (buildings — M2M).
     buildings = BuildingMiniSerializer(many=True, read_only=True)
+    # Здание может попасть в набор двумя способами (B15): как самостоятельный
+    # объект доступа «здание целиком» (тогда у него обязан быть флаг «Требуется
+    # ключ/пропуск» — проверка в validate()) или как контейнер выбранного
+    # помещения/места внутри него (тогда собственный флаг здания не нужен).
+    # Поэтому здесь queryset по флагу не режем — ограничение на «здание целиком»
+    # накладывается в validate().
     building_ids = serializers.PrimaryKeyRelatedField(
         source="buildings",
         queryset=Building.objects.filter(is_archived=False),
@@ -120,9 +126,11 @@ class AccessPassSerializer(serializers.ModelSerializer):
         allow_empty=False,
     )
     rooms = RoomMiniSerializer(many=True, read_only=True)
+    # Помещение как объект доступа выбирается только с флагом (в набор `rooms`
+    # попадают лишь явно выбранные помещения, контейнером помещение не бывает).
     room_ids = serializers.PrimaryKeyRelatedField(
         source="rooms",
-        queryset=Room.objects.filter(is_archived=False),
+        queryset=Room.objects.filter(is_archived=False, requires_pass=True),
         many=True,
         write_only=True,
         required=False,
@@ -220,6 +228,18 @@ class AccessPassSerializer(serializers.ModelSerializer):
         if places and any(p.room.building_id not in building_ids for p in places):
             raise serializers.ValidationError(
                 {"place_ids": "Места должны относиться к выбранным зданиям."}
+            )
+
+        # B15: «здание целиком» как объект доступа допустимо только у зданий с
+        # флагом «Требуется ключ/пропуск». Здание, внутри которого выбрано
+        # конкретное помещение/место, — лишь контейнер, его флаг не требуется.
+        covered_building_ids = {r.building_id for r in rooms} | {p.room.building_id for p in places}
+        whole_building_no_flag = [
+            b for b in buildings if b.id not in covered_building_ids and not b.requires_pass
+        ]
+        if whole_building_no_flag:
+            raise serializers.ValidationError(
+                {"building_ids": "Здание целиком можно выбрать только с признаком «Требуется ключ/пропуск»."}
             )
 
         # Ключ — строго один объект доступа: одно здание ИЛИ одно помещение ИЛИ

@@ -61,7 +61,7 @@ class RoomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Room
-        fields = ["id", "building", "name", "floor", "is_archived", "places"]
+        fields = ["id", "building", "name", "floor", "requires_pass", "is_archived", "places"]
         read_only_fields = ["is_archived"]
 
     def get_places(self, obj):
@@ -83,7 +83,7 @@ class BuildingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Building
-        fields = ["id", "name", "address", "floor_count", "is_archived", "room_count", "rooms"]
+        fields = ["id", "name", "address", "floor_count", "requires_pass", "is_archived", "room_count", "rooms"]
         read_only_fields = ["is_archived"]
 
     def get_rooms(self, obj):

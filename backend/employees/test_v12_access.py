@@ -12,9 +12,11 @@ class AccessPassKeyTests(APITestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
         self.client.force_authenticate(user=self.admin)
-        self.b1 = Building.objects.create(name="Корпус А")
-        self.b2 = Building.objects.create(name="Корпус Б")
-        self.r1 = Room.objects.create(building=self.b1, name="101")
+        # Объект доступа выбирается только с флагом «Требуется ключ/пропуск» (B15) —
+        # на всех уровнях: здание, помещение, место.
+        self.b1 = Building.objects.create(name="Корпус А", requires_pass=True)
+        self.b2 = Building.objects.create(name="Корпус Б", requires_pass=True)
+        self.r1 = Room.objects.create(building=self.b1, name="101", requires_pass=True)
         # Место с флагом «Требуется ключ/пропуск» — доступно для выбора; без флага — нет.
         self.p1 = Place.objects.create(room=self.r1, name="Сейф", requires_pass=True)
         self.p_plain = Place.objects.create(room=self.r1, name="Стол", requires_pass=False)
@@ -94,6 +96,49 @@ class AccessPassKeyTests(APITestCase):
         }, format="json")
         self.assertEqual(resp.status_code, 400)
 
+    # B15: объект доступа выбирается только среди зданий/помещений с флагом.
+    def test_building_without_flag_rejected(self):
+        b_plain = Building.objects.create(name="Без флага", requires_pass=False)
+        resp = self.client.post("/api/access-passes/", {
+            "object_type": "pass",
+            "building_ids": [b_plain.id],
+        }, format="json")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("building_ids", resp.data.get("errors", resp.data))
+
+    def test_room_without_flag_rejected(self):
+        r_plain = Room.objects.create(building=self.b1, name="Без флага", requires_pass=False)
+        resp = self.client.post("/api/access-passes/", {
+            "object_type": "pass",
+            "building_ids": [self.b1.id],
+            "room_ids": [r_plain.id],
+        }, format="json")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("room_ids", resp.data.get("errors", resp.data))
+
+    def test_pass_with_flagged_room(self):
+        resp = self.client.post("/api/access-passes/", {
+            "object_type": "pass",
+            "building_ids": [self.b1.id],
+            "room_ids": [self.r1.id],
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+
+    def test_unflagged_building_as_container_for_place(self):
+        # Здание и помещение без флага, но место требует ключ/пропуск: пропуск на
+        # это место создаётся — здание/помещение выступают лишь контейнерами (B15).
+        b3 = Building.objects.create(name="Корпус В", requires_pass=False)
+        r3 = Room.objects.create(building=b3, name="301", requires_pass=False)
+        p3 = Place.objects.create(room=r3, name="Сейф-3", requires_pass=True)
+        resp = self.client.post("/api/access-passes/", {
+            "object_type": "pass",
+            "building_ids": [b3.id],
+            "place_ids": [p3.id],
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        ap = AccessPass.objects.get(pk=resp.data["id"])
+        self.assertEqual(list(ap.places.all()), [p3])
+
 
 class UtilizeTests(APITestCase):
     def setUp(self):
@@ -168,7 +213,7 @@ class HistoryTests(APITestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
         self.client.force_authenticate(user=self.admin)
-        self.b1 = Building.objects.create(name="Корпус А")
+        self.b1 = Building.objects.create(name="Корпус А", requires_pass=True)
 
     def test_creation_comment_and_fields_in_history(self):
         resp = self.client.post("/api/access-passes/", {
@@ -189,7 +234,7 @@ class HistoryTests(APITestCase):
         self.assertEqual(labels.get("Здания"), "Корпус А")
 
     def test_created_history_lists_rooms_and_places(self):
-        room = Room.objects.create(building=self.b1, name="К-101")
+        room = Room.objects.create(building=self.b1, name="К-101", requires_pass=True)
         place = Place.objects.create(room=room, name="Сейф", requires_pass=True)
         resp = self.client.post("/api/access-passes/", {
             "object_type": "key",
@@ -209,7 +254,7 @@ class HistoryTests(APITestCase):
 
         from django.utils import timezone
 
-        b2 = Building.objects.create(name="Корпус Б")
+        b2 = Building.objects.create(name="Корпус Б", requires_pass=True)
         resp = self.client.post("/api/access-passes/", {
             "object_type": "pass", "building_ids": [self.b1.id],
         }, format="json")

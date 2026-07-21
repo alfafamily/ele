@@ -205,6 +205,9 @@ export function PremisesPage() {
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                       {b.is_archived ? <Badge>Архив</Badge> : null}
                       <span style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: b.is_archived ? 0.6 : 1 }}>{b.name}</span>
+                      {b.requires_pass ? (
+                        <Icon name="key-round" size={13} strokeWidth={2} title="Требуется ключ/пропуск" style={{ flex: 'none', color: 'var(--color-text-muted)' }} />
+                      ) : null}
                     </span>
                     {b.address ? (
                       <span className="ele-clamp-2" style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 1 }}>{b.address}</span>
@@ -389,6 +392,9 @@ function RoomRow({ room, buildingArchived, open, onToggle, canManage, onEdit, on
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
             {room.is_archived ? <Badge>Архив</Badge> : null}
             <span style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{room.name}</span>
+            {room.requires_pass ? (
+              <Icon name="key-round" size={13} strokeWidth={2} title="Требуется ключ/пропуск" style={{ flex: 'none', color: 'var(--color-text-muted)' }} />
+            ) : null}
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <Badge>этаж {room.floor || '—'}</Badge>

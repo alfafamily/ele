@@ -301,7 +301,8 @@ class AccessPassTests(APITestCase):
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
         self.client.force_authenticate(user=self.admin)
         self.employee = Employee.objects.create(first_name="Иван", last_name="Прозоров")
-        self.building = Building.objects.create(name="Главный офис")
+        # Объект доступа выбирается только с флагом «Требуется ключ/пропуск» (B15).
+        self.building = Building.objects.create(name="Главный офис", requires_pass=True)
 
     def _create(self, **extra):
         payload = {"building_ids": [self.building.id], **extra}
