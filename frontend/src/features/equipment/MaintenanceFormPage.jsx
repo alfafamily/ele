@@ -59,7 +59,9 @@ export function MaintenanceFormPage() {
           quantity: r.quantity === '' ? '0' : r.quantity,
         })),
       })
-      navigate(`/equipment/${id}`)
+      // Возврат назад (pop), а не push карточки — иначе в истории остаётся
+      // лишняя запись и «Назад» на карточке ведёт обратно на страницу ТО.
+      navigate(-1)
     } catch (err) {
       setError(err.errors ? Object.values(err.errors).flat().join(' ') : err.detail || 'Не удалось сохранить ТО.')
       setSubmitting(false)
@@ -182,7 +184,7 @@ export function MaintenanceFormPage() {
       </Card>
 
         <FormActions
-          onCancel={() => navigate(`/equipment/${id}`)}
+          onCancel={() => navigate(-1)}
           onSubmit={submit}
           submitting={submitting}
           submitLabel="Провести ТО"
