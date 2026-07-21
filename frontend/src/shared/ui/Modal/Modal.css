@@ -85,14 +85,21 @@
   .ele-modal-overlay {
     align-items: flex-end;
     padding: 0;
+    /* Оверлей — по видимой части вьюпорта (над клавиатурой). iOS Safari ужимает
+       только visual viewport, поэтому без этого bottom-sheet с кнопками уезжает
+       под клавиатуру. --vvh/--vv-top задаёт initKeyboardViewport; фолбэк 100dvh
+       (desktop / нет visualViewport) сохраняет прежнее поведение. */
+    top: var(--vv-top, 0px);
+    bottom: auto;
+    height: var(--vvh, 100dvh);
   }
 
   .ele-modal {
     max-width: 100%;
     border-radius: var(--radius-frame-mobile) var(--radius-frame-mobile) 0 0;
     padding: 10px 16px calc(20px + env(safe-area-inset-bottom, 0px));
-    /* Bottom-sheet не выше ~90% экрана — остальное прокручивается внутри. */
-    max-height: 90dvh;
+    /* Bottom-sheet не выше видимой части вьюпорта — остальное скроллится внутри. */
+    max-height: 100%;
   }
 
   .ele-modal__grabber {
