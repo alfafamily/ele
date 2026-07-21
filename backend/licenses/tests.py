@@ -271,7 +271,7 @@ class LicenseUtilizeTests(APITestCase):
     def test_utilize_detaches_and_archives(self):
         from equipment.models import Equipment, EquipmentType
 
-        eq_type = EquipmentType.objects.create(name="Сервер")
+        eq_type = EquipmentType.objects.create(name="Сервер", allows_license=True)
         equipment = Equipment.objects.create(inventory_number="SRV-1", equipment_type=eq_type)
         license_obj = License.objects.create(name="USB-ключ", license_type=self.hardware, equipment=equipment)
 
@@ -300,7 +300,7 @@ class LicenseSearchTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         self.type_a = LicenseType.objects.create(name="Антивирус")
         self.type_b = LicenseType.objects.create(name="Офис")
-        eq_type = EquipmentType.objects.create(name="ПК")
+        eq_type = EquipmentType.objects.create(name="ПК", allows_license=True)
         self.eq = Equipment.objects.create(inventory_number="DESKTOP-42", equipment_type=eq_type)
         self.lic1 = License.objects.create(name="Kaspersky", license_type=self.type_a, equipment=self.eq)
         self.lic2 = License.objects.create(name="Microsoft 365", license_type=self.type_b)
@@ -331,7 +331,7 @@ class LicenseKeyExposureTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         self.soft_type = LicenseType.objects.create(name="Программная", kind="software")
         self.key_field = self.soft_type.fields.get(name="Номер/ключ")
-        eq_type = EquipmentType.objects.create(name="ПК")
+        eq_type = EquipmentType.objects.create(name="ПК", allows_license=True)
         self.eq = Equipment.objects.create(inventory_number="PC-1", equipment_type=eq_type)
         resp = self.client.post(
             "/api/licenses/",
@@ -450,7 +450,7 @@ class HardwareLicenseStorageTests(APITestCase):
         b = Building.objects.create(name="Главное")
         r = Room.objects.create(building=b, name="101")
         self.store = Place.objects.create(room=r, name="Склад", place_type=Place.PlaceType.STORAGE)
-        et = EquipmentType.objects.create(name="Сервер")
+        et = EquipmentType.objects.create(name="Сервер", allows_license=True)
         self.eq = Equipment.objects.create(inventory_number="SRV-1", equipment_type=et)
         self.hw_type = LicenseType.objects.create(name="Аппаратная", kind="hardware")
         self.token_field = self.hw_type.fields.get(is_locked=True)
