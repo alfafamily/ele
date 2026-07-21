@@ -4,7 +4,7 @@ import { apiGet } from '../../shared/api/client'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
-import { Banner, Card, FormActions, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
+import { BackButton, Banner, Card, FormActions, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
 import {
   createSimCard,
   getSimCard,
@@ -130,7 +130,10 @@ export function SimFormPage() {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div style={{ width: '100%', maxWidth: 660 }}>
         <div className="ele-form-head">
-          <h1 className="ele-form-head__title">{isEdit ? 'Редактирование SIM-карты' : 'Новая SIM-карта'}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <BackButton />
+            <h1 className="ele-form-head__title">{isEdit ? 'Редактирование SIM-карты' : 'Новая SIM-карта'}</h1>
+          </div>
         </div>
 
         {error ? <Banner variant="error">{error}</Banner> : null}

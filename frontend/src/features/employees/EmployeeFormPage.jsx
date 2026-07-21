@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Banner, Card, FormActions, Input, Spinner } from '../../shared/ui'
+import { BackButton, Banner, Card, FormActions, Input, Spinner } from '../../shared/ui'
 import { createEmployee, getDepartments, getEmployee, updateEmployee } from './employeesApi.js'
 
 export function EmployeeFormPage() {
@@ -75,7 +75,10 @@ export function EmployeeFormPage() {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div style={{ width: '100%', maxWidth: 600 }}>
         <div className="ele-form-head">
-          <h1 className="ele-form-head__title">{isEdit ? 'Редактирование сотрудника' : 'Новый сотрудник'}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <BackButton />
+            <h1 className="ele-form-head__title">{isEdit ? 'Редактирование сотрудника' : 'Новый сотрудник'}</h1>
+          </div>
         </div>
 
         {error ? <Banner variant="error">{error}</Banner> : null}

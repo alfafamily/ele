@@ -5,7 +5,7 @@ import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
-import { Banner, Card, FormActions, Icon, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
+import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
 import {
   createEquipment,
   deleteEquipmentFieldFilePath,
@@ -190,9 +190,12 @@ export function EquipmentFormPage() {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div style={{ width: '100%', maxWidth: 660 }}>
         <div className="ele-form-head">
-          <h1 className="ele-form-head__title">
-            {isEdit ? 'Редактирование оборудования' : 'Новое оборудование'}
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <BackButton />
+            <h1 className="ele-form-head__title">
+              {isEdit ? 'Редактирование оборудования' : 'Новое оборудование'}
+            </h1>
+          </div>
         </div>
 
         {error ? <Banner variant="error">{error}</Banner> : null}

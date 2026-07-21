@@ -4,7 +4,7 @@ import { apiGet } from '../../shared/api/client'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
-import { Badge, Banner, Card, FormActions, Icon, Input, PlaceSelect, Spinner } from '../../shared/ui'
+import { BackButton, Badge, Banner, Card, FormActions, Icon, Input, PlaceSelect, Spinner } from '../../shared/ui'
 import { getBuildings } from '../premises/premisesApi.js'
 import { createPass, getPass, updatePass } from '../employees/employeesApi.js'
 import { generateNextNumber } from '../settings/settingsApi.js'
@@ -274,7 +274,10 @@ export function PassFormPage() {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div style={{ width: '100%', maxWidth: 660 }}>
         <div className="ele-form-head">
-          <h1 className="ele-form-head__title">{title}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <BackButton />
+            <h1 className="ele-form-head__title">{title}</h1>
+          </div>
         </div>
 
         {error ? <Banner variant="error">{error}</Banner> : null}
