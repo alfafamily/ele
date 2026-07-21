@@ -413,6 +413,13 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             serializer.is_valid(raise_exception=True)
             regulation = serializer.save(equipment=equipment)
             create_plan_for_individual_regulation(regulation)
+            # Дата первого ТО может задаваться сразу при создании (только для
+            # периодического регламента; не раньше сегодня).
+            raw_date = request.data.get("next_planned_date")
+            if raw_date and not regulation.on_demand:
+                date = serializers.DateField().to_internal_value(raw_date)
+                if date >= timezone.localdate():
+                    regulation.plans.filter(equipment=equipment).update(next_planned_date=date)
             return Response(self._regulation_payload(equipment), status=201)
         return Response(self._regulation_payload(equipment))
 

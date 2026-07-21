@@ -247,6 +247,10 @@ export function TypesEditorPage({ domain, title }) {
             ) : null}
 
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Реквизиты типа</div>
+            <Button variant="secondary" fullWidth style={{ marginBottom: 12 }} onClick={() => setFieldModal('new')}>
+              <Icon name="plus" size={18} strokeWidth={2.2} />
+              Добавить реквизит
+            </Button>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {selected.fields.map((f) => (
                 <div
@@ -283,20 +287,20 @@ export function TypesEditorPage({ domain, title }) {
                 </div>
               ))}
             </div>
-            <Button variant="secondary" fullWidth style={{ marginTop: 12 }} onClick={() => setFieldModal('new')}>
-              <Icon name="plus" size={18} strokeWidth={2.2} />
-              Добавить реквизит
-            </Button>
 
             {/* B13+: регламенты ТО — только для оборудования с включённым ТО и
                 только для тех, кто управляет ТО (admin / учётчик с флагом). */}
             {domain === 'equipment' && selected.maintenance_enabled && perms.canManageMaintenance ? (
               <div style={{ marginTop: 28 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Регламенты ТО</div>
+                <Button variant="secondary" fullWidth style={{ marginBottom: 12 }} onClick={() => setRegModal('new')}>
+                  <Icon name="plus" size={18} strokeWidth={2.2} />
+                  Добавить регламент
+                </Button>
                 {regulations === null ? (
                   <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Загрузка…</div>
                 ) : regulations.length === 0 ? (
-                  <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginBottom: 10 }}>
+                  <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>
                     Регламенты пока не созданы.
                   </div>
                 ) : (
@@ -307,10 +311,11 @@ export function TypesEditorPage({ domain, title }) {
                         style={{
                           display: 'flex', alignItems: 'center', gap: 12,
                           background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)',
-                          borderRadius: 10, padding: '11px 13px', opacity: reg.is_archived ? 0.6 : 1,
+                          borderRadius: 10, padding: '11px 13px',
                         }}
                       >
-                        <div style={{ flex: 1, minWidth: 0 }}>
+                        {/* Содержимое приглушается у архивных; кнопка возврата — нет. */}
+                        <div style={{ flex: 1, minWidth: 0, opacity: reg.is_archived ? 0.55 : 1 }}>
                           <div style={{ fontSize: 13.5, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                             {reg.name}
                             {reg.is_archived ? <Badge>В архиве</Badge> : null}
@@ -319,24 +324,22 @@ export function TypesEditorPage({ domain, title }) {
                             {regulationPeriodLabel(reg)} · позиций: {reg.items.length}
                           </div>
                         </div>
-                        <ActionMenu
-                          items={
-                            reg.is_archived
-                              ? [{ label: 'Вернуть из архива', icon: 'undo-2', onClick: () => toggleRegArchive(reg, false) }]
-                              : [
-                                  { label: 'Изменить', onClick: () => setRegModal(reg) },
-                                  { label: 'Отменить (в архив)', icon: 'ban', danger: true, onClick: () => setArchiveReg(reg) },
-                                ]
-                          }
-                        />
+                        {reg.is_archived ? (
+                          <button type="button" title="Вернуть из архива" onClick={() => toggleRegArchive(reg, false)} style={typeReturnBtn}>
+                            <Icon name="undo-2" size={18} strokeWidth={2} />
+                          </button>
+                        ) : (
+                          <ActionMenu
+                            items={[
+                              { label: 'Изменить', onClick: () => setRegModal(reg) },
+                              { label: 'Отменить', icon: 'ban', danger: true, onClick: () => setArchiveReg(reg) },
+                            ]}
+                          />
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
-                <Button variant="secondary" fullWidth style={{ marginTop: 12 }} onClick={() => setRegModal('new')}>
-                  <Icon name="plus" size={18} strokeWidth={2.2} />
-                  Добавить регламент
-                </Button>
               </div>
             ) : null}
           </Card>
@@ -456,6 +459,11 @@ function TypeFlagStatus({ on, onText, offText }) {
       </span>
     </div>
   )
+}
+
+const typeReturnBtn = {
+  width: 44, height: 44, flex: 'none', borderRadius: 10, background: 'var(--color-fill-input)', border: 'none',
+  color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
 }
 
 const toggleBtnStyle = {
