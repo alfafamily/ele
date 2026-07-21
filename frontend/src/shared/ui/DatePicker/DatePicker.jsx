@@ -44,12 +44,13 @@ function mondayIndex(y, m, d) {
 // выбранный день — в чёрном круге. Поле оформлено как обычный инпут с плавающим
 // лейблом (label): пусто — лейбл-плейсхолдер по центру; заполнено/открыто —
 // лейбл уезжает наверх, ниже показывается выбранная дата.
-export function DatePicker({ label, value, onChange, minDate, id }) {
+export function DatePicker({ label, value, onChange, minDate, maxDate, id }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
   const selected = useMemo(() => parseISO(value), [value])
   const min = useMemo(() => parseISO(minDate) || todayParts(), [minDate])
+  const max = useMemo(() => parseISO(maxDate), [maxDate])
   const today = useMemo(() => todayParts(), [])
 
   // Показываемый месяц: месяц выбранной даты, иначе минимально доступный.
@@ -80,11 +81,15 @@ export function DatePicker({ label, value, onChange, minDate, id }) {
   }
 
   const atMinMonth = view.y === min.y && view.m === min.m
+  const atMaxMonth = Boolean(max) && view.y === max.y && view.m === max.m
   const prevMonth = () => {
     if (atMinMonth) return
     setView((v) => (v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 }))
   }
-  const nextMonth = () => setView((v) => (v.m === 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m: v.m + 1 }))
+  const nextMonth = () => {
+    if (atMaxMonth) return
+    setView((v) => (v.m === 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m: v.m + 1 }))
+  }
 
   const pick = (d) => {
     onChange(toISO(view.y, view.m, d))
@@ -155,7 +160,7 @@ export function DatePicker({ label, value, onChange, minDate, id }) {
             <div className="ele-cal__title">
               {MONTHS[view.m]} {view.y}
             </div>
-            <button type="button" className="ele-cal__nav" onClick={nextMonth} aria-label="Следующий месяц">
+            <button type="button" className="ele-cal__nav" onClick={nextMonth} disabled={atMaxMonth} aria-label="Следующий месяц">
               <Icon name="chevron-right" size={18} strokeWidth={2} />
             </button>
           </div>
@@ -170,7 +175,7 @@ export function DatePicker({ label, value, onChange, minDate, id }) {
               if (d === null) return <div key={`b${i}`} />
               const parts = { y: view.y, m: view.m, d }
               const weekend = mondayIndex(view.y, view.m, d) >= 5
-              const disabled = cmp(parts, min) < 0
+              const disabled = cmp(parts, min) < 0 || (Boolean(max) && cmp(parts, max) > 0)
               const isToday = cmp(parts, today) === 0
               const isSelected = selected && cmp(parts, selected) === 0
               const cls = [
@@ -204,9 +209,10 @@ export function DatePicker({ label, value, onChange, minDate, id }) {
 // Всегда открытый календарь без поля-триггера — для модалок, где нужен сразу
 // видимый календарь (напр. назначение даты первого ТО). value/onChange/minDate —
 // как у DatePicker.
-export function InlineCalendar({ value, onChange, minDate }) {
+export function InlineCalendar({ value, onChange, minDate, maxDate }) {
   const selected = useMemo(() => parseISO(value), [value])
   const min = useMemo(() => parseISO(minDate) || todayParts(), [minDate])
+  const max = useMemo(() => parseISO(maxDate), [maxDate])
   const today = useMemo(() => todayParts(), [])
   const [view, setView] = useState(() => {
     const base = parseISO(value) || parseISO(minDate) || todayParts()
@@ -214,11 +220,15 @@ export function InlineCalendar({ value, onChange, minDate }) {
   })
 
   const atMinMonth = view.y === min.y && view.m === min.m
+  const atMaxMonth = Boolean(max) && view.y === max.y && view.m === max.m
   const prevMonth = () => {
     if (atMinMonth) return
     setView((v) => (v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 }))
   }
-  const nextMonth = () => setView((v) => (v.m === 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m: v.m + 1 }))
+  const nextMonth = () => {
+    if (atMaxMonth) return
+    setView((v) => (v.m === 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m: v.m + 1 }))
+  }
 
   const total = daysInMonth(view.y, view.m)
   const lead = mondayIndex(view.y, view.m, 1)
@@ -235,7 +245,7 @@ export function InlineCalendar({ value, onChange, minDate }) {
         <div className="ele-cal__title">
           {MONTHS[view.m]} {view.y}
         </div>
-        <button type="button" className="ele-cal__nav" onClick={nextMonth} aria-label="Следующий месяц">
+        <button type="button" className="ele-cal__nav" onClick={nextMonth} disabled={atMaxMonth} aria-label="Следующий месяц">
           <Icon name="chevron-right" size={18} strokeWidth={2} />
         </button>
       </div>
@@ -249,7 +259,7 @@ export function InlineCalendar({ value, onChange, minDate }) {
           if (d === null) return <div key={`b${i}`} />
           const parts = { y: view.y, m: view.m, d }
           const weekend = mondayIndex(view.y, view.m, d) >= 5
-          const disabled = cmp(parts, min) < 0
+          const disabled = cmp(parts, min) < 0 || (Boolean(max) && cmp(parts, max) > 0)
           const isToday = cmp(parts, today) === 0
           const isSelected = selected && cmp(parts, selected) === 0
           const cls = [
