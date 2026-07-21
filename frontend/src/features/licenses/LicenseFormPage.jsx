@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { apiPost } from '../../shared/api/client'
 import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
-import { Banner, Card, FormActions, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
+import { BackButton, Banner, Card, FormActions, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
 import {
   createLicense,
   deleteLicenseFieldFilePath,
@@ -132,7 +132,10 @@ export function LicenseFormPage() {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div style={{ width: '100%', maxWidth: 660 }}>
         <div className="ele-form-head">
-          <h1 className="ele-form-head__title">{isEdit ? 'Редактирование лицензии' : 'Новая лицензия'}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <BackButton />
+            <h1 className="ele-form-head__title">{isEdit ? 'Редактирование лицензии' : 'Новая лицензия'}</h1>
+          </div>
         </div>
 
         {error ? <Banner variant="error">{error}</Banner> : null}
