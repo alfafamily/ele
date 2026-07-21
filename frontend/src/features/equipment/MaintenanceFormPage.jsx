@@ -279,13 +279,10 @@ export function MaintenanceFormPage() {
 
               {isPeriodic ? (
                 <div style={{ maxWidth: 320, marginTop: 24 }}>
-                  <DatePicker label="Дата следующего ТО" value={nextDate} onChange={setNextDate} minDate={todayISO()} />
+                  <DatePicker label="Дата следующего ТО" value={nextDate} onChange={setNextDate} minDate={todayISO()} maxDate={maxDate} />
                   <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 6 }}>
                     Не позже расчётной даты {formatShortDate(maxDate)} (сегодня + {regulationPeriodLabel(chosen).toLowerCase().replace('раз в ', '')}).
                   </div>
-                  {nextDate && nextDate > maxDate ? (
-                    <div style={{ fontSize: 12, color: 'var(--color-error)', marginTop: 4 }}>Дата не может быть позже расчётной.</div>
-                  ) : null}
                 </div>
               ) : null}
             </Card>
