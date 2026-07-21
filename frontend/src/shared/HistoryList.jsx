@@ -82,8 +82,8 @@ function HistoryEventRow({ row }) {
 
 const FILTERS = [
   { value: 'all', label: 'Все' },
-  { value: 'movement', label: 'Движения' },
   { value: 'change', label: 'Изменения' },
+  { value: 'movement', label: 'Движения' },
 ]
 // B13. Фильтр «Выполненные ТО» показываем только на карточках, где такие записи
 // есть (компонент общий — у лицензий/SIM его быть не должно).
