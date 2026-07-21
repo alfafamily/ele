@@ -239,6 +239,11 @@ export function TypesEditorPage({ domain, title }) {
                   offText="В оборудование нельзя устанавливать SIM"
                 />
                 <TypeFlagStatus
+                  on={!!selected.allows_license}
+                  onText="К оборудованию можно привязывать лицензии"
+                  offText="К оборудованию нельзя привязывать лицензии"
+                />
+                <TypeFlagStatus
                   on={!!selected.maintenance_enabled}
                   onText="Для оборудования можно проводить ТО"
                   offText="Для оборудования не доступно проведение ТО"

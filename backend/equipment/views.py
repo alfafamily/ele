@@ -199,6 +199,10 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if self.request.query_params.get("allows_sim") == "1":
             qs = qs.filter(equipment_type__allows_sim=True)
 
+        # Подбор оборудования под привязку лицензии — только типы с флагом.
+        if self.request.query_params.get("allows_license") == "1":
+            qs = qs.filter(equipment_type__allows_license=True)
+
         # B13+: фильтры по статусу ТО считаются по активным планам (регламент не
         # архивный, план не отменён, регламент не «по потребности»). Можно выбрать
         # несколько сразу — объединяем через OR по наличию подходящего плана.

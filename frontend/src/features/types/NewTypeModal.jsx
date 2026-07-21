@@ -8,6 +8,7 @@ import { Banner, Button, Input, Modal } from '../../shared/ui'
 export function NewTypeModal({ domain, onClose, onCreate }) {
   const [name, setName] = useState('')
   const [allowsSim, setAllowsSim] = useState(false)
+  const [allowsLicense, setAllowsLicense] = useState(false)
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false)
   const [kind, setKind] = useState('software')
   const [submitting, setSubmitting] = useState(false)
@@ -19,7 +20,9 @@ export function NewTypeModal({ domain, onClose, onCreate }) {
     setSubmitting(true)
     setError(null)
     try {
-      const extra = isLicense ? { kind } : { allows_sim: allowsSim, maintenance_enabled: maintenanceEnabled }
+      const extra = isLicense
+        ? { kind }
+        : { allows_sim: allowsSim, allows_license: allowsLicense, maintenance_enabled: maintenanceEnabled }
       await onCreate(name, extra)
     } catch (err) {
       setError(err.errors ? Object.values(err.errors).flat().join(' ') : err.detail || 'Не удалось создать тип.')
@@ -62,6 +65,15 @@ export function NewTypeModal({ domain, onClose, onCreate }) {
               <span style={{ fontSize: 14, fontWeight: 500 }}>В оборудование можно устанавливать SIM/E-SIM</span>
               <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
                 Только в оборудование этого типа можно будет устанавливать SIM/E-SIM.
+              </span>
+            </span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+            <input type="checkbox" checked={allowsLicense} onChange={(e) => setAllowsLicense(e.target.checked)} style={{ marginTop: 2, flex: 'none' }} />
+            <span style={{ minWidth: 0 }}>
+              <span style={{ fontSize: 14, fontWeight: 500 }}>К оборудованию можно привязывать лицензии</span>
+              <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
+                Только у оборудования этого типа будет блок «Установленные лицензии».
               </span>
             </span>
           </label>

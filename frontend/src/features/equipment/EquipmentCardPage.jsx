@@ -321,6 +321,10 @@ export function EquipmentCardPage() {
             </Can>
           ) : null}
 
+          {/* Блок лицензий — только если тип разрешает установку лицензий либо
+              лицензии уже привязаны (иначе — лишний блок). */}
+          {equipment.type_allows_license || (equipment.licenses?.length ?? 0) > 0 ? (
+            <>
           <div style={{ borderTop: '1px solid var(--color-border-hairline)', margin: '20px 0 16px' }} />
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -372,6 +376,8 @@ export function EquipmentCardPage() {
                 Привязать лицензию
               </Button>
             </Can>
+          ) : null}
+            </>
           ) : null}
 
           {/* B17: блок SIM показываем, если тип разрешает установку SIM либо
