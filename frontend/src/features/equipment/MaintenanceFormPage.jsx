@@ -122,11 +122,10 @@ export function MaintenanceFormPage() {
 
         <div style={{ maxWidth: 320, marginBottom: 24 }}>
           <DatePicker
-            label="Дата следующего ТО (необязательно)"
+            label="Дата следующего ТО"
             value={nextDate}
             onChange={setNextDate}
             minDate={todayISO()}
-            placeholder="Не выбрана"
           />
         </div>
 
