@@ -157,16 +157,16 @@ export function MaintenanceFormPage() {
             ))}
           </div>
         )}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Button variant="secondary" onClick={() => addRow('work')}>
-            <Icon name="plus" size={16} strokeWidth={2.4} />
-            Добавить работу
-          </Button>
-          <Button variant="secondary" onClick={() => addRow('material')}>
-            <Icon name="plus" size={16} strokeWidth={2.4} />
-            Добавить материал
-          </Button>
-        </div>
+        {/* Кликабельный текст: добавляет строку с предзаполненным «Работа» и
+            количеством 1 — тип/количество пользователь меняет в самой строке. */}
+        <button
+          type="button"
+          onClick={() => addRow('work')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--color-primary)', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', padding: 0 }}
+        >
+          <Icon name="plus" size={16} strokeWidth={2.4} />
+          Добавить работу/материал
+        </button>
 
         <div style={{ marginTop: 24 }}>
           <Input

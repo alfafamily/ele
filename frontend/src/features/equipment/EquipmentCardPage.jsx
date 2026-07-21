@@ -169,6 +169,11 @@ export function EquipmentCardPage() {
             )}
           </Card>
 
+          {/* История — в основной колонке (следует сразу за блоками), чтобы не
+              оставался большой отступ, когда боковой блок выше основного. */}
+          <Card>
+            <HistoryList path={getEquipmentHistoryPath(equipment.id)} reloadKey={historyKey} />
+          </Card>
         </div>
 
         {/* Боковой блок: «Закреплено за» + «Установленные лицензии». У списанного
@@ -377,10 +382,6 @@ export function EquipmentCardPage() {
           ) : null}
         </Card>
         ) : null}
-
-        <Card className="ele-obj-layout__history">
-          <HistoryList path={getEquipmentHistoryPath(equipment.id)} reloadKey={historyKey} />
-        </Card>
       </div>
 
       {confirm ? (
