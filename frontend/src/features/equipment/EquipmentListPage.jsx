@@ -8,7 +8,7 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
-import { maintenanceIndicators } from './statusLabels.js'
+import { maintenanceRowIndicators } from './statusLabels.js'
 
 const CACHE_KEY = 'equipment-list'
 
@@ -173,16 +173,16 @@ export function EquipmentListPage() {
                     B13: пара иконок статуса ТО (гаечный ключ + часы). */}
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {/* B23: у пользователя с ограниченной областью ТО (учётчик/роль
-                        ТО с «некоторыми» типами) статус ТО в списке показываем
-                        только для доступных ему типов; наблюдатель/управляющий
-                        регламентами (без права проведения) видит статусы везде. */}
-                    {(perms.canSeeMaintenance && (!perms.canPerformMaintenance || canMaintainType(perms, row.equipment_type))
-                      ? maintenanceIndicators(row.maintenance_summary)
-                      : []
-                    ).map((ind) => (
+                    {/* B23: цветные статусы проведения ТО — только для типов, по
+                        которым пользователь проводит ТО (в своей области) или для
+                        Наблюдателя; серый «нет даты» — дополнительно для тех, кто
+                        управляет регламентами (задать дату — их зона). */}
+                    {maintenanceRowIndicators(row.maintenance_summary, {
+                      fullStatus: canMaintainType(perms, row.equipment_type) || perms.isObserver,
+                      manageOnly: perms.canManageMaintenance,
+                    }).map((ind, i) => (
                       <span
-                        key={ind.icon}
+                        key={i}
                         title={ind.title}
                         style={{ display: 'inline-flex', alignItems: 'center', flex: 'none', color: ind.color }}
                       >
