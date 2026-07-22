@@ -565,7 +565,7 @@ export const GUIDE_SECTIONS = [
       {
         type: 'note',
         text: 'После изменения параметров в .env требуется перезапуск системы через командную строку:',
-        code: 'cd /opt/ele\ndocker compose -f docker-compose.prod.yml up -d',
+        code: 'cd <путь_до_папки_с_приложением>\ndocker compose -f docker-compose.prod.yml up -d',
       },
     ],
   },
