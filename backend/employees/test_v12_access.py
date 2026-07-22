@@ -190,14 +190,17 @@ class TerminateDispositionTests(APITestCase):
         self.client.force_authenticate(user=self.admin)
         self.emp = Employee.objects.create(first_name="Иван", last_name="Петров")
         self.b1 = Building.objects.create(name="Корпус А")
+        self.r1 = Room.objects.create(building=self.b1, name="К1")
+        self.store = Place.objects.create(room=self.r1, name="Склад", place_type=Place.PlaceType.STORAGE)
         self.sim = SimCard.objects.create(phone_number="+70000000002", employee=self.emp)
         self.ap = AccessPass.objects.create(object_type="pass", employee=self.emp)
         self.ap.buildings.add(self.b1)
 
     def test_terminate_with_per_item_actions(self):
+        # SIM утилизируется (склад не нужен), пропуск открепляется на склад.
         resp = self.client.post(f"/api/employees/{self.emp.id}/terminate/", {
             "sim_actions": {str(self.sim.id): {"action": "utilized", "comment": "с"}},
-            "pass_actions": {str(self.ap.id): {"action": "detach"}},
+            "pass_actions": {str(self.ap.id): {"action": "detach", "storage_place": self.store.id}},
         }, format="json")
         self.assertEqual(resp.status_code, 200, resp.data)
         self.sim.refresh_from_db()
@@ -205,6 +208,7 @@ class TerminateDispositionTests(APITestCase):
         self.assertTrue(self.sim.is_utilized)
         self.assertFalse(self.ap.is_utilized)
         self.assertIsNone(self.ap.employee_id)  # откреплён
+        self.assertEqual(self.ap.storage_place_id, self.store.id)
         self.assertEqual(resp.data["utilized_sim_count"], 1)
         self.assertEqual(resp.data["deactivated_pass_count"], 1)
 
