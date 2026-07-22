@@ -59,7 +59,6 @@ export const GUIDE_SECTIONS = [
     id: 'profile',
     title: 'Профиль',
     blocks: [
-      { type: 'p', text: 'Открывается по карточке профиля.' },
       {
         type: 'ul',
         items: [
