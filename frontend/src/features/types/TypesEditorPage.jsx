@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { usePermissions } from '../../app/usePermissions.js'
 import { VALUE_TYPE_LABELS } from '../../shared/eav'
-import { ActionMenu, Badge, Banner, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
+import { ActionMenu, Badge, Banner, BackButton, Button, Card, ConfirmModal, Icon, SearchInput, Spinner } from '../../shared/ui'
 import { RegulationFormModal } from '../equipment/RegulationFormModal.jsx'
 import { DeleteTypeModal } from './DeleteTypeModal.jsx'
 import { FieldFormModal } from './FieldFormModal.jsx'
@@ -33,6 +33,7 @@ export function TypesEditorPage({ domain, title }) {
   const [types, setTypes] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [showArchived, setShowArchived] = useState(false)
+  const [search, setSearch] = useState('') // поиск по названию типа (клиентский)
   const [showNewType, setShowNewType] = useState(false)
   const [renameTarget, setRenameTarget] = useState(null) // тип, который переименовываем
   const [deleteTarget, setDeleteTarget] = useState(null) // тип, который удаляем
@@ -98,7 +99,10 @@ export function TypesEditorPage({ domain, title }) {
   // Архивные типы скрыты по умолчанию; кнопка «Показать архив» — как у списка
   // Зданий в «Помещениях».
   const hasArchived = types.some((t) => t.is_archived)
-  const visibleTypes = showArchived ? types : types.filter((t) => !t.is_archived)
+  const q = search.trim().toLowerCase()
+  const visibleTypes = (showArchived ? types : types.filter((t) => !t.is_archived)).filter(
+    (t) => !q || t.name.toLowerCase().includes(q),
+  )
 
   const toggleArchive = async (type) => {
     await api.updateType(type.id, { is_archived: !type.is_archived })
@@ -188,8 +192,13 @@ export function TypesEditorPage({ domain, title }) {
               </button>
             ) : null}
           </div>
+          <div style={{ padding: '0 4px 8px' }}>
+            <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
+          </div>
           {visibleTypes.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', padding: '8px 10px' }}>Типы пока не созданы</div>
+            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', padding: '8px 10px' }}>
+              {q ? 'Ничего не найдено' : 'Типы пока не созданы'}
+            </div>
           ) : null}
           {visibleTypes.map((t) => (
             <div
