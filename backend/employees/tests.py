@@ -10,7 +10,7 @@ from rest_framework.test import APITestCase
 
 from storage import backends as storage_backends
 
-from locations.models import Building
+from locations.models import Building, Place, Room
 
 from .models import AccessPass, Employee, SimCard
 
@@ -57,23 +57,48 @@ class EmployeeTerminateTests(APITestCase):
         self.eq_type = EquipmentType.objects.create(name="ПК")
         self.eq1 = Equipment.objects.create(inventory_number="PC-1", equipment_type=self.eq_type, employee=self.employee)
         self.eq2 = Equipment.objects.create(inventory_number="PC-2", equipment_type=self.eq_type, employee=self.employee)
+        # B26: увольнение перемещает имущество на склад — он обязателен.
+        b = Building.objects.create(name="Здание")
+        r = Room.objects.create(building=b, name="Комн.")
+        self.store = Place.objects.create(room=r, name="Склад", place_type=Place.PlaceType.STORAGE)
+        self.eq_actions = {
+            str(self.eq1.id): {"storage_place": self.store.id},
+            str(self.eq2.id): {"storage_place": self.store.id},
+        }
+
+    def _terminate(self, **extra):
+        return self.client.post(
+            f"/api/employees/{self.employee.id}/terminate/",
+            {"equipment_actions": self.eq_actions, **extra},
+            format="json",
+        )
 
     def test_terminate_detaches_all_equipment(self):
-        resp = self.client.post(f"/api/employees/{self.employee.id}/terminate/", format="json")
+        resp = self._terminate()
         self.assertEqual(resp.status_code, 200, resp.data)
         self.assertEqual(resp.data["detached_equipment_count"], 2)
         self.employee.refresh_from_db()
         self.assertFalse(self.employee.is_employed)
         self.eq1.refresh_from_db()
         self.eq2.refresh_from_db()
+        # Оборудование откреплено и переехало на указанный склад.
         self.assertIsNone(self.eq1.employee)
         self.assertIsNone(self.eq2.employee)
+        self.assertEqual(self.eq1.place_id, self.store.id)
+        self.assertEqual(self.eq2.place_id, self.store.id)
+
+    def test_terminate_requires_storage_for_equipment(self):
+        # Без склада назначения увольнение отклоняется, сотрудник не уволен.
+        resp = self.client.post(f"/api/employees/{self.employee.id}/terminate/", format="json")
+        self.assertEqual(resp.status_code, 400, resp.data)
+        self.employee.refresh_from_db()
+        self.assertTrue(self.employee.is_employed)
+        self.eq1.refresh_from_db()
+        self.assertEqual(self.eq1.employee_id, self.employee.id)
 
     def test_terminate_with_linked_user_deactivation(self):
         user = User.objects.create_user(email="worker@example.com", password="Str0ng!Pass1", employee=self.employee)
-        resp = self.client.post(
-            f"/api/employees/{self.employee.id}/terminate/", {"deactivate_user": True}, format="json"
-        )
+        resp = self._terminate(deactivate_user=True)
         self.assertEqual(resp.status_code, 200, resp.data)
         self.assertTrue(resp.data["deactivated_user"])
         user.refresh_from_db()
@@ -81,7 +106,7 @@ class EmployeeTerminateTests(APITestCase):
 
     def test_terminate_without_deactivation_keeps_user_active(self):
         user = User.objects.create_user(email="worker@example.com", password="Str0ng!Pass1", employee=self.employee)
-        resp = self.client.post(f"/api/employees/{self.employee.id}/terminate/", format="json")
+        resp = self._terminate()
         self.assertEqual(resp.status_code, 200, resp.data)
         self.assertFalse(resp.data["deactivated_user"])
         user.refresh_from_db()
@@ -89,19 +114,23 @@ class EmployeeTerminateTests(APITestCase):
 
     def test_terminate_detaches_sim_cards(self):
         # SIM — переиспользуемые объекты: при увольнении отвязываются
-        # (деактивируются) и освобождаются для повторной выдачи.
+        # (деактивируются) и переезжают на указанный склад.
         sim1 = SimCard.objects.create(employee=self.employee, phone_number="+79001112233")
         sim2 = SimCard.objects.create(employee=self.employee, phone_number="+79004445566")
-        resp = self.client.post(f"/api/employees/{self.employee.id}/terminate/", format="json")
+        resp = self._terminate(sim_actions={
+            str(sim1.id): {"action": "detach", "storage_place": self.store.id},
+            str(sim2.id): {"action": "detach", "storage_place": self.store.id},
+        })
         self.assertEqual(resp.status_code, 200, resp.data)
         self.assertEqual(resp.data["deactivated_sim_count"], 2)
         for sim in (sim1, sim2):
             sim.refresh_from_db()
             self.assertTrue(sim.is_deactivated)
             self.assertIsNone(sim.employee_id)
+            self.assertEqual(sim.storage_place_id, self.store.id)
 
     def test_restore_marks_employed_again(self):
-        self.client.post(f"/api/employees/{self.employee.id}/terminate/", format="json")
+        self._terminate()
         resp = self.client.post(f"/api/employees/{self.employee.id}/restore/", format="json")
         self.assertEqual(resp.status_code, 200, resp.data)
         self.employee.refresh_from_db()
