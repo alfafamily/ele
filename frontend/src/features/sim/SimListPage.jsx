@@ -132,8 +132,11 @@ export function SimListPage() {
                   <div style={{ minWidth: 0 }}>
                     {row.employee_name ? (
                       <div className="ele-clamp-2">{row.employee_name}</div>
-                    ) : row.equipment_name ? (
-                      <div className="ele-clamp-2">В оборудовании: {row.equipment_name}</div>
+                    ) : row.equipment_detail ? (
+                      <div style={{ minWidth: 0 }}>
+                        <div className="ele-clamp-2">{row.equipment_detail.type_and_model}</div>
+                        <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.equipment_detail.inventory_number}</div>
+                      </div>
                     ) : row.sim_type === 'esim' ? (
                       <span style={{ color: 'var(--color-text-placeholder)' }}>На хранении у оператора</span>
                     ) : row.storage_place_detail ? (

@@ -131,8 +131,11 @@ export function SimCardPage() {
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>В оборудовании</div>
                   <Link className="ele-clamp-2" to={`/equipment/${sim.equipment}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                    {sim.equipment_name}
+                    {sim.equipment_detail?.type_and_model || '—'}
                   </Link>
+                  {sim.equipment_detail?.inventory_number ? (
+                    <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2, overflowWrap: 'anywhere' }}>{sim.equipment_detail.inventory_number}</div>
+                  ) : null}
                 </div>
               </div>
               <Can perm="canManageEmployees">

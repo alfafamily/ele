@@ -3,9 +3,11 @@ import { apiGet, apiPatch, apiPost, apiRequest } from '../../shared/api/client'
 export const getEmployee = (id) => apiGet(`/api/employees/${id}/`)
 export const createEmployee = (payload) => apiPost('/api/employees/', payload)
 export const updateEmployee = (id, payload) => apiPatch(`/api/employees/${id}/`, payload)
-export const terminateEmployee = (id, { deactivateUser, simActions, passActions } = {}) =>
+export const terminateEmployee = (id, { deactivateUser, equipmentActions, toolActions, simActions, passActions } = {}) =>
   apiPost(`/api/employees/${id}/terminate/`, {
     ...(deactivateUser ? { deactivate_user: true } : {}),
+    ...(equipmentActions ? { equipment_actions: equipmentActions } : {}),
+    ...(toolActions ? { tool_actions: toolActions } : {}),
     ...(simActions ? { sim_actions: simActions } : {}),
     ...(passActions ? { pass_actions: passActions } : {}),
   })

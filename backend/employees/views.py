@@ -79,39 +79,68 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def terminate(self, request, pk=None):
-        """Увольнение (E3): отвязывает всё оборудование, обрабатывает выданные
-        SIM-карты и пропуска по выбору пользователя (открепить / утилизировать /
-        передать арендодателю), опционально деактивирует связанного Пользователя.
+        """Увольнение (E3): по каждому закреплённому объекту (оборудование,
+        инструменты, SIM/E-SIM, пропуска/ключи) переносит его на выбранный склад
+        назначения либо оставляет свободным; для SIM и пропусков возможна ещё и
+        утилизация / передача арендодателю. Сотрудник снимается со всех рабочих
+        мест. Опционально деактивирует связанного Пользователя.
 
-        sim_actions / pass_actions — словари {id: {"action": ..., "comment": ...}}.
-        action: 'detach' (по умолчанию) | 'utilized' | 'handed' (только пропуска).
+        *_actions — словари {id: {...}}. Для equipment/tools: {"storage_place"}.
+        Для sim/pass: {"action", "comment", "storage_place"}; action: 'detach'
+        (по умолчанию) | 'utilized' | 'handed' (только пропуска). storage_place
+        (место хранения) необязателен — без него объект становится свободным.
+        Ключ tool_actions — id инструмента (карточки), а не размещения.
         """
         from django.utils import timezone
 
-        from tools.models import ToolMovement
+        from core.placement import get_storage_place
+        from tools.models import ToolAllocation, ToolMovement
 
         employee = self.get_object()
+
+        # B26: для каждого объекта можно указать склад назначения (место хранения),
+        # куда он переезжает. Ключи словарей — id объекта; значение — {storage_place}.
+        equipment_actions = request.data.get("equipment_actions") or {}
+        tool_actions = request.data.get("tool_actions") or {}
+        sim_actions = request.data.get("sim_actions") or {}
+        pass_actions = request.data.get("pass_actions") or {}
+
+        def opt_storage(spec):
+            """Необязательный склад назначения из spec. None → объект становится
+            свободным/неиспользуемым без склада (прежнее поведение)."""
+            pid = (spec or {}).get("storage_place")
+            if pid in (None, ""):
+                return None
+            return get_storage_place(pid)
+
         equipment_list = list(employee.equipment.all())
         for eq in equipment_list:
             # По одной, не bulk .update() — иначе не сработает история.
             eq.employee = None
-            eq.save(update_fields=["employee"])
+            eq.place = opt_storage(equipment_actions.get(str(eq.id)))
+            eq.save(update_fields=["employee", "place"])
 
-        # Закреплённые за сотрудником инструменты возвращаем в свободный пул своих
-        # карточек — по каждому пишем движение «Открепление».
+        # Закреплённые за сотрудником инструменты возвращаем в свободный остаток
+        # своих карточек: на выбранный склад (появляется размещение storage) либо
+        # в общий свободный остаток «без склада». По каждому — движение «Открепление».
         tool_allocations = list(employee.tool_allocations.all())
         for alloc in tool_allocations:
+            storage = opt_storage(tool_actions.get(str(alloc.tool_id)))
+            if storage is not None:
+                dest, _ = ToolAllocation.objects.get_or_create(
+                    tool=alloc.tool, place=storage, defaults={"quantity": 0}
+                )
+                dest.quantity += alloc.quantity
+                dest.save(update_fields=["quantity"])
             ToolMovement.objects.create(
                 tool=alloc.tool,
                 kind=ToolMovement.Kind.UNASSIGN,
                 quantity=alloc.quantity,
                 employee=employee,
+                storage_place=storage,
                 created_by=request.user if request.user.is_authenticated else None,
             )
             alloc.delete()
-
-        sim_actions = request.data.get("sim_actions") or {}
-        pass_actions = request.data.get("pass_actions") or {}
 
         # SIM-карты — переиспользуемые объекты: открепляем (⇒ «Неиспользуемые») или
         # утилизируем по выбору. По одной, не bulk — иначе не сработает история.
@@ -129,7 +158,9 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                     sim._change_reason = comment
                 sim.save(update_fields=["employee", "is_utilized", "utilized_at"])
             else:
-                sim.save(update_fields=["employee"])
+                # E-SIM виртуальна — на складе не хранится, склад игнорируем.
+                sim.storage_place = opt_storage(spec) if sim.sim_type != "esim" else None
+                sim.save(update_fields=["employee", "storage_place"])
 
         active_passes = list(employee.passes.all())
         utilized_pass_count = 0
@@ -148,7 +179,14 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                     ap._change_reason = comment
                 ap.save(update_fields=["employee", "is_utilized", "utilized_at", "utilization_reason"])
             else:
-                ap.save(update_fields=["employee"])
+                ap.storage_place = opt_storage(spec)
+                ap.save(update_fields=["employee", "storage_place"])
+
+        # B26: снимаем сотрудника со всех рабочих мест (M2M) — по одному, чтобы
+        # сработала m2m-история Места.
+        detached_workplaces = list(employee.workplaces.all())
+        for wp in detached_workplaces:
+            wp.employees.remove(employee)
 
         employee.is_employed = False
         employee.save(update_fields=["is_employed"])
@@ -163,6 +201,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         data = EmployeeSerializer(employee).data
         data["detached_equipment_count"] = len(equipment_list)
         data["detached_tool_count"] = len(tool_allocations)
+        data["detached_workplace_count"] = len(detached_workplaces)
         data["deactivated_sim_count"] = len(active_sims) - utilized_sim_count
         data["utilized_sim_count"] = utilized_sim_count
         data["deactivated_pass_count"] = len(active_passes) - utilized_pass_count
@@ -356,7 +395,7 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = SimCard.objects.select_related(
-            "employee", "employee__avatar", "equipment", "storage_place__room__building"
+            "employee", "employee__avatar", "equipment__equipment_type", "storage_place__room__building"
         ).all()
         user = self.request.user
         if user.role == "employee" and not user.is_observer:

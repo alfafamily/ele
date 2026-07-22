@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiPost } from '../../shared/api/client'
 import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
+import { EquipmentPicker } from '../../shared/EquipmentPicker.jsx'
+import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
-import { BackButton, Banner, Card, FormActions, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
+import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
 import {
   createLicense,
   deleteLicenseFieldFilePath,
@@ -33,6 +35,8 @@ export function LicenseFormPage() {
   const [fileValues, setFileValues] = useState({})
   const [customFields, setCustomFields] = useState([])
   const [comment, setComment] = useState('')
+  const [placementMode, setPlacementMode] = useState('free') // 'free' | 'equipment'
+  const [placementEquipment, setPlacementEquipment] = useState(null)
   const [storagePlaceId, setStoragePlaceId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -83,9 +87,19 @@ export function LicenseFormPage() {
       field_values_input: typeFields.filter((f) => f.value_type !== 'file').map((f) => ({ field: f.id, value: values[f.id] ?? null })),
       custom_fields: customFields.filter((f) => f.name.trim()),
     }
-    // Аппаратная лицензия при создании может лежать на складе (по желанию).
-    if (!isEdit && selectedType?.kind === 'hardware' && storagePlaceId) {
-      payload.storage_place = Number(storagePlaceId)
+    // Размещение при создании: в оборудовании или свободна (аппаратная — по
+    // желанию на складе). При редактировании размещение меняется из карточки.
+    if (!isEdit) {
+      if (placementMode === 'equipment') {
+        if (!placementEquipment) {
+          setError('Выберите оборудование.')
+          setSubmitting(false)
+          return
+        }
+        payload.equipment = placementEquipment.id
+      } else if (selectedType?.kind === 'hardware' && storagePlaceId) {
+        payload.storage_place = Number(storagePlaceId)
+      }
     }
     if (!isEdit && comment.trim()) payload.comment = comment.trim()
     try {
@@ -160,9 +174,6 @@ export function LicenseFormPage() {
                   Сменить тип можно только на тип того же вида ({lockedKind === 'hardware' ? 'аппаратный' : 'программный'}).
                 </div>
               ) : null}
-              <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>
-                Привязать к оборудованию можно после сохранения — из карточки лицензии.
-              </div>
             </div>
           </Card>
 
@@ -209,13 +220,42 @@ export function LicenseFormPage() {
             <CustomFieldsEditor items={customFields} onChange={setCustomFields} />
           </Card>
 
-          {!isEdit && selectedType?.kind === 'hardware' ? (
+          {!isEdit && selectedType ? (
             <Card>
-              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Место хранения</div>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Размещение</div>
               <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
-                Необязательно. Свободный физический ключ аппаратной лицензии можно положить на склад.
+                {placementMode === 'equipment'
+                  ? 'Лицензия будет привязана к выбранному оборудованию.'
+                  : selectedType.kind === 'hardware'
+                    ? 'Свободна. Физический ключ аппаратной лицензии можно положить на склад.'
+                    : 'Свободна — не привязана к оборудованию.'}
               </div>
-              <PlaceSelect placeType="storage" label={null} value={storagePlaceId} onChange={setStoragePlaceId} />
+              <ModeToggle
+                mode={placementMode}
+                onChange={(m) => { setPlacementMode(m); setPlacementEquipment(null); setStoragePlaceId('') }}
+                options={[
+                  { value: 'free', label: 'Свободна' },
+                  { value: 'equipment', label: 'В оборудовании' },
+                ]}
+              />
+              {placementMode === 'equipment' ? (
+                placementEquipment ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
+                    <Icon name="tag" size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{placementEquipment.type_and_model}</span>
+                      <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', fontFamily: 'var(--font-mono)' }}>{placementEquipment.inventory_number}</span>
+                    </span>
+                    <button type="button" onClick={() => setPlacementEquipment(null)} title="Изменить" aria-label="Изменить" style={{ width: 28, height: 28, flex: 'none', borderRadius: 8, background: 'var(--color-surface)', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 1px var(--color-border)' }}>
+                      <Icon name="x" size={15} strokeWidth={2} />
+                    </button>
+                  </div>
+                ) : (
+                  <EquipmentPicker licenseOnly onSelect={setPlacementEquipment} />
+                )
+              ) : selectedType.kind === 'hardware' ? (
+                <PlaceSelect placeType="storage" label={null} value={storagePlaceId} onChange={setStoragePlaceId} />
+              ) : null}
             </Card>
           ) : null}
 

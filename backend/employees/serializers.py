@@ -28,7 +28,8 @@ class SimCardSerializer(serializers.ModelSerializer):
     employee_name = serializers.SerializerMethodField()
     employee_avatar = serializers.SerializerMethodField()
     # Размещение (B8): SIM за сотрудником ИЛИ за оборудованием; свободная — на складе.
-    equipment_name = serializers.SerializerMethodField()
+    # equipment_detail — тип+модель и учётный номер оборудования (как у лицензий).
+    equipment_detail = EquipmentMiniSerializer(source="equipment", read_only=True)
     storage_place_detail = serializers.SerializerMethodField()
     # Объявлено явно, чтобы уникальность проверялась своим сообщением
     # (validate_phone_number), а не авто-валидатором DRF по UniqueConstraint.
@@ -42,7 +43,7 @@ class SimCardSerializer(serializers.ModelSerializer):
             "employee_name",
             "employee_avatar",
             "equipment",
-            "equipment_name",
+            "equipment_detail",
             "storage_place",
             "storage_place_detail",
             "sim_type",
@@ -67,9 +68,6 @@ class SimCardSerializer(serializers.ModelSerializer):
         if obj.employee_id and obj.employee.avatar_id:
             return StoredFileSerializer(obj.employee.avatar).data
         return None
-
-    def get_equipment_name(self, obj):
-        return str(obj.equipment) if obj.equipment_id else None
 
     def get_storage_place_detail(self, obj):
         return place_detail(obj.storage_place) if obj.storage_place_id else None

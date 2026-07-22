@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { apiGet } from '../../shared/api/client'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
+import { EquipmentPicker } from '../../shared/EquipmentPicker.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
-import { BackButton, Banner, Card, FormActions, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
+import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
 import {
   createSimCard,
   getSimCard,
@@ -31,6 +32,7 @@ export function SimFormPage() {
   const [provider, setProvider] = useState('')
   const [placementMode, setPlacementMode] = useState(employeeId ? 'employee' : 'storage')
   const [placementEmployee, setPlacementEmployee] = useState(null)
+  const [placementEquipment, setPlacementEquipment] = useState(null)
   const [storagePlaceId, setStoragePlaceId] = useState('')
   const [comment, setComment] = useState('')
   const [operators, setOperators] = useState([])
@@ -84,17 +86,24 @@ export function SimFormPage() {
       network_operator: networkOperator,
       provider,
     }
-    // Размещение при создании: за сотрудником или на складе (E-SIM — только за
-    // сотрудником или свободна, без склада).
+    // Размещение при создании: за сотрудником, в оборудовании или на складе
+    // (E-SIM — за сотрудником/в оборудовании или свободна, без склада).
     if (!isEdit) {
       if (placementMode === 'employee') {
         if (placementEmployee) {
           payload.employee = placementEmployee.id
         } else if (simType !== 'esim') {
-          setError('Выберите сотрудника или место хранения.')
+          setError('Выберите сотрудника, оборудование или место хранения.')
           setSubmitting(false)
           return
         }
+      } else if (placementMode === 'equipment') {
+        if (!placementEquipment) {
+          setError('Выберите оборудование.')
+          setSubmitting(false)
+          return
+        }
+        payload.equipment = placementEquipment.id
       } else {
         if (!storagePlaceId) {
           setError('Укажите место хранения для свободной SIM-карты.')
@@ -191,25 +200,42 @@ export function SimFormPage() {
                 {employeeId
                   ? 'SIM-карта будет закреплена за сотрудником.'
                   : simType === 'esim'
-                    ? 'E-SIM виртуальна: закрепите за сотрудником или оставьте свободной (на хранении у оператора).'
-                    : 'За сотрудником или на складе (место хранения).'}
+                    ? 'E-SIM виртуальна: закрепите за сотрудником, установите в оборудование или оставьте свободной (на хранении у оператора).'
+                    : 'За сотрудником, в оборудовании или на складе (место хранения).'}
               </div>
               {employeeId ? (
                 placementEmployee ? <SelectedEmployee employee={placementEmployee} /> : null
               ) : (
                 <>
-                  {simType !== 'esim' ? (
-                    <ModeToggle
-                      mode={placementMode}
-                      onChange={(m) => { setPlacementMode(m); setStoragePlaceId('') }}
-                      options={[{ value: 'employee', label: 'За сотрудником' }, { value: 'storage', label: 'На складе' }]}
-                    />
-                  ) : null}
+                  <ModeToggle
+                    mode={placementMode}
+                    onChange={(m) => { setPlacementMode(m); setStoragePlaceId(''); setPlacementEquipment(null) }}
+                    options={[
+                      { value: 'employee', label: 'За сотрудником' },
+                      { value: 'equipment', label: 'В оборудовании' },
+                      ...(simType !== 'esim' ? [{ value: 'storage', label: 'На складе' }] : []),
+                    ]}
+                  />
                   {placementMode === 'employee' ? (
                     placementEmployee ? (
                       <SelectedEmployee employee={placementEmployee} onClear={() => setPlacementEmployee(null)} />
                     ) : (
                       <EmployeePicker onSelect={setPlacementEmployee} />
+                    )
+                  ) : placementMode === 'equipment' ? (
+                    placementEquipment ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
+                        <Icon name="tag" size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                        <span style={{ minWidth: 0, flex: 1 }}>
+                          <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{placementEquipment.type_and_model}</span>
+                          <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', fontFamily: 'var(--font-mono)' }}>{placementEquipment.inventory_number}</span>
+                        </span>
+                        <button type="button" onClick={() => setPlacementEquipment(null)} title="Изменить" aria-label="Изменить" style={{ width: 28, height: 28, flex: 'none', borderRadius: 8, background: 'var(--color-surface)', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 1px var(--color-border)' }}>
+                          <Icon name="x" size={15} strokeWidth={2} />
+                        </button>
+                      </div>
+                    ) : (
+                      <EquipmentPicker simOnly onSelect={setPlacementEquipment} />
                     )
                   ) : (
                     <PlaceSelect placeType="storage" label={null} required value={storagePlaceId} onChange={setStoragePlaceId} />
