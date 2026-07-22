@@ -204,13 +204,13 @@ export function EquipmentCardPage() {
             оборудования всегда пуст — не показываем (одна колонка). */}
         {!equipment.is_written_off ? (
         <Card className="ele-obj-layout__side ele-card-sticky">
-          {/* B13+/B23. Блок «Обслуживание» — если у типа включено ТО и пользователь
-              причастен к ТО. Блок проведения ТО (кнопка «Провести ТО») показывается
-              только для типов в области пользователя (canMaintainType); чистые
-              наблюдатели/управляющие регламентами (без права проведения) видят
-              список планов read-only на всех типах. */}
-          {equipment.type_maintenance_enabled && perms.canSeeMaintenance
-            && (!perms.canPerformMaintenance || canMaintainType(perms, equipment.equipment_type)) ? (
+          {/* B13+/B23. Блок «Обслуживание» (проведение ТО) — только у тех, кто
+              реально проводит ТО по этому типу (canMaintainType: право проведения +
+              тип в области) и у Наблюдателя (сквозной read-only). «Управляющий
+              регламентами» (учётчик с флагом регламентов, без проведения) этот блок
+              НЕ видит — статусы планов ему доступны в блоке «Регламенты». */}
+          {equipment.type_maintenance_enabled
+            && (canMaintainType(perms, equipment.equipment_type) || (perms.isObserver && perms.canSeeMaintenance)) ? (
             <>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Обслуживание</div>
               {(() => {
