@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Card, Icon } from '../../shared/ui'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
-import { GUIDE_SECTIONS, GUIDE_INTRO, GUIDE_OVERVIEW } from './guideContent.jsx'
+import { GUIDE_SECTIONS } from './guideContent.jsx'
 import './GuidePage.css'
 
 // Раздел «Руководство» — статичная инструкция пользователя. Контент вынесен
@@ -87,19 +87,6 @@ function SectionCard({ section, num, id }) {
         {section.title}
       </h2>
       {section.blocks.map((b, bi) => (
-        <Block key={bi} block={b} />
-      ))}
-    </Card>
-  )
-}
-
-// Безномерная карточка-ориентир «Что где учитывается» — между вступлением и
-// первым нумерованным разделом. Заголовок без номера (span номера не рендерим).
-function OverviewCard() {
-  return (
-    <Card className="ele-guide__section">
-      <h2 className="ele-guide__h2">{GUIDE_OVERVIEW.title}</h2>
-      {GUIDE_OVERVIEW.blocks.map((b, bi) => (
         <Block key={bi} block={b} />
       ))}
     </Card>
@@ -215,18 +202,6 @@ function GuideMobile() {
         <GuideSelect sections={GUIDE_SECTIONS} index={index} onPick={go} />
 
         <div className="ele-guide-m__stage">
-          {index === 0 ? (
-            <>
-              <Card className="ele-guide__intro">
-                {GUIDE_INTRO.map((text, i) => (
-                  <p key={i} className="ele-guide__p">
-                    {renderInline(text)}
-                  </p>
-                ))}
-              </Card>
-              <OverviewCard />
-            </>
-          ) : null}
           <SectionCard section={GUIDE_SECTIONS[index]} num={index + 1} />
         </div>
 
@@ -273,16 +248,6 @@ export function GuidePage() {
         </nav>
 
         <div className="ele-guide__content">
-          <Card className="ele-guide__intro">
-            {GUIDE_INTRO.map((text, i) => (
-              <p key={i} className="ele-guide__p">
-                {renderInline(text)}
-              </p>
-            ))}
-          </Card>
-
-          <OverviewCard />
-
           {GUIDE_SECTIONS.map((s, i) => (
             <SectionCard key={s.id} section={s} num={i + 1} id={s.id} />
           ))}

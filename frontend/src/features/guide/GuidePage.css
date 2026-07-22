@@ -63,10 +63,6 @@
   min-width: 0;
 }
 
-.ele-guide__intro .ele-guide__p:last-child {
-  margin-bottom: 0;
-}
-
 .ele-guide__section {
   scroll-margin-top: 20px;
 }
