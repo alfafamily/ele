@@ -228,10 +228,12 @@ export function TerminateModal({ employee, onClose, onDone }) {
       ) : null}
 
       {workplaces.length > 0 ? (
-        <Banner variant="info">
-          Сотрудник будет откреплён от {workplaces.length}{' '}
-          {workplaces.length === 1 ? 'рабочего места' : 'рабочих мест'}. Стоящее на них имущество остаётся на местах.
-        </Banner>
+        <div style={{ margin: '14px 0' }}>
+          <Banner variant="info">
+            Сотрудник будет откреплён от {workplaces.length}{' '}
+            {workplaces.length === 1 ? 'рабочего места' : 'рабочих мест'}. Стоящее на них имущество остаётся на местах.
+          </Banner>
+        </div>
       ) : null}
 
       {employee.user_email ? (
