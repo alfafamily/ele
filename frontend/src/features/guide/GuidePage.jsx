@@ -67,7 +67,12 @@ function Block({ block }) {
     case 'ul':
       return <List items={block.items} />
     case 'note':
-      return <div className="ele-guide__note">{renderInline(block.text)}</div>
+      return (
+        <div className="ele-guide__note">
+          {renderInline(block.text)}
+          {block.code ? <pre className="ele-guide__code">{block.code}</pre> : null}
+        </div>
+      )
     case 'table':
       return (
         <div className="ele-guide__table-scroll">
