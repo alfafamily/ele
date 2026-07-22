@@ -252,15 +252,22 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
         search = self.request.query_params.get("search")
         if search:
-            # Поиск по Учётному номеру, ФИО Сотрудника, Типу и Модели.
+            # Поиск по Учётному номеру; Типу и Модели; закреплённому Сотруднику
+            # (Имя/Фамилия/Должность/Отдел); Рабочему месту (Здание/Помещение/
+            # Место) и Складу (Название места хранения — тот же FK place).
             # «Модель» — зафиксированный (is_locked) реквизит Типа, значение в
             # value_text; join по field_values даёт дубли строк — снимаем distinct().
             qs = qs.filter(
                 Q(inventory_number__icontains=search)
-                | Q(employee__first_name__icontains=search)
-                | Q(employee__last_name__icontains=search)
                 | Q(equipment_type__name__icontains=search)
                 | Q(field_values__field__is_locked=True, field_values__value_text__icontains=search)
+                | Q(employee__first_name__icontains=search)
+                | Q(employee__last_name__icontains=search)
+                | Q(employee__position__icontains=search)
+                | Q(employee__department__icontains=search)
+                | Q(place__name__icontains=search)
+                | Q(place__room__name__icontains=search)
+                | Q(place__room__building__name__icontains=search)
             ).distinct()
         return qs
 

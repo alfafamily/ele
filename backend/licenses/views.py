@@ -140,13 +140,21 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
         search = self.request.query_params.get("search")
         if search:
-            # Поиск по Учётному номеру привязанного Оборудования, Наименованию
-            # Лицензии и её Типу.
+            # Поиск по Типу лицензии; привязанному Оборудованию (Тип оборудования,
+            # Название = Тип+Модель, Учётный номер) и Названию места хранения.
+            # «Модель» — зафиксированный (is_locked) реквизит Типа оборудования;
+            # join по equipment__field_values даёт дубли строк — снимаем distinct().
             qs = qs.filter(
-                Q(equipment__inventory_number__icontains=search)
-                | Q(name__icontains=search)
+                Q(name__icontains=search)
                 | Q(license_type__name__icontains=search)
-            )
+                | Q(equipment__equipment_type__name__icontains=search)
+                | Q(
+                    equipment__field_values__field__is_locked=True,
+                    equipment__field_values__value_text__icontains=search,
+                )
+                | Q(equipment__inventory_number__icontains=search)
+                | Q(storage_place__name__icontains=search)
+            ).distinct()
         return qs
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])

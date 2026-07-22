@@ -199,7 +199,9 @@ export function EquipmentListPage() {
                     {row.employee_name ? (
                       <>
                         <div className="ele-clamp-2">{row.employee_name}</div>
-                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>{row.department || '—'}</div>
+                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {[row.position, row.department].filter(Boolean).join(' · ') || '—'}
+                        </div>
                       </>
                     ) : row.place_detail ? (
                       <>

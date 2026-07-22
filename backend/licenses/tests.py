@@ -291,19 +291,27 @@ class LicenseUtilizeTests(APITestCase):
 
 
 class LicenseSearchTests(APITestCase):
-    """Поиск по списку Лицензий: Наименование, Тип, Учётный номер Оборудования."""
+    """Поиск по списку Лицензий: Наименование, Тип, привязанное Оборудование
+    (Тип, Модель, Учётный номер) и Название места хранения."""
 
     def setUp(self):
-        from equipment.models import Equipment, EquipmentType
+        from equipment.models import Equipment, EquipmentFieldValue, EquipmentType
+        from locations.models import Building, Place, Room
 
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
         self.client.force_authenticate(user=self.admin)
         self.type_a = LicenseType.objects.create(name="Антивирус")
         self.type_b = LicenseType.objects.create(name="Офис")
-        eq_type = EquipmentType.objects.create(name="ПК", allows_license=True)
+        eq_type = EquipmentType.objects.create(name="Моноблок", allows_license=True)
         self.eq = Equipment.objects.create(inventory_number="DESKTOP-42", equipment_type=eq_type)
+        # «Модель» — базовый is_locked-реквизит Типа (создаётся в save()).
+        model_field = eq_type.fields.get(name="Модель")
+        EquipmentFieldValue.objects.create(equipment=self.eq, field=model_field, value_text="iMac 27")
+
+        room = Room.objects.create(building=Building.objects.create(name="Офис"), name="Каб. 1")
+        storage = Place.objects.create(room=room, name="Склад лицензий", place_type=Place.PlaceType.STORAGE)
         self.lic1 = License.objects.create(name="Kaspersky", license_type=self.type_a, equipment=self.eq)
-        self.lic2 = License.objects.create(name="Microsoft 365", license_type=self.type_b)
+        self.lic2 = License.objects.create(name="Microsoft 365", license_type=self.type_b, storage_place=storage)
 
     def _search_ids(self, term):
         resp = self.client.get("/api/licenses/", {"search": term})
@@ -318,6 +326,15 @@ class LicenseSearchTests(APITestCase):
 
     def test_search_by_equipment_inventory_number(self):
         self.assertEqual(self._search_ids("DESKTOP-42"), {self.lic1.id})
+
+    def test_search_by_equipment_type(self):
+        self.assertEqual(self._search_ids("Моноблок"), {self.lic1.id})
+
+    def test_search_by_equipment_model(self):
+        self.assertEqual(self._search_ids("iMac"), {self.lic1.id})
+
+    def test_search_by_storage_place_name(self):
+        self.assertEqual(self._search_ids("Склад лицензий"), {self.lic2.id})
 
 
 class LicenseKeyExposureTests(APITestCase):

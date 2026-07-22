@@ -62,11 +62,12 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             qs = qs.filter(is_employed=False)
         search = self.request.query_params.get("search")
         if search:
-            # Поиск по Имени, Фамилии и Должности.
+            # Поиск по Фамилии, Имени, Должности и Отделу.
             qs = qs.filter(
                 Q(first_name__icontains=search)
                 | Q(last_name__icontains=search)
                 | Q(position__icontains=search)
+                | Q(department__icontains=search)
             )
         return qs
 
@@ -451,11 +452,28 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 qs = qs.filter(is_utilized=True)
             search = self.request.query_params.get("search")
             if search:
+                # Поиск по Номеру, Поставщику, Оператору, Типу (SIM/E-SIM),
+                # Названию места хранения; закреплённому Сотруднику (Фамилия/Имя/
+                # Должность/Отдел) и Оборудованию (Тип, Модель, Учётный номер).
+                # «Модель» — is_locked-реквизит Типа оборудования; join по
+                # equipment__field_values даёт дубли — снимаем distinct().
                 qs = qs.filter(
                     Q(phone_number__icontains=search)
                     | Q(network_operator__icontains=search)
                     | Q(provider__icontains=search)
-                )
+                    | Q(sim_type__icontains=search)
+                    | Q(storage_place__name__icontains=search)
+                    | Q(employee__last_name__icontains=search)
+                    | Q(employee__first_name__icontains=search)
+                    | Q(employee__position__icontains=search)
+                    | Q(employee__department__icontains=search)
+                    | Q(equipment__equipment_type__name__icontains=search)
+                    | Q(
+                        equipment__field_values__field__is_locked=True,
+                        equipment__field_values__value_text__icontains=search,
+                    )
+                    | Q(equipment__inventory_number__icontains=search)
+                ).distinct()
         return qs
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
@@ -647,7 +665,28 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 qs = qs.filter(is_utilized=True)
             search = self.request.query_params.get("search")
             if search:
-                qs = qs.filter(Q(account_number__icontains=search))
+                # Поиск по Типу (Пропуск/Ключ, а также Авто/Пеший), Учётному
+                # номеру, Названию места хранения и закреплённому Сотруднику
+                # (Фамилия/Имя/Должность/Отдел). Тип хранится кодом (pass/key),
+                # поэтому русские слова сопоставляем вручную.
+                cond = (
+                    Q(account_number__icontains=search)
+                    | Q(storage_place__name__icontains=search)
+                    | Q(employee__last_name__icontains=search)
+                    | Q(employee__first_name__icontains=search)
+                    | Q(employee__position__icontains=search)
+                    | Q(employee__department__icontains=search)
+                )
+                low = search.lower()
+                if "пропуск" in low:
+                    cond |= Q(object_type=AccessPass.ObjectType.PASS)
+                if "ключ" in low:
+                    cond |= Q(object_type=AccessPass.ObjectType.KEY)
+                if "авто" in low:
+                    cond |= Q(type_vehicle=True)
+                if "пеш" in low:
+                    cond |= Q(type_pedestrian=True)
+                qs = qs.filter(cond).distinct()
         return qs
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
