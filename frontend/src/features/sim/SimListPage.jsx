@@ -145,7 +145,12 @@ export function SimListPage() {
                     ) : row.sim_type === 'esim' ? (
                       <span style={{ color: 'var(--color-text-placeholder)' }}>На хранении у оператора</span>
                     ) : row.storage_place_detail ? (
-                      <div className="ele-clamp-2">На складе: {row.storage_place_detail.name}</div>
+                      <>
+                        <div className="ele-clamp-2">На складе: {row.storage_place_detail.name}</div>
+                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>
+                          {row.storage_place_detail.building_name} — {row.storage_place_detail.room_name}
+                        </div>
+                      </>
                     ) : (
                       <span style={{ color: 'var(--color-text-placeholder)' }}>На хранении</span>
                     )}

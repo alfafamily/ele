@@ -305,6 +305,9 @@ class LicenseListSerializer(serializers.ModelSerializer):
     license_type_name = serializers.CharField(source="license_type.name", read_only=True)
     license_type_kind = serializers.CharField(source="license_type.kind", read_only=True)
     equipment_detail = EquipmentMiniSerializer(source="equipment", read_only=True)
+    # Свободная (аппаратная) лицензия лежит на складе — показываем место хранения
+    # в списке, как у Оборудования на складе.
+    storage_place_detail = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     key = serializers.SerializerMethodField()
 
@@ -318,11 +321,21 @@ class LicenseListSerializer(serializers.ModelSerializer):
             "license_type_kind",
             "equipment",
             "equipment_detail",
+            "storage_place_detail",
             "status",
             "retired_at",
             "created_at",
             "key",
         ]
+
+    def get_storage_place_detail(self, obj):
+        if not obj.storage_place_id:
+            return None
+        p = obj.storage_place
+        return {
+            "id": p.id, "name": p.name, "place_type": p.place_type,
+            "room_name": p.room.name, "building_name": p.room.building.name,
+        }
 
     def get_status(self, obj):
         return "assigned" if obj.equipment_id else "free"

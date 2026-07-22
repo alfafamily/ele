@@ -336,6 +336,15 @@ class LicenseSearchTests(APITestCase):
     def test_search_by_storage_place_name(self):
         self.assertEqual(self._search_ids("Склад лицензий"), {self.lic2.id})
 
+    def test_list_exposes_storage_place_detail(self):
+        # Свободная лицензия на складе — в списке отдаётся место хранения
+        # (название + здание/помещение), чтобы показать «На складе: …».
+        resp = self.client.get("/api/licenses/", {"tab": "active", "status": "free"})
+        row = next(r for r in resp.data["results"] if r["id"] == self.lic2.id)
+        self.assertIsNotNone(row["storage_place_detail"])
+        self.assertEqual(row["storage_place_detail"]["name"], "Склад лицензий")
+        self.assertEqual(row["storage_place_detail"]["building_name"], "Офис")
+
 
 class LicenseKeyExposureTests(APITestCase):
     """«Номер/ключ» отдаётся в списке только по ?include_key=1 и на карточке

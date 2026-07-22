@@ -27,6 +27,26 @@ from .serializers import (
 )
 
 
+def _norm(s):
+    # Нормализация для сопоставления типов: нижний регистр без дефисов/пробелов.
+    return s.lower().replace("-", "").replace(" ", "")
+
+
+def _type_code_match(search, choices, field):
+    """Q по кодовому полю-типу (choices) через отображаемую метку. Терпимо к
+    неполному вводу и дефисам: запрос сопоставляется с меткой в обе стороны
+    (напр. «E-SIM» → esim, «e» → E-SIM). Пустой результат — Q(), no-op."""
+    q = Q()
+    term = _norm(search)
+    if not term:
+        return q
+    for code, label in choices:
+        lab = _norm(str(label))
+        if lab and (lab.startswith(term) or term.startswith(lab)):
+            q |= Q(**{field: code})
+    return q
+
+
 class EmployeeViewSet(viewsets.ModelViewSet):
     # Наблюдатель видит раздел «Сотрудники» на просмотр; управление и служебные
     # экшены (departments/positions/avatar/terminate/restore) — admin/accountant.
@@ -457,11 +477,10 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 # Должность/Отдел) и Оборудованию (Тип, Модель, Учётный номер).
                 # «Модель» — is_locked-реквизит Типа оборудования; join по
                 # equipment__field_values даёт дубли — снимаем distinct().
-                qs = qs.filter(
+                cond = (
                     Q(phone_number__icontains=search)
                     | Q(network_operator__icontains=search)
                     | Q(provider__icontains=search)
-                    | Q(sim_type__icontains=search)
                     | Q(storage_place__name__icontains=search)
                     | Q(employee__last_name__icontains=search)
                     | Q(employee__first_name__icontains=search)
@@ -473,7 +492,12 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                         equipment__field_values__value_text__icontains=search,
                     )
                     | Q(equipment__inventory_number__icontains=search)
-                ).distinct()
+                )
+                # Тип хранится кодом (sim/esim), а отображается как «SIM»/«E-SIM».
+                # Сопоставляем по метке, убрав дефис/пробел, с учётом неполного
+                # ввода в обе стороны (запрос «E-SIM» → esim, «e» → E-SIM).
+                cond |= _type_code_match(search, SimCard.SimType.choices, "sim_type")
+                qs = qs.filter(cond).distinct()
         return qs
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
@@ -677,15 +701,19 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                     | Q(employee__position__icontains=search)
                     | Q(employee__department__icontains=search)
                 )
-                low = search.lower()
-                if "пропуск" in low:
-                    cond |= Q(object_type=AccessPass.ObjectType.PASS)
-                if "ключ" in low:
-                    cond |= Q(object_type=AccessPass.ObjectType.KEY)
-                if "авто" in low:
-                    cond |= Q(type_vehicle=True)
-                if "пеш" in low:
-                    cond |= Q(type_pedestrian=True)
+                # Тип хранится кодом (pass/key) плюс флаги Авто/Пеший — русские
+                # слова сопоставляем по префиксу в обе стороны, чтобы срабатывал и
+                # неполный ввод («проп» → Пропуск), а не только слово целиком.
+                term = _norm(search)
+                type_keywords = [
+                    ("пропуск", Q(object_type=AccessPass.ObjectType.PASS)),
+                    ("ключ", Q(object_type=AccessPass.ObjectType.KEY)),
+                    ("авто", Q(type_vehicle=True)),
+                    ("пеший", Q(type_pedestrian=True)),
+                ]
+                for kw, q in type_keywords:
+                    if term and (kw.startswith(term) or term.startswith(kw)):
+                        cond |= q
                 qs = qs.filter(cond).distinct()
         return qs
 

@@ -543,6 +543,10 @@ class SimSearchTests(APITestCase):
     def test_search_by_type_esim(self):
         self.assertEqual(self._search_ids("esim"), {self.s_free.id})
 
+    def test_search_by_type_esim_with_hyphen(self):
+        # Пользователь вводит отображаемую метку «E-SIM» (с дефисом).
+        self.assertEqual(self._search_ids("E-SIM"), {self.s_free.id})
+
     def test_search_by_storage_place_name(self):
         self.assertEqual(self._search_ids("Склад SIM"), {self.s_free.id})
 
@@ -595,6 +599,10 @@ class AccessPassSearchTests(APITestCase):
 
     def test_search_by_type_pass(self):
         self.assertEqual(self._search_ids("пропуск"), {self.p_emp.id})
+
+    def test_search_by_type_pass_partial(self):
+        # Неполный ввод «проп» тоже должен находить пропуска (префиксное совпадение).
+        self.assertEqual(self._search_ids("проп"), {self.p_emp.id})
 
     def test_search_by_storage_place_name(self):
         self.assertEqual(self._search_ids("Хранилище карт"), {self.p_key.id})
