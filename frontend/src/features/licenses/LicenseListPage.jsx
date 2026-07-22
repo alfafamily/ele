@@ -24,7 +24,7 @@ const KIND_LABEL = { software: 'Программная', hardware: 'Аппара
 
 const ACTIVE_COLUMNS = [
   { key: 'license_type__name', label: 'Наименование', sortable: true, width: 'minmax(0, 1.4fr)' },
-  { key: 'equipment__inventory_number', label: 'Закреплено за', sortable: true, width: 'minmax(0, 1fr)' },
+  { key: 'equipment__inventory_number', label: 'Сотрудник/Место', sortable: true, width: 'minmax(0, 1fr)' },
   { key: 'chevron', label: '', width: '30px' },
 ]
 const ARCHIVE_COLUMNS = [
@@ -148,12 +148,20 @@ export function LicenseListPage() {
                   <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>{KIND_LABEL[row.license_type_kind] || ''}</div>
                 </div>
                 {tab === 'active' ? (
-                  // Закреплено за: наименование оборудования в 2 строки + учётный номер
+                  // Размещение: за оборудованием (тип+модель+учётный номер) либо
+                  // свободная — на складе (место хранения с зданием/помещением).
                   <div style={{ minWidth: 0 }}>
                     {row.equipment_detail ? (
                       <>
                         <div className="ele-clamp-2">{row.equipment_detail.type_and_model}</div>
                         <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{row.equipment_detail.inventory_number}</div>
+                      </>
+                    ) : row.storage_place_detail ? (
+                      <>
+                        <div className="ele-clamp-2">На складе: {row.storage_place_detail.name}</div>
+                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>
+                          {row.storage_place_detail.building_name} — {row.storage_place_detail.room_name}
+                        </div>
                       </>
                     ) : (
                       <span style={{ color: 'var(--color-text-placeholder)' }}>Не привязана</span>
