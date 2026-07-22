@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Тёмная тема: чёрные бары лого заменены мягким светло-серым (#E8E8EA — не
+       чисто белый, чтобы не бликовало) для видимости на тёмных вкладках браузера.
+       Оранжевый бар неизменен. Подключается скриптом в index.html. -->
+  <rect x="0" y="0" width="24" height="120" rx="2" fill="#E8E8EA"></rect>
+  <rect x="0" y="0" width="100" height="24" rx="2" fill="#E8E8EA"></rect>
+  <rect x="0" y="48" width="76" height="24" rx="2" fill="#FF6A00"></rect>
+  <rect x="0" y="96" width="100" height="24" rx="2" fill="#E8E8EA"></rect>
+</svg>

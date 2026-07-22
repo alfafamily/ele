@@ -2,7 +2,19 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link id="favicon" rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Chrome не применяет prefers-color-scheme внутри самого SVG-фавикона —
+         подменяем файл фавикона на тёмный вариант через JS по теме ОС, чтобы
+         лого было видно на тёмных вкладках браузера. -->
+    <script>
+      (function () {
+        var link = document.getElementById('favicon')
+        var mq = window.matchMedia('(prefers-color-scheme: dark)')
+        var apply = function () { link.href = mq.matches ? '/favicon-dark.svg' : '/favicon.svg' }
+        apply()
+        mq.addEventListener('change', apply)
+      })()
+    </script>
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#1C1C21" />

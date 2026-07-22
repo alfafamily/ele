@@ -1,16 +1,10 @@
 <?xml version="1.0"?>
 <svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-  <!-- B19: тёмные бары лого невидимы на тёмных вкладках браузера. В тёмной теме
-       (prefers-color-scheme: dark) перекрашиваем чёрный в мягкий светло-серый
-       (не чисто белый — чтобы не бликовало). Оранжевый бар одинаков в обеих темах. -->
-  <style>
-    .ele-bar { fill: #1A1A1A; }
-    @media (prefers-color-scheme: dark) {
-      .ele-bar { fill: #E8E8EA; }
-    }
-  </style>
-  <rect class="ele-bar" x="0" y="0" width="24" height="120" rx="2"></rect>
-  <rect class="ele-bar" x="0" y="0" width="100" height="24" rx="2"></rect>
+  <!-- Светлая тема: тёмное лого. Тёмный вариант — favicon-dark.svg, переключается
+       скриптом в index.html (Chrome не применяет prefers-color-scheme внутри
+       самого SVG-фавикона, поэтому тему выбираем через JS). -->
+  <rect x="0" y="0" width="24" height="120" rx="2" fill="#1A1A1A"></rect>
+  <rect x="0" y="0" width="100" height="24" rx="2" fill="#1A1A1A"></rect>
   <rect x="0" y="48" width="76" height="24" rx="2" fill="#FF6A00"></rect>
-  <rect class="ele-bar" x="0" y="96" width="100" height="24" rx="2"></rect>
+  <rect x="0" y="96" width="100" height="24" rx="2" fill="#1A1A1A"></rect>
 </svg>
