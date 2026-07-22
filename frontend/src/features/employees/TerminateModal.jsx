@@ -14,12 +14,12 @@ function passLabel(pass) {
   return `Пропуск · ${pass.name || (pass.account_number ? `№ ${pass.account_number}` : 'без названия')}`
 }
 
-// Выбор склада назначения (B26) — необязательный. Пусто → объект станет
-// свободным/неиспользуемым без склада (прежнее поведение).
-function StorageSelect({ places, value, onChange, label = 'Куда переместить' }) {
+// Выбор склада назначения (B26) — обязателен для перемещаемых на хранение
+// объектов (не требуется для E-SIM и при утилизации/передаче).
+function StorageSelect({ places, value, onChange, error, label = 'Куда переместить' }) {
   return (
     <div style={{ marginTop: 8 }}>
-      <Select label={label} placeholder="Не выбрано — станет свободным" value={value} onChange={onChange}>
+      <Select label={label} required placeholder="Выберите склад" value={value} onChange={onChange} error={error}>
         {places.map((p) => (
           <option key={p.id} value={p.id}>
             {p.name} · {p.building_name} — {p.room_name}
@@ -34,7 +34,7 @@ function StorageSelect({ places, value, onChange, label = 'Куда переме
 // инструментов — только склад назначения (options не передаётся); для SIM и
 // пропусков/ключей — действие (открепить / утилизировать / …) + при откреплении
 // склад назначения, при утилизации — комментарий.
-function DispositionRow({ label, sub, options, value, comment, storage, storagePlaces, showStorage, onChange, onComment, onStorage }) {
+function DispositionRow({ label, sub, options, value, comment, storage, storageError, storagePlaces, showStorage, onChange, onComment, onStorage }) {
   const isUtilize = options && value !== 'detach'
   return (
     <div style={{ padding: '10px 0', borderTop: '1px solid var(--color-border-hairline)' }}>
@@ -48,7 +48,7 @@ function DispositionRow({ label, sub, options, value, comment, storage, storageP
         </Select>
       ) : null}
       {showStorage ? (
-        <StorageSelect places={storagePlaces} value={storage} onChange={onStorage} />
+        <StorageSelect places={storagePlaces} value={storage} onChange={onStorage} error={storageError} />
       ) : null}
       {isUtilize ? (
         <div style={{ marginTop: 8 }}>
@@ -71,6 +71,7 @@ export function TerminateModal({ employee, onClose, onDone }) {
   const [deactivateUser, setDeactivateUser] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  const [triedSubmit, setTriedSubmit] = useState(false)
   const [storagePlaces, setStoragePlaces] = useState([])
 
   const equipment = employee.equipment ?? []
@@ -109,7 +110,27 @@ export function TerminateModal({ employee, onClose, onDone }) {
     { value: 'handed', label: 'Передать арендодателю' },
   ]
 
+  // Склад обязателен для перемещаемых на хранение объектов: всё оборудование и
+  // инструменты; SIM (кроме E-SIM) и пропуска/ключи — только при откреплении.
+  const needsStorage = { equipment: [], tool: [], sim: [], pass: [] }
+  equipment.forEach((e) => { if (!equipmentState[e.id].storage) needsStorage.equipment.push(e.id) })
+  tools.forEach((t) => { if (!toolState[t.id].storage) needsStorage.tool.push(t.id) })
+  activeSims.forEach((s) => {
+    const st = simState[s.id]
+    if (st.action === 'detach' && s.sim_type !== 'esim' && !st.storage) needsStorage.sim.push(s.id)
+  })
+  activePasses.forEach((p) => {
+    const st = passState[p.id]
+    if (st.action === 'detach' && !st.storage) needsStorage.pass.push(p.id)
+  })
+  const missingStorage = needsStorage.equipment.length + needsStorage.tool.length + needsStorage.sim.length + needsStorage.pass.length
+
   const submit = async () => {
+    if (missingStorage > 0) {
+      setTriedSubmit(true)
+      setError('Укажите склад назначения для всех перемещаемых объектов.')
+      return
+    }
     setSubmitting(true)
     setError(null)
     // Собираем действия: склад назначения передаём только там, где он выбран.
@@ -161,6 +182,7 @@ export function TerminateModal({ employee, onClose, onDone }) {
               label={e.type_and_model}
               sub={e.inventory_number}
               storage={equipmentState[e.id].storage}
+              storageError={triedSubmit && !equipmentState[e.id].storage ? 'Укажите склад' : undefined}
               storagePlaces={storagePlaces}
               showStorage
               onStorage={(storage) => setEquipmentState((prev) => ({ ...prev, [e.id]: { storage } }))}
@@ -177,6 +199,7 @@ export function TerminateModal({ employee, onClose, onDone }) {
               key={t.id}
               label={`${t.name} · ${t.quantity} шт.`}
               storage={toolState[t.id].storage}
+              storageError={triedSubmit && !toolState[t.id].storage ? 'Укажите склад' : undefined}
               storagePlaces={storagePlaces}
               showStorage
               onStorage={(storage) => setToolState((prev) => ({ ...prev, [t.id]: { storage } }))}
@@ -196,6 +219,7 @@ export function TerminateModal({ employee, onClose, onDone }) {
               value={simState[s.id].action}
               comment={simState[s.id].comment}
               storage={simState[s.id].storage}
+              storageError={triedSubmit && !simState[s.id].storage ? 'Укажите склад' : undefined}
               storagePlaces={storagePlaces}
               showStorage={simState[s.id].action === 'detach' && s.sim_type !== 'esim'}
               onChange={(action) => setSimState((prev) => ({ ...prev, [s.id]: { ...prev[s.id], action } }))}
@@ -217,6 +241,7 @@ export function TerminateModal({ employee, onClose, onDone }) {
               value={passState[p.id].action}
               comment={passState[p.id].comment}
               storage={passState[p.id].storage}
+              storageError={triedSubmit && !passState[p.id].storage ? 'Укажите склад' : undefined}
               storagePlaces={storagePlaces}
               showStorage={passState[p.id].action === 'detach'}
               onChange={(action) => setPassState((prev) => ({ ...prev, [p.id]: { ...prev[p.id], action } }))}

@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, viewsets
@@ -78,18 +79,21 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"])
+    @transaction.atomic
     def terminate(self, request, pk=None):
         """Увольнение (E3): по каждому закреплённому объекту (оборудование,
         инструменты, SIM/E-SIM, пропуска/ключи) переносит его на выбранный склад
-        назначения либо оставляет свободным; для SIM и пропусков возможна ещё и
-        утилизация / передача арендодателю. Сотрудник снимается со всех рабочих
-        мест. Опционально деактивирует связанного Пользователя.
+        назначения; для SIM и пропусков возможна ещё и утилизация / передача
+        арендодателю. Сотрудник снимается со всех рабочих мест. Опционально
+        деактивирует связанного Пользователя.
 
         *_actions — словари {id: {...}}. Для equipment/tools: {"storage_place"}.
         Для sim/pass: {"action", "comment", "storage_place"}; action: 'detach'
         (по умолчанию) | 'utilized' | 'handed' (только пропуска). storage_place
-        (место хранения) необязателен — без него объект становится свободным.
-        Ключ tool_actions — id инструмента (карточки), а не размещения.
+        (место хранения) ОБЯЗАТЕЛЕН для перемещаемых на хранение объектов; не
+        требуется только для E-SIM и при утилизации/передаче. Ключ tool_actions —
+        id инструмента (карточки), а не размещения. Экшен атомарен: если склад
+        где-то не указан — 400 без частичного увольнения.
         """
         from django.utils import timezone
 
@@ -98,40 +102,65 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
         employee = self.get_object()
 
-        # B26: для каждого объекта можно указать склад назначения (место хранения),
-        # куда он переезжает. Ключи словарей — id объекта; значение — {storage_place}.
+        # B26: при увольнении каждый перемещаемый объект переезжает на выбранный
+        # склад (место хранения) — он обязателен. Ключи словарей — id объекта;
+        # значение — {storage_place, action, comment}.
         equipment_actions = request.data.get("equipment_actions") or {}
         tool_actions = request.data.get("tool_actions") or {}
         sim_actions = request.data.get("sim_actions") or {}
         pass_actions = request.data.get("pass_actions") or {}
+        reason_map = {c[0] for c in AccessPass.UtilizationReason.choices}
 
-        def opt_storage(spec):
-            """Необязательный склад назначения из spec. None → объект становится
-            свободным/неиспользуемым без склада (прежнее поведение)."""
-            pid = (spec or {}).get("storage_place")
-            if pid in (None, ""):
-                return None
-            return get_storage_place(pid)
+        def req_storage(spec, field):
+            """Обязательный склад назначения (400, если не указан/неподходящий)."""
+            return get_storage_place((spec or {}).get("storage_place"), field=field)
 
+        # Резолвим все склады ДО мутаций (экшен ещё и @transaction.atomic) — ошибка
+        # «склад не указан» не оставит частично уволенного сотрудника.
         equipment_list = list(employee.equipment.all())
+        eq_storage = {
+            eq.id: req_storage(equipment_actions.get(str(eq.id)), f"equipment_{eq.id}")
+            for eq in equipment_list
+        }
+        tool_allocations = list(employee.tool_allocations.all())
+        tool_storage = {
+            a.tool_id: req_storage(tool_actions.get(str(a.tool_id)), f"tool_{a.tool_id}")
+            for a in tool_allocations
+        }
+        active_sims = list(employee.sim_cards.all())
+        sim_storage = {}
+        for sim in active_sims:
+            spec = sim_actions.get(str(sim.id)) or {}
+            # Склад нужен только при откреплении обычной SIM: E-SIM виртуальна,
+            # утилизируемая карта на склад не переезжает.
+            if spec.get("action") != "utilized" and sim.sim_type != "esim":
+                sim_storage[sim.id] = req_storage(spec, f"sim_{sim.id}")
+        active_passes = list(employee.passes.all())
+        pass_storage = {}
+        for ap in active_passes:
+            spec = pass_actions.get(str(ap.id)) or {}
+            # Склад нужен только при откреплении (утилизация/передача — не переезд).
+            if spec.get("action") not in reason_map:
+                pass_storage[ap.id] = req_storage(spec, f"pass_{ap.id}")
+
+        utilized_sim_count = 0
+        utilized_pass_count = 0
+
         for eq in equipment_list:
             # По одной, не bulk .update() — иначе не сработает история.
             eq.employee = None
-            eq.place = opt_storage(equipment_actions.get(str(eq.id)))
+            eq.place = eq_storage[eq.id]
             eq.save(update_fields=["employee", "place"])
 
-        # Закреплённые за сотрудником инструменты возвращаем в свободный остаток
-        # своих карточек: на выбранный склад (появляется размещение storage) либо
-        # в общий свободный остаток «без склада». По каждому — движение «Открепление».
-        tool_allocations = list(employee.tool_allocations.all())
+        # Инструменты возвращаем в свободный остаток на выбранном складе; по
+        # каждому — движение «Открепление».
         for alloc in tool_allocations:
-            storage = opt_storage(tool_actions.get(str(alloc.tool_id)))
-            if storage is not None:
-                dest, _ = ToolAllocation.objects.get_or_create(
-                    tool=alloc.tool, place=storage, defaults={"quantity": 0}
-                )
-                dest.quantity += alloc.quantity
-                dest.save(update_fields=["quantity"])
+            storage = tool_storage[alloc.tool_id]
+            dest, _ = ToolAllocation.objects.get_or_create(
+                tool=alloc.tool, place=storage, defaults={"quantity": 0}
+            )
+            dest.quantity += alloc.quantity
+            dest.save(update_fields=["quantity"])
             ToolMovement.objects.create(
                 tool=alloc.tool,
                 kind=ToolMovement.Kind.UNASSIGN,
@@ -142,10 +171,8 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             )
             alloc.delete()
 
-        # SIM-карты — переиспользуемые объекты: открепляем (⇒ «Неиспользуемые») или
-        # утилизируем по выбору. По одной, не bulk — иначе не сработает история.
-        active_sims = list(employee.sim_cards.all())
-        utilized_sim_count = 0
+        # SIM-карты — переиспользуемые: открепляем на склад (⇒ «Неиспользуемые»,
+        # E-SIM — без склада) или утилизируем. По одной, не bulk — ради истории.
         for sim in active_sims:
             spec = sim_actions.get(str(sim.id)) or {}
             sim.employee = None
@@ -158,13 +185,9 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                     sim._change_reason = comment
                 sim.save(update_fields=["employee", "is_utilized", "utilized_at"])
             else:
-                # E-SIM виртуальна — на складе не хранится, склад игнорируем.
-                sim.storage_place = opt_storage(spec) if sim.sim_type != "esim" else None
+                sim.storage_place = sim_storage.get(sim.id)  # None только для E-SIM
                 sim.save(update_fields=["employee", "storage_place"])
 
-        active_passes = list(employee.passes.all())
-        utilized_pass_count = 0
-        reason_map = {c[0] for c in AccessPass.UtilizationReason.choices}
         for ap in active_passes:
             spec = pass_actions.get(str(ap.id)) or {}
             action = spec.get("action")
@@ -179,7 +202,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                     ap._change_reason = comment
                 ap.save(update_fields=["employee", "is_utilized", "utilized_at", "utilization_reason"])
             else:
-                ap.storage_place = opt_storage(spec)
+                ap.storage_place = pass_storage[ap.id]
                 ap.save(update_fields=["employee", "storage_place"])
 
         # B26: снимаем сотрудника со всех рабочих мест (M2M) — по одному, чтобы
