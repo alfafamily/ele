@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getEquipmentTypes } from '../equipment/equipmentApi.js'
-import { Checkbox, SearchInput } from '../../shared/ui'
+import { Icon } from '../../shared/ui'
 
 // B23. Блок «Право выполнять ТО по типам оборудования» — общий для модалок
 // приглашения и редактирования пользователя. Радио «Все / Некоторые типы»; при
-// «Некоторые» — поиск и список типов с включённым ТО (мультивыбор).
+// «Некоторые» — поиск и список типов с включённым ТО (мультивыбор). Список
+// оформлен как в модалке привязки лицензий (AttachLicenseModal): строка поиска +
+// рамка-список со строками-квадратными чекбоксами.
 // value: { allTypes: boolean, typeIds: number[] }; onChange отдаёт обновлённое.
 export function MaintenanceTypeScope({ allTypes, typeIds, onChange }) {
   const [types, setTypes] = useState(null)
-  const [search, setSearch] = useState('')
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     getEquipmentTypes()
@@ -18,11 +20,8 @@ export function MaintenanceTypeScope({ allTypes, typeIds, onChange }) {
 
   const selected = useMemo(() => new Set((typeIds || []).map(Number)), [typeIds])
 
-  const filtered = useMemo(() => {
-    const list = types || []
-    const q = search.trim().toLowerCase()
-    return q ? list.filter((t) => t.name.toLowerCase().includes(q)) : list
-  }, [types, search])
+  const q = query.trim().toLowerCase()
+  const filtered = (types || []).filter((t) => t.name.toLowerCase().includes(q))
 
   const toggle = (id) => {
     const next = new Set(selected)
@@ -52,33 +51,81 @@ export function MaintenanceTypeScope({ allTypes, typeIds, onChange }) {
       </div>
 
       {!allTypes ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <SearchInput value={search} onChange={setSearch} placeholder="Поиск по типам" />
-          <div
-            style={{
-              maxHeight: 200,
-              overflowY: 'auto',
-              border: '1px solid var(--color-border-hairline)',
-              borderRadius: 10,
-              padding: '4px 0',
-            }}
-          >
-            {types === null ? (
-              <div style={{ padding: '10px 14px', fontSize: 13, color: 'var(--color-text-muted)' }}>Загрузка…</div>
-            ) : filtered.length === 0 ? (
-              <div style={{ padding: '10px 14px', fontSize: 13, color: 'var(--color-text-muted)' }}>
-                {types.length === 0 ? 'Нет типов с включённым ТО.' : 'Типы не найдены.'}
-              </div>
+        types === null ? (
+          <div style={{ padding: 20, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Загрузка…</div>
+        ) : types.length === 0 ? (
+          <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Нет типов с включённым ТО.</div>
+        ) : (
+          <>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Поиск"
+              style={{
+                width: '100%',
+                height: 42,
+                boxShadow: 'inset 0 0 0 1px var(--color-border)',
+                borderRadius: 10,
+                border: 'none',
+                padding: '0 13px',
+                fontSize: 13.5,
+                fontFamily: 'inherit',
+              }}
+            />
+            {filtered.length === 0 ? (
+              <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Ничего не найдено</div>
             ) : (
-              filtered.map((t) => (
-                <div key={t.id} style={{ padding: '8px 14px' }}>
-                  <Checkbox label={t.name} checked={selected.has(Number(t.id))} onChange={() => toggle(Number(t.id))} />
-                </div>
-              ))
+              <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden', maxHeight: 216, overflowY: 'auto' }}>
+                {filtered.map((t, i) => {
+                  const checked = selected.has(Number(t.id))
+                  return (
+                    <div
+                      key={t.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => toggle(Number(t.id))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          toggle(Number(t.id))
+                        }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 11,
+                        width: '100%',
+                        padding: '11px 13px',
+                        borderTop: i === 0 ? 'none' : '1px solid var(--color-border-hairline)',
+                        background: checked ? 'var(--color-info-bg)' : 'transparent',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 20,
+                          height: 20,
+                          flex: 'none',
+                          borderRadius: 6,
+                          background: checked ? 'var(--color-primary)' : 'transparent',
+                          boxShadow: checked ? 'none' : 'inset 0 0 0 1.5px var(--color-border-strong)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {checked ? <Icon name="check" size={12} strokeWidth={3} style={{ color: '#fff' }} /> : null}
+                      </span>
+                      <span style={{ minWidth: 0, flex: 1, fontSize: 13.5, fontWeight: 600 }}>{t.name}</span>
+                    </div>
+                  )
+                })}
+              </div>
             )}
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>Выбрано типов: {selected.size}</div>
-        </div>
+          </>
+        )
       ) : null}
     </div>
   )

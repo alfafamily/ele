@@ -155,7 +155,7 @@ function PeriodOption({ label, active, onClick }) {
       style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: '11px 13px', borderRadius: 10,
         background: active ? 'var(--color-fill-active-tint)' : 'var(--color-fill-input)',
-        border: 'none', boxShadow: active ? 'inset 0 0 0 1.5px var(--color-primary)' : 'none',
+        border: 'none', boxShadow: 'none',
         cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
       }}
     >
