@@ -169,7 +169,12 @@
   font-size: 13.5px;
   line-height: 1.55;
   color: var(--color-text-secondary);
+  margin-top: 12px;
   margin-bottom: 12px;
+}
+
+.ele-guide__note:last-child {
+  margin-bottom: 0;
 }
 
 .ele-guide__note:last-child {
