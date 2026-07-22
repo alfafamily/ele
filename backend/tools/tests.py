@@ -179,11 +179,18 @@ class ToolTests(APITestCase):
     def test_terminate_returns_tools(self):
         tid = self._make(quantity=10)["id"]
         self._post(tid, "assign-units", employee=self.emp_a.id, from_place=self.store1.id, quantity=4)
-        resp = self.client.post(f"/api/employees/{self.emp_a.id}/terminate/", {}, format="json")
+        # B26: при увольнении инструмент возвращается на указанный склад (обязателен).
+        resp = self.client.post(
+            f"/api/employees/{self.emp_a.id}/terminate/",
+            {"tool_actions": {str(tid): {"storage_place": self.store1.id}}},
+            format="json",
+        )
         self.assertEqual(resp.status_code, 200, resp.data)
         self.assertEqual(resp.data["detached_tool_count"], 1)
         self.assertFalse(ToolAllocation.objects.filter(tool_id=tid, employee=self.emp_a).exists())
         self.assertEqual(Tool.objects.get(pk=tid).quantity, 10)
+        # 6 оставалось на складе + вернулись 4 = 10.
+        self.assertEqual(ToolAllocation.objects.get(tool_id=tid, place=self.store1).quantity, 10)
 
     def test_write_off_whole_card(self):
         tid = self._make(quantity=10)["id"]
