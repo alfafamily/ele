@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigationType } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
+import { canMaintainType } from '../../shared/permissions.js'
 import { InfiniteScrollSentinel } from '../../shared/InfiniteScrollSentinel.jsx'
 import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
@@ -172,7 +173,14 @@ export function EquipmentListPage() {
                     B13: пара иконок статуса ТО (гаечный ключ + часы). */}
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {(perms.canSeeMaintenance ? maintenanceIndicators(row.maintenance_summary) : []).map((ind) => (
+                    {/* B23: у пользователя с ограниченной областью ТО (учётчик/роль
+                        ТО с «некоторыми» типами) статус ТО в списке показываем
+                        только для доступных ему типов; наблюдатель/управляющий
+                        регламентами (без права проведения) видит статусы везде. */}
+                    {(perms.canSeeMaintenance && (!perms.canPerformMaintenance || canMaintainType(perms, row.equipment_type))
+                      ? maintenanceIndicators(row.maintenance_summary)
+                      : []
+                    ).map((ind) => (
                       <span
                         key={ind.icon}
                         title={ind.title}
