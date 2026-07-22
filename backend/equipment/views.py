@@ -16,6 +16,7 @@ from core.permissions import (
     EquipmentAccessPermission,
     IsAdminOrAccountant,
     RegulationAccessPermission,
+    can_maintain_type,
 )
 from employees.models import Employee
 from storage.service import delete_stored_file, store_uploaded_file
@@ -169,6 +170,13 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if user.role == "employee" and not user.is_observer:
             # Не привязан к Сотруднику — не видит ничего, а не «все свободные».
             qs = qs.filter(employee_id=user.employee_id) if user.employee_id else qs.none()
+
+        # B23: роль «Ответственный за ТО» с ограниченной областью типов видит в
+        # разделе Оборудование только экземпляры выбранных типов (и в списке, и
+        # на карточке). У «Ответственного за учёт» список не сужается — он видит
+        # всё оборудование, ограничена лишь возможность проведения ТО.
+        if user.role == "maintenance" and not getattr(user, "maintenance_all_types", True):
+            qs = qs.filter(equipment_type_id__in=user.maintenance_types.values_list("id", flat=True))
 
         # Фильтры вкладки/статуса/поиска относятся только к списку. Для retrieve
         # и detail-действий их применять нельзя: иначе карточка архивного объекта
@@ -337,6 +345,9 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         equipment = self.get_object()
         if not equipment.equipment_type.maintenance_enabled:
             return Response({"detail": "Для этого типа оборудования ТО не ведётся."}, status=409)
+        # B23: проверка области типов — вне выбранных типов ТО проводить нельзя.
+        if not can_maintain_type(request, equipment.equipment_type_id):
+            return Response({"detail": "Проведение ТО для этого типа оборудования вам недоступно."}, status=403)
         if equipment.is_written_off:
             return Response({"detail": "По списанному оборудованию ТО не проводится."}, status=409)
 

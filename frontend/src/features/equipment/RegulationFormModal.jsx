@@ -82,7 +82,7 @@ export function RegulationFormModal({ regulation, onClose, onSave, title, showFi
           />
         </div>
         {!onDemand ? (
-          <div style={{ maxWidth: 220, marginTop: 12 }}>
+          <div style={{ marginTop: 12 }}>
             <Input
               label="Периодичность, месяцев"
               type="number"

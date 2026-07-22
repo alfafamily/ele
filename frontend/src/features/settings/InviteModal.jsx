@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { Banner, Button, Checkbox, Input, Modal, Select } from '../../shared/ui'
+import { MaintenanceTypeScope } from './MaintenanceTypeScope.jsx'
 import { inviteUser } from './settingsApi.js'
 
 const ROLE_OPTIONS = [
@@ -20,6 +21,9 @@ export function InviteModal({ onClose, onInvited }) {
   const [showEmployeePicker, setShowEmployeePicker] = useState(false)
   const [isObserver, setIsObserver] = useState(false)
   const [canMaintain, setCanMaintain] = useState(false)
+  const [canManageRegulations, setCanManageRegulations] = useState(false)
+  const [maintenanceAllTypes, setMaintenanceAllTypes] = useState(true)
+  const [maintenanceTypeIds, setMaintenanceTypeIds] = useState([])
   // Свитч «Добавить сотрудника»: создаём нового Сотрудника вместе с приглашением
   // (взаимоисключающе с выбором существующего).
   const [createEmployee, setCreateEmployee] = useState(false)
@@ -44,11 +48,15 @@ export function InviteModal({ onClose, onInvited }) {
     setSubmitting(true)
     setError(null)
     try {
+      const maintainer = role === 'maintenance' || (role === 'accountant' && canMaintain)
       await inviteUser({
         email,
         role,
         is_observer: role === 'employee' ? isObserver : false,
         can_maintain: role === 'accountant' ? canMaintain : false,
+        can_manage_regulations: role === 'accountant' ? canManageRegulations : false,
+        maintenance_all_types: maintainer ? maintenanceAllTypes : true,
+        maintenance_types: maintainer && !maintenanceAllTypes ? maintenanceTypeIds : [],
         confirm_domain: needsDomainConfirm,
         ...(createEmployee
           ? {
@@ -143,7 +151,20 @@ export function InviteModal({ onClose, onInvited }) {
           <Checkbox label="Признак «Наблюдатель» (только для роли «Сотрудник»)" checked={isObserver} onChange={setIsObserver} />
         ) : null}
         {role === 'accountant' ? (
-          <Checkbox label="Ответственный за регламенты и проведение ТО" checked={canMaintain} onChange={setCanMaintain} />
+          <>
+            <Checkbox label="Может управлять регламентами ТО" checked={canManageRegulations} onChange={setCanManageRegulations} />
+            <Checkbox label="Ответственный за ТО" checked={canMaintain} onChange={setCanMaintain} />
+          </>
+        ) : null}
+        {role === 'maintenance' || (role === 'accountant' && canMaintain) ? (
+          <MaintenanceTypeScope
+            allTypes={maintenanceAllTypes}
+            typeIds={maintenanceTypeIds}
+            onChange={({ allTypes, typeIds }) => {
+              setMaintenanceAllTypes(allTypes)
+              setMaintenanceTypeIds(typeIds)
+            }}
+          />
         ) : null}
       </div>
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22 }}>
