@@ -1087,3 +1087,17 @@ class MaintenanceTests(APITestCase):
         self.assertIn(eq_b, ids)
         self.assertEqual(self._perform(eq_a, regulation=reg_a, next_planned_date=future, items=item).status_code, 200)
         self.assertEqual(self._perform(eq_b, items=item).status_code, 403)
+
+        # Роль ТО с «все типы» видит только оборудование типов с включённым ТО —
+        # оборудование типа без ТО ей недоступно (в списке нет, карточка 404).
+        self.client.force_authenticate(user=self.admin)
+        type_c = self._make_type(maintenance_enabled=False)
+        eq_c = self._make_equipment(type_c, inv="INV-C")
+        maint_all = User.objects.create_user(email="m3@example.com", password="Str0ng!Pass1", role="maintenance")
+        self.assertTrue(maint_all.maintenance_all_types)
+        self.client.force_authenticate(user=maint_all)
+        ids = [e["id"] for e in self.client.get("/api/equipment/").data["results"]]
+        self.assertIn(eq_a, ids)
+        self.assertIn(eq_b, ids)
+        self.assertNotIn(eq_c, ids)
+        self.assertEqual(self.client.get(f"/api/equipment/{eq_c}/").status_code, 404)
