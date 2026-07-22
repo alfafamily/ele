@@ -24,7 +24,7 @@ const KIND_LABEL = { software: 'Программная', hardware: 'Аппара
 
 const ACTIVE_COLUMNS = [
   { key: 'license_type__name', label: 'Наименование', sortable: true, width: 'minmax(0, 1.4fr)' },
-  { key: 'equipment__inventory_number', label: 'Сотрудник/Место', sortable: true, width: 'minmax(0, 1fr)' },
+  { key: 'equipment__inventory_number', label: 'Оборудование/Место', sortable: true, width: 'minmax(0, 1fr)' },
   { key: 'chevron', label: '', width: '30px' },
 ]
 const ARCHIVE_COLUMNS = [
