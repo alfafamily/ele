@@ -46,3 +46,19 @@ export function maintenanceIndicators(summary) {
   }
   return out
 }
+
+// B23. Иконки ТО в списке оборудования с учётом причастности пользователя к типу.
+//  · fullStatus — пользователь проводит ТО по этому типу (в своей области) или
+//    Наблюдатель: видит ВСЕ иконки (цветной статус + серый «нет даты»).
+//  · manageOnly — управляет регламентами, но НЕ проводит ТО по этому типу: видит
+//    только серый «нет даты» (это его зона ответственности — задать дату), без
+//    цветных статусов проведения.
+//  · иначе — иконок нет.
+export function maintenanceRowIndicators(summary, { fullStatus, manageOnly }) {
+  if (!summary || !summary.enabled) return []
+  if (fullStatus) return maintenanceIndicators(summary)
+  if (manageOnly && summary.has_unplanned) {
+    return [{ icon: 'wrench', color: MAINTENANCE_STATUS_COLOR.not_planned, title: 'Есть регламент без даты ТО' }]
+  }
+  return []
+}
