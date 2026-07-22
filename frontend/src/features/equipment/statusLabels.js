@@ -29,20 +29,20 @@ export function planStatusIcon(status) {
 
 // B13+. Сводная индикация по экземпляру (maintenance_summary с бэкенда):
 // {critical, has_unplanned, enabled} → массив иконок {icon,color,title}.
-//  · самый критичный статус (overdue→due_soon→scheduled) — цветной wrench;
-//  · есть регламент без даты — дополнительно серый wrench-off (может рядом с 1-3).
+//  · есть регламент без даты — серый wrench (всегда идёт первым);
+//  · самый критичный статус (overdue→due_soon→scheduled) — цветной wrench.
 export function maintenanceIndicators(summary) {
   if (!summary || !summary.enabled) return []
   const out = []
+  if (summary.has_unplanned) {
+    out.push({ icon: 'wrench', color: MAINTENANCE_STATUS_COLOR.not_planned, title: 'Есть регламент без даты ТО' })
+  }
   if (summary.critical) {
     out.push({
       icon: 'wrench',
       color: MAINTENANCE_STATUS_COLOR[summary.critical],
       title: MAINTENANCE_STATUS_LABEL[summary.critical],
     })
-  }
-  if (summary.has_unplanned) {
-    out.push({ icon: 'wrench', color: MAINTENANCE_STATUS_COLOR.not_planned, title: 'Есть регламент без даты ТО' })
   }
   return out
 }

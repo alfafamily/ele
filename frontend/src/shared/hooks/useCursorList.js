@@ -14,9 +14,22 @@ import { readListCache, writeListCache } from '../listCache'
 // заново. Кэш пишется всегда (даже при restore=false) — на будущий возврат.
 export function useCursorList(basePath, params = {}, { cacheKey, restore = true } = {}) {
   const paramsKey = JSON.stringify(params)
-  // Снимок из кэша годится только если совпадают параметры запроса.
-  const cached = restore && cacheKey ? readListCache(cacheKey) : null
-  const restorable = cached && cached.paramsKey === paramsKey && Array.isArray(cached.items)
+  // Снимок из кэша берём ОДИН раз при монтировании (годится только если совпадают
+  // параметры запроса). Пересчёт на каждый рендер приводил к «залипанию» скелетона
+  // при обновлении страницы (F5): эффект записи кэша успевал записать пустой
+  // items:[] ДО ответа сервера, restorable перескакивал false→true, эффект дёргал
+  // silentRefresh (requestId++), и finally первого load() пропускал setLoading(false)
+  // (requestId уже не совпадал) — loading оставался true навсегда. Захват при
+  // монтировании убирает этот перескок; смену параметров обрабатывает loadedParamsRef.
+  const initRef = useRef(null)
+  if (initRef.current === null) {
+    const c = restore && cacheKey ? readListCache(cacheKey) : null
+    initRef.current = {
+      cached: c,
+      restorable: !!(c && c.paramsKey === paramsKey && Array.isArray(c.items)),
+    }
+  }
+  const { cached, restorable } = initRef.current
 
   const [items, setItems] = useState(restorable ? cached.items : [])
   const [loading, setLoading] = useState(!restorable)
