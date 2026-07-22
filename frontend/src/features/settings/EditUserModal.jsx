@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
 import { Banner, Button, Checkbox, Icon, Modal, Select } from '../../shared/ui'
+import { MaintenanceTypeScope } from './MaintenanceTypeScope.jsx'
 import { activateUser, deactivateUser, updateUser } from './settingsApi.js'
 
 const ROLE_OPTIONS = [
@@ -24,7 +25,12 @@ export function EditUserModal({ user, onClose, onSaved }) {
   )
   const [showEmployeePicker, setShowEmployeePicker] = useState(false)
   const [isObserver, setIsObserver] = useState(user.is_observer)
+  // B23: «Ответственный за ТО» (проведение) и «Может управлять регламентами ТО» —
+  // независимые флаги учётчика; область типов — общая для проведения ТО.
   const [canMaintain, setCanMaintain] = useState(!!user.can_maintain)
+  const [canManageRegulations, setCanManageRegulations] = useState(!!user.can_manage_regulations)
+  const [maintenanceAllTypes, setMaintenanceAllTypes] = useState(user.maintenance_all_types !== false)
+  const [maintenanceTypeIds, setMaintenanceTypeIds] = useState(user.maintenance_types || [])
   // Статус доступа: приглашённый пользователь тоже активен (is_active=True).
   const currentlyActive = user.status !== 'deactivated'
   const [status, setStatus] = useState(currentlyActive ? 'active' : 'deactivated')
@@ -41,11 +47,15 @@ export function EditUserModal({ user, onClose, onSaved }) {
         // остальные правки при этом не применяем, связь снимается на бэкенде.
         await deactivateUser(user.id, employee ? terminateEmployee : false)
       } else {
+        const maintainer = role === 'maintenance' || (role === 'accountant' && canMaintain)
         await updateUser(user.id, {
           role,
           employee: employee?.id ?? null,
           is_observer: role === 'employee' ? isObserver : false,
           can_maintain: role === 'accountant' ? canMaintain : false,
+          can_manage_regulations: role === 'accountant' ? canManageRegulations : false,
+          maintenance_all_types: maintainer ? maintenanceAllTypes : true,
+          maintenance_types: maintainer && !maintenanceAllTypes ? maintenanceTypeIds : [],
         })
         if (status === 'active' && !currentlyActive) await activateUser(user.id)
       }
@@ -174,10 +184,19 @@ export function EditUserModal({ user, onClose, onSaved }) {
           <Checkbox label="Признак «Наблюдатель» (только для роли «Сотрудник»)" checked={isObserver} onChange={setIsObserver} />
         ) : null}
         {role === 'accountant' ? (
-          <Checkbox
-            label="Ответственный за регламенты и проведение ТО"
-            checked={canMaintain}
-            onChange={setCanMaintain}
+          <>
+            <Checkbox label="Может управлять регламентами ТО" checked={canManageRegulations} onChange={setCanManageRegulations} />
+            <Checkbox label="Ответственный за ТО" checked={canMaintain} onChange={setCanMaintain} />
+          </>
+        ) : null}
+        {role === 'maintenance' || (role === 'accountant' && canMaintain) ? (
+          <MaintenanceTypeScope
+            allTypes={maintenanceAllTypes}
+            typeIds={maintenanceTypeIds}
+            onChange={({ allTypes, typeIds }) => {
+              setMaintenanceAllTypes(allTypes)
+              setMaintenanceTypeIds(typeIds)
+            }}
           />
         ) : null}
           </>

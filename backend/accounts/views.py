@@ -358,7 +358,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserListSerializer if self.action == "list" else UserSerializer
 
     def get_queryset(self):
-        qs = User.objects.select_related("employee", "employee__avatar")
+        qs = User.objects.select_related("employee", "employee__avatar").prefetch_related("maintenance_types")
         search = (self.request.query_params.get("search") or "").strip()
         if search:
             qs = qs.filter(

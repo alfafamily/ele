@@ -171,6 +171,60 @@ class InviteAcceptTests(APITestCase):
         )
         self.assertEqual(resp.status_code, 400)
 
+    def test_maintenance_scope_invite_and_update(self):
+        """B23. Область типов ТО сохраняется при приглашении и правится при
+        редактировании; смена роли сбрасывает флаги и область."""
+        from equipment.models import EquipmentType
+
+        admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=admin)
+        t1 = EquipmentType.objects.create(name="Тип 1", maintenance_enabled=True)
+        t2 = EquipmentType.objects.create(name="Тип 2", maintenance_enabled=True)
+
+        # Приглашение роли ТО с ограничением по типам.
+        resp = self.client.post(
+            "/api/users/invite/",
+            {
+                "email": "maint@example.com", "role": "maintenance",
+                "maintenance_all_types": False, "maintenance_types": [t1.id, t2.id],
+            },
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        u = User.objects.get(email="maint@example.com")
+        self.assertFalse(u.maintenance_all_types)
+        self.assertEqual(set(u.maintenance_types.values_list("id", flat=True)), {t1.id, t2.id})
+
+        # Правка через PATCH: сузить до одного типа.
+        resp = self.client.patch(
+            f"/api/users/{u.id}/",
+            {"role": "maintenance", "maintenance_all_types": False, "maintenance_types": [t1.id]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        u.refresh_from_db()
+        self.assertEqual(set(u.maintenance_types.values_list("id", flat=True)), {t1.id})
+
+        # Смена роли на «Сотрудник» — флаги и область сбрасываются.
+        resp = self.client.patch(f"/api/users/{u.id}/", {"role": "employee"}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        u.refresh_from_db()
+        self.assertTrue(u.maintenance_all_types)
+        self.assertEqual(u.maintenance_types.count(), 0)
+        self.assertFalse(u.can_maintain)
+        self.assertFalse(u.can_manage_regulations)
+
+    def test_maintenance_flags_rejected_for_non_accountant(self):
+        """B23. Флаги can_maintain/can_manage_regulations — только для учётчика."""
+        admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=admin)
+        resp = self.client.post(
+            "/api/users/invite/",
+            {"email": "x@example.com", "role": "maintenance", "can_manage_regulations": True},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
     def test_reinvite_existing_unconfirmed_user_does_not_duplicate(self):
         admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
         self.client.force_authenticate(user=admin)

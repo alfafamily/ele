@@ -31,15 +31,38 @@ def can_perform_maintenance(request):
 
 
 def can_manage_maintenance(request):
-    """B13+. Кто может настраивать ТО (регламенты, план, дата первого ТО):
-    Администратор либо «Ответственный за учёт» с флагом can_maintain. Роль
-    «Ответственный за ТО» сюда НЕ входит — она только проводит ТО."""
+    """B13+/B23. Кто может настраивать регламенты ТО (типовые/индивидуальные,
+    план, дата первого ТО): Администратор либо «Ответственный за учёт» с флагом
+    can_manage_regulations. Роль «Ответственный за ТО» сюда НЕ входит — она только
+    проводит ТО. С B23 управление регламентами отвязано от проведения ТО
+    (отдельный флаг), поэтому проверяем can_manage_regulations, а не can_maintain."""
     role = _role(request)
     if role == "admin":
         return True
     if role == "accountant":
-        return bool(getattr(request.user, "can_maintain", False))
+        return bool(getattr(request.user, "can_manage_regulations", False))
     return False
+
+
+def maintenance_type_scope_ids(user):
+    """B23. Область типов оборудования, по которым пользователь может проводить ТО.
+    Возвращает None, если доступны ВСЕ типы (админ, либо maintenance_all_types), и
+    множество id выбранных типов — если область ограничена. Не проверяет само
+    право проведения ТО (это делает can_perform_maintenance)."""
+    if getattr(user, "role", None) == "admin":
+        return None
+    if getattr(user, "maintenance_all_types", True):
+        return None
+    return set(user.maintenance_types.values_list("id", flat=True))
+
+
+def can_maintain_type(request, type_id):
+    """B23. Может ли пользователь проводить ТО оборудования данного типа —
+    с учётом права проведения ТО и области выбранных типов."""
+    if not can_perform_maintenance(request):
+        return False
+    ids = maintenance_type_scope_ids(request.user)
+    return ids is None or type_id in ids
 
 
 class CanPerformMaintenance(BasePermission):

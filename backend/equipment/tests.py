@@ -1022,10 +1022,19 @@ class MaintenanceTests(APITestCase):
             403,
         )
 
-        # С флагом can_maintain — можно всё.
+        # B23: с флагом can_maintain (проведение ТО) — только проводит; управление
+        # планом/регламентами по-прежнему закрыто (нужен отдельный флаг).
         acc.can_maintain = True
         acc.save(update_fields=["can_maintain"])
         self.assertEqual(self._perform(eq_id, regulation=reg_id, next_planned_date=future, items=item).status_code, 200)
+        self.assertEqual(
+            self.client.patch(f"/api/equipment/{eq_id}/regulations/{reg_id}/plan/", {"is_cancelled": True}, format="json").status_code,
+            403,
+        )
+
+        # B23: с флагом can_manage_regulations — управление регламентами/планом.
+        acc.can_manage_regulations = True
+        acc.save(update_fields=["can_manage_regulations"])
         self.assertEqual(
             self.client.patch(f"/api/equipment/{eq_id}/regulations/{reg_id}/plan/", {"is_cancelled": True}, format="json").status_code,
             200,
@@ -1034,3 +1043,47 @@ class MaintenanceTests(APITestCase):
         # Обычный сотрудник — не проводит.
         self.client.force_authenticate(user=emp)
         self.assertIn(self._perform(eq_id, regulation=reg_id, items=item).status_code, (403, 404))
+
+    def test_maintenance_type_scope(self):
+        """B23. Область типов: ограниченный набор — проведение ТО только по
+        выбранным типам; роль ТО видит в списке только своё оборудование, а
+        учётчик — всё оборудование (ограничено лишь проведение)."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        future = (timezone.localdate() + timedelta(days=10)).isoformat()
+        type_a = self._make_type()
+        type_b = self._make_type()
+        reg_a = self._make_type_regulation(type_a)
+        eq_a = self._make_equipment(type_a, inv="INV-A")
+        eq_b = self._make_equipment(type_b, inv="INV-B")
+        item = [{"kind": "work", "name": "Чистка", "quantity": "1", "from_regulation": True}]
+
+        # Роль ТО, ограниченная типом A.
+        maint = User.objects.create_user(email="m2@example.com", password="Str0ng!Pass1", role="maintenance")
+        maint.maintenance_all_types = False
+        maint.save(update_fields=["maintenance_all_types"])
+        maint.maintenance_types.set([type_a])
+        self.client.force_authenticate(user=maint)
+        # Список — только оборудование типа A.
+        ids = [e["id"] for e in self.client.get("/api/equipment/").data["results"]]
+        self.assertIn(eq_a, ids)
+        self.assertNotIn(eq_b, ids)
+        # Проведение ТО — по A можно; eq_b вне области вообще не виден роли ТО (404).
+        self.assertEqual(self._perform(eq_a, regulation=reg_a, next_planned_date=future, items=item).status_code, 200)
+        self.assertEqual(self._perform(eq_b, items=item).status_code, 404)
+
+        # Учётчик с can_maintain, ограниченный типом A: видит ВСЁ оборудование,
+        # но проводит ТО только по A.
+        acc = User.objects.create_user(email="a2@example.com", password="Str0ng!Pass1", role="accountant")
+        acc.can_maintain = True
+        acc.maintenance_all_types = False
+        acc.save(update_fields=["can_maintain", "maintenance_all_types"])
+        acc.maintenance_types.set([type_a])
+        self.client.force_authenticate(user=acc)
+        ids = [e["id"] for e in self.client.get("/api/equipment/").data["results"]]
+        self.assertIn(eq_a, ids)
+        self.assertIn(eq_b, ids)
+        self.assertEqual(self._perform(eq_a, regulation=reg_a, next_planned_date=future, items=item).status_code, 200)
+        self.assertEqual(self._perform(eq_b, items=item).status_code, 403)

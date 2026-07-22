@@ -5,6 +5,7 @@ from rest_framework import serializers
 
 from employees.models import Employee
 from employees.serializers import EmployeeListSerializer
+from equipment.models import EquipmentType
 from storage.serializers import StoredFileSerializer
 
 from .tokens import get_user_from_uid, set_password_token_generator
@@ -32,10 +33,17 @@ class MeSerializer(serializers.ModelSerializer):
     список чужих объектов."""
 
     employee = EmployeeListSerializer(read_only=True)
+    # B23: область типов ТО текущего пользователя — фронт по ней гейтит блок
+    # «Провести ТО» на карточке оборудования (id выбранных типов + признак «все»).
+    maintenance_types = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
 
     class Meta:
         model = User
-        fields = ["id", "email", "role", "is_observer", "can_maintain", "employee", "is_email_confirmed", "date_joined", "password_changed_at"]
+        fields = [
+            "id", "email", "role", "is_observer", "can_maintain", "can_manage_regulations",
+            "maintenance_all_types", "maintenance_types", "employee", "is_email_confirmed",
+            "date_joined", "password_changed_at",
+        ]
 
 
 class UserListSerializer(serializers.ModelSerializer):
@@ -48,6 +56,8 @@ class UserListSerializer(serializers.ModelSerializer):
     employee_first_name = serializers.SerializerMethodField()
     employee_last_name = serializers.SerializerMethodField()
     employee_avatar = serializers.SerializerMethodField()
+    # B23: область типов ТО — нужна для предзаполнения формы редактирования.
+    maintenance_types = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
 
     class Meta:
         model = User
@@ -57,6 +67,9 @@ class UserListSerializer(serializers.ModelSerializer):
             "role",
             "is_observer",
             "can_maintain",
+            "can_manage_regulations",
+            "maintenance_all_types",
+            "maintenance_types",
             "status",
             "employee",
             "employee_name",
@@ -90,10 +103,34 @@ class UserListSerializer(serializers.ModelSerializer):
         return None
 
 
+def normalize_maintenance_fields(attrs, *, role, can_maintain):
+    """B23. Приводит поля области ТО к согласованному виду в зависимости от роли и
+    флага проведения ТО. Правила:
+    - can_maintain / can_manage_regulations применимы только к «Ответственному за
+      учёт» — у прочих ролей сбрасываются в False;
+    - область типов (maintenance_all_types / maintenance_types) имеет смысл только
+      для роли «Ответственный за ТО» или «Ответственного за учёт» с can_maintain;
+      иначе — «все типы», список очищается.
+    Мутирует и возвращает attrs (для сеттеров через сериализатор)."""
+    if role != User.Role.ACCOUNTANT:
+        attrs["can_maintain"] = False
+        attrs["can_manage_regulations"] = False
+        can_maintain = False
+    scoped = role == User.Role.MAINTENANCE or (role == User.Role.ACCOUNTANT and can_maintain)
+    if not scoped:
+        attrs["maintenance_all_types"] = True
+        attrs["maintenance_types"] = []
+    return attrs
+
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "email", "role", "is_observer", "can_maintain", "employee", "is_active", "is_email_confirmed", "date_joined"]
+        fields = [
+            "id", "email", "role", "is_observer", "can_maintain", "can_manage_regulations",
+            "maintenance_all_types", "maintenance_types", "employee",
+            "is_active", "is_email_confirmed", "date_joined",
+        ]
         read_only_fields = ["email", "is_active", "is_email_confirmed", "date_joined"]
 
     def validate(self, attrs):
@@ -104,11 +141,12 @@ class UserSerializer(serializers.ModelSerializer):
                 {"is_observer": ["Признак «Наблюдатель» применим только к роли «Сотрудник»."]}
             )
         can_maintain = attrs.get("can_maintain", getattr(self.instance, "can_maintain", False))
-        if can_maintain and role != User.Role.ACCOUNTANT:
+        can_manage = attrs.get("can_manage_regulations", getattr(self.instance, "can_manage_regulations", False))
+        if (can_maintain or can_manage) and role != User.Role.ACCOUNTANT:
             raise serializers.ValidationError(
-                {"can_maintain": ["Флаг «Ответственный за регламенты и проведение ТО» применим только к роли «Ответственный за учёт»."]}
+                {"can_maintain": ["Флаги ТО применимы только к роли «Ответственный за учёт»."]}
             )
-        return attrs
+        return normalize_maintenance_fields(attrs, role=role, can_maintain=can_maintain)
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -189,6 +227,12 @@ class InviteSerializer(serializers.Serializer):
     )
     is_observer = serializers.BooleanField(required=False, default=False)
     can_maintain = serializers.BooleanField(required=False, default=False)
+    can_manage_regulations = serializers.BooleanField(required=False, default=False)
+    # B23: область типов ТО (см. normalize_maintenance_fields).
+    maintenance_all_types = serializers.BooleanField(required=False, default=True)
+    maintenance_types = serializers.PrimaryKeyRelatedField(
+        many=True, required=False, default=list, queryset=EquipmentType.objects.all(),
+    )
     # Создать нового Сотрудника прямо из приглашения (свитч «Добавить сотрудника»
     # в модалке). Взаимоисключающе с выбором существующего employee_id.
     create_employee = serializers.BooleanField(required=False, default=False)
@@ -213,10 +257,11 @@ class InviteSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"is_observer": ["Признак «Наблюдатель» применим только к роли «Сотрудник»."]}
             )
-        if attrs.get("can_maintain") and attrs["role"] != User.Role.ACCOUNTANT:
+        if (attrs.get("can_maintain") or attrs.get("can_manage_regulations")) and attrs["role"] != User.Role.ACCOUNTANT:
             raise serializers.ValidationError(
-                {"can_maintain": ["Флаг «Ответственный за регламенты и проведение ТО» применим только к роли «Ответственный за учёт»."]}
+                {"can_maintain": ["Флаги ТО применимы только к роли «Ответственный за учёт»."]}
             )
+        normalize_maintenance_fields(attrs, role=attrs["role"], can_maintain=attrs.get("can_maintain", False))
         if attrs.get("create_employee"):
             if attrs.get("employee"):
                 raise serializers.ValidationError(
@@ -266,6 +311,8 @@ class InviteSerializer(serializers.Serializer):
                 "role": self.validated_data["role"],
                 "is_observer": self.validated_data.get("is_observer", False),
                 "can_maintain": self.validated_data.get("can_maintain", False),
+                "can_manage_regulations": self.validated_data.get("can_manage_regulations", False),
+                "maintenance_all_types": self.validated_data.get("maintenance_all_types", True),
                 "employee": employee,
             }
             user = User.objects.filter(email__iexact=email).first()
@@ -277,6 +324,8 @@ class InviteSerializer(serializers.Serializer):
                 user = User(email=email, is_email_confirmed=False, **fields)
                 user.set_unusable_password()
                 user.save()
+            # M2M — только после save() существующего/нового пользователя.
+            user.maintenance_types.set(self.validated_data.get("maintenance_types", []))
 
             send_invite(user)
         return user, domain_warning

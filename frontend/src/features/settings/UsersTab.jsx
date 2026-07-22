@@ -147,7 +147,7 @@ export function UsersTab() {
                   <StatusPill variant={ROLE_PILL_VARIANT[u.role]} className="ele-pill--clip">
                     {roleLabel(u.role)}
                     {u.is_observer ? ' · Наблюдатель' : ''}
-                    {u.can_maintain ? ' · ТО' : ''}
+                    {u.can_maintain || u.can_manage_regulations ? ' · ТО' : ''}
                   </StatusPill>
                 </div>
               </div>
