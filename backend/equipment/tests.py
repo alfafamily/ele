@@ -517,9 +517,13 @@ class EquipmentAccessMatrixTests(APITestCase):
 
 
 class EquipmentSearchTests(APITestCase):
-    """Поиск по списку Оборудования: Учётный номер, ФИО Сотрудника, Тип, Модель."""
+    """Поиск по списку Оборудования: Учётный номер, Тип, Модель, Сотрудник
+    (Имя/Фамилия/Должность/Отдел), Рабочее место (Здание/Помещение/Место) и
+    Склад (Название места хранения)."""
 
     def setUp(self):
+        from locations.models import Building, Place, Room
+
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
         self.client.force_authenticate(user=self.admin)
         resp = self.client.post("/api/equipment-types/", {"name": "Ноутбук"}, format="json")
@@ -528,7 +532,9 @@ class EquipmentSearchTests(APITestCase):
         resp = self.client.post("/api/equipment-types/", {"name": "Принтер"}, format="json")
         self.type2_id = resp.data["id"]
 
-        self.emp = Employee.objects.create(first_name="Анастасия", last_name="Стратиенко", position="Бухгалтер")
+        self.emp = Employee.objects.create(
+            first_name="Анастасия", last_name="Стратиенко", position="Бухгалтер", department="Финансы"
+        )
         resp = self.client.post(
             "/api/equipment/",
             {
@@ -543,6 +549,18 @@ class EquipmentSearchTests(APITestCase):
         self.eq1 = resp.data["id"]
         self.eq2 = Equipment.objects.create(inventory_number="PRN-777", equipment_type_id=self.type2_id)
 
+        # Оборудование на рабочем месте (Здание/Помещение/Место) и на складе.
+        building = Building.objects.create(name="Главный офис")
+        room = Room.objects.create(building=building, name="Кабинет 305")
+        workplace = Place.objects.create(room=room, name="Стол у окна", place_type=Place.PlaceType.WORKPLACE)
+        storage = Place.objects.create(room=room, name="Склад ИТ", place_type=Place.PlaceType.STORAGE)
+        self.eq_wp = Equipment.objects.create(
+            inventory_number="WP-1", equipment_type_id=self.type2_id, place=workplace
+        )
+        self.eq_st = Equipment.objects.create(
+            inventory_number="ST-1", equipment_type_id=self.type2_id, place=storage
+        )
+
     def _search_ids(self, term):
         resp = self.client.get("/api/equipment/", {"search": term})
         self.assertEqual(resp.status_code, 200, resp.data)
@@ -554,11 +572,29 @@ class EquipmentSearchTests(APITestCase):
     def test_search_by_employee_last_name(self):
         self.assertEqual(self._search_ids("Стратиенко"), {self.eq1})
 
+    def test_search_by_employee_position(self):
+        self.assertEqual(self._search_ids("Бухгалтер"), {self.eq1})
+
+    def test_search_by_employee_department(self):
+        self.assertEqual(self._search_ids("Финансы"), {self.eq1})
+
     def test_search_by_type(self):
-        self.assertEqual(self._search_ids("Принтер"), {self.eq2.id})
+        self.assertEqual(self._search_ids("Ноутбук"), {self.eq1})
 
     def test_search_by_model(self):
         self.assertEqual(self._search_ids("ZALMAN"), {self.eq1})
+
+    def test_search_by_workplace_building(self):
+        self.assertEqual(self._search_ids("Главный офис"), {self.eq_wp.id, self.eq_st.id})
+
+    def test_search_by_workplace_room(self):
+        self.assertEqual(self._search_ids("Кабинет 305"), {self.eq_wp.id, self.eq_st.id})
+
+    def test_search_by_workplace_place_name(self):
+        self.assertEqual(self._search_ids("Стол у окна"), {self.eq_wp.id})
+
+    def test_search_by_storage_place_name(self):
+        self.assertEqual(self._search_ids("Склад ИТ"), {self.eq_st.id})
 
     def test_search_no_duplicate_rows(self):
         # join по field_values мог бы задвоить строку — проверяем distinct().

@@ -27,6 +27,9 @@ class SimCardSerializer(serializers.ModelSerializer):
     is_deactivated = serializers.BooleanField(read_only=True)
     employee_name = serializers.SerializerMethodField()
     employee_avatar = serializers.SerializerMethodField()
+    # Должность/Отдел закреплённого сотрудника — для строки списка (под ФИО).
+    position = serializers.SerializerMethodField()
+    department = serializers.SerializerMethodField()
     # Размещение (B8): SIM за сотрудником ИЛИ за оборудованием; свободная — на складе.
     # equipment_detail — тип+модель и учётный номер оборудования (как у лицензий).
     equipment_detail = EquipmentMiniSerializer(source="equipment", read_only=True)
@@ -42,6 +45,8 @@ class SimCardSerializer(serializers.ModelSerializer):
             "employee",
             "employee_name",
             "employee_avatar",
+            "position",
+            "department",
             "equipment",
             "equipment_detail",
             "storage_place",
@@ -68,6 +73,12 @@ class SimCardSerializer(serializers.ModelSerializer):
         if obj.employee_id and obj.employee.avatar_id:
             return StoredFileSerializer(obj.employee.avatar).data
         return None
+
+    def get_position(self, obj):
+        return obj.employee.position if obj.employee_id else None
+
+    def get_department(self, obj):
+        return obj.employee.department if obj.employee_id else None
 
     def get_storage_place_detail(self, obj):
         return place_detail(obj.storage_place) if obj.storage_place_id else None
@@ -147,6 +158,9 @@ class AccessPassSerializer(serializers.ModelSerializer):
     utilization_reason_display = serializers.CharField(source="get_utilization_reason_display", read_only=True)
     employee_name = serializers.SerializerMethodField()
     employee_avatar = serializers.SerializerMethodField()
+    # Должность/Отдел закреплённого сотрудника — для строки списка (под ФИО).
+    position = serializers.SerializerMethodField()
+    department = serializers.SerializerMethodField()
     # Размещение (B8): свободный пропуск/ключ лежит на складе (место хранения).
     storage_place_detail = serializers.SerializerMethodField()
     # Явно — чтобы уникальность непустого номера проверялась своим сообщением.
@@ -161,6 +175,8 @@ class AccessPassSerializer(serializers.ModelSerializer):
             "employee",
             "employee_name",
             "employee_avatar",
+            "position",
+            "department",
             "account_number",
             "type_vehicle",
             "type_pedestrian",
@@ -197,6 +213,12 @@ class AccessPassSerializer(serializers.ModelSerializer):
         if obj.employee_id and obj.employee.avatar_id:
             return StoredFileSerializer(obj.employee.avatar).data
         return None
+
+    def get_position(self, obj):
+        return obj.employee.position if obj.employee_id else None
+
+    def get_department(self, obj):
+        return obj.employee.department if obj.employee_id else None
 
     def get_storage_place_detail(self, obj):
         return place_detail(obj.storage_place) if obj.storage_place_id else None

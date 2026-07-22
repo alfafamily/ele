@@ -173,7 +173,12 @@ export function PassListPage() {
                 {tab === 'active' ? (
                   <div style={{ minWidth: 0 }}>
                     {row.employee_name ? (
-                      <div className="ele-clamp-2">{row.employee_name}</div>
+                      <>
+                        <div className="ele-clamp-2">{row.employee_name}</div>
+                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {[row.position, row.department].filter(Boolean).join(' · ') || '—'}
+                        </div>
+                      </>
                     ) : row.storage_place_detail ? (
                       <div className="ele-clamp-2">На складе: {row.storage_place_detail.name}</div>
                     ) : (

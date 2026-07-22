@@ -148,6 +148,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
     employee_name = serializers.SerializerMethodField()
     employee_avatar = serializers.SerializerMethodField()
     department = serializers.SerializerMethodField()
+    position = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     place_detail = serializers.SerializerMethodField()
     field_values = EquipmentFieldValueOutSerializer(many=True, read_only=True)
@@ -165,6 +166,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
             "employee_name",
             "employee_avatar",
             "department",
+            "position",
             "place",
             "place_detail",
             "is_written_off",
@@ -206,6 +208,9 @@ class EquipmentSerializer(serializers.ModelSerializer):
 
     def get_department(self, obj):
         return obj.employee.department if obj.employee_id else None
+
+    def get_position(self, obj):
+        return obj.employee.position if obj.employee_id else None
 
     def get_status(self, obj):
         # assigned — за сотрудником (мобильно); stationary — на рабочем месте;

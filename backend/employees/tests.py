@@ -470,13 +470,17 @@ class DepartmentsAutocompleteTests(APITestCase):
 
 
 class EmployeeSearchTests(APITestCase):
-    """Поиск Сотрудников: Имя, Фамилия, Должность."""
+    """Поиск Сотрудников: Фамилия, Имя, Должность, Отдел."""
 
     def setUp(self):
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
         self.client.force_authenticate(user=self.admin)
-        self.e1 = Employee.objects.create(first_name="Анастасия", last_name="Стратиенко", position="Бухгалтер")
-        self.e2 = Employee.objects.create(first_name="Сергей", last_name="Виноградов", position="Водитель")
+        self.e1 = Employee.objects.create(
+            first_name="Анастасия", last_name="Стратиенко", position="Бухгалтер", department="Финансы"
+        )
+        self.e2 = Employee.objects.create(
+            first_name="Сергей", last_name="Виноградов", position="Водитель", department="Логистика"
+        )
 
     def _search_ids(self, term):
         resp = self.client.get("/api/employees/", {"search": term})
@@ -491,6 +495,115 @@ class EmployeeSearchTests(APITestCase):
 
     def test_search_by_position(self):
         self.assertEqual(self._search_ids("Водитель"), {self.e2.id})
+
+    def test_search_by_department(self):
+        self.assertEqual(self._search_ids("Логистика"), {self.e2.id})
+
+
+class SimSearchTests(APITestCase):
+    """Поиск SIM: Номер, Поставщик, Оператор, Тип, Место хранения, Сотрудник
+    (Фамилия/Имя/Должность/Отдел), Оборудование (Тип/Модель/Учётный номер)."""
+
+    def setUp(self):
+        from equipment.models import EquipmentFieldValue
+
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.emp = Employee.objects.create(
+            first_name="Пётр", last_name="Кузнецов", position="Инженер", department="Разработка"
+        )
+        room = Room.objects.create(building=Building.objects.create(name="ЦОД"), name="Стойка 7")
+        storage = Place.objects.create(room=room, name="Склад SIM", place_type=Place.PlaceType.STORAGE)
+        eq_type = EquipmentType.objects.create(name="Роутер", allows_sim=True)
+        self.eq = Equipment.objects.create(inventory_number="RT-500", equipment_type=eq_type)
+        EquipmentFieldValue.objects.create(
+            equipment=self.eq, field=eq_type.fields.get(name="Модель"), value_text="MikroTik"
+        )
+        # За сотрудником / за оборудованием / на складе (свободная).
+        self.s_emp = SimCard.objects.create(
+            phone_number="+7-900-000-0001", provider="Мегафон", network_operator="MegaFon",
+            employee=self.emp,
+        )
+        self.s_eq = SimCard.objects.create(phone_number="+7-900-000-0002", equipment=self.eq)
+        self.s_free = SimCard.objects.create(
+            phone_number="+7-900-000-0003", sim_type=SimCard.SimType.ESIM, storage_place=storage,
+        )
+
+    def _search_ids(self, term):
+        resp = self.client.get("/api/sim-cards/", {"search": term})
+        self.assertEqual(resp.status_code, 200, resp.data)
+        return {row["id"] for row in resp.data["results"]}
+
+    def test_search_by_phone_number(self):
+        self.assertEqual(self._search_ids("0001"), {self.s_emp.id})
+
+    def test_search_by_provider(self):
+        self.assertEqual(self._search_ids("Мегафон"), {self.s_emp.id})
+
+    def test_search_by_type_esim(self):
+        self.assertEqual(self._search_ids("esim"), {self.s_free.id})
+
+    def test_search_by_storage_place_name(self):
+        self.assertEqual(self._search_ids("Склад SIM"), {self.s_free.id})
+
+    def test_search_by_employee_last_name(self):
+        self.assertEqual(self._search_ids("Кузнецов"), {self.s_emp.id})
+
+    def test_search_by_employee_department(self):
+        self.assertEqual(self._search_ids("Разработка"), {self.s_emp.id})
+
+    def test_search_by_equipment_type(self):
+        self.assertEqual(self._search_ids("Роутер"), {self.s_eq.id})
+
+    def test_search_by_equipment_model(self):
+        self.assertEqual(self._search_ids("MikroTik"), {self.s_eq.id})
+
+    def test_search_by_equipment_inventory_number(self):
+        self.assertEqual(self._search_ids("RT-500"), {self.s_eq.id})
+
+
+class AccessPassSearchTests(APITestCase):
+    """Поиск средств доступа: Тип (Пропуск/Ключ), Учётный номер, Место
+    хранения, Сотрудник (Фамилия/Имя/Должность/Отдел)."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.emp = Employee.objects.create(
+            first_name="Ольга", last_name="Соколова", position="Охранник", department="Безопасность"
+        )
+        room = Room.objects.create(building=Building.objects.create(name="Проходная"), name="Пост 1")
+        storage = Place.objects.create(room=room, name="Хранилище карт", place_type=Place.PlaceType.STORAGE)
+        self.p_emp = AccessPass.objects.create(
+            object_type=AccessPass.ObjectType.PASS, account_number="PASS-77",
+            type_vehicle=True, employee=self.emp,
+        )
+        self.p_key = AccessPass.objects.create(
+            object_type=AccessPass.ObjectType.KEY, account_number="KEY-88", storage_place=storage,
+        )
+
+    def _search_ids(self, term):
+        resp = self.client.get("/api/access-passes/", {"search": term, "tab": "active"})
+        self.assertEqual(resp.status_code, 200, resp.data)
+        return {row["id"] for row in resp.data["results"]}
+
+    def test_search_by_account_number(self):
+        self.assertEqual(self._search_ids("PASS-77"), {self.p_emp.id})
+
+    def test_search_by_type_key(self):
+        self.assertEqual(self._search_ids("ключ"), {self.p_key.id})
+
+    def test_search_by_type_pass(self):
+        self.assertEqual(self._search_ids("пропуск"), {self.p_emp.id})
+
+    def test_search_by_storage_place_name(self):
+        self.assertEqual(self._search_ids("Хранилище карт"), {self.p_key.id})
+
+    def test_search_by_employee_last_name(self):
+        self.assertEqual(self._search_ids("Соколова"), {self.p_emp.id})
+
+    def test_search_by_employee_position(self):
+        self.assertEqual(self._search_ids("Охранник"), {self.p_emp.id})
 
 
 class SimEquipmentPlacementTests(APITestCase):

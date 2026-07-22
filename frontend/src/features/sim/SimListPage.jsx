@@ -131,7 +131,12 @@ export function SimListPage() {
                 {tab === 'active' ? (
                   <div style={{ minWidth: 0 }}>
                     {row.employee_name ? (
-                      <div className="ele-clamp-2">{row.employee_name}</div>
+                      <>
+                        <div className="ele-clamp-2">{row.employee_name}</div>
+                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {[row.position, row.department].filter(Boolean).join(' · ') || '—'}
+                        </div>
+                      </>
                     ) : row.equipment_detail ? (
                       <div style={{ minWidth: 0 }}>
                         <div className="ele-clamp-2">{row.equipment_detail.type_and_model}</div>
