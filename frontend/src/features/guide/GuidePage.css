@@ -67,6 +67,13 @@
   scroll-margin-top: 20px;
 }
 
+.ele-guide__link {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
 .ele-guide__h2 {
   display: flex;
   align-items: center;

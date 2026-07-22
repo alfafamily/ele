@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { Button, Card, Icon } from '../../shared/ui'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { GUIDE_SECTIONS } from './guideContent.jsx'
@@ -9,11 +9,38 @@ import './GuidePage.css'
 // слева (липкое) + все секции-карточки справа. Mobile: по одному разделу за раз
 // с переключением свайпом/кнопками и селектом-оглавлением сверху.
 
-// Инлайновое форматирование: **жирный** внутри строки контента.
-function renderInline(text) {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith('**') && part.endsWith('**') ? <strong key={i}>{part.slice(2, -2)}</strong> : part
+// Навигация по внутренним ссылкам guide: переход к разделу по его id. На десктопе
+// это скролл к секции, на мобильном — переключение активного раздела.
+const GuideNavContext = createContext(null)
+
+// Внутренняя ссылка на раздел: синтаксис [текст](#id) в контенте. Клик ведёт
+// к нужному разделу через GuideNavContext (fallback — обычный якорь).
+function GuideLink({ id, children }) {
+  const navigate = useContext(GuideNavContext)
+  return (
+    <a
+      href={'#' + id}
+      className="ele-guide__link"
+      onClick={(e) => {
+        if (navigate) {
+          e.preventDefault()
+          navigate(id)
+        }
+      }}
+    >
+      {children}
+    </a>
   )
+}
+
+// Инлайновое форматирование: **жирный** и ссылки [текст](#id) внутри строки.
+function renderInline(text) {
+  return text.split(/(\*\*[^*]+\*\*|\[[^\]]+\]\(#[a-z-]+\))/g).map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>
+    const link = part.match(/^\[([^\]]+)\]\(#([a-z-]+)\)$/)
+    if (link) return <GuideLink key={i} id={link[2]}>{link[1]}</GuideLink>
+    return part
+  })
 }
 
 function List({ items }) {
@@ -195,15 +222,23 @@ function GuideMobile() {
     }
   }, [last])
 
+  // Переход по внутренней ссылке [текст](#id): находим раздел по id и открываем его.
+  const navigate = (id) => {
+    const i = GUIDE_SECTIONS.findIndex((s) => s.id === id)
+    if (i !== -1) go(i)
+  }
+
   return (
     <div className="ele-guide">
       <h1 className="ele-guide__h1">Руководство пользователя</h1>
       <div className="ele-guide-m">
         <GuideSelect sections={GUIDE_SECTIONS} index={index} onPick={go} />
 
-        <div className="ele-guide-m__stage">
-          <SectionCard section={GUIDE_SECTIONS[index]} num={index + 1} />
-        </div>
+        <GuideNavContext.Provider value={navigate}>
+          <div className="ele-guide-m__stage">
+            <SectionCard section={GUIDE_SECTIONS[index]} num={index + 1} />
+          </div>
+        </GuideNavContext.Provider>
 
         <div className="ele-guide-m__nav">
           {index > 0 ? (
@@ -247,11 +282,13 @@ export function GuidePage() {
           ))}
         </nav>
 
-        <div className="ele-guide__content">
-          {GUIDE_SECTIONS.map((s, i) => (
-            <SectionCard key={s.id} section={s} num={i + 1} id={s.id} />
-          ))}
-        </div>
+        <GuideNavContext.Provider value={scrollTo}>
+          <div className="ele-guide__content">
+            {GUIDE_SECTIONS.map((s, i) => (
+              <SectionCard key={s.id} section={s} num={i + 1} id={s.id} />
+            ))}
+          </div>
+        </GuideNavContext.Provider>
       </div>
     </div>
   )
