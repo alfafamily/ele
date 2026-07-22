@@ -171,12 +171,17 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             # Не привязан к Сотруднику — не видит ничего, а не «все свободные».
             qs = qs.filter(employee_id=user.employee_id) if user.employee_id else qs.none()
 
-        # B23: роль «Ответственный за ТО» с ограниченной областью типов видит в
-        # разделе Оборудование только экземпляры выбранных типов (и в списке, и
-        # на карточке). У «Ответственного за учёт» список не сужается — он видит
-        # всё оборудование, ограничена лишь возможность проведения ТО.
-        if user.role == "maintenance" and not getattr(user, "maintenance_all_types", True):
-            qs = qs.filter(equipment_type_id__in=user.maintenance_types.values_list("id", flat=True))
+        # B23: роль «Ответственный за ТО» видит в разделе Оборудование только то,
+        # с чем работает по ТО (и в списке, и на карточке): при «все типы» — всё
+        # оборудование типов с включённым ТО; при ограничении — только выбранные
+        # типы. Оборудование типов без ТО ей недоступно. У «Ответственного за
+        # учёт» список НЕ сужается — он видит всё, ограничена лишь возможность
+        # проведения ТО.
+        if user.role == "maintenance":
+            if getattr(user, "maintenance_all_types", True):
+                qs = qs.filter(equipment_type__maintenance_enabled=True)
+            else:
+                qs = qs.filter(equipment_type_id__in=user.maintenance_types.values_list("id", flat=True))
 
         # Фильтры вкладки/статуса/поиска относятся только к списку. Для retrieve
         # и detail-действий их применять нельзя: иначе карточка архивного объекта
