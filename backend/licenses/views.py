@@ -140,11 +140,12 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
         search = self.request.query_params.get("search")
         if search:
-            # Поиск по Типу лицензии; привязанному Оборудованию (Тип оборудования,
-            # Название = Тип+Модель, Учётный номер) и Названию места хранения.
-            # «Модель» — зафиксированный (is_locked) реквизит Типа оборудования;
-            # join по equipment__field_values даёт дубли строк — снимаем distinct().
-            qs = qs.filter(
+            # Поиск по Типу лицензии и её Виду (Программная/Аппаратная); привязанному
+            # Оборудованию (Тип оборудования, Название = Тип+Модель, Учётный номер) и
+            # Названию места хранения. «Модель» — зафиксированный (is_locked) реквизит
+            # Типа оборудования; join по equipment__field_values даёт дубли —
+            # снимаем distinct().
+            cond = (
                 Q(name__icontains=search)
                 | Q(license_type__name__icontains=search)
                 | Q(equipment__equipment_type__name__icontains=search)
@@ -154,7 +155,15 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 )
                 | Q(equipment__inventory_number__icontains=search)
                 | Q(storage_place__name__icontains=search)
-            ).distinct()
+            )
+            # Вид хранится кодом (software/hardware) — сопоставляем по метке
+            # («Программная»/«Аппаратная») с учётом неполного ввода.
+            term = search.strip().lower()
+            for code, label in LicenseType.Kind.choices:
+                lab = label.lower()
+                if term and (lab.startswith(term) or term.startswith(lab)):
+                    cond |= Q(license_type__kind=code)
+            qs = qs.filter(cond).distinct()
         return qs
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])

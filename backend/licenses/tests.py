@@ -300,8 +300,8 @@ class LicenseSearchTests(APITestCase):
 
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
         self.client.force_authenticate(user=self.admin)
-        self.type_a = LicenseType.objects.create(name="Антивирус")
-        self.type_b = LicenseType.objects.create(name="Офис")
+        self.type_a = LicenseType.objects.create(name="Антивирус", kind=LicenseType.Kind.SOFTWARE)
+        self.type_b = LicenseType.objects.create(name="Офис", kind=LicenseType.Kind.HARDWARE)
         eq_type = EquipmentType.objects.create(name="Моноблок", allows_license=True)
         self.eq = Equipment.objects.create(inventory_number="DESKTOP-42", equipment_type=eq_type)
         # «Модель» — базовый is_locked-реквизит Типа (создаётся в save()).
@@ -323,6 +323,13 @@ class LicenseSearchTests(APITestCase):
 
     def test_search_by_type(self):
         self.assertEqual(self._search_ids("Офис"), {self.lic2.id})
+
+    def test_search_by_kind_software(self):
+        self.assertEqual(self._search_ids("Программная"), {self.lic1.id})
+
+    def test_search_by_kind_hardware(self):
+        # lic2 (тип «Офис») — аппаратная; неполный ввод «Аппарат» тоже находит.
+        self.assertEqual(self._search_ids("Аппарат"), {self.lic2.id})
 
     def test_search_by_equipment_inventory_number(self):
         self.assertEqual(self._search_ids("DESKTOP-42"), {self.lic1.id})
