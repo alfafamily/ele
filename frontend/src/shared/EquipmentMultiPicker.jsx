@@ -25,7 +25,7 @@ export function EquipmentMultiPicker({ value = [], onChange }) {
           ))}
         </div>
       ) : null}
-      <EquipmentPicker onSelect={add} excludeIds={ids} />
+      <EquipmentPicker onSelect={add} excludeIds={ids} withPlus />
     </div>
   )
 }

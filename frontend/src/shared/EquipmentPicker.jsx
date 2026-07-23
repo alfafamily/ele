@@ -8,7 +8,7 @@ import { Icon } from './ui/Icon/Icon.jsx'
 // onSelect(equipment) — выбранная единица. simOnly — только типы, у которых
 // разрешена установка SIM/E-SIM (B17); licenseOnly — только типы с разрешённой
 // установкой лицензий.
-export function EquipmentPicker({ onSelect, autoFocus, simOnly = false, licenseOnly = false, excludeIds }) {
+export function EquipmentPicker({ onSelect, autoFocus, simOnly = false, licenseOnly = false, excludeIds, withPlus = false }) {
   const [query, setQuery] = useState('')
   const debounced = useDebouncedValue(query, 250)
   const [results, setResults] = useState([])
@@ -67,7 +67,9 @@ export function EquipmentPicker({ onSelect, autoFocus, simOnly = false, licenseO
               type="button"
               onClick={() => onSelect(eq)}
               style={{
-                display: 'block',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
                 width: '100%',
                 textAlign: 'left',
                 padding: '10px 12px',
@@ -78,8 +80,15 @@ export function EquipmentPicker({ onSelect, autoFocus, simOnly = false, licenseO
                 fontFamily: 'inherit',
               }}
             >
-              <div style={{ fontSize: 13.5, fontWeight: 600 }}>{eq.type_and_model}</div>
-              <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</div>
+              {withPlus ? (
+                <span style={{ flex: 'none', width: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-placeholder)' }}>
+                  <Icon name="plus" size={14} strokeWidth={2.4} />
+                </span>
+              ) : null}
+              <span style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600 }}>{eq.type_and_model}</div>
+                <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</div>
+              </span>
             </button>
           ))}
         </div>
