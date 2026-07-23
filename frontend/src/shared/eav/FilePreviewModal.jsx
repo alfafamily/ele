@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from '../ui/Icon/Icon.jsx'
 import './FilePreviewModal.css'
@@ -24,33 +24,59 @@ function formatSize(bytes) {
 
 // Встроенный просмотрщик файлов реквизитов. Изображения/PDF/текст показываются
 // прямо в модалке; для остальных типов (или при ошибке рендера) — сообщение и
-// кнопка скачивания.
-export function FilePreviewModal({ file, onClose }) {
+// кнопка скачивания. Если у реквизита несколько файлов (files + startIndex) —
+// между ними можно переключаться стрелками ‹ › и клавишами ←/→.
+export function FilePreviewModal({ files, file, startIndex = 0, onClose }) {
+  // Поддерживаем и одиночный file (обратная совместимость), и массив files.
+  const list = files && files.length ? files : file ? [file] : []
+  const [idx, setIdx] = useState(startIndex)
   const [renderError, setRenderError] = useState(false)
+
+  const clampedIdx = Math.min(list.length - 1, Math.max(0, idx))
+  const current = list[clampedIdx]
+  const hasNav = list.length > 1
+
+  const go = useCallback(
+    (delta) => setIdx((i) => Math.min(list.length - 1, Math.max(0, i + delta))),
+    [list.length]
+  )
+
+  // При переключении файла сбрасываем ошибку рендера предыдущего.
+  useEffect(() => {
+    setRenderError(false)
+  }, [clampedIdx])
 
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') onClose()
+      else if (e.key === 'ArrowLeft') go(-1)
+      else if (e.key === 'ArrowRight') go(1)
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, go])
 
-  const kind = renderError ? 'other' : detectKind(file)
+  if (!current) return null
+
+  const kind = renderError ? 'other' : detectKind(current)
 
   return createPortal(
     <div className="ele-filepreview-overlay" onClick={onClose}>
       <div className="ele-filepreview" onClick={(e) => e.stopPropagation()}>
         <div className="ele-filepreview__head">
           <div className="ele-filepreview__title">
-            <div className="ele-filepreview__name">{file.original_filename}</div>
-            {file.size != null ? <div className="ele-filepreview__meta">{formatSize(file.size)}</div> : null}
+            <div className="ele-filepreview__name">{current.original_filename}</div>
+            <div className="ele-filepreview__meta">
+              {hasNav ? `${clampedIdx + 1} из ${list.length}` : null}
+              {hasNav && current.size != null ? ' · ' : null}
+              {current.size != null ? formatSize(current.size) : null}
+            </div>
           </div>
           <div className="ele-filepreview__actions">
             <a
               className="ele-filepreview__download"
-              href={file.url}
-              download={file.original_filename}
+              href={current.url}
+              download={current.original_filename}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -64,19 +90,19 @@ export function FilePreviewModal({ file, onClose }) {
 
         <div className="ele-filepreview__body">
           {kind === 'image' ? (
-            <img src={file.url} alt={file.original_filename} onError={() => setRenderError(true)} />
+            <img src={current.url} alt={current.original_filename} onError={() => setRenderError(true)} />
           ) : kind === 'pdf' ? (
             // PDF отдаётся с Content-Type: application/pdf (+X-Content-Type-Options:
             // nosniff в проде, infra/Caddyfile), поэтому исполняемого html/js тут
             // быть не может — stored XSS невозможен. sandbox="" НЕ ставим: он
             // ломает встроенный PDF-просмотрщик Chrome («Эта страница была
             // заблокирована браузером Chrome»).
-            <iframe src={file.url} title={file.original_filename} onError={() => setRenderError(true)} />
+            <iframe src={current.url} title={current.original_filename} onError={() => setRenderError(true)} />
           ) : kind === 'text' ? (
             // Текстовый файл может реально оказаться text/html — sandbox=""
             // (изолированный opaque origin без разрешения скриптов) нейтрализует
             // stored XSS через загруженный файл.
-            <iframe src={file.url} title={file.original_filename} sandbox="" onError={() => setRenderError(true)} />
+            <iframe src={current.url} title={current.original_filename} sandbox="" onError={() => setRenderError(true)} />
           ) : (
             <div className="ele-filepreview__fallback">
               <div className="ele-filepreview__fallback-icon">
@@ -88,8 +114,8 @@ export function FilePreviewModal({ file, onClose }) {
               </div>
               <a
                 className="ele-filepreview__fallback-btn"
-                href={file.url}
-                download={file.original_filename}
+                href={current.url}
+                download={current.original_filename}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -98,6 +124,29 @@ export function FilePreviewModal({ file, onClose }) {
             </div>
           )}
         </div>
+
+        {hasNav ? (
+          <>
+            <button
+              type="button"
+              className="ele-filepreview__nav ele-filepreview__nav--prev"
+              onClick={() => go(-1)}
+              disabled={clampedIdx === 0}
+              aria-label="Предыдущий файл"
+            >
+              <Icon name="chevron-left" size={22} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              className="ele-filepreview__nav ele-filepreview__nav--next"
+              onClick={() => go(1)}
+              disabled={clampedIdx === list.length - 1}
+              aria-label="Следующий файл"
+            >
+              <Icon name="chevron-right" size={22} strokeWidth={2} />
+            </button>
+          </>
+        ) : null}
       </div>
     </div>,
     document.body
