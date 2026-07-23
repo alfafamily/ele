@@ -19,28 +19,39 @@ const TABS = [
   { value: 'active', label: 'Активные' },
   { value: 'utilized', label: 'Утилизировано' },
 ]
-// Фильтр статуса внутри «Активных»: выданы сотруднику / свободные.
-const FILTERS = [
-  { value: 'all', label: 'Все' },
-  { value: 'attached', label: 'Выданные' },
-  { value: 'free', label: 'Неиспользуемые' },
-]
 const OBJECT_TYPE_FILTERS = [
   { value: 'all', label: 'Все' },
   { value: 'key', label: 'Ключ' },
   { value: 'pass', label: 'Пропуск' },
 ]
-// B27. «Закреплён за» — сотрудник / место хранения.
+// B27. «Размещение» — сотрудник / место хранения / не привязана (заменяет
+// прежний фильтр «Статус»).
 const ASSIGNED_OPTIONS = [
   { value: 'none', label: 'Не важно' },
   { value: 'employee', label: 'Сотрудник' },
   { value: 'storage', label: 'Место хранения' },
+  { value: 'unattached', label: 'Не привязана' },
 ]
 
 const placeOption = (p) => ({ value: String(p.id), label: p.name, sub: `${p.building_name} — ${p.room_name}` })
 
+// Верхние фильтры (тип средства + доступ) → параметры ограничения опций
+// сотрудников/мест хранения.
+function passConstraint(d) {
+  const o = { has_pass: '1' }
+  if (d.objectType !== 'all') o.object_type = d.objectType
+  if (d.buildings.length) o.buildings = d.buildings.join(',')
+  if (d.rooms.length) o.rooms = d.rooms.join(',')
+  if (d.places.length) o.places = d.places.join(',')
+  return o
+}
+function toQuery(obj) {
+  const p = new URLSearchParams()
+  for (const [k, v] of Object.entries(obj)) if (v) p.set(k, v)
+  return p.toString()
+}
+
 const EMPTY_FILTERS = {
-  status: 'all',
   objectType: 'all',
   buildings: [],
   rooms: [],
@@ -52,11 +63,9 @@ const EMPTY_FILTERS = {
 
 function countActive(f) {
   return (
-    (f.status !== 'all' ? 1 : 0) +
     (f.objectType !== 'all' ? 1 : 0) +
     (f.buildings.length || f.rooms.length || f.places.length ? 1 : 0) +
-    (f.assignedMode === 'employee' && f.employees.length ? 1 : 0) +
-    (f.assignedMode === 'storage' && f.storagePlaces.length ? 1 : 0)
+    (f.assignedMode !== 'none' ? 1 : 0)
   )
 }
 
@@ -117,8 +126,8 @@ export function PassListPage() {
     '/api/access-passes/',
     {
       tab,
-      status: isActive && filters.status !== 'all' ? filters.status : undefined,
       object_type: isActive && filters.objectType !== 'all' ? filters.objectType : undefined,
+      assigned: isActive && filters.assignedMode !== 'none' ? filters.assignedMode : undefined,
       buildings: isActive ? csvParam(filters.buildings) : undefined,
       rooms: isActive ? csvParam(filters.rooms) : undefined,
       places: isActive ? csvParam(filters.places) : undefined,
@@ -175,10 +184,6 @@ export function PassListPage() {
                 return (
                   <>
                     <div>
-                      <div className="ele-filter-section__title">Статус</div>
-                      <RadioPills options={FILTERS} value={draft.status} onChange={(v) => set({ status: v })} />
-                    </div>
-                    <div>
                       <div className="ele-filter-section__title">Тип средства</div>
                       <RadioPills options={OBJECT_TYPE_FILTERS} value={draft.objectType} onChange={(v) => set({ objectType: v })} />
                     </div>
@@ -187,19 +192,20 @@ export function PassListPage() {
                       rooms={draft.rooms}
                       places={draft.places}
                       onChange={set}
+                      objectType={draft.objectType}
                     />
                     <div>
-                      <div className="ele-filter-section__title">Закреплено за</div>
+                      <div className="ele-filter-section__title">Размещение</div>
                       <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
                       {draft.assignedMode === 'employee' ? (
                         <div style={{ marginTop: 10 }}>
-                          <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} />
+                          <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} extraParams={passConstraint(draft)} />
                         </div>
                       ) : null}
                       {draft.assignedMode === 'storage' ? (
                         <div style={{ marginTop: 10 }}>
                           <RemoteMultiSelect
-                            endpoint="/api/places/?place_type=storage&active=1"
+                            endpoint={`/api/places/?place_type=storage&active=1&${toQuery(passConstraint(draft))}`}
                             mapOption={placeOption}
                             selected={draft.storagePlaces}
                             onChange={(p) => set({ storagePlaces: p })}

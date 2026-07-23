@@ -9,8 +9,12 @@ import './ui/FilterModal/FilterModal.css'
 // обновление ({ buildings } | { rooms } | { places }).
 const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
 
-export function PassAccessFilter({ buildings, rooms, places, onChange }) {
+export function PassAccessFilter({ buildings, rooms, places, onChange, objectType }) {
   const [tree, setTree] = useState(null)
+  // B27. При выбранном Типе средства (Ключ/Пропуск) показываем только те
+  // здания/помещения/места, что реально фигурируют в средствах доступа этого типа.
+  const [refIds, setRefIds] = useState(null)
+  const kindActive = objectType && objectType !== 'all'
 
   useEffect(() => {
     let alive = true
@@ -22,12 +26,38 @@ export function PassAccessFilter({ buildings, rooms, places, onChange }) {
     }
   }, [])
 
-  const loading = tree === null
+  useEffect(() => {
+    if (!kindActive) {
+      setRefIds(null)
+      return
+    }
+    let alive = true
+    apiGet(`/api/access-passes/referenced-locations/?object_type=${objectType}`)
+      .then((d) => {
+        if (!alive) return
+        setRefIds({
+          buildings: new Set((d.buildings || []).map(String)),
+          rooms: new Set((d.rooms || []).map(String)),
+          places: new Set((d.places || []).map(String)),
+        })
+      })
+      .catch(() => alive && setRefIds({ buildings: new Set(), rooms: new Set(), places: new Set() }))
+    return () => {
+      alive = false
+    }
+  }, [objectType, kindActive])
+
+  const loading = tree === null || (kindActive && refIds === null)
   const t = tree || []
-  const buildingOpts = t.map((b) => ({ value: String(b.id), label: b.name }))
-  const roomOpts = t.flatMap((b) => (b.rooms || []).map((r) => ({ value: String(r.id), label: r.name, sub: b.name })))
+  const keep = (kind, id) => !refIds || refIds[kind].has(String(id))
+  const buildingOpts = t.filter((b) => keep('buildings', b.id)).map((b) => ({ value: String(b.id), label: b.name }))
+  const roomOpts = t.flatMap((b) =>
+    (b.rooms || []).filter((r) => keep('rooms', r.id)).map((r) => ({ value: String(r.id), label: r.name, sub: b.name })),
+  )
   const placeOpts = t.flatMap((b) =>
-    (b.rooms || []).flatMap((r) => (r.places || []).map((p) => ({ value: String(p.id), label: p.name, sub: `${b.name} — ${r.name}` }))),
+    (b.rooms || []).flatMap((r) =>
+      (r.places || []).filter((p) => keep('places', p.id)).map((p) => ({ value: String(p.id), label: p.name, sub: `${b.name} — ${r.name}` })),
+    ),
   )
 
   return (
