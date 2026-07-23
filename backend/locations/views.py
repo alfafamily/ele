@@ -112,6 +112,17 @@ class PlaceViewSet(_NoDeleteViewSet):
                 self.request.query_params,
             )
             qs = qs.filter(Exists(sub))
+        # B27. Опции «Размещение → Место хранения» в фильтре Средств доступа.
+        if self.request.query_params.get("has_pass") == "1":
+            from django.db.models import Exists, OuterRef
+            from employees.models import AccessPass
+            from employees.views import pass_match_filter
+
+            sub = pass_match_filter(
+                AccessPass.objects.filter(storage_place=OuterRef("pk"), is_utilized=False),
+                self.request.query_params,
+            )
+            qs = qs.filter(Exists(sub))
         return qs
 
     @action(detail=True, methods=["post"])

@@ -70,6 +70,28 @@ def sim_match_filter(qs, params):
     return qs
 
 
+def pass_match_filter(qs, params):
+    """B27. Ограничить queryset AccessPass фильтрами Средств доступа: тип средства
+    (object_type) + доступ в помещения (buildings/rooms/places — ИЛИ между ними).
+    Общий код для списка и для ограничения опций сотрудников/мест верхними фильтрами."""
+    object_type = params.get("object_type")
+    if object_type in dict(AccessPass.ObjectType.choices):
+        qs = qs.filter(object_type=object_type)
+    buildings = csv_ids(params.get("buildings"))
+    rooms = csv_ids(params.get("rooms"))
+    places = csv_ids(params.get("places"))
+    if buildings or rooms or places:
+        access = Q()
+        if buildings:
+            access |= Q(buildings__in=buildings)
+        if rooms:
+            access |= Q(rooms__in=rooms)
+        if places:
+            access |= Q(places__in=places)
+        qs = qs.filter(access).distinct()
+    return qs
+
+
 class EmployeeViewSet(viewsets.ModelViewSet):
     # Наблюдатель видит раздел «Сотрудники» на просмотр; управление и служебные
     # экшены (departments/positions/avatar/terminate/restore) — admin/accountant.
@@ -128,6 +150,16 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
             sub = sim_match_filter(
                 SimCard.objects.filter(employee=OuterRef("pk"), is_utilized=False),
+                self.request.query_params,
+            )
+            qs = qs.filter(Exists(sub))
+        # B27. Опции «Размещение → Сотрудник» в фильтре Средств доступа: только
+        # сотрудники с активным пропуском/ключом под верхние фильтры (тип+доступ).
+        if self.request.query_params.get("has_pass") == "1":
+            from django.db.models import Exists, OuterRef
+
+            sub = pass_match_filter(
+                AccessPass.objects.filter(employee=OuterRef("pk"), is_utilized=False),
                 self.request.query_params,
             )
             qs = qs.filter(Exists(sub))
@@ -721,44 +753,31 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             qs = qs.filter(employee_id__in=csv_ids(employee))
 
         if self.action == "list":
-            # Активные (все неутилизированные) / Утилизировано. Внутри «Активных»
-            # фильтр status: attached (Выданные — за сотрудником) / free
-            # (Неиспользуемые — без сотрудника). tab=deactivated сохранён для
-            # подбора свободных пропусков при привязке (AttachOrCreateModal).
+            # Активные (все неутилизированные) / Утилизировано. tab=deactivated
+            # сохранён для подбора свободных пропусков при привязке.
             tab = self.request.query_params.get("tab")
             if tab == "active":
                 qs = qs.filter(is_utilized=False)
-                status = self.request.query_params.get("status")
-                if status == "attached":
-                    qs = qs.filter(employee__isnull=False)
-                elif status == "free":
-                    qs = qs.filter(employee__isnull=True)
             elif tab == "deactivated":
                 qs = qs.filter(employee__isnull=True, is_utilized=False)
             elif tab == "utilized":
                 qs = qs.filter(is_utilized=True)
 
-            # B27. Фильтры модалки: тип средства (Ключ/Пропуск); доступ в помещения
-            # (мультивыбор зданий/помещений/мест — ИЛИ между ними); «Закреплён за»
-            # → место хранения (мультивыбор).
-            object_type = self.request.query_params.get("object_type")
-            if object_type in dict(AccessPass.ObjectType.choices):
-                qs = qs.filter(object_type=object_type)
-            buildings = csv_ids(self.request.query_params.get("buildings"))
-            rooms = csv_ids(self.request.query_params.get("rooms"))
-            places = csv_ids(self.request.query_params.get("places"))
-            if buildings or rooms or places:
-                access = Q()
-                if buildings:
-                    access |= Q(buildings__in=buildings)
-                if rooms:
-                    access |= Q(rooms__in=rooms)
-                if places:
-                    access |= Q(places__in=places)
-                qs = qs.filter(access).distinct()
-            storage_place = csv_ids(self.request.query_params.get("storage_place"))
-            if storage_place:
-                qs = qs.filter(storage_place_id__in=storage_place)
+            # B27. Тип средства (Ключ/Пропуск) + доступ в помещения
+            # (здания/помещения/места — ИЛИ между ними).
+            qs = pass_match_filter(qs, self.request.query_params)
+
+            # B27. «Размещение» (radio): категория + опц. значения. Заменяет прежний
+            # фильтр «Статус». Конкретный сотрудник — параметром employee (выше).
+            assigned = self.request.query_params.get("assigned")
+            if assigned == "employee":
+                if not csv_ids(self.request.query_params.get("employee")):
+                    qs = qs.filter(employee__isnull=False)
+            elif assigned == "storage":
+                ids = csv_ids(self.request.query_params.get("storage_place"))
+                qs = qs.filter(storage_place_id__in=ids) if ids else qs.filter(storage_place__isnull=False)
+            elif assigned == "unattached":
+                qs = qs.filter(employee__isnull=True, storage_place__isnull=True)
 
             search = self.request.query_params.get("search")
             if search:
@@ -789,6 +808,23 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                         cond |= q
                 qs = qs.filter(cond).distinct()
         return qs
+
+    @action(detail=False, methods=["get"], url_path="referenced-locations")
+    def referenced_locations(self, request):
+        """B27. Id зданий/помещений/мест, реально фигурирующих в активных
+        средствах доступа (для ограничения опций фильтра «Доступ» по типу
+        средства). ?object_type=key|pass — учесть только этот тип."""
+        qs = AccessPass.objects.filter(is_utilized=False)
+        object_type = request.query_params.get("object_type")
+        if object_type in dict(AccessPass.ObjectType.choices):
+            qs = qs.filter(object_type=object_type)
+        buildings = set(qs.values_list("buildings", flat=True))
+        rooms = set(qs.values_list("rooms", flat=True))
+        places = set(qs.values_list("places", flat=True))
+        buildings.discard(None)
+        rooms.discard(None)
+        places.discard(None)
+        return Response({"buildings": list(buildings), "rooms": list(rooms), "places": list(places)})
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def detach(self, request, pk=None):

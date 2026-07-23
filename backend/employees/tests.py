@@ -768,3 +768,36 @@ class SimOptionConstraintTests(APITestCase):
         ids = {e["id"] for e in self.client.get("/api/employees/", {"has_sim": "1", "operator": "Билайн"}).data["results"]}
         self.assertIn(self.emp_b.id, ids)
         self.assertNotIn(self.emp_a.id, ids)
+
+
+class PassOptionConstraintTests(APITestCase):
+    """B27. Тип средства ограничивает опции доступа (referenced-locations) и
+    Размещения; доступ ограничивает опции Размещения (has_pass)."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="passopt@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.emp_key = Employee.objects.create(first_name="K", last_name="K")
+        self.emp_pass = Employee.objects.create(first_name="P", last_name="P")
+        self.b1 = Building.objects.create(name="Здание1")
+        self.b2 = Building.objects.create(name="Здание2")
+        self.key = AccessPass.objects.create(object_type="key", account_number="K1", employee=self.emp_key)
+        self.key.buildings.add(self.b1)
+        self.pass_ = AccessPass.objects.create(object_type="pass", account_number="P1", employee=self.emp_pass)
+        self.pass_.buildings.add(self.b2)
+
+    def test_referenced_locations_by_object_type(self):
+        data = self.client.get("/api/access-passes/referenced-locations/", {"object_type": "key"}).data
+        self.assertEqual(set(data["buildings"]), {self.b1.id})
+        data = self.client.get("/api/access-passes/referenced-locations/", {"object_type": "pass"}).data
+        self.assertEqual(set(data["buildings"]), {self.b2.id})
+
+    def test_employee_options_by_pass_object_type(self):
+        ids = {e["id"] for e in self.client.get("/api/employees/", {"has_pass": "1", "object_type": "key"}).data["results"]}
+        self.assertIn(self.emp_key.id, ids)
+        self.assertNotIn(self.emp_pass.id, ids)
+
+    def test_employee_options_by_pass_access_building(self):
+        ids = {e["id"] for e in self.client.get("/api/employees/", {"has_pass": "1", "buildings": str(self.b2.id)}).data["results"]}
+        self.assertIn(self.emp_pass.id, ids)
+        self.assertNotIn(self.emp_key.id, ids)
