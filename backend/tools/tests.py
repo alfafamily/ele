@@ -258,14 +258,48 @@ class ToolTests(APITestCase):
         r = self._post(tid, "transfer-units", to_place=self.store1.id, quantity=4)
         self.assertEqual(r.status_code, 409, r.data)
 
-    def test_stock_filter(self):
-        free_id = self._make(name="Свободный", quantity=10)["id"]
-        empty_id = self._make(name="Пустой", quantity=5)["id"]
-        # У «Пустого» весь остаток выдан — свободного нет.
-        self._post(empty_id, "assign-units", employee=self.emp_a.id, from_place=self.store1.id, quantity=5)
-        has = [t["id"] for t in self.client.get("/api/tools/?tab=active&stock=has_free").data["results"]]
-        self.assertIn(free_id, has)
-        self.assertNotIn(empty_id, has)
-        no = [t["id"] for t in self.client.get("/api/tools/?tab=active&stock=no_free").data["results"]]
-        self.assertIn(empty_id, no)
-        self.assertNotIn(free_id, no)
+    def test_placement_filter(self):
+        # B27. «Размещение» вместо «Остатка»: на складе / за сотрудником.
+        store_id = self._make(name="Свободный", quantity=10)["id"]  # весь остаток на store1
+        emp_id = self._make(name="Уэмп", quantity=5)["id"]
+        self._post(emp_id, "assign-units", employee=self.emp_a.id, from_place=self.store1.id, quantity=5)
+        by_store = [t["id"] for t in self.client.get("/api/tools/?tab=active&assigned=storage").data["results"]]
+        self.assertIn(store_id, by_store)
+        self.assertNotIn(emp_id, by_store)
+        by_emp = [t["id"] for t in self.client.get("/api/tools/?tab=active&assigned=employee").data["results"]]
+        self.assertIn(emp_id, by_emp)
+        self.assertNotIn(store_id, by_emp)
+
+
+class ToolPlacementFilterTests(APITestCase):
+    """B27. Фильтр «Размещение» инструментов: сотрудник / рабочее место / склад."""
+
+    def setUp(self):
+        from locations.models import Building, Place, Room
+        from tools.models import Tool, ToolAllocation
+
+        self.admin = User.objects.create_superuser(email="toolplace@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.emp = Employee.objects.create(first_name="A", last_name="A")
+        b = Building.objects.create(name="B")
+        r = Room.objects.create(building=b, name="1")
+        self.store = Place.objects.create(room=r, name="Скл", place_type=Place.PlaceType.STORAGE)
+        self.wp = Place.objects.create(room=r, name="РМ", place_type=Place.PlaceType.WORKPLACE)
+        self.t_emp = Tool.objects.create(name="ЗаСотр", quantity=1)
+        ToolAllocation.objects.create(tool=self.t_emp, employee=self.emp, quantity=1)
+        self.t_wp = Tool.objects.create(name="НаРМ", quantity=1)
+        ToolAllocation.objects.create(tool=self.t_wp, place=self.wp, quantity=1)
+        self.t_store = Tool.objects.create(name="НаСкл", quantity=1)
+        ToolAllocation.objects.create(tool=self.t_store, place=self.store, quantity=1)
+
+    def _names(self, params):
+        return {t["name"] for t in self.client.get("/api/tools/", {"tab": "active", **params}).data["results"]}
+
+    def test_assigned_categories(self):
+        self.assertEqual(self._names({"assigned": "employee"}), {"ЗаСотр"})
+        self.assertEqual(self._names({"assigned": "workplace"}), {"НаРМ"})
+        self.assertEqual(self._names({"assigned": "storage"}), {"НаСкл"})
+
+    def test_assigned_specific_employee(self):
+        self.assertEqual(self._names({"assigned": "employee", "employee": str(self.emp.id)}), {"ЗаСотр"})
+        self.assertEqual(self._names({"assigned": "storage", "place_storage": str(self.store.id)}), {"НаСкл"})
