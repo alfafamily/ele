@@ -16,6 +16,19 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.17.2] — 2026-07-23
+
+### Добавлено
+- **Перелистывание файлов в предпросмотрщике реквизита.** Если к одному
+  реквизиту прикреплено несколько файлов, между ними можно переключаться прямо
+  в окне просмотра — стрелками ‹ › по краям или клавишами ←/→, со счётчиком
+  «N из M»; выходить из просмотра и открывать файлы по одному больше не нужно.
+
+### Исправлено
+- **Длинные имена файлов в блоке «Файлы» формы редактирования** больше не
+  выходят за рамки блока — имя ужимается и обрезается многоточием (полное имя —
+  в подсказке при наведении), размер и «Удалить» всегда видны.
+
 ## [1.17.1] — 2026-07-23
 
 ### Исправлено
@@ -1220,7 +1233,9 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.17.0...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.17.2...HEAD
+[1.17.2]: https://github.com/alfafamily/ele/compare/v1.17.1...v1.17.2
+[1.17.1]: https://github.com/alfafamily/ele/compare/v1.17.0...v1.17.1
 [1.17.0]: https://github.com/alfafamily/ele/compare/v1.16.0...v1.17.0
 [1.16.0]: https://github.com/alfafamily/ele/compare/v1.15.0...v1.16.0
 [1.15.0]: https://github.com/alfafamily/ele/compare/v1.14.1...v1.15.0
