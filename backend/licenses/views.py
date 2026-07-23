@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.eav import count_missing_for_field
-from core.eav_filters import csv_ids, eav_req_conditions
+from core.eav_filters import csv_ids, eav_field_value_suggestions, eav_req_conditions
 from core.mixins import CreationCommentMixin
 from core.pagination import ELECursorPagination
 from core.permissions import IsAdminOrAccountant, IsAdminOrAccountantOrReadOnlyObserver
@@ -190,6 +190,18 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                     cond |= Q(license_type__kind=code)
             qs = qs.filter(cond).distinct()
         return qs
+
+    @action(detail=False, methods=["get"], url_path="field-values")
+    def field_values(self, request):
+        """B27. Автоподсказка существующих значений реквизита (текст/число) для
+        фильтра по реквизитам типа. ?field=<id>&search=<строка>."""
+        field_id = request.query_params.get("field")
+        if not field_id:
+            return Response([])
+        field = get_object_or_404(LicenseTypeField, pk=field_id)
+        return Response(
+            eav_field_value_suggestions(field, LicenseFieldValue, search=request.query_params.get("search", ""))
+        )
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def utilize(self, request, pk=None):
