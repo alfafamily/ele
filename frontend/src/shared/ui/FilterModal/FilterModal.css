@@ -17,12 +17,14 @@
    На мобильном тело остаётся flex-column — колонки просто складываются стеком. */
 @media (min-width: 769px) {
   .ele-modal--filter-wide {
-    max-width: 760px;
+    max-width: 940px;
   }
 
+  /* Правая колонка («Размещение») чуть шире — чтобы её пилюли-варианты
+     (Не важно / Сотрудник / Место хранения / Рабочее место) помещались в ряд. */
   .ele-filter-modal__body--cols {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
     gap: 28px;
     align-items: start;
   }
