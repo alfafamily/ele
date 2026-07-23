@@ -106,6 +106,40 @@
   background: #fff;
 }
 
+/* Стрелки переключения между файлами одного реквизита — поверх области
+   просмотра, по вертикали по центру. Позиционируются от корня модалки (он не
+   скроллится), поэтому не «уезжают» при прокрутке содержимого. */
+.ele-filepreview__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  box-shadow: var(--shadow-modal);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.ele-filepreview__nav:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ele-filepreview__nav--prev {
+  left: 14px;
+}
+
+.ele-filepreview__nav--next {
+  right: 14px;
+}
+
 .ele-filepreview__fallback {
   text-align: center;
   padding: 40px 24px;

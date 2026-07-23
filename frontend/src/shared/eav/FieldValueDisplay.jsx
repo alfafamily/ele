@@ -6,21 +6,23 @@ import { Icon } from '../ui/Icon/Icon.jsx'
 // «Параметры лицензии» карточки . fv — элемент field_values
 // (name, value_type, value, value_file, value_files).
 export function FieldValueDisplay({ fv }) {
-  const [preview, setPreview] = useState(null) // просматриваемый файл | null
+  const [previewIndex, setPreviewIndex] = useState(null) // индекс просматриваемого файла | null
   let display
+  let previewFiles = [] // плоский список файлов реквизита для перелистывания в просмотрщике
   if (fv.value_type === 'file') {
     // Одиночный файл — в value_file; несколько (allow_multiple) — в value_files.
     const files = []
     if (fv.value_file) files.push({ key: 'single', file: fv.value_file })
     for (const f of fv.value_files || []) files.push({ key: f.id, file: f.file })
+    previewFiles = files.map(({ file }) => file)
 
     display = files.length ? (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-        {files.map(({ key, file }) => (
+        {files.map(({ key, file }, i) => (
           <button
             key={key}
             type="button"
-            onClick={() => setPreview(file)}
+            onClick={() => setPreviewIndex(i)}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -59,7 +61,9 @@ export function FieldValueDisplay({ fv }) {
     <div style={{ minWidth: 0 }}>
       <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fv.name}</div>
       <div style={{ fontSize: 14, fontWeight: 500, overflowWrap: 'break-word', minWidth: 0 }}>{display}</div>
-      {preview ? <FilePreviewModal file={preview} onClose={() => setPreview(null)} /> : null}
+      {previewIndex != null ? (
+        <FilePreviewModal files={previewFiles} startIndex={previewIndex} onClose={() => setPreviewIndex(null)} />
+      ) : null}
     </div>
   )
 }
