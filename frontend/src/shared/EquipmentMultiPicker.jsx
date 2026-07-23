@@ -4,7 +4,7 @@ import './ui/FilterModal/FilterModal.css'
 
 // Мультивыбор оборудования для фильтров: чипы выбранных + поиск (EquipmentPicker).
 // value — [{ id, label }] (label = «Тип · Модель», рисуем чипы без дозапроса).
-export function EquipmentMultiPicker({ value = [], onChange }) {
+export function EquipmentMultiPicker({ value = [], onChange, licenseTypeIds }) {
   const ids = value.map((v) => v.id)
   const add = (eq) => {
     if (!ids.includes(eq.id)) onChange([...value, { id: eq.id, label: eq.type_and_model }])
@@ -25,7 +25,7 @@ export function EquipmentMultiPicker({ value = [], onChange }) {
           ))}
         </div>
       ) : null}
-      <EquipmentPicker onSelect={add} excludeIds={ids} withPlus />
+      <EquipmentPicker onSelect={add} excludeIds={ids} withPlus licenseTypeIds={licenseTypeIds} />
     </div>
   )
 }

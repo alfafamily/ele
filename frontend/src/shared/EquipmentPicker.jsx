@@ -8,19 +8,22 @@ import { Icon } from './ui/Icon/Icon.jsx'
 // onSelect(equipment) — выбранная единица. simOnly — только типы, у которых
 // разрешена установка SIM/E-SIM (B17); licenseOnly — только типы с разрешённой
 // установкой лицензий.
-export function EquipmentPicker({ onSelect, autoFocus, simOnly = false, licenseOnly = false, excludeIds, withPlus = false }) {
+export function EquipmentPicker({ onSelect, autoFocus, simOnly = false, licenseOnly = false, excludeIds, withPlus = false, licenseTypeIds }) {
   const [query, setQuery] = useState('')
   const debounced = useDebouncedValue(query, 250)
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
   const excludeSet = new Set(excludeIds || [])
+  // B27: ограничение опций выбранными типами лицензий (в фильтре Лицензий).
+  const typeKey = (licenseTypeIds || []).join(',')
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     const qs = debounced ? `&search=${encodeURIComponent(debounced)}` : ''
     const typeFilter = simOnly ? '&allows_sim=1' : licenseOnly ? '&allows_license=1' : ''
-    apiGet(`/api/equipment/?tab=active${qs}${typeFilter}`)
+    const licFilter = typeKey ? `&has_license_type=${encodeURIComponent(typeKey)}` : ''
+    apiGet(`/api/equipment/?tab=active${qs}${typeFilter}${licFilter}`)
       .then((data) => {
         if (!cancelled) setResults(data.results || [])
       })
@@ -30,7 +33,7 @@ export function EquipmentPicker({ onSelect, autoFocus, simOnly = false, licenseO
     return () => {
       cancelled = true
     }
-  }, [debounced, simOnly, licenseOnly])
+  }, [debounced, simOnly, licenseOnly, typeKey])
 
   return (
     <div>

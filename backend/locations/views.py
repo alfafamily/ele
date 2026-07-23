@@ -81,6 +81,25 @@ class PlaceViewSet(_NoDeleteViewSet):
             qs = qs.filter(place_type=place_type)
         if self.request.query_params.get("active") in ("1", "true"):
             qs = qs.filter(is_archived=False)
+
+        # B27. Опции «Размещение → Место хранения/Рабочее место» в фильтрах:
+        # только места, где реально стоит объект выбранных типов.
+        from core.eav_filters import csv_ids
+
+        eq_types = csv_ids(self.request.query_params.get("has_equipment_type"))
+        if eq_types:
+            qs = qs.filter(
+                equipment__equipment_type_id__in=eq_types, equipment__is_written_off=False
+            ).distinct()
+        lic_types = csv_ids(self.request.query_params.get("has_license_type"))
+        if lic_types:
+            from licenses.models import License
+
+            qs = qs.filter(
+                id__in=License.objects.filter(
+                    license_type_id__in=lic_types, is_retired=False, storage_place__isnull=False
+                ).values("storage_place")
+            )
         return qs
 
     @action(detail=True, methods=["post"])

@@ -7,17 +7,22 @@ import { Icon } from './ui/Icon/Icon.jsx'
 // Подбор Сотрудника с поиском (C2 «Закрепить сотрудника», форма Оборудования,
 // модалка приглашения) — общий для всех мест, где нужен именно Сотрудник
 // (не Пользователь).
-export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeIds, withPlus = false }) {
+export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeIds, withPlus = false, equipmentTypeIds }) {
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query, 250)
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
   const excludeSet = new Set(excludeIds || [])
+  // B27: ограничение опций выбранными типами оборудования (в фильтрах).
+  const typeKey = (equipmentTypeIds || []).join(',')
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    const qs = debouncedQuery ? `?search=${encodeURIComponent(debouncedQuery)}` : ''
+    const params = new URLSearchParams()
+    if (debouncedQuery) params.set('search', debouncedQuery)
+    if (typeKey) params.set('has_equipment_type', typeKey)
+    const qs = params.toString() ? `?${params.toString()}` : ''
     apiGet(`/api/employees/${qs}`)
       .then((data) => {
         if (!cancelled) setResults(data.results.filter((e) => e.is_employed))
@@ -28,7 +33,7 @@ export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeI
     return () => {
       cancelled = true
     }
-  }, [debouncedQuery])
+  }, [debouncedQuery, typeKey])
 
   return (
     <div>

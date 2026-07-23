@@ -90,6 +90,14 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                 | Q(position__icontains=search)
                 | Q(department__icontains=search)
             )
+        # B27. Опции «Размещение → Сотрудник» в фильтре Оборудования: только
+        # сотрудники, за которыми закреплено активное оборудование выбранных типов.
+        has_equipment_type = csv_ids(self.request.query_params.get("has_equipment_type"))
+        if has_equipment_type:
+            qs = qs.filter(
+                equipment__equipment_type_id__in=has_equipment_type,
+                equipment__is_written_off=False,
+            ).distinct()
         return qs
 
     def destroy(self, request, *args, **kwargs):
