@@ -715,3 +715,31 @@ class MyWorkPlacementTests(APITestCase):
         r = self.client.get("/api/my/work-placement/")
         self.assertEqual(r.status_code, 200, r.data)
         self.assertEqual(r.data, {"tools": [], "workplaces": []})
+
+
+class SimAndPassFilterTests(APITestCase):
+    """B27. Новые фильтры списков SIM (тип/оператор) и пропусков (тип средства)."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="spfilt@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.sim = SimCard.objects.create(phone_number="+79001112200", sim_type="sim", network_operator="МТС")
+        self.esim = SimCard.objects.create(phone_number="+79001112201", sim_type="esim", network_operator="")
+        self.key = AccessPass.objects.create(object_type="key", account_number="K-1")
+        self.pass_ = AccessPass.objects.create(object_type="pass", account_number="P-1")
+
+    def test_sim_type_filter(self):
+        rows = self.client.get("/api/sim-cards/", {"tab": "active", "sim_type": "esim"}).data["results"]
+        self.assertEqual({r["id"] for r in rows}, {self.esim.id})
+
+    def test_sim_operator_and_none(self):
+        rows = self.client.get("/api/sim-cards/", {"tab": "active", "operator": "МТС"}).data["results"]
+        self.assertEqual({r["id"] for r in rows}, {self.sim.id})
+        rows = self.client.get("/api/sim-cards/", {"tab": "active", "operator_none": "1"}).data["results"]
+        self.assertEqual({r["id"] for r in rows}, {self.esim.id})
+
+    def test_pass_object_type_filter(self):
+        rows = self.client.get("/api/access-passes/", {"tab": "active", "object_type": "key"}).data["results"]
+        self.assertEqual({r["id"] for r in rows}, {self.key.id})
+        rows = self.client.get("/api/access-passes/", {"tab": "active", "object_type": "pass"}).data["results"]
+        self.assertEqual({r["id"] for r in rows}, {self.pass_.id})

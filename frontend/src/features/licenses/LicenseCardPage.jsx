@@ -11,6 +11,9 @@ import { MaskedKeyField } from './MaskedKeyField.jsx'
 import { LICENSE_STATUS_LABEL } from './statusLabels.js'
 import { UtilizeModal } from './UtilizeModal.jsx'
 
+// B18: вид лицензии (Программная/Аппаратная) — свойство её Типа.
+const KIND_LABEL = { software: 'Программная', hardware: 'Аппаратная' }
+
 export function LicenseCardPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -104,6 +107,7 @@ export function LicenseCardPage() {
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
           <div className="ele-field-grid">
             <Field label="Тип лицензии" value={license.license_type_name} />
+            <Field label="Вид лицензии" value={KIND_LABEL[license.license_type_kind] || '—'} />
             <Field label="Статус" value={license.is_retired ? 'Утилизирована' : LICENSE_STATUS_LABEL[license.status]} />
           </div>
         </Card>

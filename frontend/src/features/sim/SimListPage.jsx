@@ -6,7 +6,10 @@ import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
-import { Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { Button, Checkbox, EmptyState, FilterModal, Icon, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
+import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
+import { csvParam } from '../../shared/filterParams.js'
 
 const CACHE_KEY = 'sim-list'
 
@@ -20,6 +23,43 @@ const FILTERS = [
   { value: 'attached', label: 'Активные' },
   { value: 'free', label: 'Неактивные' },
 ]
+const SIM_TYPE_FILTERS = [
+  { value: 'all', label: 'Все' },
+  { value: 'sim', label: 'SIM' },
+  { value: 'esim', label: 'E-SIM' },
+]
+// B27. «Закреплён за» — сотрудник / место хранения.
+const ASSIGNED_OPTIONS = [
+  { value: 'none', label: 'Не важно' },
+  { value: 'employee', label: 'Сотрудник' },
+  { value: 'storage', label: 'Место хранения' },
+]
+
+const placeOption = (p) => ({ value: String(p.id), label: p.name, sub: `${p.building_name} — ${p.room_name}` })
+const strOption = (s) => ({ value: s, label: s })
+
+const EMPTY_FILTERS = {
+  status: 'all',
+  simType: 'all',
+  operators: [],
+  operatorNone: false,
+  providers: [],
+  providerNone: false,
+  assignedMode: 'none',
+  employees: [],
+  storagePlaces: [],
+}
+
+function countActive(f) {
+  return (
+    (f.status !== 'all' ? 1 : 0) +
+    (f.simType !== 'all' ? 1 : 0) +
+    (f.operators.length || f.operatorNone ? 1 : 0) +
+    (f.providers.length || f.providerNone ? 1 : 0) +
+    (f.assignedMode === 'employee' && f.employees.length ? 1 : 0) +
+    (f.assignedMode === 'storage' && f.storagePlaces.length ? 1 : 0)
+  )
+}
 
 const ACTIVE_COLUMNS = [
   { key: 'phone_number', label: 'Номер', sortable: true, width: 'minmax(0, 1.3fr)' },
@@ -41,20 +81,33 @@ export function SimListPage() {
   const isPop = useNavigationType() === 'POP'
   const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
   const [tab, setTab] = useState(() => savedUi?.tab ?? 'active')
-  const [status, setStatus] = useState(() => savedUi?.status ?? 'all')
+  const [filters, setFilters] = useState(() => ({ ...EMPTY_FILTERS, ...(savedUi?.filters ?? {}) }))
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
   const columns = tab === 'active' ? ACTIVE_COLUMNS : UTILIZED_COLUMNS
 
   useEffect(() => {
-    writeListCache(CACHE_KEY, { ui: { tab, status, search, sort } })
-  }, [tab, status, search, sort])
+    writeListCache(CACHE_KEY, { ui: { tab, filters, search, sort } })
+  }, [tab, filters, search, sort])
 
+  const isActive = tab === 'active'
   const ordering = sort.dir === 'desc' ? `-${sort.key}` : sort.key
   const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList(
     '/api/sim-cards/',
-    { tab, status: tab === 'active' ? status : undefined, search: debouncedSearch || undefined, ordering },
+    {
+      tab,
+      status: isActive && filters.status !== 'all' ? filters.status : undefined,
+      sim_type: isActive && filters.simType !== 'all' ? filters.simType : undefined,
+      operator: isActive ? csvParam(filters.operators) : undefined,
+      operator_none: isActive && filters.operatorNone ? '1' : undefined,
+      provider: isActive ? csvParam(filters.providers) : undefined,
+      provider_none: isActive && filters.providerNone ? '1' : undefined,
+      employee: isActive && filters.assignedMode === 'employee' ? csvParam(filters.employees.map((e) => e.id)) : undefined,
+      storage_place: isActive && filters.assignedMode === 'storage' ? csvParam(filters.storagePlaces) : undefined,
+      search: debouncedSearch || undefined,
+      ordering,
+    },
     { cacheKey: CACHE_KEY, restore: isPop },
   )
   useScrollRestoration(CACHE_KEY, isPop && !loading)
@@ -89,9 +142,76 @@ export function SimListPage() {
         <div className="ele-list-controls__search">
           <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
         </div>
-        {tab === 'active' ? (
+        {isActive ? (
           <div className="ele-list-controls__filter">
-            <FilterButton options={FILTERS} value={status} onChange={setStatus} />
+            <FilterModal
+              value={filters}
+              count={countActive(filters)}
+              onApply={setFilters}
+              onClear={() => setFilters(EMPTY_FILTERS)}
+              isDraftActive={(d) => countActive(d) > 0}
+            >
+              {(draft, setDraft) => {
+                const set = (patch) => setDraft({ ...draft, ...patch })
+                return (
+                  <>
+                    <div>
+                      <div className="ele-filter-section__title">Статус</div>
+                      <RadioPills options={FILTERS} value={draft.status} onChange={(v) => set({ status: v })} />
+                    </div>
+                    <div>
+                      <div className="ele-filter-section__title">Тип SIM</div>
+                      <RadioPills options={SIM_TYPE_FILTERS} value={draft.simType} onChange={(v) => set({ simType: v })} />
+                    </div>
+                    <div>
+                      <div className="ele-filter-section__title">Оператор</div>
+                      <RemoteMultiSelect
+                        endpoint="/api/sim-cards/operators/"
+                        mapOption={strOption}
+                        selected={draft.operators}
+                        onChange={(v) => set({ operators: v })}
+                        emptyText="Операторов пока нет"
+                      />
+                      <div style={{ marginTop: 8 }}>
+                        <Checkbox label="Без оператора" checked={draft.operatorNone} onChange={(v) => set({ operatorNone: v })} />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="ele-filter-section__title">Поставщик</div>
+                      <RemoteMultiSelect
+                        endpoint="/api/sim-cards/providers/"
+                        mapOption={strOption}
+                        selected={draft.providers}
+                        onChange={(v) => set({ providers: v })}
+                        emptyText="Поставщиков пока нет"
+                      />
+                      <div style={{ marginTop: 8 }}>
+                        <Checkbox label="Без поставщика" checked={draft.providerNone} onChange={(v) => set({ providerNone: v })} />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="ele-filter-section__title">Закреплена за</div>
+                      <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
+                      {draft.assignedMode === 'employee' ? (
+                        <div style={{ marginTop: 10 }}>
+                          <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} />
+                        </div>
+                      ) : null}
+                      {draft.assignedMode === 'storage' ? (
+                        <div style={{ marginTop: 10 }}>
+                          <RemoteMultiSelect
+                            endpoint="/api/places/?place_type=storage&active=1"
+                            mapOption={placeOption}
+                            selected={draft.storagePlaces}
+                            onChange={(p) => set({ storagePlaces: p })}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  </>
+                )
+              }}
+            </FilterModal>
           </div>
         ) : null}
       </div>

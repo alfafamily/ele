@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.eav import count_missing_for_field
+from core.eav_filters import csv_ids, eav_req_conditions
 from core.mixins import CreationCommentMixin
 from core.pagination import ELECursorPagination
 from core.permissions import IsAdminOrAccountant, IsAdminOrAccountantOrReadOnlyObserver
@@ -137,6 +138,30 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             qs = qs.exclude(equipment__isnull=True)
         elif status_param == "free":
             qs = qs.filter(equipment__isnull=True)
+
+        # B27. Фильтр по Типам (мультивыбор) + реквизитам выбранных Типов + Виду.
+        type_ids = csv_ids(self.request.query_params.get("type"))
+        if type_ids:
+            qs = qs.filter(license_type_id__in=type_ids)
+        for cond in eav_req_conditions(
+            self.request.query_params,
+            value_model=LicenseFieldValue,
+            field_model=LicenseTypeField,
+            object_fk="license",
+            type_field="license_type",
+        ):
+            qs = qs.filter(cond)
+        kind = self.request.query_params.get("kind")
+        if kind in dict(LicenseType.Kind.choices):
+            qs = qs.filter(license_type__kind=kind)
+
+        # B27. «Закреплён за» → места хранения / оборудование (мультивыбор).
+        storage_place = csv_ids(self.request.query_params.get("storage_place"))
+        if storage_place:
+            qs = qs.filter(storage_place_id__in=storage_place)
+        equipment_ids = csv_ids(self.request.query_params.get("equipment"))
+        if equipment_ids:
+            qs = qs.filter(equipment_id__in=equipment_ids)
 
         search = self.request.query_params.get("search")
         if search:

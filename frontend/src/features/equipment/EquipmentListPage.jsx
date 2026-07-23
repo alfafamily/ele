@@ -7,7 +7,11 @@ import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
-import { Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { Button, EmptyState, FilterModal, Icon, MultiSelectList, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
+import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
+import { TypeRequisiteFilter } from '../../shared/TypeRequisiteFilter.jsx'
+import { csvParam, reqParams } from '../../shared/filterParams.js'
 import { maintenanceRowIndicators } from './statusLabels.js'
 
 const CACHE_KEY = 'equipment-list'
@@ -29,6 +33,40 @@ const FILTERS = [
   { value: 'stationary', label: 'На рабочем месте' },
   { value: 'free', label: 'На складе' },
 ]
+// B27. «Закреплён за» — категория (radio) + мультивыбор значений выбранной.
+const ASSIGNED_OPTIONS = [
+  { value: 'none', label: 'Не важно' },
+  { value: 'employee', label: 'Сотрудник' },
+  { value: 'storage', label: 'Место хранения' },
+  { value: 'workplace', label: 'Рабочее место' },
+]
+
+const EMPTY_FILTERS = {
+  status: 'all',
+  toDates: [],
+  types: [],
+  req: {},
+  assignedMode: 'none',
+  employees: [],
+  storagePlaces: [],
+  workplaces: [],
+}
+
+const placeOption = (p) => ({ value: String(p.id), label: p.name, sub: `${p.building_name} — ${p.room_name}` })
+const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v])
+
+// Число активных фильтров для бейджа/подписи «Сбросить».
+function countActive(f) {
+  return (
+    (f.status !== 'all' ? 1 : 0) +
+    (f.toDates.length ? 1 : 0) +
+    (f.types.length ? 1 : 0) +
+    Object.keys(f.req).length +
+    (f.assignedMode === 'employee' && f.employees.length ? 1 : 0) +
+    (f.assignedMode === 'storage' && f.storagePlaces.length ? 1 : 0) +
+    (f.assignedMode === 'workplace' && f.workplaces.length ? 1 : 0)
+  )
+}
 
 const ACTIVE_COLUMNS = [
   { key: 'equipment_type__name', label: 'Наименование', sortable: true, width: 'minmax(0, 1.3fr)' },
@@ -53,30 +91,31 @@ export function EquipmentListPage() {
   const isPop = useNavigationType() === 'POP'
   const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
   const [tab, setTab] = useState(() => savedUi?.tab ?? 'active')
-  const [status, setStatus] = useState(() => savedUi?.status ?? 'all')
-  // Мультивыбор ТО: массив из 'due' / 'overdue'.
   const perms = usePermissions()
-  const [toDates, setToDates] = useState(() => savedUi?.toDates ?? [])
+  const [filters, setFilters] = useState(() => ({ ...EMPTY_FILTERS, ...(savedUi?.filters ?? {}) }))
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
 
   useEffect(() => {
-    writeListCache(CACHE_KEY, { ui: { tab, status, toDates, search, sort } })
-  }, [tab, status, toDates, search, sort])
+    writeListCache(CACHE_KEY, { ui: { tab, filters, search, sort } })
+  }, [tab, filters, search, sort])
 
-  const toggleToDate = (v) =>
-    setToDates((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]))
-
+  const isActive = tab === 'active'
   const ordering = sort.dir === 'desc' ? `-${sort.key}` : sort.key
   const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList(
     '/api/equipment/',
     {
       tab,
-      status: tab === 'active' ? status : undefined,
-      to_due: tab === 'active' && toDates.includes('due') ? '1' : undefined,
-      to_overdue: tab === 'active' && toDates.includes('overdue') ? '1' : undefined,
-      to_unset: tab === 'active' && toDates.includes('unset') ? '1' : undefined,
+      status: isActive && filters.status !== 'all' ? filters.status : undefined,
+      to_due: isActive && filters.toDates.includes('due') ? '1' : undefined,
+      to_overdue: isActive && filters.toDates.includes('overdue') ? '1' : undefined,
+      to_unset: isActive && filters.toDates.includes('unset') ? '1' : undefined,
+      type: isActive ? csvParam(filters.types) : undefined,
+      ...(isActive ? reqParams(filters.req) : {}),
+      employee: isActive && filters.assignedMode === 'employee' ? csvParam(filters.employees.map((e) => e.id)) : undefined,
+      place_storage: isActive && filters.assignedMode === 'storage' ? csvParam(filters.storagePlaces) : undefined,
+      place_workplace: isActive && filters.assignedMode === 'workplace' ? csvParam(filters.workplaces) : undefined,
       search: debouncedSearch || undefined,
       ordering,
     },
@@ -122,18 +161,74 @@ export function EquipmentListPage() {
         <div className="ele-list-controls__search">
           <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
         </div>
-        {tab === 'active' ? (
+        {isActive ? (
           <div className="ele-list-controls__filter">
-            <FilterButton
-              options={FILTERS}
-              value={status}
-              onChange={setStatus}
-              extra={
-                perms.canSeeMaintenance
-                  ? { title: 'Техобслуживание', options: MAINTENANCE_FILTERS, values: toDates, onToggle: toggleToDate }
-                  : undefined
-              }
-            />
+            <FilterModal
+              value={filters}
+              count={countActive(filters)}
+              onApply={setFilters}
+              onClear={() => setFilters(EMPTY_FILTERS)}
+              isDraftActive={(d) => countActive(d) > 0}
+            >
+              {(draft, setDraft) => {
+                const set = (patch) => setDraft({ ...draft, ...patch })
+                return (
+                  <>
+                    <div>
+                      <div className="ele-filter-section__title">Размещение</div>
+                      <RadioPills options={FILTERS} value={draft.status} onChange={(v) => set({ status: v })} />
+                    </div>
+                    {perms.canSeeMaintenance ? (
+                      <div>
+                        <div className="ele-filter-section__title">Техобслуживание</div>
+                        <MultiSelectList
+                          options={MAINTENANCE_FILTERS}
+                          selected={draft.toDates}
+                          onToggle={(v) => set({ toDates: toggle(draft.toDates, v) })}
+                        />
+                      </div>
+                    ) : null}
+                    <TypeRequisiteFilter
+                      endpoint="/api/equipment-types/"
+                      label="Тип оборудования"
+                      types={draft.types}
+                      onTypesChange={(t) => set({ types: t })}
+                      req={draft.req}
+                      onReqChange={(r) => set({ req: r })}
+                    />
+                    <div>
+                      <div className="ele-filter-section__title">Закреплён за</div>
+                      <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
+                      {draft.assignedMode === 'employee' ? (
+                        <div style={{ marginTop: 10 }}>
+                          <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} />
+                        </div>
+                      ) : null}
+                      {draft.assignedMode === 'storage' ? (
+                        <div style={{ marginTop: 10 }}>
+                          <RemoteMultiSelect
+                            endpoint="/api/places/?place_type=storage&active=1"
+                            mapOption={placeOption}
+                            selected={draft.storagePlaces}
+                            onChange={(p) => set({ storagePlaces: p })}
+                          />
+                        </div>
+                      ) : null}
+                      {draft.assignedMode === 'workplace' ? (
+                        <div style={{ marginTop: 10 }}>
+                          <RemoteMultiSelect
+                            endpoint="/api/places/?place_type=workplace&active=1"
+                            mapOption={placeOption}
+                            selected={draft.workplaces}
+                            onChange={(p) => set({ workplaces: p })}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  </>
+                )
+              }}
+            </FilterModal>
           </div>
         ) : null}
       </div>

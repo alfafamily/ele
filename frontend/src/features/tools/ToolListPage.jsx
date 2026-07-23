@@ -6,7 +6,7 @@ import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
-import { Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { Button, EmptyState, FilterModal, Icon, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 
 const CACHE_KEY = 'tools-list'
 
@@ -91,7 +91,20 @@ export function ToolListPage() {
         </div>
         {tab === 'active' ? (
           <div className="ele-list-controls__filter">
-            <FilterButton options={FILTERS} value={stock} onChange={setStock} />
+            <FilterModal
+              value={{ stock }}
+              count={stock !== 'all' ? 1 : 0}
+              onApply={(d) => setStock(d.stock)}
+              onClear={() => setStock('all')}
+              isDraftActive={(d) => d.stock !== 'all'}
+            >
+              {(draft, setDraft) => (
+                <div>
+                  <div className="ele-filter-section__title">Остаток</div>
+                  <RadioPills options={FILTERS} value={draft.stock} onChange={(v) => setDraft({ stock: v })} />
+                </div>
+              )}
+            </FilterModal>
           </div>
         ) : null}
       </div>

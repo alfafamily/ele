@@ -8,11 +8,12 @@ import { Icon } from './ui/Icon/Icon.jsx'
 // onSelect(equipment) — выбранная единица. simOnly — только типы, у которых
 // разрешена установка SIM/E-SIM (B17); licenseOnly — только типы с разрешённой
 // установкой лицензий.
-export function EquipmentPicker({ onSelect, autoFocus, simOnly = false, licenseOnly = false }) {
+export function EquipmentPicker({ onSelect, autoFocus, simOnly = false, licenseOnly = false, excludeIds }) {
   const [query, setQuery] = useState('')
   const debounced = useDebouncedValue(query, 250)
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
+  const excludeSet = new Set(excludeIds || [])
 
   useEffect(() => {
     let cancelled = false
@@ -56,11 +57,11 @@ export function EquipmentPicker({ onSelect, autoFocus, simOnly = false, licenseO
       </div>
       {loading && results.length === 0 ? (
         <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Загрузка…</div>
-      ) : results.length === 0 ? (
+      ) : results.filter((eq) => !excludeSet.has(eq.id)).length === 0 ? (
         <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Ничего не найдено</div>
       ) : (
         <div style={{ marginTop: 8, border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', maxHeight: 216, overflowY: 'auto' }}>
-          {results.map((eq) => (
+          {results.filter((eq) => !excludeSet.has(eq.id)).map((eq) => (
             <button
               key={eq.id}
               type="button"
