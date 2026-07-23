@@ -1,14 +1,16 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
+from core.admin import ReadonlyDefaultAdminMixin
+
 from .forms import UserChangeForm, UserCreationForm
 from .models import User
 
 
 @admin.register(User)
-class UserAdmin(BaseUserAdmin):
-    """Временный доступ к User через Django admin для проверки моделей
-    Фазы 2. Реальные экраны управления пользователями — Фаза 8 (S1/S4)."""
+class UserAdmin(ReadonlyDefaultAdminMixin, BaseUserAdmin):
+    """Служебный доступ к User через Django admin. Только просмотр для
+    администратора; изменение — лишь суперпользователю (B9, core.admin)."""
 
     form = UserChangeForm
     add_form = UserCreationForm

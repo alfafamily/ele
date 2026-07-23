@@ -425,8 +425,14 @@ class SetupCompleteView(APIView):
                 last_name=data["admin"]["last_name"],
                 first_name=data["admin"]["first_name"],
             )
-            admin = User.objects.create_superuser(
-                email=admin_email, password=data["admin"]["password"], employee=employee
+            # B9: первый администратор — без прав superuser (доступ в
+            # Django-админку по умолчанию закрыт; правка выдаётся осознанно).
+            admin = User.objects.create_user(
+                email=admin_email,
+                password=data["admin"]["password"],
+                role=User.Role.ADMIN,
+                is_email_confirmed=True,
+                employee=employee,
             )
             company = Company.load()
             company.name = data["company"]["name"]
