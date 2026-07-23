@@ -47,7 +47,13 @@ export function FilePreviewModal({ file, onClose }) {
             {file.size != null ? <div className="ele-filepreview__meta">{formatSize(file.size)}</div> : null}
           </div>
           <div className="ele-filepreview__actions">
-            <a className="ele-filepreview__download" href={file.url} download={file.original_filename}>
+            <a
+              className="ele-filepreview__download"
+              href={file.url}
+              download={file.original_filename}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Скачать
             </a>
             <button type="button" className="ele-filepreview__close" onClick={onClose} aria-label="Закрыть">
@@ -59,10 +65,17 @@ export function FilePreviewModal({ file, onClose }) {
         <div className="ele-filepreview__body">
           {kind === 'image' ? (
             <img src={file.url} alt={file.original_filename} onError={() => setRenderError(true)} />
-          ) : kind === 'pdf' || kind === 'text' ? (
-            // sandbox="" — содержимое в изолированном (opaque) origin без
-            // разрешения скриптов: даже если файл реально text/html, скрипты не
-            // исполняются (защита от stored XSS через загруженный файл).
+          ) : kind === 'pdf' ? (
+            // PDF отдаётся с Content-Type: application/pdf (+X-Content-Type-Options:
+            // nosniff в проде, infra/Caddyfile), поэтому исполняемого html/js тут
+            // быть не может — stored XSS невозможен. sandbox="" НЕ ставим: он
+            // ломает встроенный PDF-просмотрщик Chrome («Эта страница была
+            // заблокирована браузером Chrome»).
+            <iframe src={file.url} title={file.original_filename} onError={() => setRenderError(true)} />
+          ) : kind === 'text' ? (
+            // Текстовый файл может реально оказаться text/html — sandbox=""
+            // (изолированный opaque origin без разрешения скриптов) нейтрализует
+            // stored XSS через загруженный файл.
             <iframe src={file.url} title={file.original_filename} sandbox="" onError={() => setRenderError(true)} />
           ) : (
             <div className="ele-filepreview__fallback">
@@ -73,7 +86,13 @@ export function FilePreviewModal({ file, onClose }) {
               <div className="ele-filepreview__fallback-text">
                 Этот тип файла нельзя показать в браузере. Скачайте файл, чтобы открыть его в подходящей программе.
               </div>
-              <a className="ele-filepreview__fallback-btn" href={file.url} download={file.original_filename}>
+              <a
+                className="ele-filepreview__fallback-btn"
+                href={file.url}
+                download={file.original_filename}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Скачать файл
               </a>
             </div>
