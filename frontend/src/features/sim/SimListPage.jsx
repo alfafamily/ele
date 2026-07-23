@@ -17,29 +17,41 @@ const TABS = [
   { value: 'active', label: 'Активные' },
   { value: 'utilized', label: 'Утилизировано' },
 ]
-// Фильтр статуса внутри «Активных»: за сотрудником / свободные.
-const FILTERS = [
-  { value: 'all', label: 'Все' },
-  { value: 'attached', label: 'Активные' },
-  { value: 'free', label: 'Неактивные' },
-]
 const SIM_TYPE_FILTERS = [
   { value: 'all', label: 'Все' },
   { value: 'sim', label: 'SIM' },
   { value: 'esim', label: 'E-SIM' },
 ]
-// B27. «Закреплён за» — сотрудник / место хранения.
+// B27. «Размещение» — сотрудник / место хранения / не привязана (заменяет
+// прежний фильтр «Статус»).
 const ASSIGNED_OPTIONS = [
   { value: 'none', label: 'Не важно' },
   { value: 'employee', label: 'Сотрудник' },
   { value: 'storage', label: 'Место хранения' },
+  { value: 'unattached', label: 'Не привязана' },
 ]
 
 const placeOption = (p) => ({ value: String(p.id), label: p.name, sub: `${p.building_name} — ${p.room_name}` })
 const strOption = (s) => ({ value: s, label: s })
 
+// Верхние SIM-фильтры (тип/оператор/поставщик) → параметры ограничения опций
+// сотрудников/мест хранения (has_sim) + строка запроса для эндпоинта мест.
+function simConstraint(d) {
+  const o = { has_sim: '1' }
+  if (d.simType !== 'all') o.sim_type = d.simType
+  if (d.operators.length) o.operator = d.operators.join(',')
+  if (d.operatorNone) o.operator_none = '1'
+  if (d.providers.length) o.provider = d.providers.join(',')
+  if (d.providerNone) o.provider_none = '1'
+  return o
+}
+function toQuery(obj) {
+  const p = new URLSearchParams()
+  for (const [k, v] of Object.entries(obj)) if (v) p.set(k, v)
+  return p.toString()
+}
+
 const EMPTY_FILTERS = {
-  status: 'all',
   simType: 'all',
   operators: [],
   operatorNone: false,
@@ -52,12 +64,10 @@ const EMPTY_FILTERS = {
 
 function countActive(f) {
   return (
-    (f.status !== 'all' ? 1 : 0) +
     (f.simType !== 'all' ? 1 : 0) +
     (f.operators.length || f.operatorNone ? 1 : 0) +
     (f.providers.length || f.providerNone ? 1 : 0) +
-    (f.assignedMode === 'employee' && f.employees.length ? 1 : 0) +
-    (f.assignedMode === 'storage' && f.storagePlaces.length ? 1 : 0)
+    (f.assignedMode !== 'none' ? 1 : 0)
   )
 }
 
@@ -97,12 +107,12 @@ export function SimListPage() {
     '/api/sim-cards/',
     {
       tab,
-      status: isActive && filters.status !== 'all' ? filters.status : undefined,
       sim_type: isActive && filters.simType !== 'all' ? filters.simType : undefined,
       operator: isActive ? csvParam(filters.operators) : undefined,
       operator_none: isActive && filters.operatorNone ? '1' : undefined,
       provider: isActive ? csvParam(filters.providers) : undefined,
       provider_none: isActive && filters.providerNone ? '1' : undefined,
+      assigned: isActive && filters.assignedMode !== 'none' ? filters.assignedMode : undefined,
       employee: isActive && filters.assignedMode === 'employee' ? csvParam(filters.employees.map((e) => e.id)) : undefined,
       storage_place: isActive && filters.assignedMode === 'storage' ? csvParam(filters.storagePlaces) : undefined,
       search: debouncedSearch || undefined,
@@ -153,54 +163,54 @@ export function SimListPage() {
             >
               {(draft, setDraft) => {
                 const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
+                const opEndpoint = `/api/sim-cards/operators/${draft.simType !== 'all' ? `?sim_type=${draft.simType}` : ''}`
+                const provEndpoint = `/api/sim-cards/providers/${draft.simType !== 'all' ? `?sim_type=${draft.simType}` : ''}`
                 return (
                   <>
-                    <div>
-                      <div className="ele-filter-section__title">Статус</div>
-                      <RadioPills options={FILTERS} value={draft.status} onChange={(v) => set({ status: v })} />
-                    </div>
                     <div>
                       <div className="ele-filter-section__title">Тип SIM</div>
                       <RadioPills options={SIM_TYPE_FILTERS} value={draft.simType} onChange={(v) => set({ simType: v })} />
                     </div>
                     <div>
                       <div className="ele-filter-section__title">Оператор</div>
+                      <div style={{ marginBottom: 8 }}>
+                        <Checkbox label="Без оператора" checked={draft.operatorNone} onChange={(v) => set({ operatorNone: v })} />
+                      </div>
                       <RemoteMultiSelect
-                        endpoint="/api/sim-cards/operators/"
+                        endpoint={opEndpoint}
                         mapOption={strOption}
                         selected={draft.operators}
                         onChange={(v) => set({ operators: v })}
-                        emptyText="Операторов пока нет"
+                        emptyText="Ничего не найдено"
+                        hideUntilSearch
                       />
-                      <div style={{ marginTop: 8 }}>
-                        <Checkbox label="Без оператора" checked={draft.operatorNone} onChange={(v) => set({ operatorNone: v })} />
-                      </div>
                     </div>
                     <div>
                       <div className="ele-filter-section__title">Поставщик</div>
+                      <div style={{ marginBottom: 8 }}>
+                        <Checkbox label="Без поставщика" checked={draft.providerNone} onChange={(v) => set({ providerNone: v })} />
+                      </div>
                       <RemoteMultiSelect
-                        endpoint="/api/sim-cards/providers/"
+                        endpoint={provEndpoint}
                         mapOption={strOption}
                         selected={draft.providers}
                         onChange={(v) => set({ providers: v })}
-                        emptyText="Поставщиков пока нет"
+                        emptyText="Ничего не найдено"
+                        hideUntilSearch
                       />
-                      <div style={{ marginTop: 8 }}>
-                        <Checkbox label="Без поставщика" checked={draft.providerNone} onChange={(v) => set({ providerNone: v })} />
-                      </div>
                     </div>
                     <div>
-                      <div className="ele-filter-section__title">Закреплена за</div>
+                      <div className="ele-filter-section__title">Размещение</div>
                       <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
                       {draft.assignedMode === 'employee' ? (
                         <div style={{ marginTop: 10 }}>
-                          <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} />
+                          <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} extraParams={simConstraint(draft)} />
                         </div>
                       ) : null}
                       {draft.assignedMode === 'storage' ? (
                         <div style={{ marginTop: 10 }}>
                           <RemoteMultiSelect
-                            endpoint="/api/places/?place_type=storage&active=1"
+                            endpoint={`/api/places/?place_type=storage&active=1&${toQuery(simConstraint(draft))}`}
                             mapOption={placeOption}
                             selected={draft.storagePlaces}
                             onChange={(p) => set({ storagePlaces: p })}

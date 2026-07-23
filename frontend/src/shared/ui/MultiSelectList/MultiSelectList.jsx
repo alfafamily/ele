@@ -21,9 +21,12 @@ export function MultiSelectList({
   loading = false,
   maxHeight = 216,
   chips = false,
+  hideUntilSearch = false,
 }) {
   const [query, setQuery] = useState('')
   const selectedSet = new Set((selected || []).map(String))
+  // hideUntilSearch: список вариантов скрыт, пока пользователь ничего не ввёл.
+  const listHidden = hideUntilSearch && !query.trim()
 
   // В режиме чипсов список показывает только невыбранные варианты.
   const baseOptions = chips ? options.filter((o) => !selectedSet.has(String(o.value))) : options
@@ -71,6 +74,7 @@ export function MultiSelectList({
           }}
         />
       ) : null}
+      {listHidden ? null : (
       <div style={{ border: '1px solid var(--color-border)', borderRadius: 10, overflowY: 'auto', maxHeight, padding: 4 }}>
         {loading ? (
           <div style={{ padding: 12, fontSize: 13, color: 'var(--color-text-placeholder)', textAlign: 'center' }}>Загрузка…</div>
@@ -113,6 +117,7 @@ export function MultiSelectList({
           })
         )}
       </div>
+      )}
     </div>
   )
 }

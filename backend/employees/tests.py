@@ -209,8 +209,8 @@ class SimCardTests(APITestCase):
             sorted(s["phone_number"] for s in active.data["results"]),
             ["+79001112233", "+79004445566"],
         )
-        # Только привязанные — status=attached.
-        attached = self.client.get("/api/sim-cards/?tab=active&status=attached")
+        # Только за сотрудником — Размещение (assigned=employee, категория).
+        attached = self.client.get("/api/sim-cards/?tab=active&assigned=employee")
         self.assertEqual([s["phone_number"] for s in attached.data["results"]], ["+79001112233"])
         # tab=deactivated — только свободные (без сотрудника, неутилизированные).
         deact = self.client.get("/api/sim-cards/?tab=deactivated")
@@ -743,3 +743,28 @@ class SimAndPassFilterTests(APITestCase):
         self.assertEqual({r["id"] for r in rows}, {self.key.id})
         rows = self.client.get("/api/access-passes/", {"tab": "active", "object_type": "pass"}).data["results"]
         self.assertEqual({r["id"] for r in rows}, {self.pass_.id})
+
+
+class SimOptionConstraintTests(APITestCase):
+    """B27. Тип SIM ограничивает варианты оператора/поставщика; верхние фильтры
+    ограничивают опции сотрудников/мест хранения."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="simopt@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.emp_a = Employee.objects.create(first_name="A", last_name="A")
+        self.emp_b = Employee.objects.create(first_name="B", last_name="B")
+        SimCard.objects.create(employee=self.emp_a, phone_number="+70000000001", sim_type="sim", network_operator="МТС")
+        SimCard.objects.create(employee=self.emp_b, phone_number="+70000000002", sim_type="esim", network_operator="Билайн")
+
+    def test_operators_by_sim_type(self):
+        self.assertEqual(list(self.client.get("/api/sim-cards/operators/", {"sim_type": "sim"}).data), ["МТС"])
+        self.assertEqual(list(self.client.get("/api/sim-cards/operators/", {"sim_type": "esim"}).data), ["Билайн"])
+
+    def test_employee_options_constrained_by_sim_filters(self):
+        ids = {e["id"] for e in self.client.get("/api/employees/", {"has_sim": "1", "sim_type": "sim"}).data["results"]}
+        self.assertIn(self.emp_a.id, ids)
+        self.assertNotIn(self.emp_b.id, ids)
+        ids = {e["id"] for e in self.client.get("/api/employees/", {"has_sim": "1", "operator": "Билайн"}).data["results"]}
+        self.assertIn(self.emp_b.id, ids)
+        self.assertNotIn(self.emp_a.id, ids)

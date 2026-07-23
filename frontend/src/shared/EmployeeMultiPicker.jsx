@@ -4,7 +4,7 @@ import './ui/FilterModal/FilterModal.css'
 
 // Мультивыбор сотрудников для фильтров: чипы выбранных + поиск (EmployeePicker).
 // value — [{ id, label }] (label храним, чтобы рисовать чипы без дозапроса).
-export function EmployeeMultiPicker({ value = [], onChange, equipmentTypeIds }) {
+export function EmployeeMultiPicker({ value = [], onChange, extraParams }) {
   const ids = value.map((v) => v.id)
   const add = (emp) => {
     if (!ids.includes(emp.id)) onChange([...value, { id: emp.id, label: emp.full_name }])
@@ -25,7 +25,7 @@ export function EmployeeMultiPicker({ value = [], onChange, equipmentTypeIds }) 
           ))}
         </div>
       ) : null}
-      <EmployeePicker onSelect={add} excludeIds={ids} withPlus equipmentTypeIds={equipmentTypeIds} />
+      <EmployeePicker onSelect={add} excludeIds={ids} withPlus extraParams={extraParams} />
     </div>
   )
 }
