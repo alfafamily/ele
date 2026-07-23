@@ -320,6 +320,22 @@ class InviteView(APIView):
                 status=409,
             )
 
+        # B12: приглашение создаёт нового сотрудника-тёзку — просим подтверждения
+        # (могут работать однофамильцы-тёзки, потому не запрет).
+        if not serializer.validated_data.get("confirm_duplicate"):
+            conflicts = serializer.duplicate_conflicts()
+            if conflicts:
+                from employees.duplicates import conflict_message
+
+                return Response(
+                    {
+                        "detail": conflict_message(conflicts),
+                        "requires_duplicate_confirmation": True,
+                        "duplicates": conflicts,
+                    },
+                    status=409,
+                )
+
         # SMTPException — ошибки протокола/аутентификации; OSError — недоступный
         # порт/таймаут сокета. Пользователь при этом не создаётся (см. save() —
         # транзакция откатывается), фронт получает быстрый понятный отказ.
@@ -477,11 +493,23 @@ class YandexIDCallbackView(APIView):
             # Первый вход — заводим учётку и связанного Сотрудника из
             # имени/фамилии Яндекса; если их нет — в оба поля логин (до @).
             login_part = email.split("@", 1)[0]
+            first_name = info["first_name"] or login_part
+            last_name = info["last_name"] or login_part
+
+            # B12: контроль дублей по Фамилии/Имени среди работающих сотрудников.
+            from employees.duplicates import registration_decision
+
+            kind, existing = registration_decision(last_name, first_name)
+            if kind == "exists":
+                return fail("duplicate_exists")
+            if kind == "ambiguous":
+                return fail("duplicate_ambiguous")
             with transaction.atomic():
-                employee = Employee.objects.create(
-                    first_name=info["first_name"] or login_part,
-                    last_name=info["last_name"] or login_part,
-                )
+                if kind == "link":
+                    # Ровно один тёзка без учётки — привязываем к нему.
+                    employee = existing
+                else:
+                    employee = Employee.objects.create(first_name=first_name, last_name=last_name)
                 user = User(
                     email=email, role=User.Role.EMPLOYEE, is_email_confirmed=True, employee=employee
                 )

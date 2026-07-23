@@ -38,3 +38,12 @@ export const updateNumberingSettings = (payload) => apiPatch('/api/company/numbe
 export const generateNextNumber = (kind) => apiPost('/api/company/next-number/', { kind })
 export const createBackup = () => apiPost('/api/backup/create/')
 export const backupDownloadUrl = (id) => `/api/backup/${id}/download/`
+
+// B12 — возможные дубли сотрудников.
+export const getEmployeeDuplicates = () => apiGet('/api/employees/duplicates/')
+export const resolveEmployeeDuplicate = (signature, mapping) =>
+  apiPost('/api/employees/duplicates/resolve/', mapping ? { signature, mapping } : { signature })
+export const dismissEmployeeDuplicate = (signature) =>
+  apiPost('/api/employees/duplicates/dismiss/', { signature })
+export const undismissEmployeeDuplicate = (signature) =>
+  apiPost('/api/employees/duplicates/undismiss/', { signature })

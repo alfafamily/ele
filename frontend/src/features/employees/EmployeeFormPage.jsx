@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { BackButton, Banner, Card, FormActions, Input, Spinner } from '../../shared/ui'
+import { BackButton, Banner, Button, Card, FormActions, Input, Modal, Spinner } from '../../shared/ui'
 import { createEmployee, getDepartments, getEmployee, updateEmployee } from './employeesApi.js'
 
 export function EmployeeFormPage() {
@@ -17,6 +17,9 @@ export function EmployeeFormPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
+  // B12: предупреждение о тёзке-работнике (ответ 409). Создание не запрещено —
+  // могут работать однофамильцы; запрашиваем подтверждение.
+  const [dupWarn, setDupWarn] = useState(null)
 
   useEffect(() => {
     getDepartments().then(setDepartments)
@@ -41,8 +44,8 @@ export function EmployeeFormPage() {
     )
   }
 
-  const submit = async (e) => {
-    e.preventDefault()
+  const submit = async (e, confirmDuplicate = false) => {
+    if (e) e.preventDefault()
     setSubmitting(true)
     setError(null)
     setFieldErrors({})
@@ -55,13 +58,16 @@ export function EmployeeFormPage() {
         // снова в форму редактирования.
         navigate(-1)
       } else {
-        const created = await createEmployee(payload)
+        const created = await createEmployee(confirmDuplicate ? { ...payload, confirm_duplicate: true } : payload)
         // replace — чтобы форма создания не оставалась в истории: с карточки
         // нового объекта «Назад» ведёт в список, а не обратно в форму.
         navigate(`/employees/${created.id}`, { replace: true })
       }
     } catch (err) {
-      if (err.errors) {
+      if (err.status === 409 && err.data?.requires_duplicate_confirmation) {
+        // Есть тёзка-работник — показываем подтверждение (не ошибку).
+        setDupWarn(err.data)
+      } else if (err.errors) {
         setFieldErrors(err.errors)
       } else {
         setError(err.detail || 'Не удалось сохранить сотрудника.')
@@ -116,6 +122,43 @@ export function EmployeeFormPage() {
           submitLabel={isEdit ? 'Сохранить' : 'Создать'}
         />
       </div>
+
+      {dupWarn ? (
+        <Modal open onClose={() => setDupWarn(null)} title="Сотрудник с такими Ф. И. уже есть">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+              В системе уже работают сотрудники с такими Фамилией и Именем. Возможно, это тот же человек.
+              Точно создать нового?
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {(dupWarn.duplicates || []).map((d) => (
+                <div key={d.id} style={{ fontSize: 13 }}>
+                  • {d.full_name}
+                  {d.user_email ? (
+                    <span style={{ color: 'var(--color-text-placeholder)' }}> — учётная запись: {d.user_email}</span>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <Button
+                variant="primary"
+                fullWidth
+                loading={submitting}
+                onClick={() => {
+                  setDupWarn(null)
+                  submit(null, true)
+                }}
+              >
+                Всё равно создать
+              </Button>
+              <Button variant="secondary" fullWidth onClick={() => setDupWarn(null)} disabled={submitting}>
+                Отмена
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
     </div>
   )
 }

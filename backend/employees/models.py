@@ -28,6 +28,28 @@ class Employee(models.Model):
         return f"{self.last_name} {self.first_name}".strip()
 
 
+class EmployeeDuplicateDismissal(models.Model):
+    """Пометка «не дубль» для конкретного набора сотрудников-тёзок (B12).
+
+    Ключуется точным составом группы (signature — отсортированные id через
+    запятую). Изменился состав группы (появился/убыл тёзка) — подпись другая,
+    и группа снова считается возможным дублем. Снятие пометки — удаление записи."""
+
+    signature = models.CharField("Подпись группы", max_length=255, unique=True)
+    member_ids = models.JSONField("Участники", default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        "accounts.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+
+    class Meta:
+        verbose_name = "Пометка «не дубль»"
+        verbose_name_plural = "Пометки «не дубль»"
+
+    def __str__(self):
+        return self.signature
+
+
 class SimCard(models.Model):
     """Корпоративная SIM/E-SIM — самостоятельный переиспользуемый объект.
 

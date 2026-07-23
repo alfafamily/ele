@@ -37,10 +37,19 @@ export function InviteModal({ onClose, onInvited }) {
   // Домен email отличается от домена компании — требуем подтверждения:
   // первый сабмит показывает предупреждение, второй (с confirm_domain) шлёт.
   const [needsDomainConfirm, setNeedsDomainConfirm] = useState(false)
+  // B12: создаётся новый сотрудник-тёзка работающего — тоже подтверждение.
+  const [needsDuplicateConfirm, setNeedsDuplicateConfirm] = useState(false)
 
   const onEmailChange = (e) => {
     setEmail(e.target.value)
     setNeedsDomainConfirm(false)
+    setWarning(null)
+  }
+
+  // Смена ФИО нового сотрудника сбрасывает подтверждение дубля.
+  const onDupFieldChange = (setter) => (e) => {
+    setter(e.target.value)
+    setNeedsDuplicateConfirm(false)
     setWarning(null)
   }
 
@@ -58,6 +67,7 @@ export function InviteModal({ onClose, onInvited }) {
         maintenance_all_types: maintainer ? maintenanceAllTypes : true,
         maintenance_types: maintainer && !maintenanceAllTypes ? maintenanceTypeIds : [],
         confirm_domain: needsDomainConfirm,
+        confirm_duplicate: needsDuplicateConfirm,
         ...(createEmployee
           ? {
               create_employee: true,
@@ -73,6 +83,9 @@ export function InviteModal({ onClose, onInvited }) {
       if (err.status === 409 && err.data?.requires_domain_confirmation) {
         setWarning(err.detail)
         setNeedsDomainConfirm(true)
+      } else if (err.status === 409 && err.data?.requires_duplicate_confirmation) {
+        setWarning(err.detail)
+        setNeedsDuplicateConfirm(true)
       } else {
         setError(err.errors ? Object.values(err.errors).flat().join(' ') : err.detail || 'Не удалось отправить приглашение.')
       }
@@ -110,8 +123,8 @@ export function InviteModal({ onClose, onInvited }) {
         {createEmployee ? (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input label="Фамилия" required value={empLastName} onChange={(e) => setEmpLastName(e.target.value)} />
-              <Input label="Имя" required value={empFirstName} onChange={(e) => setEmpFirstName(e.target.value)} />
+              <Input label="Фамилия" required value={empLastName} onChange={onDupFieldChange(setEmpLastName)} />
+              <Input label="Имя" required value={empFirstName} onChange={onDupFieldChange(setEmpFirstName)} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <Input label="Отдел" value={empDepartment} onChange={(e) => setEmpDepartment(e.target.value)} />
@@ -176,7 +189,7 @@ export function InviteModal({ onClose, onInvited }) {
           disabled={!email.trim() || (createEmployee && (!empLastName.trim() || !empFirstName.trim()))}
           onClick={submit}
         >
-          {needsDomainConfirm ? 'Всё равно пригласить' : 'Отправить приглашение'}
+          {needsDomainConfirm || needsDuplicateConfirm ? 'Всё равно пригласить' : 'Отправить приглашение'}
         </Button>
       </div>
     </Modal>

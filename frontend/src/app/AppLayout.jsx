@@ -1,16 +1,32 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
-import { useCompany } from './CompanyContext.jsx'
+import { useCompany, useDuplicatesCount } from './CompanyContext.jsx'
 import { navSectionsForRole } from './navSections.js'
 import { HelpIcon, MenuIcon, SettingsIcon } from './navIcons.jsx'
 import { roleLabel } from '../shared/roles.js'
 import { nameInitials } from '../shared/employeeName.js'
+import { Icon } from '../shared/ui'
 import './AppLayout.css'
+
+// B12: маркер-предупреждение (треугольник с восклицательным знаком) поверх
+// иконки «Настройки», пока есть неустранённые возможные дубли сотрудников.
+function DuplicateWarningMarker() {
+  return (
+    <span
+      className="ele-nav-warning"
+      title="Обнаружены возможные дубли сотрудников"
+      aria-label="Обнаружены возможные дубли сотрудников"
+    >
+      <Icon name="triangle-alert" size={13} strokeWidth={2.4} />
+    </span>
+  )
+}
 
 export function AppLayout() {
   const { user } = useAuth()
   const company = useCompany()
+  const duplicatesCount = useDuplicatesCount()
   const sections = navSectionsForRole(user.role, user.is_observer)
   const employeeName = user.employee ? user.employee.full_name : null
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -110,15 +126,16 @@ export function AppLayout() {
 
         <div className="ele-rail__spacer" />
 
-        {bottomSections.map(({ key, to, label, icon: Icon }) => (
+        {bottomSections.map(({ key, to, label, icon: SectionIcon }) => (
           <NavLink
             key={key}
             to={to}
             onClick={(e) => e.currentTarget.blur()}
             className={({ isActive }) => `ele-rail__item${isActive ? ' ele-rail__item--active' : ''}`}
           >
-            <span className="ele-rail__item-icon">
-              <Icon />
+            <span className="ele-rail__item-icon ele-nav-warning-host">
+              <SectionIcon />
+              {key === 'settings' && duplicatesCount > 0 ? <DuplicateWarningMarker /> : null}
             </span>
             <span className="ele-rail__label">{label}</span>
           </NavLink>
@@ -157,7 +174,10 @@ export function AppLayout() {
             to="/settings"
             className={({ isActive }) => `ele-bottom-nav__item${isActive ? ' ele-bottom-nav__item--active' : ''}`}
           >
-            <SettingsIcon />
+            <span className="ele-nav-warning-host">
+              <SettingsIcon />
+              {duplicatesCount > 0 ? <DuplicateWarningMarker /> : null}
+            </span>
             <span>Настройки</span>
           </NavLink>
         ) : null}

@@ -12,6 +12,7 @@ from core.mixins import CreationCommentMixin
 from core.pagination import ELECursorPagination
 from core.permissions import (
     AccessPassAccessPermission,
+    IsAdmin,
     IsAdminOrAccountant,
     IsAdminOrAccountantOrReadOnlyObserver,
     SimCardAccessPermission,
@@ -164,6 +165,86 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             )
             qs = qs.filter(Exists(sub))
         return qs
+
+    def create(self, request, *args, **kwargs):
+        # B12: контроль тёзок-работников при создании из раздела «Сотрудники».
+        # Не запрет, а подтверждение: могут работать однофамильцы-тёзки.
+        from .duplicates import conflict_message, creation_conflicts
+
+        last = (request.data.get("last_name") or "").strip()
+        first = (request.data.get("first_name") or "").strip()
+        if last and first and not request.data.get("confirm_duplicate"):
+            conflicts = creation_conflicts(last, first)
+            if conflicts:
+                return Response(
+                    {
+                        "requires_duplicate_confirmation": True,
+                        "duplicates": conflicts,
+                        "detail": conflict_message(conflicts),
+                    },
+                    status=409,
+                )
+        return super().create(request, *args, **kwargs)
+
+    @action(detail=False, methods=["get"], permission_classes=[IsAdmin])
+    def duplicates(self, request):
+        """B12. Возможные дубли сотрудников (для раздела Настроек)."""
+        from .duplicates import duplicate_groups
+
+        groups = duplicate_groups()
+        return Response({
+            "groups": groups,
+            "active_count": sum(1 for g in groups if not g["dismissed"]),
+        })
+
+    @action(detail=False, methods=["get"], url_path="duplicates-count", permission_classes=[IsAdmin])
+    def duplicates_count(self, request):
+        """B12. Число активных возможных дублей — для бейджа в меню."""
+        from .duplicates import active_duplicate_count
+
+        return Response({"count": active_duplicate_count()})
+
+    @action(detail=False, methods=["post"], url_path="duplicates/resolve", permission_classes=[IsAdmin])
+    def duplicates_resolve(self, request):
+        """B12. Устранить дублирование: перенести все ссылки на «главную» запись
+        и удалить поглощённых. mapping (только для принципа 2 — несколько учёток)
+        — {source_id: target_id}."""
+        from .duplicates import resolve_group
+
+        signature = request.data.get("signature")
+        mapping = request.data.get("mapping") or {}
+        if not signature:
+            return Response({"detail": "Не указана группа."}, status=400)
+        try:
+            survivors = resolve_group(signature, mapping=mapping)
+        except LookupError as exc:
+            return Response({"detail": str(exc)}, status=409)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response({"survivors": survivors})
+
+    @action(detail=False, methods=["post"], url_path="duplicates/dismiss", permission_classes=[IsAdmin])
+    def duplicates_dismiss(self, request):
+        """B12. Пометить строку «не дубль»."""
+        from .duplicates import dismiss_group, duplicate_groups
+
+        signature = request.data.get("signature")
+        group = next((g for g in duplicate_groups() if g["signature"] == signature), None)
+        if group is None:
+            return Response({"detail": "Группа изменилась — обновите список."}, status=409)
+        dismiss_group(signature, [m["id"] for m in group["members"]], user=request.user)
+        return Response({"detail": "Помечено «не дубль»."})
+
+    @action(detail=False, methods=["post"], url_path="duplicates/undismiss", permission_classes=[IsAdmin])
+    def duplicates_undismiss(self, request):
+        """B12. Снять пометку «не дубль» — снова считать возможным дублем."""
+        from .duplicates import undismiss_group
+
+        signature = request.data.get("signature")
+        if not signature:
+            return Response({"detail": "Не указана группа."}, status=400)
+        undismiss_group(signature)
+        return Response({"detail": "Отметка снята."})
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()

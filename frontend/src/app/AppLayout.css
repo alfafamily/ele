@@ -494,3 +494,23 @@
     font-weight: 600;
   }
 }
+
+/* B12: маркер-предупреждение (треугольник) поверх иконки «Настройки», пока
+   есть неустранённые возможные дубли сотрудников. */
+.ele-nav-warning-host {
+  position: relative;
+}
+
+.ele-nav-warning {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-warning);
+  background: var(--color-surface, #fff);
+  border-radius: 50%;
+  line-height: 0;
+  pointer-events: none;
+}

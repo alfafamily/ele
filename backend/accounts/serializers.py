@@ -210,6 +210,28 @@ class RegisterSerializer(serializers.Serializer):
         if attrs["password"] != attrs["password_repeat"]:
             raise serializers.ValidationError({"password_repeat": ["Пароли не совпадают."]})
         validate_password_field(attrs["password"], "password")
+
+        # B12: контроль дублей по Фамилии/Имени среди работающих сотрудников.
+        # Только для НОВОЙ регистрации — повторная незавершённая регистрация тем
+        # же email переиспользует свою же запись (её и обновляем в save()).
+        email = User.objects.normalize_email(attrs["email"])
+        reuse = User.objects.filter(email__iexact=email, is_email_confirmed=False).first()
+        self._link_target = None
+        if reuse is None:
+            from employees.duplicates import (
+                REGISTER_AMBIGUOUS_MESSAGE,
+                REGISTER_EXISTS_MESSAGE,
+                registration_decision,
+            )
+
+            kind, employee = registration_decision(attrs["last_name"], attrs["first_name"])
+            if kind == "exists":
+                raise serializers.ValidationError({"non_field_errors": [REGISTER_EXISTS_MESSAGE]})
+            if kind == "ambiguous":
+                raise serializers.ValidationError({"non_field_errors": [REGISTER_AMBIGUOUS_MESSAGE]})
+            if kind == "link":
+                # Ровно один тёзка без учётки — привяжем к нему (не плодим).
+                self._link_target = employee
         return attrs
 
     def save(self):
@@ -225,14 +247,19 @@ class RegisterSerializer(serializers.Serializer):
             if user is None:
                 user = User(email=email, role=User.Role.EMPLOYEE)
             user.set_password(self.validated_data["password"])
-            # Сотрудник для новой учётки; при повторной незавершённой регистрации
-            # тем же email — обновляем ранее созданного, не плодим дубликаты.
-            employee = user.employee if user.employee_id else Employee()
-            employee.last_name = self.validated_data["last_name"]
-            employee.first_name = self.validated_data["first_name"]
-            employee.position = self.validated_data.get("position", "")
-            employee.department = self.validated_data.get("department", "")
-            employee.save()
+            if self._link_target is not None:
+                # B12 (3.ii): привязываемся к существующему сотруднику-тёзке без
+                # учётки; его карточку (должность/отдел) не перезаписываем.
+                employee = self._link_target
+            else:
+                # Сотрудник для новой учётки; при повторной незавершённой
+                # регистрации тем же email — обновляем ранее созданного.
+                employee = user.employee if user.employee_id else Employee()
+                employee.last_name = self.validated_data["last_name"]
+                employee.first_name = self.validated_data["first_name"]
+                employee.position = self.validated_data.get("position", "")
+                employee.department = self.validated_data.get("department", "")
+                employee.save()
             user.employee = employee
             user.save()
         return user
@@ -265,6 +292,20 @@ class InviteSerializer(serializers.Serializer):
     # при несовпадении домена приглашение не отправляется, а запрашивается
     # подтверждение у администратора.
     confirm_domain = serializers.BooleanField(required=False, default=False)
+    # B12: явное подтверждение создания сотрудника-тёзки (create_employee) при
+    # совпадении Фамилии/Имени с уже работающим сотрудником.
+    confirm_duplicate = serializers.BooleanField(required=False, default=False)
+
+    def duplicate_conflicts(self):
+        """B12. Тёзки-работники, если приглашение создаёт нового сотрудника."""
+        from employees.duplicates import creation_conflicts
+
+        if not self.validated_data.get("create_employee"):
+            return []
+        return creation_conflicts(
+            self.validated_data.get("last_name", ""),
+            self.validated_data.get("first_name", ""),
+        )
 
     def domain_mismatch(self):
         from company.models import Company

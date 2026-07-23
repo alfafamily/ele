@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { useDuplicatesCount } from '../../app/CompanyContext.jsx'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { Icon } from '../../shared/ui'
 import { BackupTab } from './BackupTab.jsx'
 import { CompanyTab } from './CompanyTab.jsx'
+import { EmployeeDuplicatesTab } from './EmployeeDuplicatesTab.jsx'
 import { NumberingTab } from './NumberingTab.jsx'
 import { SystemTab } from './SystemTab.jsx'
 import { UpdateTab } from './UpdateTab.jsx'
@@ -12,6 +14,12 @@ import './SettingsPage.css'
 const SECTIONS = [
   { value: 'company', label: 'Компания', desc: 'Реквизиты организации и логотип', Component: CompanyTab },
   { value: 'users', label: 'Пользователи', desc: 'Доступ к системе и роли', Component: UsersTab },
+  {
+    value: 'duplicates',
+    label: 'Возможные дубли сотрудников',
+    desc: 'Поиск и объединение дублирующихся сотрудников',
+    Component: EmployeeDuplicatesTab,
+  },
   { value: 'system', label: 'Системные', desc: 'Хранилище, доступ и проверка интеграций', Component: SystemTab },
   { value: 'numbering', label: 'Префиксы', desc: 'Префиксы учётных номеров для автогенерации', Component: NumberingTab },
   { value: 'backup', label: 'Резервное копирование', desc: 'Настройки резервного копирования', Component: BackupTab },
@@ -80,6 +88,7 @@ function SectionSelect({ sections, value, onChange }) {
 export function SettingsPage() {
   const [section, setSection] = useState('company')
   const isMobile = useMediaQuery('(max-width: 768px)')
+  const duplicatesCount = useDuplicatesCount()
   const Active = SECTIONS.find((s) => s.value === section)?.Component ?? CompanyTab
 
   return (
@@ -105,7 +114,12 @@ export function SettingsPage() {
                 className={'ele-settings__nav-item' + (s.value === section ? ' ele-settings__nav-item--active' : '')}
                 onClick={() => setSection(s.value)}
               >
-                <span className="ele-settings__nav-label">{s.label}</span>
+                <span className="ele-settings__nav-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  {s.label}
+                  {s.value === 'duplicates' && duplicatesCount > 0 ? (
+                    <Icon name="triangle-alert" size={15} strokeWidth={2.2} style={{ color: 'var(--color-warning)', flex: 'none' }} />
+                  ) : null}
+                </span>
                 {s.desc ? <span className="ele-settings__nav-desc">{s.desc}</span> : null}
               </button>
             ))}
