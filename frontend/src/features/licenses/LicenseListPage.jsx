@@ -170,26 +170,31 @@ export function LicenseListPage() {
                       excludeLockedFields
                       filterKind={draft.kind}
                     />
-                    <div>
-                      <div className="ele-filter-section__title">Размещение</div>
-                      <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
-                      {draft.assignedMode === 'storage' ? (
-                        <div style={{ marginTop: 10 }}>
-                          <RemoteMultiSelect
-                            endpoint={`/api/places/?place_type=storage&active=1${draft.types.length ? `&has_license_type=${draft.types.join(',')}` : ''}`}
-                            mapOption={placeOption}
-                            selected={draft.storagePlaces}
-                            onChange={(p) => set({ storagePlaces: p })}
-                          />
-                        </div>
-                      ) : null}
-                      {draft.assignedMode === 'equipment' ? (
-                        <div style={{ marginTop: 10 }}>
-                          <EquipmentMultiPicker value={draft.equipment} onChange={(e) => set({ equipment: e })} licenseTypeIds={draft.types} />
-                        </div>
-                      ) : null}
-                    </div>
                   </>
+                )
+              }}
+              aside={(draft, setDraft) => {
+                const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
+                return (
+                  <div>
+                    <div className="ele-filter-section__title">Размещение</div>
+                    <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
+                    {draft.assignedMode === 'storage' ? (
+                      <div style={{ marginTop: 10 }}>
+                        <RemoteMultiSelect
+                          endpoint={`/api/places/?place_type=storage&active=1${draft.types.length ? `&has_license_type=${draft.types.join(',')}` : ''}`}
+                          mapOption={placeOption}
+                          selected={draft.storagePlaces}
+                          onChange={(p) => set({ storagePlaces: p })}
+                        />
+                      </div>
+                    ) : null}
+                    {draft.assignedMode === 'equipment' ? (
+                      <div style={{ marginTop: 10 }}>
+                        <EquipmentMultiPicker value={draft.equipment} onChange={(e) => set({ equipment: e })} licenseTypeIds={draft.types} />
+                      </div>
+                    ) : null}
+                  </div>
                 )
               }}
             </FilterModal>

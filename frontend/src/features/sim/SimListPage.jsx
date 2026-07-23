@@ -199,26 +199,31 @@ export function SimListPage() {
                         hideUntilSearch
                       />
                     </div>
-                    <div>
-                      <div className="ele-filter-section__title">Размещение</div>
-                      <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
-                      {draft.assignedMode === 'employee' ? (
-                        <div style={{ marginTop: 10 }}>
-                          <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} extraParams={simConstraint(draft)} />
-                        </div>
-                      ) : null}
-                      {draft.assignedMode === 'storage' ? (
-                        <div style={{ marginTop: 10 }}>
-                          <RemoteMultiSelect
-                            endpoint={`/api/places/?place_type=storage&active=1&${toQuery(simConstraint(draft))}`}
-                            mapOption={placeOption}
-                            selected={draft.storagePlaces}
-                            onChange={(p) => set({ storagePlaces: p })}
-                          />
-                        </div>
-                      ) : null}
-                    </div>
                   </>
+                )
+              }}
+              aside={(draft, setDraft) => {
+                const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
+                return (
+                  <div>
+                    <div className="ele-filter-section__title">Размещение</div>
+                    <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
+                    {draft.assignedMode === 'employee' ? (
+                      <div style={{ marginTop: 10 }}>
+                        <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} extraParams={simConstraint(draft)} />
+                      </div>
+                    ) : null}
+                    {draft.assignedMode === 'storage' ? (
+                      <div style={{ marginTop: 10 }}>
+                        <RemoteMultiSelect
+                          endpoint={`/api/places/?place_type=storage&active=1&${toQuery(simConstraint(draft))}`}
+                          mapOption={placeOption}
+                          selected={draft.storagePlaces}
+                          onChange={(p) => set({ storagePlaces: p })}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
                 )
               }}
             </FilterModal>

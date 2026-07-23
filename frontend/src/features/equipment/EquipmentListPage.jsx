@@ -183,36 +183,41 @@ export function EquipmentListPage() {
                       req={draft.req}
                       onReqChange={(r) => set({ req: r })}
                     />
-                    <div>
-                      <div className="ele-filter-section__title">Размещение</div>
-                      <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
-                      {draft.assignedMode === 'employee' ? (
-                        <div style={{ marginTop: 10 }}>
-                          <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} extraParams={draft.types.length ? { has_equipment_type: draft.types.join(',') } : undefined} />
-                        </div>
-                      ) : null}
-                      {draft.assignedMode === 'storage' ? (
-                        <div style={{ marginTop: 10 }}>
-                          <RemoteMultiSelect
-                            endpoint={`/api/places/?place_type=storage&active=1${draft.types.length ? `&has_equipment_type=${draft.types.join(',')}` : ''}`}
-                            mapOption={placeOption}
-                            selected={draft.storagePlaces}
-                            onChange={(p) => set({ storagePlaces: p })}
-                          />
-                        </div>
-                      ) : null}
-                      {draft.assignedMode === 'workplace' ? (
-                        <div style={{ marginTop: 10 }}>
-                          <RemoteMultiSelect
-                            endpoint={`/api/places/?place_type=workplace&active=1${draft.types.length ? `&has_equipment_type=${draft.types.join(',')}` : ''}`}
-                            mapOption={placeOption}
-                            selected={draft.workplaces}
-                            onChange={(p) => set({ workplaces: p })}
-                          />
-                        </div>
-                      ) : null}
-                    </div>
                   </>
+                )
+              }}
+              aside={(draft, setDraft) => {
+                const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
+                return (
+                  <div>
+                    <div className="ele-filter-section__title">Размещение</div>
+                    <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
+                    {draft.assignedMode === 'employee' ? (
+                      <div style={{ marginTop: 10 }}>
+                        <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} extraParams={draft.types.length ? { has_equipment_type: draft.types.join(',') } : undefined} />
+                      </div>
+                    ) : null}
+                    {draft.assignedMode === 'storage' ? (
+                      <div style={{ marginTop: 10 }}>
+                        <RemoteMultiSelect
+                          endpoint={`/api/places/?place_type=storage&active=1${draft.types.length ? `&has_equipment_type=${draft.types.join(',')}` : ''}`}
+                          mapOption={placeOption}
+                          selected={draft.storagePlaces}
+                          onChange={(p) => set({ storagePlaces: p })}
+                        />
+                      </div>
+                    ) : null}
+                    {draft.assignedMode === 'workplace' ? (
+                      <div style={{ marginTop: 10 }}>
+                        <RemoteMultiSelect
+                          endpoint={`/api/places/?place_type=workplace&active=1${draft.types.length ? `&has_equipment_type=${draft.types.join(',')}` : ''}`}
+                          mapOption={placeOption}
+                          selected={draft.workplaces}
+                          onChange={(p) => set({ workplaces: p })}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
                 )
               }}
             </FilterModal>

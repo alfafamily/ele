@@ -6,6 +6,28 @@
   margin-top: 4px;
 }
 
+.ele-filter-modal__col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+/* Десктоп: широкая модалка в 2 колонки (основные фильтры | «Размещение»).
+   На мобильном тело остаётся flex-column — колонки просто складываются стеком. */
+@media (min-width: 769px) {
+  .ele-modal--filter-wide {
+    max-width: 760px;
+  }
+
+  .ele-filter-modal__body--cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+}
+
 /* Блок одного фильтра: заголовок + управление. */
 .ele-filter-section__title {
   font-size: 12px;
