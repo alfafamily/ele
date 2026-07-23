@@ -7,6 +7,9 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterModal, Icon, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
+import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
+import { csvParam } from '../../shared/filterParams.js'
 
 const CACHE_KEY = 'tools-list'
 
@@ -14,11 +17,27 @@ const TABS = [
   { value: 'active', label: 'Активные' },
   { value: 'archive', label: 'Списанные' },
 ]
-const FILTERS = [
-  { value: 'all', label: 'Все' },
-  { value: 'has_free', label: 'Есть свободный остаток' },
-  { value: 'no_free', label: 'Без остатка' },
+// B27. «Размещение» инструмента (как у оборудования): за сотрудником / на рабочем
+// месте / на складе (свободный остаток). Заменяет прежний фильтр «Остаток».
+const ASSIGNED_OPTIONS = [
+  { value: 'none', label: 'Не важно' },
+  { value: 'employee', label: 'Сотрудник' },
+  { value: 'storage', label: 'Место хранения' },
+  { value: 'workplace', label: 'Рабочее место' },
 ]
+
+const placeOption = (p) => ({ value: String(p.id), label: p.name, sub: `${p.building_name} — ${p.room_name}` })
+
+const EMPTY_FILTERS = {
+  assignedMode: 'none',
+  employees: [],
+  storagePlaces: [],
+  workplaces: [],
+}
+
+function countActive(f) {
+  return f.assignedMode !== 'none' ? 1 : 0
+}
 
 const ACTIVE_COLUMNS = [
   { key: 'name', label: 'Наименование', sortable: true, width: 'minmax(0, 1.4fr)' },
@@ -40,19 +59,28 @@ export function ToolListPage() {
   const isPop = useNavigationType() === 'POP'
   const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
   const [tab, setTab] = useState(() => savedUi?.tab ?? 'active')
-  const [stock, setStock] = useState(() => savedUi?.stock ?? 'all')
+  const [filters, setFilters] = useState(() => ({ ...EMPTY_FILTERS, ...(savedUi?.filters ?? {}) }))
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
 
   useEffect(() => {
-    writeListCache(CACHE_KEY, { ui: { tab, stock, search, sort } })
-  }, [tab, stock, search, sort])
+    writeListCache(CACHE_KEY, { ui: { tab, filters, search, sort } })
+  }, [tab, filters, search, sort])
 
+  const isActive = tab === 'active'
   const ordering = sort.dir === 'desc' ? `-${sort.key}` : sort.key
   const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList(
     '/api/tools/',
-    { tab, stock: tab === 'active' && stock !== 'all' ? stock : undefined, search: debouncedSearch || undefined, ordering },
+    {
+      tab,
+      assigned: isActive && filters.assignedMode !== 'none' ? filters.assignedMode : undefined,
+      employee: isActive && filters.assignedMode === 'employee' ? csvParam(filters.employees.map((e) => e.id)) : undefined,
+      place_storage: isActive && filters.assignedMode === 'storage' ? csvParam(filters.storagePlaces) : undefined,
+      place_workplace: isActive && filters.assignedMode === 'workplace' ? csvParam(filters.workplaces) : undefined,
+      search: debouncedSearch || undefined,
+      ordering,
+    },
     { cacheKey: CACHE_KEY, restore: isPop },
   )
   useScrollRestoration(CACHE_KEY, isPop && !loading)
@@ -89,21 +117,49 @@ export function ToolListPage() {
         <div className="ele-list-controls__search">
           <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
         </div>
-        {tab === 'active' ? (
+        {isActive ? (
           <div className="ele-list-controls__filter">
             <FilterModal
-              value={{ stock }}
-              count={stock !== 'all' ? 1 : 0}
-              onApply={(d) => setStock(d.stock)}
-              onClear={() => setStock('all')}
-              isDraftActive={(d) => d.stock !== 'all'}
+              value={filters}
+              count={countActive(filters)}
+              onApply={setFilters}
+              onClear={() => setFilters(EMPTY_FILTERS)}
+              isDraftActive={(d) => countActive(d) > 0}
             >
-              {(draft, setDraft) => (
-                <div>
-                  <div className="ele-filter-section__title">Остаток</div>
-                  <RadioPills options={FILTERS} value={draft.stock} onChange={(v) => setDraft({ stock: v })} />
-                </div>
-              )}
+              {(draft, setDraft) => {
+                const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
+                return (
+                  <div>
+                    <div className="ele-filter-section__title">Размещение</div>
+                    <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
+                    {draft.assignedMode === 'employee' ? (
+                      <div style={{ marginTop: 10 }}>
+                        <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} />
+                      </div>
+                    ) : null}
+                    {draft.assignedMode === 'storage' ? (
+                      <div style={{ marginTop: 10 }}>
+                        <RemoteMultiSelect
+                          endpoint="/api/places/?place_type=storage&active=1"
+                          mapOption={placeOption}
+                          selected={draft.storagePlaces}
+                          onChange={(p) => set({ storagePlaces: p })}
+                        />
+                      </div>
+                    ) : null}
+                    {draft.assignedMode === 'workplace' ? (
+                      <div style={{ marginTop: 10 }}>
+                        <RemoteMultiSelect
+                          endpoint="/api/places/?place_type=workplace&active=1"
+                          mapOption={placeOption}
+                          selected={draft.workplaces}
+                          onChange={(p) => set({ workplaces: p })}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              }}
             </FilterModal>
           </div>
         ) : null}

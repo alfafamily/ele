@@ -1,11 +1,11 @@
-from django.db.models import F, IntegerField, Q, Sum
-from django.db.models.functions import Coalesce
+from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from core.eav_filters import csv_ids
 from core.mixins import CreationCommentMixin
 from core.pagination import ELECursorPagination
 from core.permissions import IsAdminOrAccountant, ToolAccessPermission
@@ -45,33 +45,37 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         tab = self.request.query_params.get("tab", "active")
         qs = qs.filter(is_written_off=(tab == "archive"))
 
+        # Профиль («Закреплённые инструменты») передаёт employee без assigned.
         employee = self.request.query_params.get("employee")
         if employee:
-            qs = qs.filter(allocations__employee_id=employee).distinct()
+            qs = qs.filter(allocations__employee_id__in=csv_ids(employee)).distinct()
 
         search = self.request.query_params.get("search")
         if search:
             qs = qs.filter(Q(name__icontains=search)).distinct()
 
-        # Фильтр по свободному остатку: свободно = остаток − закреплено
-        # (за сотрудниками и рабочими местами; складские размещения — свободны).
-        stock = self.request.query_params.get("stock")
-        if stock in ("has_free", "no_free"):
-            qs = qs.annotate(
-                _assigned=Coalesce(
-                    Sum(
-                        "allocations__quantity",
-                        filter=Q(allocations__employee__isnull=False)
-                        | Q(allocations__place__place_type="workplace"),
-                    ),
-                    0,
-                    output_field=IntegerField(),
-                )
-            )
-            if stock == "has_free":
-                qs = qs.filter(quantity__gt=F("_assigned"))
-            else:
-                qs = qs.filter(quantity__lte=F("_assigned"))
+        # B27. «Размещение» (radio): категория + опц. конкретные значения.
+        # Инструмент размещён через ToolAllocation: employee — за сотрудником;
+        # place(workplace) — на рабочем месте; place(storage) — свободный остаток
+        # на складе. Заменяет прежний фильтр «Остаток».
+        assigned = self.request.query_params.get("assigned")
+        if assigned == "employee":
+            if not csv_ids(employee):
+                qs = qs.filter(allocations__employee__isnull=False).distinct()
+        elif assigned == "workplace":
+            ids = csv_ids(self.request.query_params.get("place_workplace"))
+            qs = (
+                qs.filter(allocations__place_id__in=ids)
+                if ids
+                else qs.filter(allocations__place__place_type="workplace")
+            ).distinct()
+        elif assigned == "storage":
+            ids = csv_ids(self.request.query_params.get("place_storage"))
+            qs = (
+                qs.filter(allocations__place_id__in=ids)
+                if ids
+                else qs.filter(allocations__place__place_type="storage")
+            ).distinct()
         return qs
 
     # ——— движения по остатку (B8: остаток лежит на складах) ————————————————
