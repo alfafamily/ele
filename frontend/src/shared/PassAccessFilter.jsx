@@ -34,15 +34,15 @@ export function PassAccessFilter({ buildings, rooms, places, onChange }) {
     <>
       <div>
         <div className="ele-filter-section__title">Здания</div>
-        <MultiSelectList options={buildingOpts} selected={buildings} onToggle={(v) => onChange({ buildings: toggle(buildings, v) })} search loading={loading} emptyText="Зданий пока нет" />
+        <MultiSelectList options={buildingOpts} selected={buildings} onToggle={(v) => onChange({ buildings: toggle(buildings, v) })} search loading={loading} chips emptyText="Зданий пока нет" />
       </div>
       <div>
         <div className="ele-filter-section__title">Помещения</div>
-        <MultiSelectList options={roomOpts} selected={rooms} onToggle={(v) => onChange({ rooms: toggle(rooms, v) })} search loading={loading} emptyText="Помещений пока нет" />
+        <MultiSelectList options={roomOpts} selected={rooms} onToggle={(v) => onChange({ rooms: toggle(rooms, v) })} search loading={loading} chips emptyText="Помещений пока нет" />
       </div>
       <div>
         <div className="ele-filter-section__title">Места</div>
-        <MultiSelectList options={placeOpts} selected={places} onToggle={(v) => onChange({ places: toggle(places, v) })} search loading={loading} emptyText="Мест пока нет" />
+        <MultiSelectList options={placeOpts} selected={places} onToggle={(v) => onChange({ places: toggle(places, v) })} search loading={loading} chips emptyText="Мест пока нет" />
       </div>
     </>
   )

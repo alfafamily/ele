@@ -51,7 +51,7 @@ export function TypeRequisiteFilter({ endpoint, label = 'Тип', types, onTypes
   return (
     <div>
       <div className="ele-filter-section__title">{label}</div>
-      <MultiSelectList options={options} selected={types} onToggle={toggleType} search loading={allTypes === null} />
+      <MultiSelectList options={options} selected={types} onToggle={toggleType} search loading={allTypes === null} chips />
       {selectedTypes.map((t) => {
         const fields = (t.fields || []).filter((f) => f.value_type !== 'file')
         if (!fields.length) return null

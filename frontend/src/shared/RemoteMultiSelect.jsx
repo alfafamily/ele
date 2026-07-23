@@ -32,6 +32,7 @@ export function RemoteMultiSelect({ endpoint, mapOption, selected, onChange, sea
       search={search}
       loading={data === null}
       emptyText={emptyText}
+      chips
     />
   )
 }
