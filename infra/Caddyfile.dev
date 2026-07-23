@@ -16,7 +16,7 @@ handle /api/* {
 # B9: служебная Django-админка (доступ гейтит сам backend). В dev статику
 # админки (CSS/JS) при DEBUG раздаёт runserver, поэтому /static/* тоже ведём на
 # backend, а не в SPA-fallback.
-handle /django_admin/* {
+handle /django_admin /django_admin/* {
 	reverse_proxy backend:8000
 }
 

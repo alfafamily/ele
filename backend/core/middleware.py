@@ -16,7 +16,10 @@ class AdminAccessGateMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.path.startswith("/django_admin/"):
+        # Покрываем и путь без завершающего слэша: `/django_admin` Django сам
+        # редиректит на `/django_admin/` (APPEND_SLASH), но гейт должен отработать
+        # и на нём, иначе запрос уходит мимо (в проде — в SPA).
+        if request.path == "/django_admin" or request.path.startswith("/django_admin/"):
             # Импорт внутри — избегаем цикла на этапе загрузки (core грузится рано).
             from company.models import Company
 

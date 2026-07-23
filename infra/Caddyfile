@@ -20,8 +20,9 @@ handle /api/* {
 # B9: служебная Django-админка. Доступ гейтит сам Django
 # (core.middleware.AdminAccessGateMiddleware — флаг в Настройках + отдельный
 # IP-список), поэтому здесь просто проксируем на backend; статику админки отдаёт
-# общий блок /static/* ниже.
-handle /django_admin/* {
+# общий блок /static/* ниже. Матчим и путь без завершающего слэша — иначе
+# `/django_admin` уйдёт в SPA-fallback; со слэшем Django добавит его редиректом.
+handle /django_admin /django_admin/* {
 	reverse_proxy backend:8000
 }
 
