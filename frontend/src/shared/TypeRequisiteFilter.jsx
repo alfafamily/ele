@@ -31,7 +31,7 @@ function ReqFieldControl({ field, value, onChange, valuesBase }) {
   return <RequisiteAutocompleteChips value={value} onChange={onChange} valuesUrl={`${valuesBase}?field=${field.id}`} numeric={numeric} />
 }
 
-export function TypeRequisiteFilter({ endpoint, valuesBase, label = 'Тип', types, onTypesChange, req, onReqChange }) {
+export function TypeRequisiteFilter({ endpoint, valuesBase, label = 'Тип', types, onTypesChange, req, onReqChange, excludeLockedFields = false }) {
   const [allTypes, setAllTypes] = useState(null)
 
   useEffect(() => {
@@ -74,7 +74,11 @@ export function TypeRequisiteFilter({ endpoint, valuesBase, label = 'Тип', ty
       <div className="ele-filter-section__title">{label}</div>
       <MultiSelectList options={options} selected={types} onToggle={toggleType} search loading={allTypes === null} chips />
       {selectedTypes.map((t) => {
-        const fields = (t.fields || []).filter((f) => f.value_type !== 'file')
+        // Файловые не фильтруем; секретные ключевые реквизиты лицензий (is_locked
+        // «Номер/ключ», «Номер/ID/Serial токена») исключаем по excludeLockedFields.
+        const fields = (t.fields || []).filter(
+          (f) => f.value_type !== 'file' && !(excludeLockedFields && f.is_locked),
+        )
         if (!fields.length) return null
         return (
           <div key={t.id} className="ele-filter-subgroup" style={{ marginTop: 12 }}>
