@@ -11,6 +11,7 @@ import { EquipmentMultiPicker } from '../../shared/EquipmentMultiPicker.jsx'
 import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
 import { TypeRequisiteFilter } from '../../shared/TypeRequisiteFilter.jsx'
 import { csvParam, reqParams } from '../../shared/filterParams.js'
+import { apiGet } from '../../shared/api/client'
 
 const CACHE_KEY = 'license-list'
 
@@ -23,14 +24,15 @@ const KIND_FILTERS = [
   { value: 'software', label: 'Программная' },
   { value: 'hardware', label: 'Аппаратная' },
 ]
-// B27. «Размещение» — оборудование / место хранения / не привязана (заменяет
-// прежний фильтр «Статус» Занятые/Свободные).
+// B27. «Размещение» — оборудование / место хранения (заменяет прежний «Статус»).
+// Непривязанные лицензии (без оборудования и склада) ищутся спец-пунктом
+// «Виртуальное хранение» в списке мест (см. UNATTACHED).
 const ASSIGNED_OPTIONS = [
   { value: 'none', label: 'Не важно' },
   { value: 'equipment', label: 'Оборудование' },
   { value: 'storage', label: 'Место хранения' },
-  { value: 'unattached', label: 'Не привязана' },
 ]
+const UNATTACHED = '__unattached__'
 
 const KIND_LABEL = { software: 'Программная', hardware: 'Аппаратная' }
 
@@ -77,6 +79,14 @@ export function LicenseListPage() {
   const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
   const [tab, setTab] = useState(() => savedUi?.tab ?? 'active')
   const [filters, setFilters] = useState(() => ({ ...EMPTY_FILTERS, ...(savedUi?.filters ?? {}) }))
+  // Есть ли непривязанные лицензии — тогда в «Место хранения» показываем
+  // «Виртуальное хранение».
+  const [virtualStorage, setVirtualStorage] = useState(false)
+  useEffect(() => {
+    apiGet('/api/licenses/unattached-exists/')
+      .then((d) => setVirtualStorage(!!d?.exists))
+      .catch(() => {})
+  }, [])
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
@@ -95,7 +105,8 @@ export function LicenseListPage() {
       ...(isActive ? reqParams(filters.req) : {}),
       kind: isActive && filters.kind !== 'all' ? filters.kind : undefined,
       assigned: isActive && filters.assignedMode !== 'none' ? filters.assignedMode : undefined,
-      storage_place: isActive && filters.assignedMode === 'storage' ? csvParam(filters.storagePlaces) : undefined,
+      storage_place: isActive && filters.assignedMode === 'storage' ? csvParam(filters.storagePlaces.filter((v) => v !== UNATTACHED)) : undefined,
+      storage_unattached: isActive && filters.assignedMode === 'storage' && filters.storagePlaces.includes(UNATTACHED) ? '1' : undefined,
       equipment: isActive && filters.assignedMode === 'equipment' ? csvParam(filters.equipment.map((e) => e.id)) : undefined,
       search: debouncedSearch || undefined,
       ordering,
@@ -184,6 +195,7 @@ export function LicenseListPage() {
                           mapOption={placeOption}
                           selected={draft.storagePlaces}
                           onChange={(p) => set({ storagePlaces: p })}
+                          extraOptions={virtualStorage ? [{ value: UNATTACHED, label: 'Виртуальное хранение' }] : undefined}
                         />
                       </div>
                     ) : null}

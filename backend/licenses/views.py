@@ -158,10 +158,20 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             ids = csv_ids(self.request.query_params.get("equipment"))
             qs = qs.filter(equipment_id__in=ids) if ids else qs.filter(equipment__isnull=False)
         elif assigned == "storage":
+            # «Место хранения»: конкретные склады и/или спец-пункт «Виртуальное
+            # хранение» (storage_unattached=1) — непривязанные лицензии (без
+            # оборудования и без склада).
             ids = csv_ids(self.request.query_params.get("storage_place"))
-            qs = qs.filter(storage_place_id__in=ids) if ids else qs.filter(storage_place__isnull=False)
-        elif assigned == "unattached":
-            qs = qs.filter(equipment__isnull=True, storage_place__isnull=True)
+            unattached = self.request.query_params.get("storage_unattached") == "1"
+            if unattached:
+                cond = Q(equipment__isnull=True, storage_place__isnull=True)
+                if ids:
+                    cond |= Q(storage_place_id__in=ids)
+                qs = qs.filter(cond)
+            elif ids:
+                qs = qs.filter(storage_place_id__in=ids)
+            else:
+                qs = qs.filter(storage_place__isnull=False)
 
         search = self.request.query_params.get("search")
         if search:
@@ -190,6 +200,15 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                     cond |= Q(license_type__kind=code)
             qs = qs.filter(cond).distinct()
         return qs
+
+    @action(detail=False, methods=["get"], url_path="unattached-exists")
+    def unattached_exists(self, request):
+        # B27. Есть ли непривязанные лицензии (без оборудования и без склада) —
+        # для показа спец-пункта «Виртуальное хранение» в фильтре «Место хранения».
+        exists = License.objects.filter(
+            is_retired=False, equipment__isnull=True, storage_place__isnull=True
+        ).exists()
+        return Response({"exists": exists})
 
     @action(detail=False, methods=["get"], url_path="field-values")
     def field_values(self, request):

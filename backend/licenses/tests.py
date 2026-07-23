@@ -578,9 +578,11 @@ class LicenseFilterTests(APITestCase):
             {self.lic_soft.id, self.lic_hard.id},
         )
 
-    def test_assigned_category_unattached(self):
-        # Обе лицензии не привязаны (без оборудования и склада).
-        self.assertEqual(self._ids({"assigned": "unattached"}), {self.lic_soft.id, self.lic_hard.id})
+    def test_storage_unattached_virtual(self):
+        # Обе лицензии не привязаны (без оборудования и склада) → «Виртуальное
+        # хранение» (assigned=storage&storage_unattached=1).
+        self.assertTrue(self.client.get("/api/licenses/unattached-exists/").data["exists"])
+        self.assertEqual(self._ids({"assigned": "storage", "storage_unattached": "1"}), {self.lic_soft.id, self.lic_hard.id})
         self.assertEqual(self._ids({"assigned": "equipment"}), set())
         self.assertEqual(self._ids({"assigned": "storage"}), set())
 

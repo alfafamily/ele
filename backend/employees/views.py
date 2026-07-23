@@ -548,10 +548,24 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 if not csv_ids(self.request.query_params.get("employee")):
                     qs = qs.filter(employee__isnull=False)
             elif assigned == "storage":
+                # «Место хранения»: конкретные склады и/или спец-пункт «У оператора»
+                # (storage_unattached=1) — непривязанные E-SIM (нигде не хранятся).
                 ids = csv_ids(self.request.query_params.get("storage_place"))
-                qs = qs.filter(storage_place_id__in=ids) if ids else qs.filter(storage_place__isnull=False)
-            elif assigned == "unattached":
-                qs = qs.filter(employee__isnull=True, equipment__isnull=True, storage_place__isnull=True)
+                unattached = self.request.query_params.get("storage_unattached") == "1"
+                if unattached:
+                    cond = Q(
+                        sim_type=SimCard.SimType.ESIM,
+                        employee__isnull=True,
+                        equipment__isnull=True,
+                        storage_place__isnull=True,
+                    )
+                    if ids:
+                        cond |= Q(storage_place_id__in=ids)
+                    qs = qs.filter(cond)
+                elif ids:
+                    qs = qs.filter(storage_place_id__in=ids)
+                else:
+                    qs = qs.filter(storage_place__isnull=False)
 
             search = self.request.query_params.get("search")
             if search:
@@ -704,6 +718,19 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         )
         rows.sort(key=lambda r: r["date"], reverse=True)
         return Response(rows)
+
+    @action(detail=False, methods=["get"], url_path="unattached-exists", permission_classes=[IsAdminOrAccountant])
+    def unattached_exists(self, request):
+        # B27. Есть ли непривязанные E-SIM (нигде не хранятся — «у оператора») —
+        # для показа спец-пункта «У оператора» в фильтре «Место хранения».
+        exists = SimCard.objects.filter(
+            sim_type=SimCard.SimType.ESIM,
+            is_utilized=False,
+            employee__isnull=True,
+            equipment__isnull=True,
+            storage_place__isnull=True,
+        ).exists()
+        return Response({"exists": exists})
 
     @action(detail=False, methods=["get"], permission_classes=[IsAdminOrAccountant])
     def operators(self, request):

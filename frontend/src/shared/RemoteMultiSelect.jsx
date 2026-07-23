@@ -7,7 +7,9 @@ import { MultiSelectList } from './ui/MultiSelectList/MultiSelectList.jsx'
 // поставщики. selected — string[] (id или строковое значение).
 //   endpoint  — URL списка (массив или {results});
 //   mapOption — item -> { value, label, sub? }.
-export function RemoteMultiSelect({ endpoint, mapOption, selected, onChange, search = true, emptyText = 'Ничего не найдено', hideUntilSearch = false }) {
+// extraOptions — уже готовые опции { value, label, sub? }, добавляемые ПЕРВЫМИ в
+// список (напр. спец-пункт «У оператора» / «Виртуальное хранение»).
+export function RemoteMultiSelect({ endpoint, mapOption, selected, onChange, search = true, emptyText = 'Ничего не найдено', hideUntilSearch = false, extraOptions }) {
   const [data, setData] = useState(null)
 
   useEffect(() => {
@@ -20,7 +22,7 @@ export function RemoteMultiSelect({ endpoint, mapOption, selected, onChange, sea
     }
   }, [endpoint])
 
-  const options = (data || []).map(mapOption)
+  const options = [...(extraOptions || []), ...(data || []).map(mapOption)]
   const toggle = (value) =>
     onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value])
 
@@ -30,7 +32,7 @@ export function RemoteMultiSelect({ endpoint, mapOption, selected, onChange, sea
       selected={selected}
       onToggle={toggle}
       search={search}
-      loading={data === null}
+      loading={data === null && !(extraOptions && extraOptions.length)}
       emptyText={emptyText}
       chips
       hideUntilSearch={hideUntilSearch}

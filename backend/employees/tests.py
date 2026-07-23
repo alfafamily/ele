@@ -744,6 +744,16 @@ class SimAndPassFilterTests(APITestCase):
         rows = self.client.get("/api/access-passes/", {"tab": "active", "object_type": "pass"}).data["results"]
         self.assertEqual({r["id"] for r in rows}, {self.pass_.id})
 
+    def test_esim_at_operator(self):
+        # Непривязанная E-SIM (self.esim: без сотрудника/оборуд./склада) → «У
+        # оператора» (assigned=storage&storage_unattached=1). Физическая SIM (self.sim,
+        # тоже без размещения) сюда НЕ попадает — только E-SIM.
+        self.assertTrue(self.client.get("/api/sim-cards/unattached-exists/").data["exists"])
+        rows = self.client.get(
+            "/api/sim-cards/", {"tab": "active", "assigned": "storage", "storage_unattached": "1"}
+        ).data["results"]
+        self.assertEqual({r["id"] for r in rows}, {self.esim.id})
+
 
 class SimOptionConstraintTests(APITestCase):
     """B27. Тип SIM ограничивает варианты оператора/поставщика; верхние фильтры
