@@ -44,7 +44,11 @@ export function TypeRequisiteFilter({ endpoint, valuesBase, label = 'Тип', ty
     }
   }, [endpoint])
 
-  const options = (allTypes || []).map((t) => ({ value: String(t.id), label: t.name }))
+  // Типы без единого объекта (не создано ни одного оборудования/лицензии) в
+  // фильтре не показываем — по ним всё равно ничего не найдётся.
+  const options = (allTypes || [])
+    .filter((t) => (t.objects_count ?? 0) > 0)
+    .map((t) => ({ value: String(t.id), label: t.name }))
   const selectedTypes = (allTypes || []).filter((t) => types.includes(String(t.id)))
 
   const toggleType = (id) => {
