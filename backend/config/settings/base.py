@@ -39,14 +39,16 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # B9: гейт служебной Django-админки (/django_admin) — глобальный флаг + IP.
+    # Стоит до CommonMiddleware, чтобы APPEND_SLASH не редиректил `/django_admin`
+    # раньше гейта; при закрытом доступе всегда отдаёт 404 (и для пути без слэша).
+    "core.middleware.AdminAccessGateMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # B9: гейт служебной Django-админки (/django_admin) — глобальный флаг + IP.
-    "core.middleware.AdminAccessGateMiddleware",
     # CSP sandbox на /media в dev (в проде — Caddy), защита от stored XSS через
     # загруженные файлы реквизитов.
     "core.middleware.MediaSecurityHeadersMiddleware",

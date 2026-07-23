@@ -52,6 +52,23 @@ class AdminGateMiddlewareTests(APITestCase):
         self.assertNotEqual(resp.status_code, 404)
         self.assertIn(resp.status_code, (200, 302))
 
+    def test_404_without_trailing_slash_when_disabled(self):
+        # Путь без завершающего слэша тоже под гейтом (иначе в проде уходит в SPA).
+        self.company.admin_access_enabled = False
+        self.company.admin_access_ips = [{"ip": "127.0.0.1", "note": ""}]
+        self.company.save()
+        resp = self.client.get("/django_admin", REMOTE_ADDR="127.0.0.1")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_no_slash_passes_gate_and_redirects_when_open(self):
+        self.company.admin_access_enabled = True
+        self.company.admin_access_ips = [{"ip": "127.0.0.1", "note": ""}]
+        self.company.save()
+        # Гейт пропускает → Django добавляет слеш (301 на /django_admin/).
+        resp = self.client.get("/django_admin", REMOTE_ADDR="127.0.0.1")
+        self.assertNotEqual(resp.status_code, 404)
+        self.assertIn(resp.status_code, (301, 302))
+
 
 class AdminAccessSettingsTests(APITestCase):
     """Сериализатор настроек: валидация и каскад снятия is_superuser."""
