@@ -22,13 +22,11 @@ const SIM_TYPE_FILTERS = [
   { value: 'sim', label: 'SIM' },
   { value: 'esim', label: 'E-SIM' },
 ]
-// B27. «Размещение» — сотрудник / место хранения / не привязана (заменяет
-// прежний фильтр «Статус»).
+// B27. «Размещение» — сотрудник / место хранения (заменяет прежний «Статус»).
 const ASSIGNED_OPTIONS = [
   { value: 'none', label: 'Не важно' },
   { value: 'employee', label: 'Сотрудник' },
   { value: 'storage', label: 'Место хранения' },
-  { value: 'unattached', label: 'Не привязана' },
 ]
 
 const placeOption = (p) => ({ value: String(p.id), label: p.name, sub: `${p.building_name} — ${p.room_name}` })
