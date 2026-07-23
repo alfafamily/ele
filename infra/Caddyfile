@@ -34,8 +34,15 @@ handle /media/* {
 	# Пользовательские файлы отдаются inline (просмотрщик реквизитов,/),
 	# поэтому нейтрализуем возможный stored XSS: CSP sandbox лишает любой
 	# html/js-документ прав на исполнение скриптов и собственный origin, не
-	# мешая показу изображений и PDF. nosniff — против MIME-подмены.
-	header Content-Security-Policy "sandbox"
+	# мешая показу изображений. nosniff — против MIME-подмены.
+	#
+	# Исключение — PDF: nosniff гарантирует, что .pdf отдаётся как
+	# application/pdf и не может исполниться как html, поэтому sandbox для него
+	# не нужен по безопасности, а вот встроенный PDF-просмотрщик Chrome он
+	# ломает («Эта страница была заблокирована браузером Chrome»). Поэтому CSP
+	# sandbox ставим всем, КРОМЕ *.pdf.
+	@notpdf not path *.pdf
+	header @notpdf Content-Security-Policy "sandbox"
 	header X-Content-Type-Options "nosniff"
 	file_server
 }
