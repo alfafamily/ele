@@ -176,7 +176,7 @@ export function LicenseListPage() {
                       {draft.assignedMode === 'storage' ? (
                         <div style={{ marginTop: 10 }}>
                           <RemoteMultiSelect
-                            endpoint="/api/places/?place_type=storage&active=1"
+                            endpoint={`/api/places/?place_type=storage&active=1${draft.types.length ? `&has_license_type=${draft.types.join(',')}` : ''}`}
                             mapOption={placeOption}
                             selected={draft.storagePlaces}
                             onChange={(p) => set({ storagePlaces: p })}
@@ -185,7 +185,7 @@ export function LicenseListPage() {
                       ) : null}
                       {draft.assignedMode === 'equipment' ? (
                         <div style={{ marginTop: 10 }}>
-                          <EquipmentMultiPicker value={draft.equipment} onChange={(e) => set({ equipment: e })} />
+                          <EquipmentMultiPicker value={draft.equipment} onChange={(e) => set({ equipment: e })} licenseTypeIds={draft.types} />
                         </div>
                       ) : null}
                     </div>

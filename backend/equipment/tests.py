@@ -1212,3 +1212,58 @@ class EquipmentReqMultiValueTests(APITestCase):
         self.assertEqual(set(resp.data), {"Acer Aspire", "Asus Zen"})
         resp = self.client.get("/api/equipment/field-values/", {"field": model.id, "search": "zen"})
         self.assertEqual(list(resp.data), ["Asus Zen"])
+
+
+class PlacementOptionConstraintTests(APITestCase):
+    """B27. Опции «Размещение» ограничены выбранными типами: сотрудники / места /
+    оборудование показываются только там, где реально есть объекты этих типов."""
+
+    def setUp(self):
+        from locations.models import Building, Place, Room
+        from licenses.models import License, LicenseType
+
+        self.admin = User.objects.create_superuser(email="poc@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.type_a = EquipmentType.objects.create(name="Тип A")
+        self.type_b = EquipmentType.objects.create(name="Тип B")
+        self.emp_a = Employee.objects.create(first_name="A", last_name="A")
+        self.emp_b = Employee.objects.create(first_name="B", last_name="B")
+        b = Building.objects.create(name="Зд")
+        r = Room.objects.create(building=b, name="1")
+        self.store_a = Place.objects.create(room=r, name="Склад A", place_type=Place.PlaceType.STORAGE)
+        self.store_b = Place.objects.create(room=r, name="Склад B", place_type=Place.PlaceType.STORAGE)
+        Equipment.objects.create(inventory_number="A-EMP", equipment_type=self.type_a, employee=self.emp_a)
+        self.eq_b_emp = Equipment.objects.create(inventory_number="B-EMP", equipment_type=self.type_b, employee=self.emp_b)
+        self.eq_a_store = Equipment.objects.create(inventory_number="A-ST", equipment_type=self.type_a, place=self.store_a)
+        Equipment.objects.create(inventory_number="B-ST", equipment_type=self.type_b, place=self.store_b)
+        self.lt = LicenseType.objects.create(name="Лиц", kind="software")
+        self.lt2 = LicenseType.objects.create(name="Лиц2", kind="software")
+        License.objects.create(license_type=self.lt, equipment=self.eq_a_store)
+        License.objects.create(license_type=self.lt, storage_place=self.store_a)
+        License.objects.create(license_type=self.lt2, storage_place=self.store_b)
+
+    @staticmethod
+    def _ids(resp):
+        data = resp.data
+        rows = data["results"] if isinstance(data, dict) else data
+        return {r["id"] for r in rows}
+
+    def test_employee_options_by_equipment_type(self):
+        ids = self._ids(self.client.get("/api/employees/", {"has_equipment_type": self.type_a.id}))
+        self.assertIn(self.emp_a.id, ids)
+        self.assertNotIn(self.emp_b.id, ids)
+
+    def test_storage_options_by_equipment_type(self):
+        ids = self._ids(self.client.get("/api/places/", {"place_type": "storage", "active": "1", "has_equipment_type": self.type_a.id}))
+        self.assertIn(self.store_a.id, ids)
+        self.assertNotIn(self.store_b.id, ids)
+
+    def test_equipment_options_by_license_type(self):
+        ids = self._ids(self.client.get("/api/equipment/", {"tab": "active", "has_license_type": self.lt.id}))
+        self.assertIn(self.eq_a_store.id, ids)
+        self.assertNotIn(self.eq_b_emp.id, ids)
+
+    def test_storage_options_by_license_type(self):
+        ids = self._ids(self.client.get("/api/places/", {"place_type": "storage", "active": "1", "has_license_type": self.lt.id}))
+        self.assertIn(self.store_a.id, ids)
+        self.assertNotIn(self.store_b.id, ids)

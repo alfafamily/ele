@@ -236,6 +236,12 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if self.request.query_params.get("allows_license") == "1":
             qs = qs.filter(equipment_type__allows_license=True)
 
+        # B27. Опции «Размещение → Оборудование» в фильтре Лицензий: только
+        # оборудование с активной лицензией выбранных типов лицензий.
+        has_license_type = csv_ids(self.request.query_params.get("has_license_type"))
+        if has_license_type:
+            qs = qs.filter(licenses__license_type_id__in=has_license_type, licenses__is_retired=False).distinct()
+
         # B13+: фильтры по статусу ТО считаются по активным планам (регламент не
         # архивный, план не отменён, регламент не «по потребности»). Можно выбрать
         # несколько сразу — объединяем через OR по наличию подходящего плана.

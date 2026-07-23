@@ -188,13 +188,13 @@ export function EquipmentListPage() {
                       <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
                       {draft.assignedMode === 'employee' ? (
                         <div style={{ marginTop: 10 }}>
-                          <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} />
+                          <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} equipmentTypeIds={draft.types} />
                         </div>
                       ) : null}
                       {draft.assignedMode === 'storage' ? (
                         <div style={{ marginTop: 10 }}>
                           <RemoteMultiSelect
-                            endpoint="/api/places/?place_type=storage&active=1"
+                            endpoint={`/api/places/?place_type=storage&active=1${draft.types.length ? `&has_equipment_type=${draft.types.join(',')}` : ''}`}
                             mapOption={placeOption}
                             selected={draft.storagePlaces}
                             onChange={(p) => set({ storagePlaces: p })}
@@ -204,7 +204,7 @@ export function EquipmentListPage() {
                       {draft.assignedMode === 'workplace' ? (
                         <div style={{ marginTop: 10 }}>
                           <RemoteMultiSelect
-                            endpoint="/api/places/?place_type=workplace&active=1"
+                            endpoint={`/api/places/?place_type=workplace&active=1${draft.types.length ? `&has_equipment_type=${draft.types.join(',')}` : ''}`}
                             mapOption={placeOption}
                             selected={draft.workplaces}
                             onChange={(p) => set({ workplaces: p })}
