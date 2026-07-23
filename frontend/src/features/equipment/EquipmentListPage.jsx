@@ -184,7 +184,7 @@ export function EquipmentListPage() {
                       onReqChange={(r) => set({ req: r })}
                     />
                     <div>
-                      <div className="ele-filter-section__title">Закреплён за</div>
+                      <div className="ele-filter-section__title">Размещение</div>
                       <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
                       {draft.assignedMode === 'employee' ? (
                         <div style={{ marginTop: 10 }}>
