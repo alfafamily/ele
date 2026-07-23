@@ -6,7 +6,11 @@ import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
-import { Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { Button, EmptyState, FilterModal, Icon, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
+import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
+import { PassAccessFilter } from '../../shared/PassAccessFilter.jsx'
+import { csvParam } from '../../shared/filterParams.js'
 import { KeyTarget } from '../../shared/keyTarget.jsx'
 
 const CACHE_KEY = 'pass-list'
@@ -21,6 +25,40 @@ const FILTERS = [
   { value: 'attached', label: 'Выданные' },
   { value: 'free', label: 'Неиспользуемые' },
 ]
+const OBJECT_TYPE_FILTERS = [
+  { value: 'all', label: 'Все' },
+  { value: 'key', label: 'Ключ' },
+  { value: 'pass', label: 'Пропуск' },
+]
+// B27. «Закреплён за» — сотрудник / место хранения.
+const ASSIGNED_OPTIONS = [
+  { value: 'none', label: 'Не важно' },
+  { value: 'employee', label: 'Сотрудник' },
+  { value: 'storage', label: 'Место хранения' },
+]
+
+const placeOption = (p) => ({ value: String(p.id), label: p.name, sub: `${p.building_name} — ${p.room_name}` })
+
+const EMPTY_FILTERS = {
+  status: 'all',
+  objectType: 'all',
+  buildings: [],
+  rooms: [],
+  places: [],
+  assignedMode: 'none',
+  employees: [],
+  storagePlaces: [],
+}
+
+function countActive(f) {
+  return (
+    (f.status !== 'all' ? 1 : 0) +
+    (f.objectType !== 'all' ? 1 : 0) +
+    (f.buildings.length || f.rooms.length || f.places.length ? 1 : 0) +
+    (f.assignedMode === 'employee' && f.employees.length ? 1 : 0) +
+    (f.assignedMode === 'storage' && f.storagePlaces.length ? 1 : 0)
+  )
+}
 
 const ACTIVE_COLUMNS = [
   { key: 'access', label: 'Название', width: 'minmax(0, 1.7fr)' },
@@ -63,20 +101,32 @@ export function PassListPage() {
   const isPop = useNavigationType() === 'POP'
   const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
   const [tab, setTab] = useState(() => savedUi?.tab ?? 'active')
-  const [status, setStatus] = useState(() => savedUi?.status ?? 'all')
+  const [filters, setFilters] = useState(() => ({ ...EMPTY_FILTERS, ...(savedUi?.filters ?? {}) }))
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
   const columns = tab === 'active' ? ACTIVE_COLUMNS : UTILIZED_COLUMNS
 
   useEffect(() => {
-    writeListCache(CACHE_KEY, { ui: { tab, status, search, sort } })
-  }, [tab, status, search, sort])
+    writeListCache(CACHE_KEY, { ui: { tab, filters, search, sort } })
+  }, [tab, filters, search, sort])
 
+  const isActive = tab === 'active'
   const ordering = sort.dir === 'desc' ? `-${sort.key}` : sort.key
   const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList(
     '/api/access-passes/',
-    { tab, status: tab === 'active' ? status : undefined, search: debouncedSearch || undefined, ordering },
+    {
+      tab,
+      status: isActive && filters.status !== 'all' ? filters.status : undefined,
+      object_type: isActive && filters.objectType !== 'all' ? filters.objectType : undefined,
+      buildings: isActive ? csvParam(filters.buildings) : undefined,
+      rooms: isActive ? csvParam(filters.rooms) : undefined,
+      places: isActive ? csvParam(filters.places) : undefined,
+      employee: isActive && filters.assignedMode === 'employee' ? csvParam(filters.employees.map((e) => e.id)) : undefined,
+      storage_place: isActive && filters.assignedMode === 'storage' ? csvParam(filters.storagePlaces) : undefined,
+      search: debouncedSearch || undefined,
+      ordering,
+    },
     { cacheKey: CACHE_KEY, restore: isPop },
   )
   useScrollRestoration(CACHE_KEY, isPop && !loading)
@@ -111,9 +161,56 @@ export function PassListPage() {
         <div className="ele-list-controls__search">
           <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
         </div>
-        {tab === 'active' ? (
+        {isActive ? (
           <div className="ele-list-controls__filter">
-            <FilterButton options={FILTERS} value={status} onChange={setStatus} />
+            <FilterModal
+              value={filters}
+              count={countActive(filters)}
+              onApply={setFilters}
+              onClear={() => setFilters(EMPTY_FILTERS)}
+              isDraftActive={(d) => countActive(d) > 0}
+            >
+              {(draft, setDraft) => {
+                const set = (patch) => setDraft({ ...draft, ...patch })
+                return (
+                  <>
+                    <div>
+                      <div className="ele-filter-section__title">Статус</div>
+                      <RadioPills options={FILTERS} value={draft.status} onChange={(v) => set({ status: v })} />
+                    </div>
+                    <div>
+                      <div className="ele-filter-section__title">Тип средства</div>
+                      <RadioPills options={OBJECT_TYPE_FILTERS} value={draft.objectType} onChange={(v) => set({ objectType: v })} />
+                    </div>
+                    <PassAccessFilter
+                      buildings={draft.buildings}
+                      rooms={draft.rooms}
+                      places={draft.places}
+                      onChange={set}
+                    />
+                    <div>
+                      <div className="ele-filter-section__title">Закреплено за</div>
+                      <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
+                      {draft.assignedMode === 'employee' ? (
+                        <div style={{ marginTop: 10 }}>
+                          <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} />
+                        </div>
+                      ) : null}
+                      {draft.assignedMode === 'storage' ? (
+                        <div style={{ marginTop: 10 }}>
+                          <RemoteMultiSelect
+                            endpoint="/api/places/?place_type=storage&active=1"
+                            mapOption={placeOption}
+                            selected={draft.storagePlaces}
+                            onChange={(p) => set({ storagePlaces: p })}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  </>
+                )
+              }}
+            </FilterModal>
           </div>
         ) : null}
       </div>

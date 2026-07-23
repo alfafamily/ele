@@ -6,7 +6,11 @@ import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
-import { Button, EmptyState, FilterButton, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { Button, EmptyState, FilterModal, Icon, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { EquipmentMultiPicker } from '../../shared/EquipmentMultiPicker.jsx'
+import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
+import { TypeRequisiteFilter } from '../../shared/TypeRequisiteFilter.jsx'
+import { csvParam, reqParams } from '../../shared/filterParams.js'
 
 const CACHE_KEY = 'license-list'
 
@@ -19,8 +23,42 @@ const FILTERS = [
   { value: 'occupied', label: 'Занятые' },
   { value: 'free', label: 'Свободные' },
 ]
+const KIND_FILTERS = [
+  { value: 'all', label: 'Все' },
+  { value: 'software', label: 'Программная' },
+  { value: 'hardware', label: 'Аппаратная' },
+]
+// B27. «Закреплён за» — место хранения / оборудование.
+const ASSIGNED_OPTIONS = [
+  { value: 'none', label: 'Не важно' },
+  { value: 'storage', label: 'Место хранения' },
+  { value: 'equipment', label: 'Оборудование' },
+]
 
 const KIND_LABEL = { software: 'Программная', hardware: 'Аппаратная' }
+
+const placeOption = (p) => ({ value: String(p.id), label: p.name, sub: `${p.building_name} — ${p.room_name}` })
+
+const EMPTY_FILTERS = {
+  status: 'all',
+  types: [],
+  req: {},
+  kind: 'all',
+  assignedMode: 'none',
+  storagePlaces: [],
+  equipment: [],
+}
+
+function countActive(f) {
+  return (
+    (f.status !== 'all' ? 1 : 0) +
+    (f.types.length ? 1 : 0) +
+    Object.keys(f.req).length +
+    (f.kind !== 'all' ? 1 : 0) +
+    (f.assignedMode === 'storage' && f.storagePlaces.length ? 1 : 0) +
+    (f.assignedMode === 'equipment' && f.equipment.length ? 1 : 0)
+  )
+}
 
 const ACTIVE_COLUMNS = [
   { key: 'license_type__name', label: 'Наименование', sortable: true, width: 'minmax(0, 1.4fr)' },
@@ -44,21 +82,27 @@ export function LicenseListPage() {
   const isPop = useNavigationType() === 'POP'
   const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
   const [tab, setTab] = useState(() => savedUi?.tab ?? 'active')
-  const [status, setStatus] = useState(() => savedUi?.status ?? 'all')
+  const [filters, setFilters] = useState(() => ({ ...EMPTY_FILTERS, ...(savedUi?.filters ?? {}) }))
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
 
   useEffect(() => {
-    writeListCache(CACHE_KEY, { ui: { tab, status, search, sort } })
-  }, [tab, status, search, sort])
+    writeListCache(CACHE_KEY, { ui: { tab, filters, search, sort } })
+  }, [tab, filters, search, sort])
 
+  const isActive = tab === 'active'
   const ordering = sort.dir === 'desc' ? `-${sort.key}` : sort.key
   const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList(
     '/api/licenses/',
     {
       tab,
-      status: tab === 'active' ? status : undefined,
+      status: isActive && filters.status !== 'all' ? filters.status : undefined,
+      type: isActive ? csvParam(filters.types) : undefined,
+      ...(isActive ? reqParams(filters.req) : {}),
+      kind: isActive && filters.kind !== 'all' ? filters.kind : undefined,
+      storage_place: isActive && filters.assignedMode === 'storage' ? csvParam(filters.storagePlaces) : undefined,
+      equipment: isActive && filters.assignedMode === 'equipment' ? csvParam(filters.equipment.map((e) => e.id)) : undefined,
       search: debouncedSearch || undefined,
       ordering,
     },
@@ -104,9 +148,58 @@ export function LicenseListPage() {
         <div className="ele-list-controls__search">
           <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
         </div>
-        {tab === 'active' ? (
+        {isActive ? (
           <div className="ele-list-controls__filter">
-            <FilterButton options={FILTERS} value={status} onChange={setStatus} />
+            <FilterModal
+              value={filters}
+              count={countActive(filters)}
+              onApply={setFilters}
+              onClear={() => setFilters(EMPTY_FILTERS)}
+              isDraftActive={(d) => countActive(d) > 0}
+            >
+              {(draft, setDraft) => {
+                const set = (patch) => setDraft({ ...draft, ...patch })
+                return (
+                  <>
+                    <div>
+                      <div className="ele-filter-section__title">Статус</div>
+                      <RadioPills options={FILTERS} value={draft.status} onChange={(v) => set({ status: v })} />
+                    </div>
+                    <TypeRequisiteFilter
+                      endpoint="/api/license-types/"
+                      label="Тип лицензии"
+                      types={draft.types}
+                      onTypesChange={(t) => set({ types: t })}
+                      req={draft.req}
+                      onReqChange={(r) => set({ req: r })}
+                    />
+                    <div>
+                      <div className="ele-filter-section__title">Вид</div>
+                      <RadioPills options={KIND_FILTERS} value={draft.kind} onChange={(v) => set({ kind: v })} />
+                    </div>
+                    <div>
+                      <div className="ele-filter-section__title">Закреплена за</div>
+                      <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
+                      {draft.assignedMode === 'storage' ? (
+                        <div style={{ marginTop: 10 }}>
+                          <RemoteMultiSelect
+                            endpoint="/api/places/?place_type=storage&active=1"
+                            mapOption={placeOption}
+                            selected={draft.storagePlaces}
+                            onChange={(p) => set({ storagePlaces: p })}
+                          />
+                        </div>
+                      ) : null}
+                      {draft.assignedMode === 'equipment' ? (
+                        <div style={{ marginTop: 10 }}>
+                          <EquipmentMultiPicker value={draft.equipment} onChange={(e) => set({ equipment: e })} />
+                        </div>
+                      ) : null}
+                    </div>
+                  </>
+                )
+              }}
+            </FilterModal>
           </div>
         ) : null}
       </div>

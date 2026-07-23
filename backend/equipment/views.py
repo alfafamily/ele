@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.eav import count_missing_for_field
+from core.eav_filters import csv_ids, eav_req_conditions
 from core.mixins import CreationCommentMixin
 from core.pagination import ELECursorPagination
 from core.permissions import (
@@ -194,11 +195,13 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         tab = self.request.query_params.get("tab", "active")
         qs = qs.filter(is_written_off=(tab == "archive"))
 
-        # Фильтр по сотруднику — блок «Закреплённое оборудование» в Профиле.
-        # Для роли «Сотрудник» список и так сужен до своего (см. выше).
+        # Фильтр по сотруднику — блок «Закреплённое оборудование» в Профиле
+        # (одиночный id) и «Закреплён за → сотрудник» из модалки фильтров
+        # (мультивыбор, id через запятую). Для роли «Сотрудник» список и так
+        # сужен до своего (см. выше).
         employee = self.request.query_params.get("employee")
         if employee:
-            qs = qs.filter(employee_id=employee)
+            qs = qs.filter(employee_id__in=csv_ids(employee))
 
         status_param = self.request.query_params.get("status", "all")
         if status_param == "assigned":
@@ -207,6 +210,27 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             qs = qs.filter(employee__isnull=True, place__place_type="workplace")
         elif status_param == "free":
             qs = qs.filter(employee__isnull=True).exclude(place__place_type="workplace")
+
+        # B27. Фильтр по Типам (мультивыбор) + реквизитам выбранных Типов.
+        type_ids = csv_ids(self.request.query_params.get("type"))
+        if type_ids:
+            qs = qs.filter(equipment_type_id__in=type_ids)
+        for cond in eav_req_conditions(
+            self.request.query_params,
+            value_model=EquipmentFieldValue,
+            field_model=EquipmentTypeField,
+            object_fk="equipment",
+            type_field="equipment_type",
+        ):
+            qs = qs.filter(cond)
+
+        # B27. «Закреплён за» → места хранения / рабочие места (мультивыбор).
+        place_storage = csv_ids(self.request.query_params.get("place_storage"))
+        if place_storage:
+            qs = qs.filter(place_id__in=place_storage, place__place_type="storage")
+        place_workplace = csv_ids(self.request.query_params.get("place_workplace"))
+        if place_workplace:
+            qs = qs.filter(place_id__in=place_workplace, place__place_type="workplace")
 
         # B17: подбор оборудования под установку SIM — только типы с флагом.
         if self.request.query_params.get("allows_sim") == "1":

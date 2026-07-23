@@ -1,0 +1,30 @@
+.ele-radio-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ele-radio-pill {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ele-radio-pill:hover {
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+}
+
+.ele-radio-pill--active {
+  background: var(--color-primary);
+  box-shadow: none;
+  color: var(--color-primary-text);
+  font-weight: 600;
+}

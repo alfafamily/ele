@@ -7,7 +7,7 @@ from employees.models import Employee
 from rest_framework.test import APITestCase
 from storage import backends as storage_backends
 
-from .models import Equipment, EquipmentType
+from .models import Equipment, EquipmentFieldValue, EquipmentType, EquipmentTypeField
 
 _TEST_MEDIA_ROOT = tempfile.mkdtemp(prefix="ele-equipment-tests-")
 
@@ -1137,3 +1137,41 @@ class MaintenanceTests(APITestCase):
         self.assertIn(eq_b, ids)
         self.assertNotIn(eq_c, ids)
         self.assertEqual(self.client.get(f"/api/equipment/{eq_c}/").status_code, 404)
+
+
+class EquipmentFilterTests(APITestCase):
+    """B27. Фильтры списка: мультивыбор типов + реквизиты выбранных типов."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="filt@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.type_a = EquipmentType.objects.create(name="Ноутбук")
+        self.color = EquipmentTypeField.objects.create(
+            equipment_type=self.type_a, name="Цвет", value_type="list"
+        )
+        self.type_b = EquipmentType.objects.create(name="Монитор")
+        self.eq_red = Equipment.objects.create(inventory_number="A-RED", equipment_type=self.type_a)
+        EquipmentFieldValue.objects.create(equipment=self.eq_red, field=self.color, value_text="Красный")
+        self.eq_blue = Equipment.objects.create(inventory_number="A-BLUE", equipment_type=self.type_a)
+        EquipmentFieldValue.objects.create(equipment=self.eq_blue, field=self.color, value_text="Синий")
+        self.eq_mon = Equipment.objects.create(inventory_number="B-1", equipment_type=self.type_b)
+
+    def _nums(self, params):
+        return {r["inventory_number"] for r in self.client.get("/api/equipment/", params).data["results"]}
+
+    def test_filter_by_type_multiselect(self):
+        self.assertEqual(self._nums({"type": str(self.type_b.id)}), {"B-1"})
+        self.assertEqual(
+            self._nums({"type": f"{self.type_a.id},{self.type_b.id}"}),
+            {"A-RED", "A-BLUE", "B-1"},
+        )
+
+    def test_filter_by_requisite_is_gated_by_type(self):
+        # Оба типа выбраны, фильтр по реквизиту типа A «Цвет=Красный». Тип B не
+        # имеет этого реквизита — не отсеивается; из типа A остаётся только красный.
+        nums = self._nums({"type": f"{self.type_a.id},{self.type_b.id}", f"req_{self.color.id}": "Красный"})
+        self.assertEqual(nums, {"A-RED", "B-1"})
+
+    def test_filter_by_requisite_within_single_type(self):
+        nums = self._nums({"type": str(self.type_a.id), f"req_{self.color.id}": "Синий"})
+        self.assertEqual(nums, {"A-BLUE"})

@@ -7,6 +7,7 @@ from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.eav_filters import csv_ids
 from core.mixins import CreationCommentMixin
 from core.pagination import ELECursorPagination
 from core.permissions import (
@@ -448,7 +449,7 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             return qs.filter(employee_id=user.employee_id) if user.employee_id else qs.none()
         employee = self.request.query_params.get("employee")
         if employee:
-            qs = qs.filter(employee_id=employee)
+            qs = qs.filter(employee_id__in=csv_ids(employee))
 
         if self.action == "list":
             # Вкладки раздела: Активные (все неутилизированные — и привязанные, и
@@ -470,6 +471,31 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 qs = qs.filter(employee__isnull=True, equipment__isnull=True, is_utilized=False)
             elif tab == "utilized":
                 qs = qs.filter(is_utilized=True)
+
+            # B27. Фильтры модалки: тип SIM/E-SIM; оператор/поставщик (мультивыбор
+            # существующих значений + флаг «без …»); «Закреплён за» → место
+            # хранения (мультивыбор).
+            sim_type = self.request.query_params.get("sim_type")
+            if sim_type in dict(SimCard.SimType.choices):
+                qs = qs.filter(sim_type=sim_type)
+            operators = csv_ids(self.request.query_params.get("operator"))
+            operator_none = self.request.query_params.get("operator_none") == "1"
+            if operators or operator_none:
+                cond = Q(network_operator__in=operators) if operators else Q()
+                if operator_none:
+                    cond |= Q(network_operator="")
+                qs = qs.filter(cond)
+            providers = csv_ids(self.request.query_params.get("provider"))
+            provider_none = self.request.query_params.get("provider_none") == "1"
+            if providers or provider_none:
+                cond = Q(provider__in=providers) if providers else Q()
+                if provider_none:
+                    cond |= Q(provider="")
+                qs = qs.filter(cond)
+            storage_place = csv_ids(self.request.query_params.get("storage_place"))
+            if storage_place:
+                qs = qs.filter(storage_place_id__in=storage_place)
+
             search = self.request.query_params.get("search")
             if search:
                 # Поиск по Номеру, Поставщику, Оператору, Типу (SIM/E-SIM),
@@ -668,7 +694,7 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             return qs.filter(employee_id=user.employee_id) if user.employee_id else qs.none()
         employee = self.request.query_params.get("employee")
         if employee:
-            qs = qs.filter(employee_id=employee)
+            qs = qs.filter(employee_id__in=csv_ids(employee))
 
         if self.action == "list":
             # Активные (все неутилизированные) / Утилизировано. Внутри «Активных»
@@ -687,6 +713,29 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 qs = qs.filter(employee__isnull=True, is_utilized=False)
             elif tab == "utilized":
                 qs = qs.filter(is_utilized=True)
+
+            # B27. Фильтры модалки: тип средства (Ключ/Пропуск); доступ в помещения
+            # (мультивыбор зданий/помещений/мест — ИЛИ между ними); «Закреплён за»
+            # → место хранения (мультивыбор).
+            object_type = self.request.query_params.get("object_type")
+            if object_type in dict(AccessPass.ObjectType.choices):
+                qs = qs.filter(object_type=object_type)
+            buildings = csv_ids(self.request.query_params.get("buildings"))
+            rooms = csv_ids(self.request.query_params.get("rooms"))
+            places = csv_ids(self.request.query_params.get("places"))
+            if buildings or rooms or places:
+                access = Q()
+                if buildings:
+                    access |= Q(buildings__in=buildings)
+                if rooms:
+                    access |= Q(rooms__in=rooms)
+                if places:
+                    access |= Q(places__in=places)
+                qs = qs.filter(access).distinct()
+            storage_place = csv_ids(self.request.query_params.get("storage_place"))
+            if storage_place:
+                qs = qs.filter(storage_place_id__in=storage_place)
+
             search = self.request.query_params.get("search")
             if search:
                 # Поиск по Типу (Пропуск/Ключ, а также Авто/Пеший), Учётному

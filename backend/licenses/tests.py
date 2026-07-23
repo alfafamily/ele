@@ -551,3 +551,29 @@ class LicenseEquipmentAllowsLicenseTests(APITestCase):
         ids = {row["id"] for row in resp.data["results"]}
         self.assertIn(self.eq_yes.id, ids)
         self.assertNotIn(self.eq_no.id, ids)
+
+
+class LicenseFilterTests(APITestCase):
+    """B27. Фильтры списка лицензий: тип (мультивыбор) и вид."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="licfilt@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.soft = LicenseType.objects.create(name="Офис", kind="software")
+        self.hard = LicenseType.objects.create(name="Токен", kind="hardware")
+        self.lic_soft = License.objects.create(license_type=self.soft)
+        self.lic_hard = License.objects.create(license_type=self.hard)
+
+    def _ids(self, params):
+        return {r["id"] for r in self.client.get("/api/licenses/", params).data["results"]}
+
+    def test_filter_by_kind(self):
+        self.assertEqual(self._ids({"kind": "software"}), {self.lic_soft.id})
+        self.assertEqual(self._ids({"kind": "hardware"}), {self.lic_hard.id})
+
+    def test_filter_by_type_multiselect(self):
+        self.assertEqual(self._ids({"type": str(self.hard.id)}), {self.lic_hard.id})
+        self.assertEqual(
+            self._ids({"type": f"{self.soft.id},{self.hard.id}"}),
+            {self.lic_soft.id, self.lic_hard.id},
+        )
