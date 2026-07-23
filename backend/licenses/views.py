@@ -133,12 +133,6 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         tab = self.request.query_params.get("tab", "active")
         qs = qs.filter(is_retired=(tab == "archive"))
 
-        status_param = self.request.query_params.get("status", "all")
-        if status_param == "occupied":
-            qs = qs.exclude(equipment__isnull=True)
-        elif status_param == "free":
-            qs = qs.filter(equipment__isnull=True)
-
         # B27. Фильтр по Типам (мультивыбор) + реквизитам выбранных Типов + Виду.
         type_ids = csv_ids(self.request.query_params.get("type"))
         if type_ids:
@@ -155,13 +149,19 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if kind in dict(LicenseType.Kind.choices):
             qs = qs.filter(license_type__kind=kind)
 
-        # B27. «Закреплён за» → места хранения / оборудование (мультивыбор).
-        storage_place = csv_ids(self.request.query_params.get("storage_place"))
-        if storage_place:
-            qs = qs.filter(storage_place_id__in=storage_place)
-        equipment_ids = csv_ids(self.request.query_params.get("equipment"))
-        if equipment_ids:
-            qs = qs.filter(equipment_id__in=equipment_ids)
+        # B27. «Размещение» (radio) — категория + опц. конкретные значения. Выбрана
+        # категория без значений → все объекты категории (на любом оборудовании /
+        # на любом складе); «Не привязана» — без оборудования и без склада.
+        # Заменяет прежний фильтр «Статус» (Занятые/Свободные).
+        assigned = self.request.query_params.get("assigned")
+        if assigned == "equipment":
+            ids = csv_ids(self.request.query_params.get("equipment"))
+            qs = qs.filter(equipment_id__in=ids) if ids else qs.filter(equipment__isnull=False)
+        elif assigned == "storage":
+            ids = csv_ids(self.request.query_params.get("storage_place"))
+            qs = qs.filter(storage_place_id__in=ids) if ids else qs.filter(storage_place__isnull=False)
+        elif assigned == "unattached":
+            qs = qs.filter(equipment__isnull=True, storage_place__isnull=True)
 
         search = self.request.query_params.get("search")
         if search:
@@ -199,6 +199,10 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if not field_id:
             return Response([])
         field = get_object_or_404(LicenseTypeField, pk=field_id)
+        # Секретные ключевые реквизиты (Номер/ключ, Номер/ID/Serial токена —
+        # is_locked) не участвуют в фильтрах и не раскрываются подсказками.
+        if field.is_locked:
+            return Response([])
         return Response(
             eav_field_value_suggestions(field, LicenseFieldValue, search=request.query_params.get("search", ""))
         )

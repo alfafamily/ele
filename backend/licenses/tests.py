@@ -346,7 +346,7 @@ class LicenseSearchTests(APITestCase):
     def test_list_exposes_storage_place_detail(self):
         # Свободная лицензия на складе — в списке отдаётся место хранения
         # (название + здание/помещение), чтобы показать «На складе: …».
-        resp = self.client.get("/api/licenses/", {"tab": "active", "status": "free"})
+        resp = self.client.get("/api/licenses/", {"tab": "active", "assigned": "storage"})
         row = next(r for r in resp.data["results"] if r["id"] == self.lic2.id)
         self.assertIsNotNone(row["storage_place_detail"])
         self.assertEqual(row["storage_place_detail"]["name"], "Склад лицензий")
@@ -577,3 +577,16 @@ class LicenseFilterTests(APITestCase):
             self._ids({"type": f"{self.soft.id},{self.hard.id}"}),
             {self.lic_soft.id, self.lic_hard.id},
         )
+
+    def test_assigned_category_unattached(self):
+        # Обе лицензии не привязаны (без оборудования и склада).
+        self.assertEqual(self._ids({"assigned": "unattached"}), {self.lic_soft.id, self.lic_hard.id})
+        self.assertEqual(self._ids({"assigned": "equipment"}), set())
+        self.assertEqual(self._ids({"assigned": "storage"}), set())
+
+    def test_field_values_excludes_locked_key(self):
+        # Секретный ключевой реквизит (Номер/ключ, is_locked) не отдаёт подсказки.
+        key_field = self.soft.fields.get(is_locked=True)
+        resp = self.client.get("/api/licenses/field-values/", {"field": key_field.id})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(list(resp.data), [])

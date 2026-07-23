@@ -18,21 +18,18 @@ const TABS = [
   { value: 'active', label: 'Активные' },
   { value: 'archive', label: 'Утилизированные' },
 ]
-const FILTERS = [
-  { value: 'all', label: 'Все' },
-  { value: 'occupied', label: 'Занятые' },
-  { value: 'free', label: 'Свободные' },
-]
 const KIND_FILTERS = [
   { value: 'all', label: 'Все' },
   { value: 'software', label: 'Программная' },
   { value: 'hardware', label: 'Аппаратная' },
 ]
-// B27. «Закреплён за» — место хранения / оборудование.
+// B27. «Размещение» — оборудование / место хранения / не привязана (заменяет
+// прежний фильтр «Статус» Занятые/Свободные).
 const ASSIGNED_OPTIONS = [
   { value: 'none', label: 'Не важно' },
-  { value: 'storage', label: 'Место хранения' },
   { value: 'equipment', label: 'Оборудование' },
+  { value: 'storage', label: 'Место хранения' },
+  { value: 'unattached', label: 'Не привязана' },
 ]
 
 const KIND_LABEL = { software: 'Программная', hardware: 'Аппаратная' }
@@ -40,7 +37,6 @@ const KIND_LABEL = { software: 'Программная', hardware: 'Аппара
 const placeOption = (p) => ({ value: String(p.id), label: p.name, sub: `${p.building_name} — ${p.room_name}` })
 
 const EMPTY_FILTERS = {
-  status: 'all',
   types: [],
   req: {},
   kind: 'all',
@@ -51,12 +47,10 @@ const EMPTY_FILTERS = {
 
 function countActive(f) {
   return (
-    (f.status !== 'all' ? 1 : 0) +
     (f.types.length ? 1 : 0) +
     Object.keys(f.req).length +
     (f.kind !== 'all' ? 1 : 0) +
-    (f.assignedMode === 'storage' && f.storagePlaces.length ? 1 : 0) +
-    (f.assignedMode === 'equipment' && f.equipment.length ? 1 : 0)
+    (f.assignedMode !== 'none' ? 1 : 0)
   )
 }
 
@@ -97,10 +91,10 @@ export function LicenseListPage() {
     '/api/licenses/',
     {
       tab,
-      status: isActive && filters.status !== 'all' ? filters.status : undefined,
       type: isActive ? csvParam(filters.types) : undefined,
       ...(isActive ? reqParams(filters.req) : {}),
       kind: isActive && filters.kind !== 'all' ? filters.kind : undefined,
+      assigned: isActive && filters.assignedMode !== 'none' ? filters.assignedMode : undefined,
       storage_place: isActive && filters.assignedMode === 'storage' ? csvParam(filters.storagePlaces) : undefined,
       equipment: isActive && filters.assignedMode === 'equipment' ? csvParam(filters.equipment.map((e) => e.id)) : undefined,
       search: debouncedSearch || undefined,
@@ -161,10 +155,6 @@ export function LicenseListPage() {
                 const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
                 return (
                   <>
-                    <div>
-                      <div className="ele-filter-section__title">Статус</div>
-                      <RadioPills options={FILTERS} value={draft.status} onChange={(v) => set({ status: v })} />
-                    </div>
                     <TypeRequisiteFilter
                       endpoint="/api/license-types/"
                       valuesBase="/api/licenses/field-values/"
@@ -173,13 +163,14 @@ export function LicenseListPage() {
                       onTypesChange={(t) => set({ types: t })}
                       req={draft.req}
                       onReqChange={(r) => set({ req: r })}
+                      excludeLockedFields
                     />
                     <div>
                       <div className="ele-filter-section__title">Вид</div>
                       <RadioPills options={KIND_FILTERS} value={draft.kind} onChange={(v) => set({ kind: v })} />
                     </div>
                     <div>
-                      <div className="ele-filter-section__title">Закреплена за</div>
+                      <div className="ele-filter-section__title">Размещение</div>
                       <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
                       {draft.assignedMode === 'storage' ? (
                         <div style={{ marginTop: 10 }}>
