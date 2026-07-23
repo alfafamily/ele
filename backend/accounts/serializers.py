@@ -58,6 +58,8 @@ class UserListSerializer(serializers.ModelSerializer):
     employee_avatar = serializers.SerializerMethodField()
     # B23: область типов ТО — нужна для предзаполнения формы редактирования.
     maintenance_types = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    # B9: право редактировать данные в служебной Django-админке (= is_superuser).
+    admin_edit_enabled = serializers.BooleanField(source="is_superuser", read_only=True)
 
     class Meta:
         model = User
@@ -70,6 +72,7 @@ class UserListSerializer(serializers.ModelSerializer):
             "can_manage_regulations",
             "maintenance_all_types",
             "maintenance_types",
+            "admin_edit_enabled",
             "status",
             "employee",
             "employee_name",
@@ -124,11 +127,14 @@ def normalize_maintenance_fields(attrs, *, role, can_maintain):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    # B9: галка «разрешать редактировать в админ-панели Django» = is_superuser.
+    admin_edit_enabled = serializers.BooleanField(source="is_superuser", required=False)
+
     class Meta:
         model = User
         fields = [
             "id", "email", "role", "is_observer", "can_maintain", "can_manage_regulations",
-            "maintenance_all_types", "maintenance_types", "employee",
+            "maintenance_all_types", "maintenance_types", "admin_edit_enabled", "employee",
             "is_active", "is_email_confirmed", "date_joined",
         ]
         read_only_fields = ["email", "is_active", "is_email_confirmed", "date_joined"]
@@ -146,6 +152,21 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"can_maintain": ["Флаги ТО применимы только к роли «Ответственный за учёт»."]}
             )
+        # B9: право редактирования в админке (is_superuser) допустимо только у
+        # роли «Администратор» и лишь при включённом глобальном доступе; у прочих
+        # ролей принудительно снимается.
+        admin_edit = attrs.get("is_superuser", getattr(self.instance, "is_superuser", False))
+        if role != User.Role.ADMIN:
+            attrs["is_superuser"] = False
+        elif admin_edit:
+            from company.models import Company
+
+            if not Company.load().admin_access_enabled:
+                raise serializers.ValidationError(
+                    {"admin_edit_enabled": [
+                        "Сначала включите доступ к админ-панели в Настройках → Системные."
+                    ]}
+                )
         return normalize_maintenance_fields(attrs, role=role, can_maintain=can_maintain)
 
 

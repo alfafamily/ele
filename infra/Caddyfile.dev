@@ -13,6 +13,17 @@ handle /api/* {
 	reverse_proxy backend:8000
 }
 
+# B9: служебная Django-админка (доступ гейтит сам backend). В dev статику
+# админки (CSS/JS) при DEBUG раздаёт runserver, поэтому /static/* тоже ведём на
+# backend, а не в SPA-fallback.
+handle /django_admin/* {
+	reverse_proxy backend:8000
+}
+
+handle /static/* {
+	reverse_proxy backend:8000
+}
+
 # Резервные копии содержат хэши паролей и все бизнес-данные —
 # отдаются только через авторизованный /api/backup/<id>/download/,
 # не статикой. Блок должен идти раньше общего /media/*.

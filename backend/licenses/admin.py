@@ -1,5 +1,7 @@
 from django.contrib import admin
 
+from core.admin import ReadonlyDefaultAdminMixin
+
 from .models import (
     License,
     LicenseCustomField,
@@ -15,7 +17,7 @@ class LicenseTypeFieldInline(admin.TabularInline):
 
 
 @admin.register(LicenseType)
-class LicenseTypeAdmin(admin.ModelAdmin):
+class LicenseTypeAdmin(ReadonlyDefaultAdminMixin, admin.ModelAdmin):
     list_display = ("name", "is_archived", "is_locked")
     list_filter = ("is_archived", "is_locked")
     inlines = [LicenseTypeFieldInline]
@@ -44,7 +46,7 @@ class LicenseCustomFieldInline(admin.TabularInline):
 
 
 @admin.register(License)
-class LicenseAdmin(admin.ModelAdmin):
+class LicenseAdmin(ReadonlyDefaultAdminMixin, admin.ModelAdmin):
     list_display = ("name", "license_type", "equipment", "is_retired")
     list_filter = ("license_type", "is_retired")
     search_fields = ("name",)

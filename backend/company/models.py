@@ -25,6 +25,15 @@ class Company(models.Model):
     open_registration = models.BooleanField("Открытая регистрация", default=True)
     # Список IP/подсетей (CIDR-строки); блокирует весь сервис вне списка.
     ip_allowlist = models.JSONField("Ограничение доступа по IP", default=list, blank=True)
+    # B9: контролируемый доступ в служебную Django-админку (/django_admin).
+    # Выключено по умолчанию — раздел закрыт (middleware отдаёт 404). Включённый
+    # доступ ВСЕГДА ограничен своим отдельным IP-списком (не тем, что вход в
+    # приложение): пустой admin_access_ips = закрыто. Права на редактирование в
+    # админке даёт только is_superuser (галка у пользователя), по умолчанию — лишь
+    # просмотр. При выключении флага is_superuser снимается у всех (см.
+    # CompanySettingsSerializer.update).
+    admin_access_enabled = models.BooleanField("Доступ к админ-панели Django", default=False)
+    admin_access_ips = models.JSONField("Разрешённые IP админ-панели", default=list, blank=True)
     storage_mode = models.CharField(
         "Хранилище файлов", max_length=10, choices=StorageMode.choices, default=StorageMode.LOCAL
     )

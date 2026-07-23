@@ -3,6 +3,7 @@ import { SmartCaptcha } from '../auth/SmartCaptcha.jsx'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { Banner, Button, Card, Icon, Input, Spinner } from '../../shared/ui'
 import { FieldView, fieldError, FIELD_W, IconBtn, InlineField } from './inlineFields.jsx'
+import { IpAllowlistEditor } from './IpAllowlistEditor.jsx'
 import {
   checkCaptcha,
   checkYandexId,
@@ -64,6 +65,12 @@ export function SystemTab() {
   const [ipBusy, setIpBusy] = useState(false)
   const [ipError, setIpError] = useState(null)
 
+  // B9: доступ к служебной Django-админке — глобальный флаг + отдельный IP-список.
+  const [adminAccessEnabled, setAdminAccessEnabled] = useState(false)
+  const [adminIps, setAdminIps] = useState([]) // [{ ip, note }]
+  const [adminToggleSaving, setAdminToggleSaving] = useState(false)
+  const [adminError, setAdminError] = useState(null)
+
   // Хранилище
   const [storageMode, setStorageMode] = useState('local')
   const [savingStorage, setSavingStorage] = useState(false)
@@ -95,6 +102,8 @@ export function SystemTab() {
         setDomain(company.domain || '')
         setOpenRegistration(company.open_registration !== false)
         setIpList(normalizeIps(company.ip_allowlist))
+        setAdminAccessEnabled(company.admin_access_enabled === true)
+        setAdminIps(normalizeIps(company.admin_access_ips))
         setMigration(mig)
       })
       .catch(() => setLoadError('Не удалось загрузить системные настройки.'))
@@ -248,6 +257,34 @@ export function SystemTab() {
     }
   }
 
+  // B9: включение/выключение доступа в админку. Включить можно только при
+  // наличии хотя бы одного IP (это же проверяет бэкенд). Выключение снимает
+  // права редактирования (is_superuser) у всех — обрабатывается на сервере.
+  const toggleAdminAccess = async (val) => {
+    setAdminError(null)
+    if (val && adminIps.length === 0) {
+      setAdminError('Сначала добавьте хотя бы один разрешённый IP-адрес.')
+      return
+    }
+    setAdminToggleSaving(true)
+    setAdminAccessEnabled(val) // оптимистично
+    try {
+      const u = await updateCompanySettings({ admin_access_enabled: val })
+      setAdminAccessEnabled(u.admin_access_enabled === true)
+    } catch (err) {
+      setAdminAccessEnabled(!val)
+      setAdminError(fieldError(err))
+    } finally {
+      setAdminToggleSaving(false)
+    }
+  }
+
+  const saveAdminIps = async (next) => {
+    const u = await updateCompanySettings({ admin_access_ips: next })
+    setAdminIps(normalizeIps(u.admin_access_ips))
+    setAdminAccessEnabled(u.admin_access_enabled === true)
+  }
+
   const sendSmtp = async () => {
     setSmtpStatus('sending')
     setSmtpError(null)
@@ -347,8 +384,10 @@ export function SystemTab() {
           </div>
         </Card>
 
+        {/* Домен/ограничения входа + доступ к админ-панели — в ряд на десктопе. */}
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, alignItems: 'stretch' }}>
         {/* Домен и ограничения входа */}
-        <Card>
+        <Card style={{ flex: 1, minWidth: 0 }}>
           <div style={{ ...sectionTitle, marginBottom: 14 }}>Домен и ограничения входа</div>
 
           <InlineField label="Домен аккаунтов в системе" value={domain} onSave={saveDomain} onClear={() => saveDomain('')} />
@@ -428,6 +467,49 @@ export function SystemTab() {
             )}
           </div>
         </Card>
+
+        {/* B9: Доступ к админ-панели приложения (Django) */}
+        <Card style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ ...sectionTitle, marginBottom: 14 }}>Доступ к админ-панели приложения (Django)</div>
+
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: adminToggleSaving ? 'default' : 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={adminAccessEnabled}
+              disabled={adminToggleSaving}
+              onChange={(e) => toggleAdminAccess(e.target.checked)}
+              style={{ marginTop: 2, flex: 'none' }}
+            />
+            <span style={{ minWidth: 0 }}>
+              <span style={{ fontSize: 14, fontWeight: 500 }}>Открыть доступ в админку Django</span>
+              <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
+                Открывает вход в служебную панель Django по адресу /django_admin с правами только на просмотр. Вход доступен только администраторам и только с разрешённых IP-адресов.
+              </span>
+            </span>
+          </label>
+
+          {adminError ? (
+            <div style={{ marginTop: 12 }}>
+              <Banner variant="error">{adminError}</Banner>
+            </div>
+          ) : null}
+
+          {adminAccessEnabled ? (
+            <div style={{ marginTop: 14, fontSize: 12, color: 'var(--color-text-muted)', wordBreak: 'break-all' }}>
+              Адрес админ-панели:{' '}
+              <span style={{ fontFamily: 'var(--font-mono)' }}>
+                {window.location.origin}/django_admin
+              </span>
+            </div>
+          ) : null}
+
+          <div style={{ ...sectionTitle, marginTop: 20, marginBottom: 6, fontSize: 13 }}>Разрешённые IP-адреса</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 12 }}>
+            Нужен минимум один адрес — без него доступ включить нельзя.
+          </div>
+          <IpAllowlistEditor entries={adminIps} onSave={saveAdminIps} isMobile={isMobile} />
+        </Card>
+        </div>
 
         {/* Проверка почты (SMTP) */}
         <Card>

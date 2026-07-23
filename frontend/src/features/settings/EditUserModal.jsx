@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { nameInitials } from '../../shared/employeeName.js'
 import { Banner, Button, Checkbox, Icon, Modal, Select } from '../../shared/ui'
 import { MaintenanceTypeScope } from './MaintenanceTypeScope.jsx'
-import { activateUser, deactivateUser, updateUser } from './settingsApi.js'
+import { activateUser, deactivateUser, getCompanySettings, updateUser } from './settingsApi.js'
 
 const ROLE_OPTIONS = [
   { value: 'admin', label: 'Администратор' },
@@ -31,12 +31,28 @@ export function EditUserModal({ user, onClose, onSaved }) {
   const [canManageRegulations, setCanManageRegulations] = useState(!!user.can_manage_regulations)
   const [maintenanceAllTypes, setMaintenanceAllTypes] = useState(user.maintenance_all_types !== false)
   const [maintenanceTypeIds, setMaintenanceTypeIds] = useState(user.maintenance_types || [])
+  // B9: право редактировать в служебной Django-админке (= is_superuser). Галка
+  // доступна только роли «Администратор» и лишь при включённом глобальном
+  // доступе к админ-панели (Настройки → Системные).
+  const [adminEditEnabled, setAdminEditEnabled] = useState(!!user.admin_edit_enabled)
+  const [adminAccessEnabled, setAdminAccessEnabled] = useState(null)
   // Статус доступа: приглашённый пользователь тоже активен (is_active=True).
   const currentlyActive = user.status !== 'deactivated'
   const [status, setStatus] = useState(currentlyActive ? 'active' : 'deactivated')
   const [terminateEmployee, setTerminateEmployee] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+
+  // Глобальный флаг доступа к админ-панели — гейтит галку редактирования.
+  useEffect(() => {
+    let alive = true
+    getCompanySettings()
+      .then((c) => alive && setAdminAccessEnabled(!!c.admin_access_enabled))
+      .catch(() => alive && setAdminAccessEnabled(false))
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const submit = async () => {
     setSubmitting(true)
@@ -56,6 +72,7 @@ export function EditUserModal({ user, onClose, onSaved }) {
           can_manage_regulations: role === 'accountant' ? canManageRegulations : false,
           maintenance_all_types: maintainer ? maintenanceAllTypes : true,
           maintenance_types: maintainer && !maintenanceAllTypes ? maintenanceTypeIds : [],
+          admin_edit_enabled: role === 'admin' ? adminEditEnabled : false,
         })
         if (status === 'active' && !currentlyActive) await activateUser(user.id)
       }
@@ -182,6 +199,21 @@ export function EditUserModal({ user, onClose, onSaved }) {
 
         {role === 'employee' ? (
           <Checkbox label="Признак «Наблюдатель» (только для роли «Сотрудник»)" checked={isObserver} onChange={setIsObserver} />
+        ) : null}
+        {role === 'admin' ? (
+          <div>
+            <Checkbox
+              label="Разрешать редактировать данные в админ-панели приложения (Django)"
+              checked={adminEditEnabled}
+              disabled={adminAccessEnabled !== true}
+              onChange={setAdminEditEnabled}
+            />
+            <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 4, marginLeft: 30 }}>
+              {adminAccessEnabled === false
+                ? 'Чтобы выдать это право, сначала включите доступ к админ-панели приложения (Django) в Настройках → Системные.'
+                : 'Крайне не рекомендуется выполнять какие-либо действия в админ-панели приложения (Django): изменения проходят в обход бизнес-логики и могут необратимо повредить учётные данные.'}
+            </div>
+          </div>
         ) : null}
         {role === 'accountant' ? (
           <>

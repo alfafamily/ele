@@ -30,7 +30,14 @@ class Command(BaseCommand):
         login_part = settings.ELE_ADMIN_EMAIL.split("@", 1)[0]
         with transaction.atomic():
             employee = Employee.objects.create(first_name=login_part, last_name=login_part)
-            User.objects.create_superuser(
-                email=settings.ELE_ADMIN_EMAIL, password=settings.ELE_ADMIN_PASSWORD, employee=employee
+            # B9: первый администратор создаётся БЕЗ прав superuser — доступ в
+            # Django-админку по умолчанию закрыт, права правки выдаются осознанно
+            # через Настройки. Аварийный суперпользователь — только createsuperuser.
+            User.objects.create_user(
+                email=settings.ELE_ADMIN_EMAIL,
+                password=settings.ELE_ADMIN_PASSWORD,
+                role=User.Role.ADMIN,
+                is_email_confirmed=True,
+                employee=employee,
             )
         self.stdout.write(self.style.SUCCESS(f"Создан администратор {settings.ELE_ADMIN_EMAIL}"))

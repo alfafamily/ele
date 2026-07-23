@@ -7,7 +7,9 @@ from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    # B9: служебная Django-админка вынесена с /admin на /django_admin и закрыта
+    # гейтом (core.middleware.AdminAccessGateMiddleware — глобальный флаг + IP).
+    path("django_admin/", admin.site.urls),
     path("api/", include("core.urls")),
     path("api/", include("accounts.urls")),
     path("api/", include("company.urls")),

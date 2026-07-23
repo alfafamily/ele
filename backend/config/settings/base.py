@@ -45,6 +45,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # B9: гейт служебной Django-админки (/django_admin) — глобальный флаг + IP.
+    "core.middleware.AdminAccessGateMiddleware",
     # CSP sandbox на /media в dev (в проде — Caddy), защита от stored XSS через
     # загруженные файлы реквизитов.
     "core.middleware.MediaSecurityHeadersMiddleware",
