@@ -654,13 +654,14 @@ class EquipmentPlacementTests(APITestCase):
         r = self.client.post(f"/api/equipment/{eq_id}/assign/", {"mode": "stationary", "place": self.store.id}, format="json")
         self.assertEqual(r.status_code, 400, r.data)
 
-    def test_status_filter_stationary(self):
+    def test_assigned_category_filter(self):
+        # B27. «Закреплён за» без конкретных значений фильтрует по категории.
         eq_id = self._make(place=self.store.id).data["id"]
         self.client.post(f"/api/equipment/{eq_id}/assign/", {"mode": "stationary", "place": self.wp.id}, format="json")
-        ids = [e["id"] for e in self.client.get("/api/equipment/", {"status": "stationary"}).data["results"]]
+        ids = [e["id"] for e in self.client.get("/api/equipment/", {"assigned": "workplace"}).data["results"]]
         self.assertIn(eq_id, ids)
-        ids_free = [e["id"] for e in self.client.get("/api/equipment/", {"status": "free"}).data["results"]]
-        self.assertNotIn(eq_id, ids_free)
+        ids_storage = [e["id"] for e in self.client.get("/api/equipment/", {"assigned": "storage"}).data["results"]]
+        self.assertNotIn(eq_id, ids_storage)
 
 
 class MaintenanceTests(APITestCase):

@@ -195,21 +195,25 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         tab = self.request.query_params.get("tab", "active")
         qs = qs.filter(is_written_off=(tab == "archive"))
 
-        # Фильтр по сотруднику — блок «Закреплённое оборудование» в Профиле
-        # (одиночный id) и «Закреплён за → сотрудник» из модалки фильтров
-        # (мультивыбор, id через запятую). Для роли «Сотрудник» список и так
-        # сужен до своего (см. выше).
+        # B27. «Закреплён за» (radio) — категория размещения + опц. конкретные
+        # значения. Выбрана категория без значений → все объекты этой категории
+        # (за любым сотрудником / на любом складе / на любом рабочем месте); с
+        # значениями — сужение до выбранных. Заменяет прежний фильтр «Размещение».
+        # Профиль («Закреплённое оборудование») передаёт только employee (без
+        # assigned) — фильтр по конкретному сотруднику.
+        assigned = self.request.query_params.get("assigned")
         employee = self.request.query_params.get("employee")
-        if employee:
+        if assigned == "employee":
+            ids = csv_ids(employee)
+            qs = qs.filter(employee_id__in=ids) if ids else qs.filter(employee__isnull=False)
+        elif assigned == "storage":
+            ids = csv_ids(self.request.query_params.get("place_storage"))
+            qs = qs.filter(place_id__in=ids) if ids else qs.filter(employee__isnull=True, place__place_type="storage")
+        elif assigned == "workplace":
+            ids = csv_ids(self.request.query_params.get("place_workplace"))
+            qs = qs.filter(place_id__in=ids) if ids else qs.filter(employee__isnull=True, place__place_type="workplace")
+        elif employee:
             qs = qs.filter(employee_id__in=csv_ids(employee))
-
-        status_param = self.request.query_params.get("status", "all")
-        if status_param == "assigned":
-            qs = qs.filter(employee__isnull=False)
-        elif status_param == "stationary":
-            qs = qs.filter(employee__isnull=True, place__place_type="workplace")
-        elif status_param == "free":
-            qs = qs.filter(employee__isnull=True).exclude(place__place_type="workplace")
 
         # B27. Фильтр по Типам (мультивыбор) + реквизитам выбранных Типов.
         type_ids = csv_ids(self.request.query_params.get("type"))
@@ -223,14 +227,6 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             type_field="equipment_type",
         ):
             qs = qs.filter(cond)
-
-        # B27. «Закреплён за» → места хранения / рабочие места (мультивыбор).
-        place_storage = csv_ids(self.request.query_params.get("place_storage"))
-        if place_storage:
-            qs = qs.filter(place_id__in=place_storage, place__place_type="storage")
-        place_workplace = csv_ids(self.request.query_params.get("place_workplace"))
-        if place_workplace:
-            qs = qs.filter(place_id__in=place_workplace, place__place_type="workplace")
 
         # B17: подбор оборудования под установку SIM — только типы с флагом.
         if self.request.query_params.get("allows_sim") == "1":

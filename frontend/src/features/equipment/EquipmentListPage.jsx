@@ -27,12 +27,6 @@ const TABS = [
   { value: 'active', label: 'Активное' },
   { value: 'archive', label: 'Списанное' },
 ]
-const FILTERS = [
-  { value: 'all', label: 'Все' },
-  { value: 'assigned', label: 'За сотрудником' },
-  { value: 'stationary', label: 'На рабочем месте' },
-  { value: 'free', label: 'На складе' },
-]
 // B27. «Закреплён за» — категория (radio) + мультивыбор значений выбранной.
 const ASSIGNED_OPTIONS = [
   { value: 'none', label: 'Не важно' },
@@ -42,7 +36,6 @@ const ASSIGNED_OPTIONS = [
 ]
 
 const EMPTY_FILTERS = {
-  status: 'all',
   toDates: [],
   types: [],
   req: {},
@@ -58,13 +51,10 @@ const toggle = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...a
 // Число активных фильтров для бейджа/подписи «Сбросить».
 function countActive(f) {
   return (
-    (f.status !== 'all' ? 1 : 0) +
     (f.toDates.length ? 1 : 0) +
     (f.types.length ? 1 : 0) +
     Object.keys(f.req).length +
-    (f.assignedMode === 'employee' && f.employees.length ? 1 : 0) +
-    (f.assignedMode === 'storage' && f.storagePlaces.length ? 1 : 0) +
-    (f.assignedMode === 'workplace' && f.workplaces.length ? 1 : 0)
+    (f.assignedMode !== 'none' ? 1 : 0)
   )
 }
 
@@ -107,12 +97,12 @@ export function EquipmentListPage() {
     '/api/equipment/',
     {
       tab,
-      status: isActive && filters.status !== 'all' ? filters.status : undefined,
       to_due: isActive && filters.toDates.includes('due') ? '1' : undefined,
       to_overdue: isActive && filters.toDates.includes('overdue') ? '1' : undefined,
       to_unset: isActive && filters.toDates.includes('unset') ? '1' : undefined,
       type: isActive ? csvParam(filters.types) : undefined,
       ...(isActive ? reqParams(filters.req) : {}),
+      assigned: isActive && filters.assignedMode !== 'none' ? filters.assignedMode : undefined,
       employee: isActive && filters.assignedMode === 'employee' ? csvParam(filters.employees.map((e) => e.id)) : undefined,
       place_storage: isActive && filters.assignedMode === 'storage' ? csvParam(filters.storagePlaces) : undefined,
       place_workplace: isActive && filters.assignedMode === 'workplace' ? csvParam(filters.workplaces) : undefined,
@@ -174,10 +164,6 @@ export function EquipmentListPage() {
                 const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
                 return (
                   <>
-                    <div>
-                      <div className="ele-filter-section__title">Размещение</div>
-                      <RadioPills options={FILTERS} value={draft.status} onChange={(v) => set({ status: v })} />
-                    </div>
                     {perms.canSeeMaintenance ? (
                       <div>
                         <div className="ele-filter-section__title">Техобслуживание</div>
