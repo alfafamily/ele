@@ -153,29 +153,27 @@ export function LicenseListPage() {
             >
               {(draft, setDraft) => {
                 const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
-                return (
-                  <>
-                    <div>
-                      <div className="ele-filter-section__title">Вид</div>
-                      <RadioPills options={KIND_FILTERS} value={draft.kind} onChange={(v) => set({ kind: v })} />
-                    </div>
-                    <TypeRequisiteFilter
-                      endpoint="/api/license-types/"
-                      valuesBase="/api/licenses/field-values/"
-                      label="Тип лицензии"
-                      types={draft.types}
-                      onTypesChange={(t) => set({ types: t })}
-                      req={draft.req}
-                      onReqChange={(r) => set({ req: r })}
-                      excludeLockedFields
-                      filterKind={draft.kind}
-                    />
-                  </>
-                )
-              }}
-              aside={(draft, setDraft) => {
-                const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
-                return (
+                return {
+                  main: (
+                    <>
+                      <div>
+                        <div className="ele-filter-section__title">Вид</div>
+                        <RadioPills options={KIND_FILTERS} value={draft.kind} onChange={(v) => set({ kind: v })} />
+                      </div>
+                      <TypeRequisiteFilter
+                        endpoint="/api/license-types/"
+                        valuesBase="/api/licenses/field-values/"
+                        label="Тип лицензии"
+                        types={draft.types}
+                        onTypesChange={(t) => set({ types: t })}
+                        req={draft.req}
+                        onReqChange={(r) => set({ req: r })}
+                        excludeLockedFields
+                        filterKind={draft.kind}
+                      />
+                    </>
+                  ),
+                  aside: (
                   <div>
                     <div className="ele-filter-section__title">Размещение</div>
                     <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
@@ -195,7 +193,8 @@ export function LicenseListPage() {
                       </div>
                     ) : null}
                   </div>
-                )
+                  ),
+                }
               }}
             </FilterModal>
           </div>

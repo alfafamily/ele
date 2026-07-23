@@ -181,8 +181,9 @@ export function PassListPage() {
             >
               {(draft, setDraft) => {
                 const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
-                return (
-                  <>
+                return {
+                  main: (
+                    <>
                     <div>
                       <div className="ele-filter-section__title">Тип средства</div>
                       <RadioPills options={OBJECT_TYPE_FILTERS} value={draft.objectType} onChange={(v) => set({ objectType: v })} />
@@ -194,12 +195,9 @@ export function PassListPage() {
                       onChange={set}
                       objectType={draft.objectType}
                     />
-                  </>
-                )
-              }}
-              aside={(draft, setDraft) => {
-                const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
-                return (
+                    </>
+                  ),
+                  aside: (
                   <div>
                     <div className="ele-filter-section__title">Размещение</div>
                     <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
@@ -219,7 +217,8 @@ export function PassListPage() {
                       </div>
                     ) : null}
                   </div>
-                )
+                  ),
+                }
               }}
             </FilterModal>
           </div>
