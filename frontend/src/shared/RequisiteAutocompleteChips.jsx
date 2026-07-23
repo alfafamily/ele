@@ -16,16 +16,22 @@ export function RequisiteAutocompleteChips({ value = [], onChange, valuesUrl, nu
   const [suggestions, setSuggestions] = useState([])
   const [focused, setFocused] = useState(false)
 
+  // Подсказки ищем и показываем только после ввода — на пустой строке список
+  // не раскрываем (чтобы не вываливать сразу все существующие значения).
+  const term = debounced.trim()
   useEffect(() => {
-    if (!focused) return
+    if (!term) {
+      setSuggestions([])
+      return
+    }
     let alive = true
-    apiGet(`${valuesUrl}&search=${encodeURIComponent(debounced)}`)
+    apiGet(`${valuesUrl}&search=${encodeURIComponent(term)}`)
       .then((d) => alive && setSuggestions(Array.isArray(d) ? d : []))
       .catch(() => alive && setSuggestions([]))
     return () => {
       alive = false
     }
-  }, [debounced, focused, valuesUrl])
+  }, [term, valuesUrl])
 
   const selectedSet = new Set(value.map(String))
   const shown = suggestions.filter((s) => !selectedSet.has(String(s)))
