@@ -10,6 +10,7 @@ import { Button, Checkbox, EmptyState, FilterModal, Icon, RadioPills, SearchInpu
 import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
 import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
 import { csvParam } from '../../shared/filterParams.js'
+import { apiGet } from '../../shared/api/client'
 
 const CACHE_KEY = 'sim-list'
 
@@ -22,14 +23,15 @@ const SIM_TYPE_FILTERS = [
   { value: 'sim', label: 'SIM' },
   { value: 'esim', label: 'E-SIM' },
 ]
-// B27. «Размещение» — сотрудник / место хранения / не привязана (последнее — для
-// непривязанных E-SIM: они виртуальны и без сотрудника нигде не хранятся).
+// B27. «Размещение» — сотрудник / место хранения. Непривязанные E-SIM (нигде не
+// хранятся) ищутся спец-пунктом «У оператора» в списке мест (см. UNATTACHED).
 const ASSIGNED_OPTIONS = [
   { value: 'none', label: 'Не важно' },
   { value: 'employee', label: 'Сотрудник' },
   { value: 'storage', label: 'Место хранения' },
-  { value: 'unattached', label: 'Не привязана' },
 ]
+// Синтетическое значение «У оператора» в списке мест хранения (непривязанные E-SIM).
+const UNATTACHED = '__unattached__'
 
 const placeOption = (p) => ({ value: String(p.id), label: p.name, sub: `${p.building_name} — ${p.room_name}` })
 const strOption = (s) => ({ value: s, label: s })
@@ -92,6 +94,13 @@ export function SimListPage() {
   const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
   const [tab, setTab] = useState(() => savedUi?.tab ?? 'active')
   const [filters, setFilters] = useState(() => ({ ...EMPTY_FILTERS, ...(savedUi?.filters ?? {}) }))
+  // Есть ли непривязанные E-SIM — тогда в «Место хранения» показываем «У оператора».
+  const [esimAtOperator, setEsimAtOperator] = useState(false)
+  useEffect(() => {
+    apiGet('/api/sim-cards/unattached-exists/')
+      .then((d) => setEsimAtOperator(!!d?.exists))
+      .catch(() => {})
+  }, [])
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
   const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
@@ -114,7 +123,8 @@ export function SimListPage() {
       provider_none: isActive && filters.providerNone ? '1' : undefined,
       assigned: isActive && filters.assignedMode !== 'none' ? filters.assignedMode : undefined,
       employee: isActive && filters.assignedMode === 'employee' ? csvParam(filters.employees.map((e) => e.id)) : undefined,
-      storage_place: isActive && filters.assignedMode === 'storage' ? csvParam(filters.storagePlaces) : undefined,
+      storage_place: isActive && filters.assignedMode === 'storage' ? csvParam(filters.storagePlaces.filter((v) => v !== UNATTACHED)) : undefined,
+      storage_unattached: isActive && filters.assignedMode === 'storage' && filters.storagePlaces.includes(UNATTACHED) ? '1' : undefined,
       search: debouncedSearch || undefined,
       ordering,
     },
@@ -218,6 +228,7 @@ export function SimListPage() {
                           mapOption={placeOption}
                           selected={draft.storagePlaces}
                           onChange={(p) => set({ storagePlaces: p })}
+                          extraOptions={esimAtOperator ? [{ value: UNATTACHED, label: 'У оператора' }] : undefined}
                         />
                       </div>
                     ) : null}
