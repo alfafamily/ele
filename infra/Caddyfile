@@ -22,7 +22,8 @@ handle /api/* {
 # IP-список), поэтому здесь просто проксируем на backend; статику админки отдаёт
 # общий блок /static/* ниже. Матчим и путь без завершающего слэша — иначе
 # `/django_admin` уйдёт в SPA-fallback; со слэшем Django добавит его редиректом.
-handle /django_admin /django_admin/* {
+@django_admin path /django_admin /django_admin/*
+handle @django_admin {
 	reverse_proxy backend:8000
 }
 
