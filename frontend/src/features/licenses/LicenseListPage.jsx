@@ -158,7 +158,7 @@ export function LicenseListPage() {
               isDraftActive={(d) => countActive(d) > 0}
             >
               {(draft, setDraft) => {
-                const set = (patch) => setDraft({ ...draft, ...patch })
+                const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
                 return (
                   <>
                     <div>
