@@ -162,33 +162,31 @@ export function EquipmentListPage() {
             >
               {(draft, setDraft) => {
                 const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
-                return (
-                  <>
-                    {perms.canSeeMaintenance ? (
-                      <div>
-                        <div className="ele-filter-section__title">Техобслуживание</div>
-                        <MultiSelectList
-                          options={MAINTENANCE_FILTERS}
-                          selected={draft.toDates}
-                          onToggle={(v) => set({ toDates: toggle(draft.toDates, v) })}
-                        />
-                      </div>
-                    ) : null}
-                    <TypeRequisiteFilter
-                      endpoint="/api/equipment-types/"
-                      valuesBase="/api/equipment/field-values/"
-                      label="Тип оборудования"
-                      types={draft.types}
-                      onTypesChange={(t) => set({ types: t })}
-                      req={draft.req}
-                      onReqChange={(r) => set({ req: r })}
-                    />
-                  </>
-                )
-              }}
-              aside={(draft, setDraft) => {
-                const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
-                return (
+                return {
+                  main: (
+                    <>
+                      {perms.canSeeMaintenance ? (
+                        <div>
+                          <div className="ele-filter-section__title">Техобслуживание</div>
+                          <MultiSelectList
+                            options={MAINTENANCE_FILTERS}
+                            selected={draft.toDates}
+                            onToggle={(v) => set({ toDates: toggle(draft.toDates, v) })}
+                          />
+                        </div>
+                      ) : null}
+                      <TypeRequisiteFilter
+                        endpoint="/api/equipment-types/"
+                        valuesBase="/api/equipment/field-values/"
+                        label="Тип оборудования"
+                        types={draft.types}
+                        onTypesChange={(t) => set({ types: t })}
+                        req={draft.req}
+                        onReqChange={(r) => set({ req: r })}
+                      />
+                    </>
+                  ),
+                  aside: (
                   <div>
                     <div className="ele-filter-section__title">Размещение</div>
                     <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
@@ -218,7 +216,8 @@ export function EquipmentListPage() {
                       </div>
                     ) : null}
                   </div>
-                )
+                  ),
+                }
               }}
             </FilterModal>
           </div>

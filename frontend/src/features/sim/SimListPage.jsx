@@ -165,8 +165,9 @@ export function SimListPage() {
                 const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
                 const opEndpoint = `/api/sim-cards/operators/${draft.simType !== 'all' ? `?sim_type=${draft.simType}` : ''}`
                 const provEndpoint = `/api/sim-cards/providers/${draft.simType !== 'all' ? `?sim_type=${draft.simType}` : ''}`
-                return (
-                  <>
+                return {
+                  main: (
+                    <>
                     <div>
                       <div className="ele-filter-section__title">Тип SIM</div>
                       <RadioPills options={SIM_TYPE_FILTERS} value={draft.simType} onChange={(v) => set({ simType: v })} />
@@ -199,12 +200,9 @@ export function SimListPage() {
                         hideUntilSearch
                       />
                     </div>
-                  </>
-                )
-              }}
-              aside={(draft, setDraft) => {
-                const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
-                return (
+                    </>
+                  ),
+                  aside: (
                   <div>
                     <div className="ele-filter-section__title">Размещение</div>
                     <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
@@ -224,7 +222,8 @@ export function SimListPage() {
                       </div>
                     ) : null}
                   </div>
-                )
+                  ),
+                }
               }}
             </FilterModal>
           </div>
