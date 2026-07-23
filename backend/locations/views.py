@@ -100,6 +100,18 @@ class PlaceViewSet(_NoDeleteViewSet):
                     license_type_id__in=lic_types, is_retired=False, storage_place__isnull=False
                 ).values("storage_place")
             )
+        # B27. Опции «Размещение → Место хранения» в фильтре Корп.связи: только
+        # склады, где лежит SIM, подходящая под верхние фильтры.
+        if self.request.query_params.get("has_sim") == "1":
+            from django.db.models import Exists, OuterRef
+            from employees.models import SimCard
+            from employees.views import sim_match_filter
+
+            sub = sim_match_filter(
+                SimCard.objects.filter(storage_place=OuterRef("pk"), is_utilized=False),
+                self.request.query_params,
+            )
+            qs = qs.filter(Exists(sub))
         return qs
 
     @action(detail=True, methods=["post"])

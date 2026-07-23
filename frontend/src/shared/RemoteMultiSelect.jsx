@@ -7,7 +7,7 @@ import { MultiSelectList } from './ui/MultiSelectList/MultiSelectList.jsx'
 // поставщики. selected — string[] (id или строковое значение).
 //   endpoint  — URL списка (массив или {results});
 //   mapOption — item -> { value, label, sub? }.
-export function RemoteMultiSelect({ endpoint, mapOption, selected, onChange, search = true, emptyText = 'Ничего не найдено' }) {
+export function RemoteMultiSelect({ endpoint, mapOption, selected, onChange, search = true, emptyText = 'Ничего не найдено', hideUntilSearch = false }) {
   const [data, setData] = useState(null)
 
   useEffect(() => {
@@ -33,6 +33,7 @@ export function RemoteMultiSelect({ endpoint, mapOption, selected, onChange, sea
       loading={data === null}
       emptyText={emptyText}
       chips
+      hideUntilSearch={hideUntilSearch}
     />
   )
 }

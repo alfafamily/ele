@@ -48,6 +48,28 @@ def _type_code_match(search, choices, field):
     return q
 
 
+def sim_match_filter(qs, params):
+    """B27. Ограничить queryset SimCard фильтрами Корп.связи (sim_type / operator
+    [+operator_none] / provider [+provider_none]) — общий код для списка SIM и для
+    ограничения опций сотрудников/мест хранения верхними фильтрами."""
+    sim_type = params.get("sim_type")
+    if sim_type in dict(SimCard.SimType.choices):
+        qs = qs.filter(sim_type=sim_type)
+    operators = csv_ids(params.get("operator"))
+    if operators or params.get("operator_none") == "1":
+        cond = Q(network_operator__in=operators) if operators else Q()
+        if params.get("operator_none") == "1":
+            cond |= Q(network_operator="")
+        qs = qs.filter(cond)
+    providers = csv_ids(params.get("provider"))
+    if providers or params.get("provider_none") == "1":
+        cond = Q(provider__in=providers) if providers else Q()
+        if params.get("provider_none") == "1":
+            cond |= Q(provider="")
+        qs = qs.filter(cond)
+    return qs
+
+
 class EmployeeViewSet(viewsets.ModelViewSet):
     # Наблюдатель видит раздел «Сотрудники» на просмотр; управление и служебные
     # экшены (departments/positions/avatar/terminate/restore) — admin/accountant.
@@ -98,6 +120,17 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                 equipment__equipment_type_id__in=has_equipment_type,
                 equipment__is_written_off=False,
             ).distinct()
+        # B27. Опции «Размещение → Сотрудник» в фильтре Корп.связи: только
+        # сотрудники с активной SIM, подходящей под верхние фильтры (тип/оператор/
+        # поставщик).
+        if self.request.query_params.get("has_sim") == "1":
+            from django.db.models import Exists, OuterRef
+
+            sub = sim_match_filter(
+                SimCard.objects.filter(employee=OuterRef("pk"), is_utilized=False),
+                self.request.query_params,
+            )
+            qs = qs.filter(Exists(sub))
         return qs
 
     def destroy(self, request, *args, **kwargs):
@@ -460,49 +493,33 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             qs = qs.filter(employee_id__in=csv_ids(employee))
 
         if self.action == "list":
-            # Вкладки раздела: Активные (все неутилизированные — и привязанные, и
-            # отвязанные) / Утилизировано (необратимо). Внутри «Активных» доступен
-            # фильтр status: attached (Активные — за сотрудником) / free
-            # (Неактивные — без сотрудника). Значение tab=deactivated сохранено
-            # для подбора свободных SIM при привязке (AttachOrCreateModal).
+            # Вкладки раздела: Активные (все неутилизированные) / Утилизировано
+            # (необратимо). Значение tab=deactivated сохранено для подбора
+            # свободных SIM при привязке (AttachOrCreateModal).
             tab = self.request.query_params.get("tab")
             if tab == "active":
                 qs = qs.filter(is_utilized=False)
-                status = self.request.query_params.get("status")
-                if status == "attached":
-                    # В использовании — за сотрудником или в оборудовании.
-                    qs = qs.filter(Q(employee__isnull=False) | Q(equipment__isnull=False))
-                elif status == "free":
-                    qs = qs.filter(employee__isnull=True, equipment__isnull=True)
             elif tab == "deactivated":
                 # Свободные для повторной выдачи: без сотрудника и без оборудования.
                 qs = qs.filter(employee__isnull=True, equipment__isnull=True, is_utilized=False)
             elif tab == "utilized":
                 qs = qs.filter(is_utilized=True)
 
-            # B27. Фильтры модалки: тип SIM/E-SIM; оператор/поставщик (мультивыбор
-            # существующих значений + флаг «без …»); «Закреплён за» → место
-            # хранения (мультивыбор).
-            sim_type = self.request.query_params.get("sim_type")
-            if sim_type in dict(SimCard.SimType.choices):
-                qs = qs.filter(sim_type=sim_type)
-            operators = csv_ids(self.request.query_params.get("operator"))
-            operator_none = self.request.query_params.get("operator_none") == "1"
-            if operators or operator_none:
-                cond = Q(network_operator__in=operators) if operators else Q()
-                if operator_none:
-                    cond |= Q(network_operator="")
-                qs = qs.filter(cond)
-            providers = csv_ids(self.request.query_params.get("provider"))
-            provider_none = self.request.query_params.get("provider_none") == "1"
-            if providers or provider_none:
-                cond = Q(provider__in=providers) if providers else Q()
-                if provider_none:
-                    cond |= Q(provider="")
-                qs = qs.filter(cond)
-            storage_place = csv_ids(self.request.query_params.get("storage_place"))
-            if storage_place:
-                qs = qs.filter(storage_place_id__in=storage_place)
+            # B27. Тип SIM/E-SIM + оператор/поставщик (мультивыбор + флаг «без …»).
+            qs = sim_match_filter(qs, self.request.query_params)
+
+            # B27. «Размещение» (radio): категория + опц. конкретные значения.
+            # Заменяет прежний фильтр «Статус». Конкретный сотрудник передаётся
+            # параметром employee (применён выше); категория без значений — здесь.
+            assigned = self.request.query_params.get("assigned")
+            if assigned == "employee":
+                if not csv_ids(self.request.query_params.get("employee")):
+                    qs = qs.filter(employee__isnull=False)
+            elif assigned == "storage":
+                ids = csv_ids(self.request.query_params.get("storage_place"))
+                qs = qs.filter(storage_place_id__in=ids) if ids else qs.filter(storage_place__isnull=False)
+            elif assigned == "unattached":
+                qs = qs.filter(employee__isnull=True, equipment__isnull=True, storage_place__isnull=True)
 
             search = self.request.query_params.get("search")
             if search:
@@ -658,24 +675,23 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], permission_classes=[IsAdminOrAccountant])
     def operators(self, request):
-        # Автоподсказка «Оператор» — без отдельного справочника, как departments.
-        values = (
-            SimCard.objects.exclude(network_operator="")
-            .values_list("network_operator", flat=True)
-            .distinct()
-            .order_by("network_operator")
-        )
+        # Автоподсказка «Оператор». B27: при выбранном Типе SIM — только операторы
+        # этого типа (варианты подбора зависят от типа).
+        qs = SimCard.objects.exclude(network_operator="")
+        sim_type = request.query_params.get("sim_type")
+        if sim_type in dict(SimCard.SimType.choices):
+            qs = qs.filter(sim_type=sim_type)
+        values = qs.values_list("network_operator", flat=True).distinct().order_by("network_operator")
         return Response(list(values))
 
     @action(detail=False, methods=["get"], permission_classes=[IsAdminOrAccountant])
     def providers(self, request):
-        # Автоподсказка «Поставщик».
-        values = (
-            SimCard.objects.exclude(provider="")
-            .values_list("provider", flat=True)
-            .distinct()
-            .order_by("provider")
-        )
+        # Автоподсказка «Поставщик». B27: при выбранном Типе SIM — только этого типа.
+        qs = SimCard.objects.exclude(provider="")
+        sim_type = request.query_params.get("sim_type")
+        if sim_type in dict(SimCard.SimType.choices):
+            qs = qs.filter(sim_type=sim_type)
+        values = qs.values_list("provider", flat=True).distinct().order_by("provider")
         return Response(list(values))
 
 

@@ -7,21 +7,23 @@ import { Icon } from './ui/Icon/Icon.jsx'
 // Подбор Сотрудника с поиском (C2 «Закрепить сотрудника», форма Оборудования,
 // модалка приглашения) — общий для всех мест, где нужен именно Сотрудник
 // (не Пользователь).
-export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeIds, withPlus = false, equipmentTypeIds }) {
+export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeIds, withPlus = false, extraParams }) {
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query, 250)
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
   const excludeSet = new Set(excludeIds || [])
-  // B27: ограничение опций выбранными типами оборудования (в фильтрах).
-  const typeKey = (equipmentTypeIds || []).join(',')
+  // B27: доп. параметры запроса (ограничение опций выбранными фильтрами).
+  const extraKey = JSON.stringify(extraParams || {})
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     const params = new URLSearchParams()
     if (debouncedQuery) params.set('search', debouncedQuery)
-    if (typeKey) params.set('has_equipment_type', typeKey)
+    for (const [k, v] of Object.entries(extraParams || {})) {
+      if (v !== undefined && v !== null && v !== '') params.set(k, v)
+    }
     const qs = params.toString() ? `?${params.toString()}` : ''
     apiGet(`/api/employees/${qs}`)
       .then((data) => {
@@ -33,7 +35,8 @@ export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeI
     return () => {
       cancelled = true
     }
-  }, [debouncedQuery, typeKey])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQuery, extraKey])
 
   return (
     <div>

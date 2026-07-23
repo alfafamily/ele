@@ -188,7 +188,7 @@ export function EquipmentListPage() {
                       <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
                       {draft.assignedMode === 'employee' ? (
                         <div style={{ marginTop: 10 }}>
-                          <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} equipmentTypeIds={draft.types} />
+                          <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} extraParams={draft.types.length ? { has_equipment_type: draft.types.join(',') } : undefined} />
                         </div>
                       ) : null}
                       {draft.assignedMode === 'storage' ? (
