@@ -6,7 +6,7 @@ import './Modal.css'
 // Один компонент, две раскладки по CSS-медиа-запросу: модалка по
 // центру на desktop, bottom-sheet снизу ниже ~768px — без дублирования
 // логики open/close между вариантами.
-export function Modal({ open, onClose, title, children }) {
+export function Modal({ open, onClose, title, children, className }) {
   // Закрываем по клику на подложку только если и нажатие (mousedown), и клик
   // произошли на самой подложке. Иначе протяжка курсора из инпута за границы
   // модалки (выделение текста) отпускалась бы на подложке и закрывала окно.
@@ -63,7 +63,7 @@ export function Modal({ open, onClose, title, children }) {
         if (e.target === e.currentTarget && pressedOnOverlay.current) onClose?.()
       }}
     >
-      <div className="ele-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+      <div className={'ele-modal' + (className ? ` ${className}` : '')} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="ele-modal__grabber" aria-hidden />
         {title || onClose ? (
           <div className="ele-modal__header">

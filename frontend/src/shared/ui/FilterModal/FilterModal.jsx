@@ -14,7 +14,10 @@ import './FilterModal.css'
 //   onApply(draft) — «Показать»: применить черновик;
 //   onClear()      — «Сбросить фильтры»: очистить все применённые фильтры;
 //   isDraftActive(draft) — есть ли что сбрасывать (иначе вторая кнопка — «Отмена»).
-export function FilterModal({ value, count = 0, onApply, onClear, isDraftActive, title = 'Фильтры', children }) {
+// aside (необязательно) — render-prop правой колонки (блок «Размещение»). На
+// десктопе модалка становится шире и делится на 2 колонки: основные фильтры
+// слева, aside справа. На мобильном — одна колонка (aside под основными).
+export function FilterModal({ value, count = 0, onApply, onClear, isDraftActive, title = 'Фильтры', children, aside }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(value)
 
@@ -48,9 +51,16 @@ export function FilterModal({ value, count = 0, onApply, onClear, isDraftActive,
         {count > 0 ? <span className="ele-filter-btn__badge">{count}</span> : null}
       </button>
       {open ? (
-        <Modal open onClose={close} title={title}>
-          <div className="ele-filter-modal__body">
-            {typeof children === 'function' ? children(draft, setDraft) : children}
+        <Modal open onClose={close} title={title} className={aside ? 'ele-modal--filter-wide' : undefined}>
+          <div className={'ele-filter-modal__body' + (aside ? ' ele-filter-modal__body--cols' : '')}>
+            <div className="ele-filter-modal__col">
+              {typeof children === 'function' ? children(draft, setDraft) : children}
+            </div>
+            {aside ? (
+              <div className="ele-filter-modal__col">
+                {typeof aside === 'function' ? aside(draft, setDraft) : aside}
+              </div>
+            ) : null}
           </div>
           <div className="ele-form-actions">
             <Button variant="secondary" onClick={secondary}>
