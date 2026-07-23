@@ -110,10 +110,10 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, marginBottom: showDropzone ? 10 : 0 }}>
           {displayFiles.map((f) => (
             <div key={f.key} className="ele-file-slot__current">
-              <a href={f.file.url} target="_blank" rel="noreferrer" style={{ fontWeight: 500, fontSize: 13.5 }}>
+              <a href={f.file.url} target="_blank" rel="noreferrer" className="ele-file-slot__name" title={f.file.original_filename}>
                 {f.file.original_filename}
               </a>
-              <span style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{Math.round(f.file.size / 1024)} КБ</span>
+              <span className="ele-file-slot__size">{Math.round(f.file.size / 1024)} КБ</span>
               {!disabled ? (
                 <button
                   type="button"
@@ -134,8 +134,8 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, marginBottom: showDropzone ? 10 : 0 }}>
           {pendingFiles.map((file, idx) => (
             <div key={idx} className="ele-file-slot__current">
-              <span style={{ fontWeight: 500, fontSize: 13.5 }}>{file.name}</span>
-              <span style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{Math.round(file.size / 1024)} КБ</span>
+              <span className="ele-file-slot__name" title={file.name}>{file.name}</span>
+              <span className="ele-file-slot__size">{Math.round(file.size / 1024)} КБ</span>
               <button
                 type="button"
                 onClick={() => removePending(idx)}

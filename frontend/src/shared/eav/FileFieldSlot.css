@@ -28,12 +28,34 @@
 }
 
 .ele-file-slot__current {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 10px;
+  max-width: 100%;
   background: var(--color-fill-input);
   border-radius: 10px;
   padding: 9px 13px;
+}
+
+/* Имя файла ужимается и обрезается многоточием, чтобы длинное название не
+   распирало блок; размер и «Удалить» всегда видны справа. */
+.ele-file-slot__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  font-size: 13.5px;
+}
+
+.ele-file-slot__size {
+  flex: none;
+  font-size: 12px;
+  color: var(--color-text-placeholder);
+}
+
+.ele-file-slot__current button {
+  flex: none;
 }
 
 .ele-file-slot__disabled {
