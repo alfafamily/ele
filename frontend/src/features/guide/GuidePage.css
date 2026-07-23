@@ -177,6 +177,22 @@
   margin-bottom: 0;
 }
 
+/* Абзацы внутри одной подложки-примечания: интервал между ними, но без
+   внешних отступов у первого/последнего (их держит сам .ele-guide__note). */
+.ele-guide__note-p {
+  margin: 0 0 8px;
+}
+
+.ele-guide__note-p:last-child {
+  margin-bottom: 0;
+}
+
+/* Красный акцент в тексте руководства: {!...!} */
+.ele-guide__danger {
+  color: var(--color-error);
+  font-weight: 600;
+}
+
 .ele-guide__code {
   margin: 10px 0 0;
   padding: 10px 12px;

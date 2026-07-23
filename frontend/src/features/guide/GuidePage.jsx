@@ -33,10 +33,12 @@ function GuideLink({ id, children }) {
   )
 }
 
-// Инлайновое форматирование: **жирный** и ссылки [текст](#id) внутри строки.
+// Инлайновое форматирование: **жирный**, {!красный акцент!} и ссылки [текст](#id)
+// внутри строки.
 function renderInline(text) {
-  return text.split(/(\*\*[^*]+\*\*|\[[^\]]+\]\(#[a-z-]+\))/g).map((part, i) => {
+  return text.split(/(\*\*[^*]+\*\*|\{![^}]+!\}|\[[^\]]+\]\(#[a-z-]+\))/g).map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>
+    if (part.startsWith('{!') && part.endsWith('!}')) return <span key={i} className="ele-guide__danger">{part.slice(2, -2)}</span>
     const link = part.match(/^\[([^\]]+)\]\(#([a-z-]+)\)$/)
     if (link) return <GuideLink key={i} id={link[2]}>{link[1]}</GuideLink>
     return part
@@ -69,7 +71,9 @@ function Block({ block }) {
     case 'note':
       return (
         <div className="ele-guide__note">
-          {renderInline(block.text)}
+          {block.text.split('\n\n').map((para, i) => (
+            <p key={i} className="ele-guide__note-p">{renderInline(para)}</p>
+          ))}
           {block.code ? <pre className="ele-guide__code">{block.code}</pre> : null}
         </div>
       )
