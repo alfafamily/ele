@@ -25,7 +25,7 @@ export function EmployeeMultiPicker({ value = [], onChange }) {
           ))}
         </div>
       ) : null}
-      <EmployeePicker onSelect={add} excludeIds={ids} />
+      <EmployeePicker onSelect={add} excludeIds={ids} withPlus />
     </div>
   )
 }

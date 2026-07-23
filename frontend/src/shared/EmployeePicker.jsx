@@ -7,7 +7,7 @@ import { Icon } from './ui/Icon/Icon.jsx'
 // Подбор Сотрудника с поиском (C2 «Закрепить сотрудника», форма Оборудования,
 // модалка приглашения) — общий для всех мест, где нужен именно Сотрудник
 // (не Пользователь).
-export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeIds }) {
+export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeIds, withPlus = false }) {
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query, 250)
   const [results, setResults] = useState([])
@@ -78,6 +78,11 @@ export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeI
                 fontFamily: 'inherit',
               }}
             >
+              {withPlus ? (
+                <span style={{ flex: 'none', width: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-placeholder)' }}>
+                  <Icon name="plus" size={14} strokeWidth={2.4} />
+                </span>
+              ) : null}
               <span
                 style={{
                   width: 30,
