@@ -155,6 +155,10 @@ export function LicenseListPage() {
                 const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
                 return (
                   <>
+                    <div>
+                      <div className="ele-filter-section__title">Вид</div>
+                      <RadioPills options={KIND_FILTERS} value={draft.kind} onChange={(v) => set({ kind: v })} />
+                    </div>
                     <TypeRequisiteFilter
                       endpoint="/api/license-types/"
                       valuesBase="/api/licenses/field-values/"
@@ -164,11 +168,8 @@ export function LicenseListPage() {
                       req={draft.req}
                       onReqChange={(r) => set({ req: r })}
                       excludeLockedFields
+                      filterKind={draft.kind}
                     />
-                    <div>
-                      <div className="ele-filter-section__title">Вид</div>
-                      <RadioPills options={KIND_FILTERS} value={draft.kind} onChange={(v) => set({ kind: v })} />
-                    </div>
                     <div>
                       <div className="ele-filter-section__title">Размещение</div>
                       <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />

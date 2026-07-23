@@ -31,8 +31,9 @@ function ReqFieldControl({ field, value, onChange, valuesBase }) {
   return <RequisiteAutocompleteChips value={value} onChange={onChange} valuesUrl={`${valuesBase}?field=${field.id}`} numeric={numeric} />
 }
 
-export function TypeRequisiteFilter({ endpoint, valuesBase, label = 'Тип', types, onTypesChange, req, onReqChange, excludeLockedFields = false }) {
+export function TypeRequisiteFilter({ endpoint, valuesBase, label = 'Тип', types, onTypesChange, req, onReqChange, excludeLockedFields = false, filterKind }) {
   const [allTypes, setAllTypes] = useState(null)
+  const kindActive = filterKind && filterKind !== 'all'
 
   useEffect(() => {
     let alive = true
@@ -44,10 +45,28 @@ export function TypeRequisiteFilter({ endpoint, valuesBase, label = 'Тип', ty
     }
   }, [endpoint])
 
+  // При выборе Вида (лицензии) снимаем уже выбранные типы другого вида и чистим
+  // их реквизиты. Реагируем только на смену вида/загрузку типов.
+  useEffect(() => {
+    if (!allTypes || !kindActive) return
+    const kindById = new Map(allTypes.map((t) => [String(t.id), t.kind]))
+    const removed = types.filter((id) => kindById.get(id) && kindById.get(id) !== filterKind)
+    if (removed.length === 0) return
+    onTypesChange(types.filter((id) => !removed.includes(id)))
+    const next = { ...req }
+    for (const t of allTypes.filter((x) => removed.includes(String(x.id)))) {
+      for (const f of t.fields || []) delete next[f.id]
+    }
+    onReqChange(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterKind, allTypes])
+
   // Типы без единого объекта (не создано ни одного оборудования/лицензии) в
-  // фильтре не показываем — по ним всё равно ничего не найдётся.
+  // фильтре не показываем — по ним всё равно ничего не найдётся. Если выбран Вид
+  // (лицензии) — оставляем только типы этого вида.
   const options = (allTypes || [])
     .filter((t) => (t.objects_count ?? 0) > 0)
+    .filter((t) => !kindActive || t.kind === filterKind)
     .map((t) => ({ value: String(t.id), label: t.name }))
   const selectedTypes = (allTypes || []).filter((t) => types.includes(String(t.id)))
 
