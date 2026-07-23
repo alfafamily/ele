@@ -1175,3 +1175,39 @@ class EquipmentFilterTests(APITestCase):
     def test_filter_by_requisite_within_single_type(self):
         nums = self._nums({"type": str(self.type_a.id), f"req_{self.color.id}": "Синий"})
         self.assertEqual(nums, {"A-BLUE"})
+
+
+class EquipmentReqMultiValueTests(APITestCase):
+    """B27. Мультизначный фильтр по реквизиту (ИЛИ внутри реквизита) +
+    эндпоинт автоподсказки существующих значений."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="reqmulti@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.t = EquipmentType.objects.create(name="Ноутбук")
+        self.color = EquipmentTypeField.objects.create(equipment_type=self.t, name="Цвет", value_type="list")
+        self.eq_red = Equipment.objects.create(inventory_number="RED", equipment_type=self.t)
+        EquipmentFieldValue.objects.create(equipment=self.eq_red, field=self.color, value_text="Красный")
+        self.eq_blue = Equipment.objects.create(inventory_number="BLUE", equipment_type=self.t)
+        EquipmentFieldValue.objects.create(equipment=self.eq_blue, field=self.color, value_text="Синий")
+        self.eq_green = Equipment.objects.create(inventory_number="GREEN", equipment_type=self.t)
+        EquipmentFieldValue.objects.create(equipment=self.eq_green, field=self.color, value_text="Зелёный")
+
+    def _nums(self, params):
+        return {r["inventory_number"] for r in self.client.get("/api/equipment/", params).data["results"]}
+
+    def test_requisite_multiple_values_or(self):
+        nums = self._nums({"type": str(self.t.id), f"req_{self.color.id}": '["Красный", "Синий"]'})
+        self.assertEqual(nums, {"RED", "BLUE"})
+
+    def test_field_values_suggestions(self):
+        # Подсказки — только для текст/число реквизитов (у списка на фронте
+        # фиксированные варианты options).
+        model = EquipmentTypeField.objects.create(equipment_type=self.t, name="Модель", value_type="text")
+        EquipmentFieldValue.objects.create(equipment=self.eq_red, field=model, value_text="Acer Aspire")
+        EquipmentFieldValue.objects.create(equipment=self.eq_blue, field=model, value_text="Asus Zen")
+        resp = self.client.get("/api/equipment/field-values/", {"field": model.id})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(set(resp.data), {"Acer Aspire", "Asus Zen"})
+        resp = self.client.get("/api/equipment/field-values/", {"field": model.id, "search": "zen"})
+        self.assertEqual(list(resp.data), ["Asus Zen"])

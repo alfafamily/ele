@@ -167,6 +167,7 @@ export function LicenseListPage() {
                     </div>
                     <TypeRequisiteFilter
                       endpoint="/api/license-types/"
+                      valuesBase="/api/licenses/field-values/"
                       label="Тип лицензии"
                       types={draft.types}
                       onTypesChange={(t) => set({ types: t })}

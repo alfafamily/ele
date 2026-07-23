@@ -190,6 +190,7 @@ export function EquipmentListPage() {
                     ) : null}
                     <TypeRequisiteFilter
                       endpoint="/api/equipment-types/"
+                      valuesBase="/api/equipment/field-values/"
                       label="Тип оборудования"
                       types={draft.types}
                       onTypesChange={(t) => set({ types: t })}

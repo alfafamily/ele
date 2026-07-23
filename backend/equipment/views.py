@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.eav import count_missing_for_field
-from core.eav_filters import csv_ids, eav_req_conditions
+from core.eav_filters import csv_ids, eav_field_value_suggestions, eav_req_conditions
 from core.mixins import CreationCommentMixin
 from core.pagination import ELECursorPagination
 from core.permissions import (
@@ -294,6 +294,21 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 | Q(place__room__building__name__icontains=search)
             ).distinct()
         return qs
+
+    @action(detail=False, methods=["get"], url_path="field-values")
+    def field_values(self, request):
+        """B27. Автоподсказка существующих значений реквизита (текст/число) для
+        фильтра по реквизитам типа. ?field=<id>&search=<строка>."""
+        user = request.user
+        if getattr(user, "role", None) == "employee" and not getattr(user, "is_observer", False):
+            return Response([])
+        field_id = request.query_params.get("field")
+        if not field_id:
+            return Response([])
+        field = get_object_or_404(EquipmentTypeField, pk=field_id)
+        return Response(
+            eav_field_value_suggestions(field, EquipmentFieldValue, search=request.query_params.get("search", ""))
+        )
 
     @action(detail=True, methods=["post"], url_path="write-off", permission_classes=[IsAdminOrAccountant])
     def write_off(self, request, pk=None):
