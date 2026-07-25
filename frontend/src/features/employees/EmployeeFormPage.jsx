@@ -124,7 +124,7 @@ export function EmployeeFormPage() {
       </div>
 
       {dupWarn ? (
-        <Modal open onClose={() => setDupWarn(null)} title="Сотрудник с такими Ф. И. уже есть">
+        <Modal open onClose={() => setDupWarn(null)} title="Сотрудник с такими данными уже есть">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
               В системе уже работают сотрудники с такими Фамилией и Именем. Возможно, это тот же человек.

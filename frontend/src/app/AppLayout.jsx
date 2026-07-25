@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
-import { useCompany, useDuplicatesCount } from './CompanyContext.jsx'
+import { useCompany, useDuplicatesCount, useRefreshDuplicates } from './CompanyContext.jsx'
 import { navSectionsForRole } from './navSections.js'
 import { HelpIcon, MenuIcon, SettingsIcon } from './navIcons.jsx'
 import { roleLabel } from '../shared/roles.js'
@@ -31,11 +31,20 @@ export function AppLayout() {
   const employeeName = user.employee ? user.employee.full_name : null
   const [drawerOpen, setDrawerOpen] = useState(false)
   const location = useLocation()
+  const refreshDuplicates = useRefreshDuplicates()
 
   // Закрываем выезжающее меню при переходе на другую страницу.
   useEffect(() => {
     setDrawerOpen(false)
   }, [location.pathname])
+
+  // B12: держим бейдж возможных дублей актуальным — счётчик в CompanyContext
+  // берётся при входе, но дубли могут появиться позже (создание сотрудника,
+  // регистрация). Перечитываем на каждом переходе между разделами (лёгкий
+  // GET, только для админа).
+  useEffect(() => {
+    refreshDuplicates?.()
+  }, [location.pathname, refreshDuplicates])
 
   const avatar = (size, fontSize) => (
     <span className="ele-rail__avatar" style={{ width: size, height: size, fontSize, overflow: 'hidden' }}>
