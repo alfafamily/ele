@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
-import { Banner, Button, Checkbox, Input, Modal, Select } from '../../shared/ui'
+import { Banner, Button, Checkbox, Icon, Input, Modal, Select } from '../../shared/ui'
 import { MaintenanceTypeScope } from './MaintenanceTypeScope.jsx'
 import { inviteUser } from './settingsApi.js'
 
@@ -38,7 +38,9 @@ export function InviteModal({ onClose, onInvited }) {
   // первый сабмит показывает предупреждение, второй (с confirm_domain) шлёт.
   const [needsDomainConfirm, setNeedsDomainConfirm] = useState(false)
   // B12: создаётся новый сотрудник-тёзка работающего — тоже подтверждение.
+  // Список тёзок показываем отдельным блоком (визуально не как домен).
   const [needsDuplicateConfirm, setNeedsDuplicateConfirm] = useState(false)
+  const [dupConflicts, setDupConflicts] = useState([])
 
   const onEmailChange = (e) => {
     setEmail(e.target.value)
@@ -50,6 +52,7 @@ export function InviteModal({ onClose, onInvited }) {
   const onDupFieldChange = (setter) => (e) => {
     setter(e.target.value)
     setNeedsDuplicateConfirm(false)
+    setDupConflicts([])
     setWarning(null)
   }
 
@@ -84,7 +87,10 @@ export function InviteModal({ onClose, onInvited }) {
         setWarning(err.detail)
         setNeedsDomainConfirm(true)
       } else if (err.status === 409 && err.data?.requires_duplicate_confirmation) {
-        setWarning(err.detail)
+        // Домен (если был) уже подтверждён — убираем его баннер и показываем
+        // отдельный блок про дубль со списком тёзок.
+        setWarning(null)
+        setDupConflicts(err.data.duplicates || [])
         setNeedsDuplicateConfirm(true)
       } else {
         setError(err.errors ? Object.values(err.errors).flat().join(' ') : err.detail || 'Не удалось отправить приглашение.')
@@ -99,8 +105,44 @@ export function InviteModal({ onClose, onInvited }) {
       <p style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginBottom: 18, marginTop: -6 }}>
         На указанный email придёт ссылка-приглашение.
       </p>
-      {error ? <Banner variant="error">{error}</Banner> : null}
-      {warning ? <Banner variant="warning">{warning}</Banner> : null}
+      {error ? (
+        <div style={{ marginBottom: 14 }}>
+          <Banner variant="error">{error}</Banner>
+        </div>
+      ) : null}
+      {warning ? (
+        <div style={{ marginBottom: 14 }}>
+          <Banner variant="warning">{warning}</Banner>
+        </div>
+      ) : null}
+      {needsDuplicateConfirm ? (
+        <div
+          style={{
+            marginBottom: 14,
+            padding: '12px 14px',
+            borderRadius: 10,
+            border: '1px solid var(--color-warning)',
+            background: 'var(--color-warning-bg)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, marginBottom: 6 }}>
+            <Icon name="triangle-alert" size={18} strokeWidth={2} style={{ color: 'var(--color-warning)', flex: 'none' }} />
+            Сотрудник с такими данными уже есть
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5, marginBottom: dupConflicts.length ? 6 : 0 }}>
+            В системе уже работают сотрудники с такими Фамилией и Именем. Возможно, это тот же человек.
+            Всё равно создать нового?
+          </div>
+          {dupConflicts.map((d) => (
+            <div key={d.id} style={{ fontSize: 13 }}>
+              • {d.full_name}
+              {d.user_email ? (
+                <span style={{ color: 'var(--color-text-placeholder)' }}> — учётная запись: {d.user_email}</span>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <Input label="Email" type="email" required value={email} onChange={onEmailChange} />
         <Select label="Роль" required value={role} onChange={setRole}>
@@ -189,7 +231,7 @@ export function InviteModal({ onClose, onInvited }) {
           disabled={!email.trim() || (createEmployee && (!empLastName.trim() || !empFirstName.trim()))}
           onClick={submit}
         >
-          {needsDomainConfirm || needsDuplicateConfirm ? 'Всё равно пригласить' : 'Отправить приглашение'}
+          {needsDuplicateConfirm ? 'Всё равно создать' : needsDomainConfirm ? 'Всё равно пригласить' : 'Отправить приглашение'}
         </Button>
       </div>
     </Modal>
