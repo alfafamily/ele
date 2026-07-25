@@ -65,7 +65,11 @@ export function RegisterPage() {
   return (
     <AuthShell title="Регистрация">
       {formError ? <Banner variant="error">{formError}</Banner> : null}
-      {errors.non_field_errors ? <Banner variant="error">{errors.non_field_errors.join(' ')}</Banner> : null}
+      {errors.non_field_errors ? (
+        <Banner variant="error">
+          <span style={{ whiteSpace: 'pre-line' }}>{errors.non_field_errors.join('\n')}</span>
+        </Banner>
+      ) : null}
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <Input
           label="Фамилия"
