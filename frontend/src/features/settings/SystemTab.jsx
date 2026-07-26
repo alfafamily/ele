@@ -343,7 +343,7 @@ export function SystemTab() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Хранилище файлов */}
         <Card>
-          <div style={sectionTitle}>Хранилище файлов</div>
+          <div style={sectionTitle}>Хранилище приложения</div>
           <div style={sectionHint}>Выберите где будут хранятся загруженные файлы.</div>
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 10 : 24 }}>
             {[
