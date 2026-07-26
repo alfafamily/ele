@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { Banner, Button, Checkbox, Icon, Input, Modal, Select } from '../../shared/ui'
+import { EmployeeChoice } from './EmployeeChoice.jsx'
 import { MaintenanceTypeScope } from './MaintenanceTypeScope.jsx'
 import { inviteUser } from './settingsApi.js'
 
@@ -17,16 +17,15 @@ const ROLE_OPTIONS = [
 export function InviteModal({ onClose, onInvited }) {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('employee')
+  // Режим сотрудника (как размещение при создании Оборудования):
+  // 'none' — без сотрудника, 'existing' — выбрать существующего, 'create' — создать нового.
+  const [employeeMode, setEmployeeMode] = useState('none')
   const [employee, setEmployee] = useState(null)
-  const [showEmployeePicker, setShowEmployeePicker] = useState(false)
   const [isObserver, setIsObserver] = useState(false)
   const [canMaintain, setCanMaintain] = useState(false)
   const [canManageRegulations, setCanManageRegulations] = useState(false)
   const [maintenanceAllTypes, setMaintenanceAllTypes] = useState(true)
   const [maintenanceTypeIds, setMaintenanceTypeIds] = useState([])
-  // Свитч «Добавить сотрудника»: создаём нового Сотрудника вместе с приглашением
-  // (взаимоисключающе с выбором существующего).
-  const [createEmployee, setCreateEmployee] = useState(false)
   const [empLastName, setEmpLastName] = useState('')
   const [empFirstName, setEmpFirstName] = useState('')
   const [empDepartment, setEmpDepartment] = useState('')
@@ -56,6 +55,15 @@ export function InviteModal({ onClose, onInvited }) {
     setWarning(null)
   }
 
+  // Переключение режима сотрудника: чистим выбор существующего и сбрасываем
+  // подтверждение дубля (актуально только при создании нового).
+  const onEmployeeModeChange = (m) => {
+    setEmployeeMode(m)
+    setEmployee(null)
+    setNeedsDuplicateConfirm(false)
+    setDupConflicts([])
+  }
+
   const submit = async () => {
     setSubmitting(true)
     setError(null)
@@ -71,7 +79,7 @@ export function InviteModal({ onClose, onInvited }) {
         maintenance_types: maintainer && !maintenanceAllTypes ? maintenanceTypeIds : [],
         confirm_domain: needsDomainConfirm,
         confirm_duplicate: needsDuplicateConfirm,
-        ...(createEmployee
+        ...(employeeMode === 'create'
           ? {
               create_employee: true,
               last_name: empLastName,
@@ -79,7 +87,7 @@ export function InviteModal({ onClose, onInvited }) {
               department: empDepartment,
               position: empPosition,
             }
-          : { employee_id: employee?.id }),
+          : { employee_id: employeeMode === 'existing' ? employee?.id : undefined }),
       })
       onInvited()
     } catch (err) {
@@ -153,54 +161,21 @@ export function InviteModal({ onClose, onInvited }) {
           ))}
         </Select>
 
-        <Checkbox
-          label="Добавить сотрудника"
-          checked={createEmployee}
-          onChange={(v) => {
-            setCreateEmployee(v)
-            if (v) setEmployee(null) // взаимоисключаем с выбором существующего
-          }}
+        <EmployeeChoice
+          allowCreate
+          mode={employeeMode}
+          onModeChange={onEmployeeModeChange}
+          employee={employee}
+          onSelectEmployee={setEmployee}
+          lastName={empLastName}
+          firstName={empFirstName}
+          department={empDepartment}
+          position={empPosition}
+          onLastName={onDupFieldChange(setEmpLastName)}
+          onFirstName={onDupFieldChange(setEmpFirstName)}
+          onDepartment={(e) => setEmpDepartment(e.target.value)}
+          onPosition={(e) => setEmpPosition(e.target.value)}
         />
-
-        {createEmployee ? (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input label="Фамилия" required value={empLastName} onChange={onDupFieldChange(setEmpLastName)} />
-              <Input label="Имя" required value={empFirstName} onChange={onDupFieldChange(setEmpFirstName)} />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input label="Отдел" value={empDepartment} onChange={(e) => setEmpDepartment(e.target.value)} />
-              <Input label="Должность" value={empPosition} onChange={(e) => setEmpPosition(e.target.value)} />
-            </div>
-          </>
-        ) : showEmployeePicker ? (
-          <EmployeePicker
-            autoFocus
-            onSelect={(emp) => {
-              setEmployee(emp)
-              setShowEmployeePicker(false)
-            }}
-          />
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowEmployeePicker(true)}
-            style={{
-              width: '100%',
-              minHeight: 52,
-              background: 'var(--color-fill-input)',
-              border: 'none',
-              borderRadius: 10,
-              padding: '8px 14px',
-              textAlign: 'left',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>Существующий сотрудник</div>
-            <div style={{ fontSize: 15, color: employee ? 'var(--color-text-primary)' : 'var(--color-text-placeholder)' }}>{employee?.full_name || 'Не выбран'}</div>
-          </button>
-        )}
 
         {role === 'employee' ? (
           <Checkbox label="Признак «Наблюдатель» (только для роли «Сотрудник»)" checked={isObserver} onChange={setIsObserver} />
@@ -228,7 +203,7 @@ export function InviteModal({ onClose, onInvited }) {
         </Button>
         <Button
           loading={submitting}
-          disabled={!email.trim() || (createEmployee && (!empLastName.trim() || !empFirstName.trim()))}
+          disabled={!email.trim() || (employeeMode === 'create' && (!empLastName.trim() || !empFirstName.trim()))}
           onClick={submit}
         >
           {needsDuplicateConfirm ? 'Всё равно создать' : needsDomainConfirm ? 'Всё равно пригласить' : 'Отправить приглашение'}

@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
-import { nameInitials } from '../../shared/employeeName.js'
-import { Banner, Button, Checkbox, Icon, Modal, Select } from '../../shared/ui'
+import { Banner, Button, Checkbox, Modal, Select } from '../../shared/ui'
+import { EmployeeChoice } from './EmployeeChoice.jsx'
 import { MaintenanceTypeScope } from './MaintenanceTypeScope.jsx'
 import { activateUser, deactivateUser, getCompanySettings, updateUser } from './settingsApi.js'
 
@@ -23,7 +21,9 @@ export function EditUserModal({ user, onClose, onSaved }) {
   const [employee, setEmployee] = useState(
     user.employee ? { id: user.employee, full_name: user.employee_name, avatar: user.employee_avatar } : null,
   )
-  const [showEmployeePicker, setShowEmployeePicker] = useState(false)
+  // Режим сотрудника (как размещение при создании Оборудования): при
+  // редактировании доступны только 'none' и 'existing' (создание — при приглашении).
+  const [employeeMode, setEmployeeMode] = useState(user.employee ? 'existing' : 'none')
   const [isObserver, setIsObserver] = useState(user.is_observer)
   // B23: «Ответственный за ТО» (проведение) и «Может управлять регламентами ТО» —
   // независимые флаги учётчика; область типов — общая для проведения ТО.
@@ -66,7 +66,7 @@ export function EditUserModal({ user, onClose, onSaved }) {
         const maintainer = role === 'maintenance' || (role === 'accountant' && canMaintain)
         await updateUser(user.id, {
           role,
-          employee: employee?.id ?? null,
+          employee: employeeMode === 'existing' ? (employee?.id ?? null) : null,
           is_observer: role === 'employee' ? isObserver : false,
           can_maintain: role === 'accountant' ? canMaintain : false,
           can_manage_regulations: role === 'accountant' ? canManageRegulations : false,
@@ -104,98 +104,15 @@ export function EditUserModal({ user, onClose, onSaved }) {
           ))}
         </Select>
 
-        <div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 6 }}>Связанный сотрудник</div>
-          {showEmployeePicker ? (
-            <EmployeePicker
-              autoFocus
-              onSelect={(emp) => {
-                setEmployee(emp)
-                setShowEmployeePicker(false)
-              }}
-            />
-          ) : employee ? (
-            // Блок как «Закреплено за» у Оборудования: аватар + имя-ссылка на
-            // карточку Сотрудника, действия встроены рядом.
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
-              <span
-                style={{
-                  width: 38,
-                  height: 38,
-                  flex: 'none',
-                  borderRadius: '50%',
-                  background: 'var(--color-surface)',
-                  color: 'var(--color-text-muted)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  overflow: 'hidden',
-                }}
-              >
-                {employee.avatar ? (
-                  <img src={employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  nameInitials(employee.full_name)
-                )}
-              </span>
-              <Link to={`/employees/${employee.id}`} style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                {employee.full_name}
-              </Link>
-              <button
-                type="button"
-                onClick={() => setShowEmployeePicker(true)}
-                style={{ border: 'none', background: 'none', color: 'var(--color-text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 4 }}
-              >
-                Изменить
-              </button>
-              <button
-                type="button"
-                onClick={() => setEmployee(null)}
-                style={{ border: 'none', background: 'none', color: 'var(--color-error)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 4 }}
-              >
-                Отвязать
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowEmployeePicker(true)}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '12px 14px',
-                background: 'var(--color-fill-input)',
-                border: 'none',
-                borderRadius: 10,
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                fontSize: 14,
-                color: 'var(--color-text-placeholder)',
-              }}
-            >
-              <span
-                style={{
-                  width: 38,
-                  height: 38,
-                  flex: 'none',
-                  borderRadius: '50%',
-                  background: 'var(--color-surface)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Icon name="user" size={20} style={{ color: '#C7C9D4' }} />
-              </span>
-              Не связан — выбрать сотрудника
-            </button>
-          )}
-        </div>
+        <EmployeeChoice
+          mode={employeeMode}
+          onModeChange={(m) => {
+            setEmployeeMode(m)
+            setEmployee(null)
+          }}
+          employee={employee}
+          onSelectEmployee={setEmployee}
+        />
 
         {role === 'employee' ? (
           <Checkbox label="Признак «Наблюдатель» (только для роли «Сотрудник»)" checked={isObserver} onChange={setIsObserver} />
