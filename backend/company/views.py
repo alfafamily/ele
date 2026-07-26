@@ -575,6 +575,8 @@ class BackupSettingsView(APIView):
     permission_classes = [IsAdmin]
 
     def get(self, request):
+        from backup.destinations import secondary_s3_configured
+
         data = BackupSettingsSerializer(Company.load()).data
         # Время автокопирования сравнивается с localtime() сервера (TIME_ZONE),
         # поэтому отдаём текущее серверное время и зону — чтобы админ понимал,
@@ -582,6 +584,14 @@ class BackupSettingsView(APIView):
         now = timezone.localtime()
         data["server_time"] = now.isoformat()
         data["server_timezone"] = settings.TIME_ZONE
+        # B29: статус резервного S3 из .env — чтобы фронт знал, можно ли включать
+        # выгрузку и показывать «Проверить подключение». Секреты не отдаём.
+        data["backup_secondary_s3"] = {
+            "configured": secondary_s3_configured(),
+            "endpoint": settings.BACKUP_S3_ENDPOINT or None,
+            "bucket": settings.BACKUP_S3_BUCKET or None,
+            "region": settings.BACKUP_S3_REGION or None,
+        }
         return Response(data)
 
     def patch(self, request):

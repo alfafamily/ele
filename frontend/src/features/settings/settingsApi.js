@@ -36,8 +36,11 @@ export const updateNumberingSettings = (payload) => apiPatch('/api/company/numbe
 // Автонумератор: следующий учётный номер для kind = equipment|key|pass (B2).
 // Счётчик на сервере инкрементится сразу — номер сгорает при генерации.
 export const generateNextNumber = (kind) => apiPost('/api/company/next-number/', { kind })
-export const createBackup = () => apiPost('/api/backup/create/')
+// B29: ручная копия — опц. шифрование паролем и явный выбор выгрузки на
+// резервный S3 (по умолчанию берётся из настроек Компании).
+export const createBackup = (payload) => apiPost('/api/backup/create/', payload || {})
 export const backupDownloadUrl = (id) => `/api/backup/${id}/download/`
+export const testSecondaryS3 = () => apiPost('/api/backup/secondary-s3/test/')
 
 // B12 — возможные дубли сотрудников.
 export const getEmployeeDuplicates = () => apiGet('/api/employees/duplicates/')

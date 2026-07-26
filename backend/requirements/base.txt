@@ -8,3 +8,4 @@ Pillow==12.3.0
 requests==2.34.2
 boto3==1.43.46
 django-storages==1.14.6
+cryptography==44.0.0

@@ -178,9 +178,20 @@ class NumberingSettingsSerializer(serializers.ModelSerializer):
 class BackupSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
-        fields = ["auto_backup_enabled", "auto_backup_time", "auto_backup_retention"]
+        fields = [
+            "auto_backup_enabled",
+            "auto_backup_time",
+            "auto_backup_retention",
+            "backup_secondary_s3_enabled",
+            "backup_secondary_s3_retention",
+        ]
 
     def validate_auto_backup_retention(self, value):
+        if value < 1:
+            raise serializers.ValidationError("Глубина хранения должна быть не меньше 1.")
+        return value
+
+    def validate_backup_secondary_s3_retention(self, value):
         if value < 1:
             raise serializers.ValidationError("Глубина хранения должна быть не меньше 1.")
         return value

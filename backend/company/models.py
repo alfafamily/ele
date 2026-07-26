@@ -46,6 +46,12 @@ class Company(models.Model):
     auto_backup_enabled = models.BooleanField("Автокопирование включено", default=False)
     auto_backup_time = models.TimeField("Время автокопирования", default=time(3, 0))
     auto_backup_retention = models.PositiveSmallIntegerField("Хранить последних копий", default=30)
+    # B29: выгружать полные копии на ОТДЕЛЬНЫЙ резервный S3 (креды — в .env
+    # BACKUP_S3_*, здесь только флаг «включено» и своя глубина хранения; секреты
+    # в Company нельзя — она уходит в бэкап). Отдельный retention: своё хранилище
+    # и резервный S3 могут иметь разную глубину.
+    backup_secondary_s3_enabled = models.BooleanField("Выгружать копии на резервный S3", default=False)
+    backup_secondary_s3_retention = models.PositiveSmallIntegerField("Хранить копий на резервном S3", default=30)
 
     # Автонумератор учётных номеров (B2). У каждого списка объектов свой префикс
     # и свой сквозной счётчик. Порядковый номер только растёт и никогда не
