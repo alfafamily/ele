@@ -28,6 +28,12 @@
   box-shadow: 12px 0 30px -14px rgba(28, 28, 33, 0.25);
 }
 
+/* B31: закреплённый rail всегда развёрнут; тень не нужна — он не overlay,
+   контент сдвигается правее (см. .ele-shell--rail-pinned .ele-content). */
+.ele-rail--pinned {
+  width: var(--rail-width-expanded);
+}
+
 /* Свёрнутый rail (нет hover/focus): показываем только иконки/знак и центрируем
    их по центру полосы, чтобы знак ELE / лого компании стоял в одну колонку с
    аватаром и иконками разделов. Текстовые подписи убираем из потока (но
@@ -59,20 +65,26 @@
   gap: 10px;
 }
 
-/* Развёрнутый rail — иконки слева, подписи и полный логотип в потоке. */
+/* Развёрнутый rail — иконки слева, подписи и полный логотип в потоке.
+   Закреплённый rail (.ele-rail--pinned) ведёт себя так же, как развёрнутый. */
 .ele-rail:hover .ele-rail__brand,
 .ele-rail:focus-within .ele-rail__brand,
+.ele-rail--pinned .ele-rail__brand,
 .ele-rail:hover .ele-rail__user,
 .ele-rail:focus-within .ele-rail__user,
+.ele-rail--pinned .ele-rail__user,
 .ele-rail:hover .ele-rail__item,
-.ele-rail:focus-within .ele-rail__item {
+.ele-rail:focus-within .ele-rail__item,
+.ele-rail--pinned .ele-rail__item {
   justify-content: flex-start;
 }
 
 .ele-rail:hover .ele-rail__label,
 .ele-rail:focus-within .ele-rail__label,
+.ele-rail--pinned .ele-rail__label,
 .ele-rail:hover .ele-rail__user-text,
-.ele-rail:focus-within .ele-rail__user-text {
+.ele-rail:focus-within .ele-rail__user-text,
+.ele-rail--pinned .ele-rail__user-text {
   position: static;
   width: auto;
   height: auto;
@@ -82,12 +94,14 @@
 }
 
 .ele-rail:hover .ele-rail__brand-collapsed,
-.ele-rail:focus-within .ele-rail__brand-collapsed {
+.ele-rail:focus-within .ele-rail__brand-collapsed,
+.ele-rail--pinned .ele-rail__brand-collapsed {
   display: none;
 }
 
 .ele-rail:hover .ele-rail__brand-expanded,
-.ele-rail:focus-within .ele-rail__brand-expanded {
+.ele-rail:focus-within .ele-rail__brand-expanded,
+.ele-rail--pinned .ele-rail__brand-expanded {
   display: flex;
 }
 
@@ -130,6 +144,38 @@
   height: 22px;
   width: auto;
   flex: none;
+}
+
+/* B31: кнопка закрепления меню — в строке логотипов, прижата вправо. Скрыта,
+   пока rail свёрнут; появляется при развороте (hover/фокус) и в закреплённом. */
+.ele-rail__pin {
+  margin-left: auto;
+  flex: none;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-placeholder);
+  cursor: pointer;
+}
+
+.ele-rail__pin:hover {
+  background: var(--color-fill-active-tint);
+  color: var(--color-text-secondary);
+}
+
+.ele-rail:hover .ele-rail__pin,
+.ele-rail:focus-within .ele-rail__pin,
+.ele-rail--pinned .ele-rail__pin {
+  display: inline-flex;
+}
+
+.ele-rail--pinned .ele-rail__pin {
+  color: var(--color-text-primary);
 }
 
 .ele-rail__user {
@@ -231,6 +277,13 @@
   margin-left: var(--rail-width-collapsed);
   min-height: 100vh;
   padding-bottom: 0;
+  transition: margin-left 0.15s ease;
+}
+
+/* B31: при закреплённом меню контент отображается правее rail (сдвиг на всю
+   ширину развёрнутого меню), а не частично под ним. */
+.ele-shell--rail-pinned .ele-content {
+  margin-left: var(--rail-width-expanded);
 }
 
 /* Общая шапка раздела-списка: заголовок слева, действия справа. На мобильных
@@ -446,7 +499,9 @@
     display: none;
   }
 
-  .ele-content {
+  /* Закрепление — только десктоп; на мобильном rail скрыт, сдвига нет. */
+  .ele-content,
+  .ele-shell--rail-pinned .ele-content {
     margin-left: 0;
     /* Отступ снизу под фиксированный нижний таб-бар. */
     padding-bottom: 66px;

@@ -72,10 +72,14 @@ class LicenseTypeField(models.Model):
     # «Номер/ключ» у базового Типа «Программная» — нельзя удалить/переименовать/
     # сделать необязательным, маскируется в UI (Фаза 8).
     is_locked = models.BooleanField(default=False)
+    # B30: пользовательский порядок реквизитов в редакторе типа и на карточке/
+    # формах объекта. Залоченный ключевой реквизит зафиксирован сверху.
+    order = models.IntegerField("Порядок", default=0)
 
     class Meta:
         verbose_name = "Реквизит типа лицензии"
         verbose_name_plural = "Реквизиты типа лицензии"
+        ordering = ["order", "id"]
 
     def __str__(self):
         return f"{self.license_type.name} / {self.name}"
@@ -195,11 +199,14 @@ class LicenseCustomField(models.Model):
     license = models.ForeignKey(License, on_delete=models.CASCADE, related_name="custom_fields")
     name = models.CharField("Наименование", max_length=255)
     value = models.TextField("Значение", blank=True)
+    # B30: пользовательский порядок доп.полей объекта (задаётся в форме).
+    order = models.IntegerField("Порядок", default=0)
     history = HistoricalRecords()
 
     class Meta:
         verbose_name = "Дополнительное поле лицензии"
         verbose_name_plural = "Дополнительные поля лицензии"
+        ordering = ["order", "id"]
 
     def __str__(self):
         return f"{self.license} / {self.name}"

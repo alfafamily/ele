@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { usePermissions } from '../../app/usePermissions.js'
+import { useDragSort, reorder } from '../../shared/hooks/useDragSort.js'
 import { VALUE_TYPE_LABELS } from '../../shared/eav'
 import { ActionMenu, Badge, Banner, BackButton, Button, Card, ConfirmModal, Icon, SearchInput, Spinner } from '../../shared/ui'
 import { RegulationFormModal } from '../equipment/RegulationFormModal.jsx'
@@ -86,6 +87,25 @@ export function TypesEditorPage({ domain, title }) {
   const reloadRegulations = async (typeId) => {
     setRegulations(await api.listRegulations(typeId))
   }
+
+  // B30: перестановка реквизитов типа перетаскиванием. Залоченные («базовые»)
+  // реквизиты зафиксированы сверху и не перетаскиваются — from/to считаются в
+  // подсписке незалоченных. На бэк уходит полный порядок id (залоченные первыми).
+  const handleReorderFields = async (from, to) => {
+    const sel = types?.find((t) => t.id === selectedId)
+    if (!sel) return
+    const locked = sel.fields.filter((f) => f.is_locked)
+    const sortable = sel.fields.filter((f) => !f.is_locked)
+    const newFields = [...locked, ...reorder(sortable, from, to)]
+    // Оптимистично применяем порядок, затем сохраняем на бэк.
+    setTypes((prev) => prev.map((t) => (t.id === sel.id ? { ...t, fields: newFields } : t)))
+    try {
+      await api.reorderFields(sel.id, newFields.map((f) => f.id))
+    } catch {
+      load()
+    }
+  }
+  const fieldDrag = useDragSort(handleReorderFields)
 
   if (types === null) {
     return (
@@ -266,19 +286,12 @@ export function TypesEditorPage({ domain, title }) {
               Добавить реквизит
             </Button>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {selected.fields.map((f) => (
-                <div
-                  key={f.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    background: f.is_locked ? 'var(--color-fill-input)' : 'var(--color-surface)',
-                    boxShadow: f.is_locked ? 'none' : 'inset 0 0 0 1px var(--color-border)',
-                    borderRadius: 10,
-                    padding: '11px 13px',
-                  }}
-                >
+              {(() => {
+                // Залоченные «базовые» реквизиты (Модель / ключ) зафиксированы
+                // сверху без ручки; остальные — перетаскиваются за grip.
+                const lockedFields = selected.fields.filter((f) => f.is_locked)
+                const sortableFields = selected.fields.filter((f) => !f.is_locked)
+                const inner = (f) => (
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                       {f.name}
@@ -290,16 +303,55 @@ export function TypesEditorPage({ domain, title }) {
                       {f.is_locked ? ' · зафиксирован' : ''}
                     </div>
                   </div>
-                  {!f.is_locked ? (
-                    <ActionMenu
-                      items={[
-                        { label: 'Редактировать', onClick: () => setFieldModal(f) },
-                        { label: 'Удалить', danger: true, onClick: () => setDeleteFieldTarget(f) },
-                      ]}
-                    />
-                  ) : null}
-                </div>
-              ))}
+                )
+                return (
+                  <>
+                    {lockedFields.map((f) => (
+                      <div
+                        key={f.id}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          background: 'var(--color-fill-input)', borderRadius: 10, padding: '11px 13px',
+                        }}
+                      >
+                        {inner(f)}
+                      </div>
+                    ))}
+                    {sortableFields.map((f, i) => (
+                      <div
+                        key={f.id}
+                        {...fieldDrag.rowProps(i)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)',
+                          borderRadius: 10, padding: '11px 13px',
+                          opacity: fieldDrag.dragIndex === i ? 0.4 : 1,
+                          outline:
+                            fieldDrag.overIndex === i && fieldDrag.dragIndex !== null && fieldDrag.dragIndex !== i
+                              ? '2px solid var(--color-text-placeholder)'
+                              : 'none',
+                          outlineOffset: '-1px',
+                        }}
+                      >
+                        <span
+                          data-drag-handle
+                          aria-label="Перетащить для изменения порядка"
+                          style={{ flex: 'none', display: 'flex', color: 'var(--color-text-placeholder)', cursor: 'grab', touchAction: 'none' }}
+                        >
+                          <Icon name="grip-vertical" size={18} strokeWidth={2} />
+                        </span>
+                        {inner(f)}
+                        <ActionMenu
+                          items={[
+                            { label: 'Редактировать', onClick: () => setFieldModal(f) },
+                            { label: 'Удалить', danger: true, onClick: () => setDeleteFieldTarget(f) },
+                          ]}
+                        />
+                      </div>
+                    ))}
+                  </>
+                )
+              })()}
             </div>
 
             {/* B13+: регламенты ТО — только для оборудования с включённым ТО и

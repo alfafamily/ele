@@ -35,11 +35,14 @@ class ToolCustomField(models.Model):
     tool = models.ForeignKey(Tool, on_delete=models.CASCADE, related_name="custom_fields")
     name = models.CharField("Наименование", max_length=255)
     value = models.TextField("Значение", blank=True)
+    # B30: пользовательский порядок доп.полей объекта (задаётся в форме).
+    order = models.IntegerField("Порядок", default=0)
     history = HistoricalRecords()
 
     class Meta:
         verbose_name = "Дополнительное поле инструмента"
         verbose_name_plural = "Дополнительные поля инструмента"
+        ordering = ["order", "id"]
 
     def __str__(self):
         return f"{self.tool} / {self.name}"

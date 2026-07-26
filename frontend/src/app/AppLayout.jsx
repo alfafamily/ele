@@ -30,8 +30,30 @@ export function AppLayout() {
   const sections = navSectionsForRole(user.role, user.is_observer)
   const employeeName = user.employee ? user.employee.full_name : null
   const [drawerOpen, setDrawerOpen] = useState(false)
+  // B31: закрепление бокового меню на десктопе. Закреплённый rail не сворачивается
+  // при уходе курсора, а контент страниц сдвигается правее (не накрывается меню).
+  // Состояние помним между сессиями (localStorage).
+  const [railPinned, setRailPinned] = useState(() => {
+    try {
+      return localStorage.getItem('ele-rail-pinned') === '1'
+    } catch {
+      return false
+    }
+  })
   const location = useLocation()
   const refreshDuplicates = useRefreshDuplicates()
+
+  const toggleRailPinned = () => {
+    setRailPinned((v) => {
+      const next = !v
+      try {
+        localStorage.setItem('ele-rail-pinned', next ? '1' : '0')
+      } catch {
+        /* localStorage недоступен — переключаем только в памяти */
+      }
+      return next
+    })
+  }
 
   // Закрываем выезжающее меню при переходе на другую страницу.
   useEffect(() => {
@@ -78,8 +100,8 @@ export function AppLayout() {
   const drawerSections = topSections
 
   return (
-    <div className="ele-shell">
-      <aside className="ele-rail">
+    <div className={`ele-shell${railPinned ? ' ele-shell--rail-pinned' : ''}`}>
+      <aside className={`ele-rail${railPinned ? ' ele-rail--pinned' : ''}`}>
         <div className="ele-rail__brand">
           {/* Свёрнутый rail: лого компании, иначе краткий знак ELE (одна иконка) */}
           <img
@@ -100,6 +122,17 @@ export function AppLayout() {
               <img className="ele-rail__brand-full" src="/brand/ele-full.svg" alt="ELE" />
             )}
           </div>
+          {/* B31: переключатель закрепления меню — виден в развёрнутом rail
+              (по hover/фокусу) и всегда в закреплённом; выровнен по правому краю. */}
+          <button
+            type="button"
+            className="ele-rail__pin"
+            onClick={toggleRailPinned}
+            aria-label={railPinned ? 'Открепить меню' : 'Закрепить меню'}
+            aria-pressed={railPinned}
+          >
+            <Icon name={railPinned ? 'pin-off' : 'pin'} size={18} strokeWidth={2} />
+          </button>
         </div>
 
         <NavLink to="/profile" className="ele-rail__user" onClick={(e) => e.currentTarget.blur()}>

@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import ProtectedError, Q
+from django.db.models import Max, ProtectedError, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import filters, generics, serializers, viewsets
@@ -76,7 +76,34 @@ class EquipmentTypeFieldListView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         equipment_type = get_object_or_404(EquipmentType, pk=self.kwargs["type_pk"])
-        serializer.save(equipment_type=equipment_type)
+        # B30: новый реквизит добавляется в конец текущего порядка.
+        max_order = equipment_type.fields.aggregate(m=Max("order"))["m"]
+        serializer.save(equipment_type=equipment_type, order=(max_order or 0) + 1)
+
+
+class EquipmentTypeFieldReorderView(APIView):
+    """B30: сохранить пользовательский порядок реквизитов Типа. Принимает
+    {"order": [id, id, ...]} — полный список id реквизитов в желаемом порядке
+    (залоченные идут первыми — фронт их не перетаскивает). order = индекс."""
+
+    permission_classes = [IsAdminOrAccountant]
+
+    def post(self, request, type_pk):
+        equipment_type = get_object_or_404(EquipmentType, pk=type_pk)
+        ids = request.data.get("order", [])
+        fields = {f.id: f for f in equipment_type.fields.all()}
+        if not isinstance(ids, list) or set(ids) != set(fields.keys()):
+            return Response(
+                {"detail": "Список реквизитов не совпадает с реквизитами Типа."}, status=400
+            )
+        with transaction.atomic():
+            for i, fid in enumerate(ids):
+                field = fields[fid]
+                if field.order != i:
+                    field.order = i
+                    field.save(update_fields=["order"])
+        ordered = equipment_type.fields.prefetch_related("options").all()
+        return Response(EquipmentTypeFieldSerializer(ordered, many=True).data)
 
 
 class EquipmentTypeFieldDetailView(generics.RetrieveUpdateDestroyAPIView):

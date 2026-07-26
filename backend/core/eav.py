@@ -69,20 +69,28 @@ def upsert_custom_fields(instance, model, fk_name: str, items: list[dict]) -> No
     изменений» фиксировала правки полей, а не delete-all + recreate."""
     existing = {cf.id: cf for cf in instance.custom_fields.all()}
     seen = set()
-    for item in items:
+    # B30: порядок доп.полей = порядок элементов в присланном списке (пользователь
+    # переставляет их перетаскиванием в форме). Пишем order по индексу.
+    for order, item in enumerate(items):
         cf_id = item.get("id")
         name = item.get("name", "") or ""
         value = item.get("value", "") or ""
         if cf_id and cf_id in existing:
-            # Наименование поля неизменяемо после создания — обновляем только
-            # значение (см. UI: у сохранённого поля имя заблокировано).
+            # Наименование поля неизменяемо после создания — обновляем значение
+            # (см. UI: у сохранённого поля имя заблокировано) и порядок.
             cf = existing[cf_id]
+            changed = []
             if cf.value != value:
                 cf.value = value
-                cf.save(update_fields=["value"])
+                changed.append("value")
+            if cf.order != order:
+                cf.order = order
+                changed.append("order")
+            if changed:
+                cf.save(update_fields=changed)
             seen.add(cf_id)
         else:
-            model.objects.create(**{fk_name: instance, "name": name, "value": value})
+            model.objects.create(**{fk_name: instance, "name": name, "value": value, "order": order})
     for cf_id, cf in existing.items():
         if cf_id not in seen:
             cf.delete()

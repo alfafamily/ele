@@ -14,6 +14,11 @@ urlpatterns = router.urls + [
         name="license-type-field-list",
     ),
     path(
+        "license-types/<int:type_pk>/fields/reorder/",
+        views.LicenseTypeFieldReorderView.as_view(),
+        name="license-type-field-reorder",
+    ),
+    path(
         "license-types/<int:type_pk>/fields/<int:pk>/",
         views.LicenseTypeFieldDetailView.as_view(),
         name="license-type-field-detail",

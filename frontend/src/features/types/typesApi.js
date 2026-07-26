@@ -15,6 +15,9 @@ export function makeTypesApi(domain) {
     createField: (typeId, payload) => apiPost(`${base}${typeId}/fields/`, payload),
     updateField: (typeId, fieldId, payload) => apiPatch(`${base}${typeId}/fields/${fieldId}/`, payload),
     deleteField: (typeId, fieldId) => apiDelete(`${base}${typeId}/fields/${fieldId}/`),
+    // B30: сохранить порядок реквизитов типа. orderedIds — полный список id
+    // реквизитов в желаемом порядке (залоченные идут первыми).
+    reorderFields: (typeId, orderedIds) => apiPost(`${base}${typeId}/fields/reorder/`, { order: orderedIds }),
     getFieldImpact: (typeId, fieldId) => apiGet(`${base}${typeId}/fields/${fieldId}/impact/`),
     // B13+: регламенты ТО типа (только оборудование).
     listRegulations: (typeId) => apiGet(`${base}${typeId}/regulations/`),

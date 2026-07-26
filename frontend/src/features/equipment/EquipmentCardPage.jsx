@@ -134,8 +134,10 @@ export function EquipmentCardPage() {
 
           {(() => {
             // Файловые реквизиты выносим в отдельный блок «Файлы» под параметрами.
-            const paramValues = equipment.field_values.filter((fv) => fv.value_type !== 'file')
-            const fileValues = equipment.field_values.filter((fv) => fv.value_type === 'file')
+            // B30: реквизиты показываем в порядке, заданном у Типа (field_order).
+            const byOrder = (a, b) => a.field_order - b.field_order
+            const paramValues = equipment.field_values.filter((fv) => fv.value_type !== 'file').sort(byOrder)
+            const fileValues = equipment.field_values.filter((fv) => fv.value_type === 'file').sort(byOrder)
             return (
               <>
                 <Card>

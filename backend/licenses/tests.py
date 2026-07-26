@@ -592,3 +592,43 @@ class LicenseFilterTests(APITestCase):
         resp = self.client.get("/api/licenses/field-values/", {"field": key_field.id})
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(list(resp.data), [])
+
+
+class LicenseFieldOrderTests(APITestCase):
+    """B30: ручной порядок реквизитов типа лицензии."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/license-types/", {"name": "Утилита", "kind": "software"}, format="json")
+        self.type_id = resp.data["id"]
+        self.f1 = self.client.post(
+            f"/api/license-types/{self.type_id}/fields/",
+            {"name": "Редакция", "value_type": "text", "is_required": False}, format="json",
+        ).data
+        self.f2 = self.client.post(
+            f"/api/license-types/{self.type_id}/fields/",
+            {"name": "Срок", "value_type": "text", "is_required": False}, format="json",
+        ).data
+
+    def _fields(self):
+        return self.client.get(f"/api/license-types/{self.type_id}/").data["fields"]
+
+    def test_locked_key_stays_first_and_reorder_works(self):
+        fields = self._fields()
+        # Ключевой «Номер/ключ» (locked) первым, затем доп.реквизиты по созданию.
+        self.assertTrue(fields[0]["is_locked"])
+        self.assertEqual([f["name"] for f in fields[1:]], ["Редакция", "Срок"])
+        key_id = fields[0]["id"]
+        resp = self.client.post(
+            f"/api/license-types/{self.type_id}/fields/reorder/",
+            {"order": [key_id, self.f2["id"], self.f1["id"]]}, format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual([f["name"] for f in self._fields()[1:]], ["Срок", "Редакция"])
+
+    def test_reorder_rejects_mismatched_ids(self):
+        resp = self.client.post(
+            f"/api/license-types/{self.type_id}/fields/reorder/", {"order": [self.f1["id"]]}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400)

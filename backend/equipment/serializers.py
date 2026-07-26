@@ -36,8 +36,10 @@ class EquipmentTypeFieldSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EquipmentTypeField
-        fields = ["id", "equipment_type", "name", "value_type", "is_required", "allow_multiple", "is_locked", "options"]
-        read_only_fields = ["equipment_type", "is_locked"]
+        fields = ["id", "equipment_type", "name", "value_type", "is_required", "allow_multiple", "is_locked", "order", "options"]
+        # order задаётся при создании (в конец) и меняется только эндпоинтом
+        # reorder — здесь только для чтения.
+        read_only_fields = ["equipment_type", "is_locked", "order"]
 
     def validate(self, attrs):
         # «Модель» — нельзя переименовать/сделать обязательным.
@@ -100,6 +102,8 @@ class EquipmentFieldValueOutSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="field.name", read_only=True)
     value_type = serializers.CharField(source="field.value_type", read_only=True)
     allow_multiple = serializers.BooleanField(source="field.allow_multiple", read_only=True)
+    # B30: порядок реквизита у Типа — карточка сортирует значения по нему.
+    field_order = serializers.IntegerField(source="field.order", read_only=True)
     value = serializers.SerializerMethodField()
     value_file = StoredFileSerializer(read_only=True)
     # Несколько файлов (allow_multiple) — каждый с id для точечного удаления.
@@ -107,7 +111,7 @@ class EquipmentFieldValueOutSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EquipmentFieldValue
-        fields = ["field", "name", "value_type", "allow_multiple", "value", "value_file", "value_files"]
+        fields = ["field", "name", "value_type", "allow_multiple", "field_order", "value", "value_file", "value_files"]
 
     def get_value(self, obj):
         vt = obj.field.value_type

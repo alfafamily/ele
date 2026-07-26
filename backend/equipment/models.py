@@ -66,10 +66,14 @@ class EquipmentTypeField(models.Model):
     allow_multiple = models.BooleanField("Несколько файлов", default=False)
     # «Модель» — нельзя удалить/переименовать/сделать обязательным.
     is_locked = models.BooleanField(default=False)
+    # B30: пользовательский порядок реквизитов в редакторе типа и на карточке/
+    # формах объекта. Залоченные реквизиты (Модель) зафиксированы сверху.
+    order = models.IntegerField("Порядок", default=0)
 
     class Meta:
         verbose_name = "Реквизит типа оборудования"
         verbose_name_plural = "Реквизиты типа оборудования"
+        ordering = ["order", "id"]
 
     def __str__(self):
         return f"{self.equipment_type.name} / {self.name}"
@@ -188,11 +192,14 @@ class EquipmentCustomField(models.Model):
     equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name="custom_fields")
     name = models.CharField("Наименование", max_length=255)
     value = models.TextField("Значение", blank=True)
+    # B30: пользовательский порядок доп.полей объекта (задаётся в форме).
+    order = models.IntegerField("Порядок", default=0)
     history = HistoricalRecords()
 
     class Meta:
         verbose_name = "Дополнительное поле оборудования"
         verbose_name_plural = "Дополнительные поля оборудования"
+        ordering = ["order", "id"]
 
     def __str__(self):
         return f"{self.equipment} / {self.name}"

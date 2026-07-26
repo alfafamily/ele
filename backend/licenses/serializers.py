@@ -44,8 +44,10 @@ class LicenseTypeFieldSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = LicenseTypeField
-        fields = ["id", "license_type", "name", "value_type", "is_required", "allow_multiple", "is_locked", "options"]
-        read_only_fields = ["license_type", "is_locked"]
+        fields = ["id", "license_type", "name", "value_type", "is_required", "allow_multiple", "is_locked", "order", "options"]
+        # order задаётся при создании (в конец) и меняется только эндпоинтом
+        # reorder — здесь только для чтения.
+        read_only_fields = ["license_type", "is_locked", "order"]
 
     def validate(self, attrs):
         # «Номер/ключ» у «Программной» — нельзя переименовать/сделать необязательным.
@@ -118,13 +120,15 @@ class LicenseFieldValueOutSerializer(serializers.ModelSerializer):
     allow_multiple = serializers.BooleanField(source="field.allow_multiple", read_only=True)
     # Секретный реквизит-ключ (маскируется на карточке) — по зафиксированности.
     is_locked = serializers.BooleanField(source="field.is_locked", read_only=True)
+    # B30: порядок реквизита у Типа — карточка сортирует значения по нему.
+    field_order = serializers.IntegerField(source="field.order", read_only=True)
     value = serializers.SerializerMethodField()
     value_file = StoredFileSerializer(read_only=True)
     value_files = LicenseFieldFileSerializer(source="files", many=True, read_only=True)
 
     class Meta:
         model = LicenseFieldValue
-        fields = ["field", "name", "value_type", "allow_multiple", "is_locked", "value", "value_file", "value_files"]
+        fields = ["field", "name", "value_type", "allow_multiple", "is_locked", "field_order", "value", "value_file", "value_files"]
 
     def get_value(self, obj):
         vt = obj.field.value_type
