@@ -182,8 +182,7 @@ class BackupSettingsSerializer(serializers.ModelSerializer):
             "auto_backup_enabled",
             "auto_backup_time",
             "auto_backup_retention",
-            "backup_secondary_s3_enabled",
-            "backup_secondary_s3_retention",
+            "auto_backup_destination",
         ]
 
     def validate_auto_backup_retention(self, value):
@@ -191,7 +190,13 @@ class BackupSettingsSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Глубина хранения должна быть не меньше 1.")
         return value
 
-    def validate_backup_secondary_s3_retention(self, value):
-        if value < 1:
-            raise serializers.ValidationError("Глубина хранения должна быть не меньше 1.")
+    def validate_auto_backup_destination(self, value):
+        # Выбор резервного S3 возможен, только если он настроен в .env.
+        if value == Company.BackupDestination.SECONDARY_S3:
+            from backup.destinations import secondary_s3_configured
+
+            if not secondary_s3_configured():
+                raise serializers.ValidationError(
+                    "Параметры резервного S3 не заданы в .env (BACKUP_S3_*) — выбор S3 для бэкапов недоступен."
+                )
         return value

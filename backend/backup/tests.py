@@ -310,10 +310,22 @@ class SecondaryS3Tests(APITestCase):
         resp = self.client.post("/api/backup/secondary-s3/test/")
         self.assertEqual(resp.status_code, 400)
 
-    def test_partial_success_secondary_fails_own_ok(self):
-        company = Company.load()
-        company.backup_secondary_s3_enabled = True
-        company.save()
+    @override_settings(BACKUP_S3_ENDPOINT="", BACKUP_S3_BUCKET="")
+    def test_manual_create_secondary_when_not_configured_400(self):
+        resp = self.client.post("/api/backup/create/", {"destination": "secondary_s3"}, format="json")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("BACKUP_S3", resp.data["detail"])
+
+    @override_settings(BACKUP_S3_ENDPOINT="", BACKUP_S3_BUCKET="")
+    def test_auto_destination_secondary_when_not_configured_rejected(self):
+        resp = self.client.patch(
+            "/api/company/backup-settings/", {"auto_backup_destination": "secondary_s3"}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_secondary_destination_upload_fails_no_own_copy(self):
+        # Единственное назначение — резервный S3; он падает → file=None, статус
+        # secondary_s3 ok=False, скачивание 409.
         with override_settings(
             BACKUP_S3_ENDPOINT="https://s3.example.com",
             BACKUP_S3_BUCKET="b",
@@ -321,20 +333,22 @@ class SecondaryS3Tests(APITestCase):
             BACKUP_S3_ACCESS_KEY="k",
             BACKUP_S3_SECRET_KEY="s",
         ):
-            with mock.patch("backup.destinations.upload_secondary_s3") as up:
+            with mock.patch("backup.service.upload_secondary_s3") as up:
                 from backup.destinations import UploadOutcome
 
                 up.return_value = UploadOutcome(ok=False, error="boom")
-                record = create_backup(BackupRecord.BackupType.MANUAL)
+                record = create_backup(BackupRecord.BackupType.MANUAL, destination="secondary_s3")
 
-        statuses = {d.destination: d for d in record.destinations.all()}
-        self.assertTrue(statuses["own"].ok)
-        self.assertFalse(statuses["secondary_s3"].ok)
-        self.assertEqual(statuses["secondary_s3"].error, "boom")
+        status = record.destinations.get()
+        self.assertEqual(status.destination, "secondary_s3")
+        self.assertFalse(status.ok)
+        self.assertEqual(status.error, "boom")
+        self.assertIsNone(record.file)
+        resp = self.client.get(f"/api/backup/{record.id}/download/")
+        self.assertEqual(resp.status_code, 409)
 
     def test_download_conflict_when_own_missing(self):
-        # Own упал → file=None → download 409.
-        with mock.patch("backup.destinations.upload_own") as up:
+        with mock.patch("backup.service.upload_own") as up:
             from backup.destinations import UploadOutcome
 
             up.return_value = UploadOutcome(ok=False, error="disk full")

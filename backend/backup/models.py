@@ -43,8 +43,8 @@ class BackupDestinationStatus(models.Model):
     назначение могло удаться, другое — нет)."""
 
     class Destination(models.TextChoices):
-        OWN = "own", "Своё хранилище"
-        SECONDARY_S3 = "secondary_s3", "Резервный S3"
+        OWN = "own", "Хранилище приложения"
+        SECONDARY_S3 = "secondary_s3", "Отдельный S3 для бэкапов"
 
     backup = models.ForeignKey(BackupRecord, on_delete=models.CASCADE, related_name="destinations")
     destination = models.CharField(max_length=16, choices=Destination.choices)
