@@ -18,9 +18,9 @@ function formatDate(iso) {
   return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 const TYPE_LABEL = { manual: 'Вручную', auto: 'Авто' }
-const DEST_LABEL = { own: 'Своё хранилище', secondary_s3: 'Резервный S3' }
+const DEST_LABEL = { own: 'Хранилище приложения', secondary_s3: 'Отдельный S3 для бэкапов' }
+const S3_NOT_CONFIGURED = 'Параметры резервного S3 не заданы в .env (BACKUP_S3_*) — выбор S3 для бэкапов недоступен.'
 
-// Индикатор результата проверки рядом с кнопкой (как в SystemTab).
 function CheckResult({ result }) {
   if (!result) return null
   return (
@@ -31,7 +31,6 @@ function CheckResult({ result }) {
   )
 }
 
-// Плашка статуса выгрузки в одно назначение: галочка/крестик + название.
 function DestinationBadge({ dest }) {
   const label = DEST_LABEL[dest.destination] || dest.destination
   return (
@@ -42,6 +41,41 @@ function DestinationBadge({ dest }) {
   )
 }
 
+// Радиовыбор назначения копии. При попытке выбрать S3 без параметров в .env
+// вызывает onBlockedS3() и не меняет значение.
+function DestinationRadio({ name, value, onChange, s3Configured, onBlockedS3, disabled }) {
+  const options = [
+    { value: 'own', label: 'Хранилище приложения' },
+    { value: 'secondary_s3', label: 'Отдельный S3 для backup' },
+  ]
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {options.map((opt) => {
+        const blocked = opt.value === 'secondary_s3' && !s3Configured
+        return (
+          <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: disabled ? 'default' : 'pointer', fontSize: 14, opacity: blocked ? 0.55 : 1 }}>
+            <input
+              type="radio"
+              name={name}
+              checked={value === opt.value}
+              disabled={disabled}
+              onChange={() => {
+                if (blocked) {
+                  onBlockedS3?.()
+                  return
+                }
+                onChange(opt.value)
+              }}
+              style={{ flex: 'none' }}
+            />
+            {opt.label}
+          </label>
+        )
+      })}
+    </div>
+  )
+}
+
 export function BackupTab() {
   const isMobile = useMediaQuery('(max-width: 768px)')
   const backupPad = isMobile ? '12px 12px' : '12px 18px'
@@ -49,28 +83,25 @@ export function BackupTab() {
   const [creating, setCreating] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
   const [error, setError] = useState(null)
-  // Ручной экспорт: пароль шифрования + выгрузка на резервный S3.
+  // Ручной экспорт: назначение + пароль шифрования.
+  const [manualDest, setManualDest] = useState('own')
   const [passphrase, setPassphrase] = useState('')
-  const [toSecondary, setToSecondary] = useState(false)
   // Проверка резервного S3.
   const [s3Testing, setS3Testing] = useState(false)
   const [s3Result, setS3Result] = useState(null)
   const { items, loading, refetch } = useCursorList('/api/backup/history/', {})
 
   useEffect(() => {
-    getBackupSettings().then((s) => {
-      setSettings(s)
-      setToSecondary(!!s.backup_secondary_s3_enabled && !!s.backup_secondary_s3?.configured)
-    })
+    getBackupSettings().then(setSettings)
   }, [])
 
-  const secondaryConfigured = !!settings?.backup_secondary_s3?.configured
+  const s3Configured = !!settings?.backup_secondary_s3?.configured
 
   const doCreateBackup = async () => {
     setCreating(true)
     setError(null)
     try {
-      await createBackup({ passphrase: passphrase || '', to_secondary: secondaryConfigured ? toSecondary : false })
+      await createBackup({ passphrase: passphrase || '', destination: manualDest })
       setPassphrase('')
       refetch()
     } catch (err) {
@@ -103,6 +134,25 @@ export function BackupTab() {
     }
   }
 
+  // Компактная строка про резервный S3 (подключён / нет) + проверка.
+  const secondaryInfo = settings ? (
+    s3Configured ? (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 4 }}>
+        <span style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
+          Резервный S3: <b style={{ color: 'var(--color-text-muted)' }}>{settings.backup_secondary_s3.bucket}</b>
+        </span>
+        <Button type="button" variant="secondary" loading={s3Testing} onClick={runS3Test}>
+          Проверить подключение
+        </Button>
+        <CheckResult result={s3Result} />
+      </div>
+    ) : (
+      <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 4 }}>
+        Отдельный S3 для бэкапов не настроен в .env (BACKUP_S3_*).
+      </div>
+    )
+  ) : null
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {error ? <Banner variant="error">{error}</Banner> : null}
@@ -119,85 +169,38 @@ export function BackupTab() {
       </Card>
 
       {/* Ручной экспорт */}
-      <Card>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>Создать резервную копию сейчас</div>
-            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Разовый полный экспорт: база данных + файлы</div>
-          </div>
-          <Button loading={creating} onClick={doCreateBackup} style={{ flex: 'none' }}>
-            Экспорт
-          </Button>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 16 }}>
-          <Input
-            label="Пароль для шифрования (необязательно)"
-            type="password"
-            value={passphrase}
-            onChange={(e) => setPassphrase(e.target.value)}
-            placeholder="Без пароля — архив не шифруется"
-            autoComplete="new-password"
-          />
-        </div>
-        {secondaryConfigured ? (
-          <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, cursor: 'pointer', fontSize: 14 }}>
-            <input type="checkbox" checked={toSecondary} onChange={(e) => setToSecondary(e.target.checked)} style={{ flex: 'none' }} />
-            Также выгрузить копию на резервный S3
-          </label>
-        ) : null}
-      </Card>
-
-      {/* Резервный (сторонний) S3 */}
       {settings ? (
         <Card>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Резервный S3 (аварийная копия)</div>
-          <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 4, marginBottom: 14, lineHeight: 1.5 }}>
-            Отдельное S3-хранилище для полных копий — независимое от хранилища файлов. Параметры задаются в .env сервера
-            (BACKUP_S3_*). Из такой копии можно развернуть систему заново, даже если основной сервер потерян.
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>Создать резервную копию сейчас</div>
+              <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Разовый полный экспорт: база данных + файлы</div>
+            </div>
+            <Button loading={creating} onClick={doCreateBackup} style={{ flex: 'none' }}>
+              Экспорт
+            </Button>
           </div>
-          {secondaryConfigured ? (
-            <>
-              <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>
-                Подключено: <b>{settings.backup_secondary_s3.bucket}</b>
-                {settings.backup_secondary_s3.endpoint ? ` (${settings.backup_secondary_s3.endpoint})` : ''}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-                <Button type="button" variant="secondary" loading={s3Testing} onClick={runS3Test}>
-                  Проверить подключение
-                </Button>
-                <CheckResult result={s3Result} />
-              </div>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: savingSettings ? 'default' : 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={!!settings.backup_secondary_s3_enabled}
-                  disabled={savingSettings}
-                  onChange={(e) => patchSettings({ backup_secondary_s3_enabled: e.target.checked })}
-                  style={{ marginTop: 2, flex: 'none' }}
-                />
-                <span style={{ minWidth: 0 }}>
-                  <span style={{ fontSize: 14, fontWeight: 500 }}>Выгружать копии на резервный S3</span>
-                  <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
-                    Автоматические копии (по расписанию) будут дополнительно выгружаться на резервный S3.
-                  </span>
-                </span>
-              </label>
-              {settings.backup_secondary_s3_enabled ? (
-                <div style={{ maxWidth: 260, marginTop: 14 }}>
-                  <Input
-                    label="Хранить копий на резервном S3"
-                    type="number"
-                    min={1}
-                    value={settings.backup_secondary_s3_retention}
-                    onChange={(e) => setSettings({ ...settings, backup_secondary_s3_retention: Number(e.target.value) })}
-                    onBlur={() => patchSettings({ backup_secondary_s3_retention: settings.backup_secondary_s3_retention })}
-                  />
-                </div>
-              ) : null}
-            </>
-          ) : (
-            <Banner variant="info">Параметры резервного S3 не заданы в .env (BACKUP_S3_*) — выгрузка недоступна.</Banner>
-          )}
+
+          <div style={{ marginTop: 16, fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Куда сохранить</div>
+          <DestinationRadio
+            name="manual-dest"
+            value={manualDest}
+            onChange={(v) => { setManualDest(v); setError(null) }}
+            s3Configured={s3Configured}
+            onBlockedS3={() => setError(S3_NOT_CONFIGURED)}
+          />
+          {secondaryInfo}
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 16 }}>
+            <Input
+              label="Пароль для шифрования (необязательно)"
+              type="password"
+              value={passphrase}
+              onChange={(e) => setPassphrase(e.target.value)}
+              placeholder="Без пароля — архив не шифруется"
+              autoComplete="new-password"
+            />
+          </div>
         </Card>
       ) : null}
 
@@ -207,7 +210,7 @@ export function BackupTab() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 600 }}>Автоматическое создание резервных копий</div>
-              <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Ежедневно, с настройкой глубины хранения — последние N копий</div>
+              <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Ежедневно, полный архив (база данных + файлы), с настройкой глубины хранения</div>
             </div>
             <Checkbox
               checked={settings.auto_backup_enabled}
@@ -220,6 +223,21 @@ export function BackupTab() {
           </div>
           {settings.auto_backup_enabled ? (
             <>
+              <div style={{ marginTop: 16, fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Куда сохранять</div>
+              <DestinationRadio
+                name="auto-dest"
+                value={settings.auto_backup_destination || 'own'}
+                onChange={(v) => {
+                  setSettings({ ...settings, auto_backup_destination: v })
+                  patchSettings({ auto_backup_destination: v })
+                  setError(null)
+                }}
+                s3Configured={s3Configured}
+                onBlockedS3={() => setError(S3_NOT_CONFIGURED)}
+                disabled={savingSettings}
+              />
+              {secondaryInfo}
+
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 16 }}>
                 <Input
                   label="Время автокопирования"
@@ -246,6 +264,10 @@ export function BackupTab() {
                   ({settings.server_timezone}).
                 </div>
               ) : null}
+              <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 10, lineHeight: 1.5 }}>
+                Шифрование автоматических копий задаётся переменной <b style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>BACKUP_PASSPHRASE</b> в .env сервера
+                (при пустом значении авто-копии не шифруются) — пароль из формы выше применяется только к ручному экспорту.
+              </div>
             </>
           ) : null}
         </Card>
@@ -283,7 +305,7 @@ export function BackupTab() {
                       <Icon name="download" size={18} style={{ color: '#757784' }} />
                     </a>
                   ) : (
-                    <span title="Своей копии нет — доступна только на резервном S3" style={{ color: 'var(--color-text-placeholder)' }}>
+                    <span title="Копия хранится только на резервном S3 — восстановление командой на сервере" style={{ color: 'var(--color-text-placeholder)' }}>
                       <Icon name="cloud" size={18} />
                     </span>
                   )}

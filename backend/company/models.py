@@ -46,12 +46,18 @@ class Company(models.Model):
     auto_backup_enabled = models.BooleanField("Автокопирование включено", default=False)
     auto_backup_time = models.TimeField("Время автокопирования", default=time(3, 0))
     auto_backup_retention = models.PositiveSmallIntegerField("Хранить последних копий", default=30)
-    # B29: выгружать полные копии на ОТДЕЛЬНЫЙ резервный S3 (креды — в .env
-    # BACKUP_S3_*, здесь только флаг «включено» и своя глубина хранения; секреты
-    # в Company нельзя — она уходит в бэкап). Отдельный retention: своё хранилище
-    # и резервный S3 могут иметь разную глубину.
-    backup_secondary_s3_enabled = models.BooleanField("Выгружать копии на резервный S3", default=False)
-    backup_secondary_s3_retention = models.PositiveSmallIntegerField("Хранить копий на резервном S3", default=30)
+
+    # B29: единое назначение копий — либо хранилище инстанса, либо отдельный
+    # резервный S3 (креды в .env BACKUP_S3_*; секреты в Company нельзя — она
+    # уходит в бэкап). Здесь хранится только выбор для авто-копий; для ручных
+    # назначение приходит в запросе.
+    class BackupDestination(models.TextChoices):
+        OWN = "own", "Хранилище приложения"
+        SECONDARY_S3 = "secondary_s3", "Отдельный S3 для бэкапов"
+
+    auto_backup_destination = models.CharField(
+        "Назначение авто-копий", max_length=16, choices=BackupDestination.choices, default=BackupDestination.OWN
+    )
 
     # Автонумератор учётных номеров (B2). У каждого списка объектов свой префикс
     # и свой сквозной счётчик. Порядковый номер только растёт и никогда не
