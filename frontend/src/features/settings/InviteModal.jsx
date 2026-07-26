@@ -161,22 +161,6 @@ export function InviteModal({ onClose, onInvited }) {
           ))}
         </Select>
 
-        <EmployeeChoice
-          allowCreate
-          mode={employeeMode}
-          onModeChange={onEmployeeModeChange}
-          employee={employee}
-          onSelectEmployee={setEmployee}
-          lastName={empLastName}
-          firstName={empFirstName}
-          department={empDepartment}
-          position={empPosition}
-          onLastName={onDupFieldChange(setEmpLastName)}
-          onFirstName={onDupFieldChange(setEmpFirstName)}
-          onDepartment={(e) => setEmpDepartment(e.target.value)}
-          onPosition={(e) => setEmpPosition(e.target.value)}
-        />
-
         {role === 'employee' ? (
           <Checkbox label="Признак «Наблюдатель» (только для роли «Сотрудник»)" checked={isObserver} onChange={setIsObserver} />
         ) : null}
@@ -196,6 +180,22 @@ export function InviteModal({ onClose, onInvited }) {
             }}
           />
         ) : null}
+
+        <EmployeeChoice
+          allowCreate
+          mode={employeeMode}
+          onModeChange={onEmployeeModeChange}
+          employee={employee}
+          onSelectEmployee={setEmployee}
+          lastName={empLastName}
+          firstName={empFirstName}
+          department={empDepartment}
+          position={empPosition}
+          onLastName={onDupFieldChange(setEmpLastName)}
+          onFirstName={onDupFieldChange(setEmpFirstName)}
+          onDepartment={(e) => setEmpDepartment(e.target.value)}
+          onPosition={(e) => setEmpPosition(e.target.value)}
+        />
       </div>
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22 }}>
         <Button variant="secondary" onClick={onClose}>

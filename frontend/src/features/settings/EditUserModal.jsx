@@ -104,16 +104,6 @@ export function EditUserModal({ user, onClose, onSaved }) {
           ))}
         </Select>
 
-        <EmployeeChoice
-          mode={employeeMode}
-          onModeChange={(m) => {
-            setEmployeeMode(m)
-            setEmployee(null)
-          }}
-          employee={employee}
-          onSelectEmployee={setEmployee}
-        />
-
         {role === 'employee' ? (
           <Checkbox label="Признак «Наблюдатель» (только для роли «Сотрудник»)" checked={isObserver} onChange={setIsObserver} />
         ) : null}
@@ -148,6 +138,16 @@ export function EditUserModal({ user, onClose, onSaved }) {
             }}
           />
         ) : null}
+
+        <EmployeeChoice
+          mode={employeeMode}
+          onModeChange={(m) => {
+            setEmployeeMode(m)
+            setEmployee(null)
+          }}
+          employee={employee}
+          onSelectEmployee={setEmployee}
+        />
           </>
         ) : currentlyActive && employee ? (
           <Checkbox
