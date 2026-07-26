@@ -7,9 +7,7 @@
 - v1 (устаревший): `build_backup_data()` — ручной перечень моделей в JSON, файлы
   ссылками. Сохранён только для чтения старых копий командой restore_backup."""
 import json
-from pathlib import Path
 
-from django.conf import settings
 from django.core import serializers
 from django.core.management import call_command
 from django.db import connection
@@ -87,13 +85,11 @@ def migration_state() -> dict:
 
 
 def read_version_file() -> str:
-    """Версия приложения из корневого файла VERSION (BASE_DIR = backend/,
-    VERSION лежит на уровень выше — в корне репозитория)."""
-    path = Path(settings.BASE_DIR).parent / "VERSION"
-    try:
-        return path.read_text(encoding="utf-8").strip()
-    except OSError:
-        return "unknown"
+    """Версия приложения — единый источник core.version (файл VERSION,
+    монтируется в контейнер как BASE_DIR/VERSION)."""
+    from core.version import get_current_version
+
+    return get_current_version()
 
 
 def build_manifest(*, db_bytes: int, files_meta: list[dict], encrypted: bool) -> dict:
