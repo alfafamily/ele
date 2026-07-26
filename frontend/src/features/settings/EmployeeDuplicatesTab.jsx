@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRefreshDuplicates } from '../../app/CompanyContext.jsx'
-import { Badge, Banner, Button, Card, Icon, Modal, Select, Spinner } from '../../shared/ui'
+import { Badge, Banner, Button, Card, EmptyState, Icon, Modal, Select, Spinner } from '../../shared/ui'
 import {
   dismissEmployeeDuplicate,
   getEmployeeDuplicates,
@@ -253,7 +253,7 @@ export function EmployeeDuplicatesTab() {
       {error ? <Banner variant="error">{error}</Banner> : null}
 
       {active.length === 0 && dismissed.length === 0 ? (
-        <Banner variant="info">Возможные дубли сотрудников не обнаружены.</Banner>
+        <EmptyState title="Дублей не обнаружено" description="Возможные дубли сотрудников не обнаружены." />
       ) : null}
 
       {active.map((g) => (
