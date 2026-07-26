@@ -166,6 +166,17 @@ else
     ask_secret S3_SECRET_KEY "S3 secret key"
   fi
 
+  BACKUP_S3_ENDPOINT=""; BACKUP_S3_BUCKET=""; BACKUP_S3_REGION=""
+  BACKUP_S3_ACCESS_KEY=""; BACKUP_S3_SECRET_KEY=""; BACKUP_PASSPHRASE=""
+  if confirm "Настроить резервный S3 для полных бэкапов (отдельное хранилище) сейчас?"; then
+    ask BACKUP_S3_ENDPOINT "Резервный S3 endpoint" ""
+    ask BACKUP_S3_BUCKET "Резервный S3 bucket" ""
+    ask BACKUP_S3_REGION "Резервный S3 region" ""
+    ask BACKUP_S3_ACCESS_KEY "Резервный S3 access key" ""
+    ask_secret BACKUP_S3_SECRET_KEY "Резервный S3 secret key"
+    ask_secret BACKUP_PASSPHRASE "Пароль шифрования авто-копий (пусто = без шифрования)"
+  fi
+
   YANDEX_SMARTCAPTCHA_SITE_KEY=""; YANDEX_SMARTCAPTCHA_SECRET_KEY=""
   YANDEX_ID_CLIENT_ID=""; YANDEX_ID_CLIENT_SECRET=""
   if confirm "Настроить Яндекс SmartCaptcha и/или Яндекс ID сейчас?"; then
@@ -210,6 +221,13 @@ S3_BUCKET=${S3_BUCKET}
 S3_REGION=${S3_REGION}
 S3_ACCESS_KEY=${S3_ACCESS_KEY}
 S3_SECRET_KEY=${S3_SECRET_KEY}
+
+BACKUP_S3_ENDPOINT=${BACKUP_S3_ENDPOINT}
+BACKUP_S3_BUCKET=${BACKUP_S3_BUCKET}
+BACKUP_S3_REGION=${BACKUP_S3_REGION}
+BACKUP_S3_ACCESS_KEY=${BACKUP_S3_ACCESS_KEY}
+BACKUP_S3_SECRET_KEY=${BACKUP_S3_SECRET_KEY}
+BACKUP_PASSPHRASE=${BACKUP_PASSPHRASE}
 
 YANDEX_SMARTCAPTCHA_SITE_KEY=${YANDEX_SMARTCAPTCHA_SITE_KEY}
 YANDEX_SMARTCAPTCHA_SECRET_KEY=${YANDEX_SMARTCAPTCHA_SECRET_KEY}

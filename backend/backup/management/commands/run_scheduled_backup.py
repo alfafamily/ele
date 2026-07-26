@@ -12,6 +12,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         record = run_scheduled_backup_if_due()
         if record:
-            self.stdout.write(self.style.SUCCESS(f"Создана авто-копия: {record.file.original_filename}"))
+            self.stdout.write(self.style.SUCCESS(f"Создана авто-копия: {record.filename}"))
         else:
             self.stdout.write("Автокопирование не требуется.")

@@ -55,6 +55,36 @@ def store_bytes(content: bytes, filename: str, subdir: str, content_type: str = 
     )
 
 
+def store_file_stream(
+    file_obj,
+    filename: str,
+    subdir: str,
+    *,
+    content_type: str = "",
+    size: int,
+    checksum: str,
+) -> StoredFile:
+    """Как store_bytes(), но принимает file-like (архив с диска) и уже готовые
+    size/checksum — не читает файл в память и не пересчитывает хэш повторно.
+    Используется для больших полных бэкапов (backup/destinations.py)."""
+    backend_name = target_backend_name()
+    backend = get_backend(backend_name)
+
+    ext = filename.rsplit(".", 1)[-1] if "." in filename else ""
+    random_name = get_random_string(24)
+    path = f"{subdir}/{random_name}.{ext}" if ext else f"{subdir}/{random_name}"
+
+    saved_path = backend.save(path, file_obj)
+    return StoredFile.objects.create(
+        backend=backend_name,
+        path=saved_path,
+        original_filename=filename,
+        content_type=content_type,
+        size=size,
+        checksum=checksum,
+    )
+
+
 def delete_stored_file(stored_file: StoredFile | None) -> None:
     if stored_file is None:
         return

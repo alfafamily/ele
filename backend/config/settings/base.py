@@ -185,3 +185,18 @@ S3_BUCKET = env("S3_BUCKET", default="")
 S3_REGION = env("S3_REGION", default="")
 S3_ACCESS_KEY = env("S3_ACCESS_KEY", default="")
 S3_SECRET_KEY = env("S3_SECRET_KEY", default="")
+
+# --- Резервный (сторонний) S3 для ПОЛНЫХ бэкапов (B29) ---
+# Отдельное независимое хранилище: полная копия (БД + файлы) уезжает сюда, чтобы
+# пережить потерю/компрометацию основного сервера. Креды — ТОЛЬКО из .env
+# (backend их не пишет, лишь читает и тестирует подключение), сознательно НЕ в
+# Company: объект Company целиком попадает в бэкап, секреты там — риск.
+BACKUP_S3_ENDPOINT = env("BACKUP_S3_ENDPOINT", default="")
+BACKUP_S3_BUCKET = env("BACKUP_S3_BUCKET", default="")
+BACKUP_S3_REGION = env("BACKUP_S3_REGION", default="")
+BACKUP_S3_ACCESS_KEY = env("BACKUP_S3_ACCESS_KEY", default="")
+BACKUP_S3_SECRET_KEY = env("BACKUP_S3_SECRET_KEY", default="")
+# Парольная фраза для шифрования АВТО-копий (cron headless — ад-хок пароль
+# передать неоткуда). Пусто = авто-копии без шифрования. Ручные копии могут
+# шифроваться паролем, переданным в запросе.
+BACKUP_PASSPHRASE = env("BACKUP_PASSPHRASE", default="")

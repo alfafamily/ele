@@ -1,10 +1,19 @@
-"""Полный экспорт системы: Компания, Пользователи (с хэшем
-пароля — осознанно, для восстановления без сброса паролей), Сотрудники,
-Оборудование, Лицензии, Типы и Реквизиты. Файлы — ссылками (StoredFile +
-живой .url на момент экспорта), не бинарными вложениями."""
-import json
+"""Экспорт системы в резервную копию.
 
+Два формата:
+- v2 (актуальный, B29): ПОЛНЫЙ дамп БД через Django dumpdata всех приложений
+  (`dump_database`) + бинарники файлов внутрь архива + manifest со снимком версии
+  схемы (миграции) и приложения. Собирается в backup/archive.py.
+- v1 (устаревший): `build_backup_data()` — ручной перечень моделей в JSON, файлы
+  ссылками. Сохранён только для чтения старых копий командой restore_backup."""
+import json
+from pathlib import Path
+
+from django.conf import settings
 from django.core import serializers
+from django.core.management import call_command
+from django.db import connection
+from django.db.migrations.recorder import MigrationRecorder
 from django.utils import timezone
 
 from accounts.models import User
@@ -25,6 +34,83 @@ from licenses.models import (
     LicenseTypeField,
 )
 from storage.models import StoredFile
+
+# --- v2: полный дамп БД (B29) ---
+
+# Эти приложения/модели ИСКЛЮЧАЕМ из dumpdata: contenttypes и auth.permission
+# пересоздаются автоматически (post_migrate) на целевом инстансе, а их загрузка
+# поверх уже созданных строк вызывает конфликты уникальности; admin.logentry и
+# sessions — эфемерный журнал/сессии, бессмысленны в аварийной копии; auth.group
+# опущена, т.к. её M2M group_permissions ссылается на permission по pk; backup —
+# метаданные самих копий (операционная история инстанса, не бизнес-данные;
+# включать их в копию — циклично).
+# Historical* (django-simple-history) НЕ исключаем — история входит в копию.
+DUMPDATA_EXCLUDE = [
+    "contenttypes",
+    "auth.permission",
+    "auth.group",
+    "admin.logentry",
+    "sessions.session",
+    "backup",
+]
+
+# Файлы резервных копий лежат в этом подкаталоге хранилища. Их НЕ кладём внутрь
+# новой копии (иначе каждый бэкап тащил бы в себе все предыдущие — рост лавиной).
+BACKUP_SUBDIR = "backups"
+
+
+def dump_database(out_stream) -> None:
+    """Пишет полный дамп БД (JSON, loaddata-совместимо) в поток out_stream.
+    БЕЗ natural keys — сохранение исходных PK критично: FK на StoredFile
+    (avatar, файлы-реквизиты) и вся связность восстанавливаются по pk."""
+    call_command(
+        "dumpdata",
+        exclude=DUMPDATA_EXCLUDE,
+        format="json",
+        stdout=out_stream,
+        use_natural_foreign_keys=False,
+        use_natural_primary_keys=False,
+    )
+
+
+def migration_state() -> dict:
+    """Снимок применённых миграций {app_label: [migration_name, ...]} — это и
+    есть «версия схемы». При восстановлении сравнивается с состоянием целевого
+    инстанса: расхождение = loaddata может упасть на незнакомых полях."""
+    applied = MigrationRecorder(connection).applied_migrations()
+    out: dict[str, list[str]] = {}
+    for app_label, name in applied:
+        out.setdefault(app_label, []).append(name)
+    for names in out.values():
+        names.sort()
+    return out
+
+
+def read_version_file() -> str:
+    """Версия приложения из корневого файла VERSION (BASE_DIR = backend/,
+    VERSION лежит на уровень выше — в корне репозитория)."""
+    path = Path(settings.BASE_DIR).parent / "VERSION"
+    try:
+        return path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return "unknown"
+
+
+def build_manifest(*, db_bytes: int, files_meta: list[dict], encrypted: bool) -> dict:
+    """Метаданные копии внутри архива: версия формата/приложения/схемы, счётчики,
+    перечень файлов (pk/backend/path/checksum/size/arcname/missing)."""
+    return {
+        "format_version": 2,
+        "app_version": read_version_file(),
+        "schema_version": migration_state(),
+        "created_at": timezone.now().isoformat(),
+        "encrypted": encrypted,
+        "counts": {"db_bytes": db_bytes, "files": len(files_meta)},
+        "files": files_meta,
+    }
+
+
+# --- v1 (устаревший): ручной перечень моделей, файлы ссылками ---
 
 
 def _dump(queryset):
