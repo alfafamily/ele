@@ -20,13 +20,33 @@
 import json
 import os
 import tempfile
+from contextlib import contextmanager
 
+from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
+from django.core.management.color import no_style
+from django.db import connection, transaction
 
 from backup import archive as archive_mod
 from backup.export import RESTORE_ORDER, migration_state
+
+
+@contextmanager
+def _history_disabled():
+    """Отключает создание записей django-simple-history в блоке (проверяется в
+    его сигналах через settings.SIMPLE_HISTORY_ENABLED). Возвращает прежнее
+    значение по выходу, даже при исключении."""
+    sentinel = object()
+    previous = getattr(settings, "SIMPLE_HISTORY_ENABLED", sentinel)
+    settings.SIMPLE_HISTORY_ENABLED = False
+    try:
+        yield
+    finally:
+        if previous is sentinel:
+            del settings.SIMPLE_HISTORY_ENABLED
+        else:
+            settings.SIMPLE_HISTORY_ENABLED = previous
 
 
 class Command(BaseCommand):
@@ -155,8 +175,22 @@ class Command(BaseCommand):
 
             with transaction.atomic():
                 # Полная замена: очищаем текущие данные, затем грузим дамп.
-                call_command("flush", "--noinput")
-                call_command("loaddata", db_json, verbosity=0)
+                # Историю (django-simple-history) на время загрузки ОТКЛЮЧАЕМ:
+                # исторические строки Historical* уже есть в дампе и грузятся как
+                # есть. Иначе сигнал m2m_changed (у AccessPass история с m2m_fields)
+                # при установке M2M во время loaddata порождал бы НОВУЮ строку
+                # истории по последовательности (сброшенной flush в 1) — та
+                # сталкивалась с явным history_id=1 из дампа (IntegrityError на
+                # employees_historicalaccesspass_pkey). В отличие от post_save,
+                # обработчик m2m_changed не защищён от raw-загрузки.
+                with _history_disabled():
+                    call_command("flush", "--noinput")
+                    call_command("loaddata", db_json, verbosity=0)
+                # loaddata вставляет строки с явными PK/history_id, но Postgres при
+                # явной вставке не двигает последовательности (flush сбросил их в 1).
+                # Без сброса первая же новая запись (в т.ч. историческая) упала бы на
+                # дубликате ключа. Приводим все последовательности к max(pk)+1.
+                self._reset_sequences()
                 # Дамп таблицы storage мог содержать метаданные архивов прошлых
                 # копий (подкаталог backups/), чьих бинарников в архиве нет —
                 # это осиротевшие ссылки, удаляем.
@@ -210,6 +244,21 @@ class Command(BaseCommand):
             os.remove(tmp_file)
             restored += 1
         return restored, missing
+
+    def _reset_sequences(self):
+        """Приводит последовательности всех моделей к max(pk)+1 после loaddata
+        (иначе следующая вставка — новая запись или строка истории — упадёт на
+        дубликате ключа, т.к. flush сбросил последовательности в 1, а явные PK
+        из дампа их не двигают)."""
+        from django.apps import apps
+
+        models = list(apps.get_models(include_auto_created=True))
+        sql_list = connection.ops.sequence_reset_sql(no_style(), models)
+        if not sql_list:
+            return
+        with connection.cursor() as cursor:
+            for sql in sql_list:
+                cursor.execute(sql)
 
     def _check_schema(self, manifest, options):
         backup_schema = manifest.get("schema_version") or {}

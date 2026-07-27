@@ -8,7 +8,7 @@ from unittest import mock
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.test import override_settings
-from rest_framework.test import APITestCase
+from rest_framework.test import APITestCase, APITransactionTestCase
 
 from accounts.models import User
 from company.models import Company
@@ -178,8 +178,12 @@ class ScheduledBackupTests(APITestCase):
 
 
 @override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT, EMAIL_CONFIGURED=False)
-class RestoreBackupTests(APITestCase):
-    """restore_backup v2: полная замена, файлы восстановлены байт-в-байт."""
+class RestoreBackupTests(APITransactionTestCase):
+    """restore_backup v2: полная замена, файлы восстановлены байт-в-байт.
+
+    Транзакционный класс (не APITestCase): команда restore вызывает flush →
+    TRUNCATE, а его нельзя выполнить внутри обёртки-транзакции обычного TestCase
+    (PostgreSQL: «cannot TRUNCATE … has pending trigger events»)."""
 
     def setUp(self):
         _reset_local_backend()
@@ -276,6 +280,39 @@ class RestoreBackupTests(APITestCase):
             tmp_path = tmp.name
         with self.assertRaises(Exception):
             call_command("restore_backup", tmp_path, "--noinput")
+
+    def test_history_with_m2m_roundtrip_and_sequences_reset(self):
+        """Регресс: у AccessPass история с m2m_fields. При loaddata сигнал
+        m2m_changed (не защищённый от raw) порождал лишнюю строку истории по
+        последовательности, сброшенной flush в 1, — та сталкивалась с явным
+        history_id из дампа (IntegrityError на historicalaccesspass_pkey).
+        История отключается на время загрузки; после — последовательности
+        приводятся к max+1, иначе новая запись падала бы на дубликате PK."""
+        from employees.models import AccessPass
+        from locations.models import Building
+
+        self._seed()
+        building = Building.objects.create(name="Штаб")
+        ap = AccessPass.objects.create(object_type=AccessPass.ObjectType.PASS)
+        ap.buildings.add(building)  # правка m2m => отдельная запись истории
+        history_before = ap.history.count()
+        self.assertGreaterEqual(history_before, 2)  # создание + правка m2m
+
+        record = create_backup(BackupRecord.BackupType.MANUAL)
+        tmp_path = _download_own_to_temp(record)
+
+        # Раньше следующая строка падала с IntegrityError.
+        call_command("restore_backup", tmp_path, "--noinput", "--no-safety-backup")
+
+        restored = AccessPass.objects.get(pk=ap.pk)
+        self.assertEqual(list(restored.buildings.values_list("pk", flat=True)), [building.pk])
+        # История сохранена как есть — без лишних строк от loaddata.
+        self.assertEqual(restored.history.count(), history_before)
+        # Последовательности сброшены: новая запись (и её строка истории)
+        # получает свободный ключ, а не 1.
+        new_ap = AccessPass.objects.create(object_type=AccessPass.ObjectType.KEY)
+        self.assertNotEqual(new_ap.pk, ap.pk)
+        self.assertTrue(new_ap.history.exists())
 
 
 def _tamper_manifest(tar_path: str, overrides: dict) -> str:

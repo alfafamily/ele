@@ -16,6 +16,17 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.21.1] — 2026-07-27
+
+### Исправлено
+- **Восстановление из резервной копии падало с ошибкой уникальности истории.**
+  При восстановлении полной копии (`python manage.py restore_backup`) загрузка
+  прерывалась с `IntegrityError` на таблице истории пропусков/ключей, если в
+  копии были объекты с историей изменений и связями (пропуск СКУД или ключ,
+  привязанный к зданиям). Теперь восстановление корректно загружает историю без
+  повторной генерации записей и приводит счётчики идентификаторов в порядок,
+  поэтому и после восстановления новые записи создаются без ошибок.
+
 ## [1.21.0] — 2026-07-26
 
 ### Добавлено
@@ -1348,7 +1359,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.21.0...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.21.1...HEAD
+[1.21.1]: https://github.com/alfafamily/ele/compare/v1.21.0...v1.21.1
 [1.21.0]: https://github.com/alfafamily/ele/compare/v1.20.1...v1.21.0
 [1.20.1]: https://github.com/alfafamily/ele/compare/v1.20.0...v1.20.1
 [1.20.0]: https://github.com/alfafamily/ele/compare/v1.19.0...v1.20.0
