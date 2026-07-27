@@ -46,7 +46,8 @@ export function PassCardPage() {
   const title = isKey
     ? <>Ключ · <KeyTarget pass={pass} /></>
     : `Пропуск${pass.account_number && pass.account_number.trim() ? ` · № ${pass.account_number}` : ''}`
-  const types = [pass.type_vehicle && 'Авто', pass.type_pedestrian && 'Пеший'].filter(Boolean).join(', ')
+  const isTransportPass = pass.pass_kind === 'transport'
+  const types = [pass.type_vehicle && 'Личный авто', pass.type_pedestrian && 'Пеший'].filter(Boolean).join(', ')
   const rooms = pass.rooms || []
   const places = pass.places || []
   const statusText = pass.is_utilized
@@ -59,7 +60,7 @@ export function PassCardPage() {
   const actions = []
   if (perms.canManageEmployees && !pass.is_utilized) {
     actions.push({ label: 'Редактировать', onClick: () => navigate(`/passes/${pass.id}/edit`) })
-    if (pass.employee) {
+    if (pass.employee || pass.transport) {
       actions.push({ label: 'Открепить', danger: true, onClick: () => setDisposeModal(true) })
     } else {
       actions.push({ label: 'Утилизировать', danger: true, onClick: () => setDisposeModal(true) })
@@ -97,8 +98,9 @@ export function PassCardPage() {
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div className="ele-field-grid">
               <Field label="Тип объекта" value={pass.object_type_display || (isKey ? 'Ключ' : 'Пропуск СКУД')} />
+              {!isKey ? <Field label="Вид пропуска" value={pass.pass_kind_display || (isTransportPass ? 'Транспортный' : 'Персональный')} /> : null}
               <Field label="Учётный номер" value={pass.account_number} mono />
-              {!isKey ? <Field label="Тип пропуска" value={types} /> : null}
+              {!isKey && !isTransportPass ? <Field label="Тип пропуска" value={types} /> : null}
               <Field label="Статус" value={statusText} />
             </div>
           </Card>
@@ -146,6 +148,20 @@ export function PassCardPage() {
                 </span>
                 <Link className="ele-clamp-2" to={`/employees/${pass.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', minWidth: 0 }}>
                   {pass.employee_name}
+                </Link>
+              </div>
+              <Can perm="canManageEmployees">
+                <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>
+              </Can>
+            </>
+          ) : pass.transport ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: 12, background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="car" size={22} strokeWidth={2} />
+                </span>
+                <Link className="ele-clamp-2" to={`/transport/${pass.transport}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', minWidth: 0 }}>
+                  {pass.transport_detail ? pass.transport_detail.type_and_model : 'Транспорт'}
                 </Link>
               </div>
               <Can perm="canManageEmployees">

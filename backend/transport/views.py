@@ -181,6 +181,7 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             "field_values__field", "field_values__files__stored_file", "custom_fields",
             "maintenance_plans__regulation", "maintenance_records",
             "parking_spots__room__building", "parking_spots__room__plan_file",
+            "passes__buildings",
         )
         user = self.request.user
         # Обычный «Сотрудник» (не Наблюдатель) видит только свой транспорт — для
@@ -274,24 +275,27 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], permission_classes=[IsAdminOrAccountant])
     def picker(self, request):
-        """Плоский список действующего (не списанного) транспорта для подбора —
-        закрепление за парковочным местом. Поиск как в основном списке. Транспорт,
-        уже закреплённый за другим парковочным местом, исключается (одно место на
-        авто); ?place=<id> оставляет транспорт этого места (при редактировании)."""
+        """Плоский список действующего (не списанного) транспорта для подбора.
+        Поиск как в основном списке. По умолчанию (закрепление за парковочным
+        местом) исключается транспорт, уже стоящий на другом парковочном месте
+        (одно место на авто); ?place=<id> оставляет транспорт этого места (при
+        редактировании). Для подбора транспорта под пропуск (?purpose=pass, B34)
+        парковка роли не играет — исключение не применяется."""
         from locations.models import Place
 
         qs = Transport.objects.filter(is_written_off=False).select_related("transport_type").prefetch_related(
             "field_values__field"
         )
-        occupied = Place.objects.filter(
-            place_type=Place.PlaceType.PARKING_SPOT, is_archived=False
-        )
-        place_id = request.query_params.get("place")
-        if place_id:
-            occupied = occupied.exclude(pk=place_id)
-        # Исключаем транспорт, стоящий на любом из этих мест (через reverse M2M —
-        # без NULL-ловушки NOT IN, если бы брали values("transport") пустых мест).
-        qs = qs.exclude(parking_spots__in=occupied)
+        if request.query_params.get("purpose") != "pass":
+            occupied = Place.objects.filter(
+                place_type=Place.PlaceType.PARKING_SPOT, is_archived=False
+            )
+            place_id = request.query_params.get("place")
+            if place_id:
+                occupied = occupied.exclude(pk=place_id)
+            # Исключаем транспорт, стоящий на любом из этих мест (через reverse M2M —
+            # без NULL-ловушки NOT IN, если бы брали values("transport") пустых мест).
+            qs = qs.exclude(parking_spots__in=occupied)
 
         search = request.query_params.get("search")
         if search:

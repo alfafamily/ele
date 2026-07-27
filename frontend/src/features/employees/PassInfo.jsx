@@ -10,7 +10,7 @@ export function PassInfo({ pass }) {
   const rooms = pass.rooms || []
   const places = pass.places || []
   const isKey = pass.object_type === 'key'
-  const types = [pass.type_vehicle && 'Авто', pass.type_pedestrian && 'Пеший'].filter(Boolean).join(', ')
+  const types = [pass.type_vehicle && 'Личный авто', pass.type_pedestrian && 'Пеший'].filter(Boolean).join(', ')
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

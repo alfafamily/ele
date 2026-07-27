@@ -39,6 +39,9 @@ export const createPass = (payload) => apiPost('/api/access-passes/', payload)
 export const updatePass = (id, payload) => apiPatch(`/api/access-passes/${id}/`, payload)
 export const deletePass = (id) => apiRequest(`/api/access-passes/${id}/`, { method: 'DELETE' })
 export const attachPass = (id, employeeId) => apiPost(`/api/access-passes/${id}/attach/`, { employee: employeeId })
+// B34. Закрепить транспортный пропуск за единицей транспорта.
+export const attachPassToTransport = (id, transportId) =>
+  apiPost(`/api/access-passes/${id}/attach/`, { transport: transportId })
 // Открепление на склад (место хранения обязательно, B8).
 export const detachPass = (id, storagePlaceId) =>
   apiPost(`/api/access-passes/${id}/detach/`, { storage_place: storagePlaceId })

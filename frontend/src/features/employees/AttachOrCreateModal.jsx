@@ -24,18 +24,20 @@ const CONFIG = {
   },
   pass: {
     title: 'Привязать средство доступа',
-    path: '/api/access-passes/?tab=deactivated',
+    // Только персональные пропуска/ключи (транспортные закрепляются за
+    // транспортом, B34).
+    path: '/api/access-passes/?tab=deactivated&pass_kind=personal',
     placeholder: 'Поиск',
     empty: 'Нет свободных средств доступа',
     emptyHint: 'Все пропуска и ключи закреплены за сотрудниками. Создайте новое.',
     createLabel: 'Создать средство доступа',
     attach: attachPass,
-    // Поиск по типу (Ключ/Пропуск, Авто/Пеший), учётному номеру и названиям
-    // зданий/помещений/мест объекта доступа.
+    // Поиск по типу (Ключ/Пропуск, Личный авто/Пеший), учётному номеру и
+    // названиям зданий/помещений/мест объекта доступа.
     match: (o, q) =>
       [
         o.object_type === 'key' ? 'ключ' : 'пропуск',
-        o.type_vehicle && 'авто',
+        o.type_vehicle && 'личный авто',
         o.type_pedestrian && 'пеший',
         o.account_number,
         ...(o.buildings || []).map((b) => b.name),
@@ -102,7 +104,7 @@ function TransportRow({ item }) {
 
 function PassRow({ item }) {
   const isKey = item.object_type === 'key'
-  const types = isKey ? 'Ключ' : [item.type_vehicle && 'Авто', item.type_pedestrian && 'Пеший'].filter(Boolean).join(', ')
+  const types = isKey ? 'Ключ' : [item.type_vehicle && 'Личный авто', item.type_pedestrian && 'Пеший'].filter(Boolean).join(', ')
   return (
     <span style={{ minWidth: 0, flex: 1 }}>
       <div style={{ fontSize: 13.5, fontWeight: 600 }}>

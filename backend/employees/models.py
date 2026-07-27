@@ -127,12 +127,19 @@ class AccessPass(models.Model):
     """
 
     class PassType(models.TextChoices):
-        VEHICLE = "vehicle", "Авто"
+        VEHICLE = "vehicle", "Личный авто"
         PEDESTRIAN = "pedestrian", "Пеший"
 
     class ObjectType(models.TextChoices):
         PASS = "pass", "Пропуск СКУД"
         KEY = "key", "Ключ"
+
+    class PassKind(models.TextChoices):
+        # Вид пропуска СКУД (B34). Персональный — за сотрудником (Личный авто /
+        # Пеший, доступ в здания/помещения/места). Транспортный — за единицей
+        # транспорта компании, доступ только на уровне зданий целиком.
+        PERSONAL = "personal", "Персональный"
+        TRANSPORT = "transport", "Транспортный"
 
     class UtilizationReason(models.TextChoices):
         UTILIZED = "utilized", "Утилизирован"
@@ -144,8 +151,19 @@ class AccessPass(models.Model):
     object_type = models.CharField(
         "Тип объекта", max_length=8, choices=ObjectType.choices, default=ObjectType.PASS
     )
+    # Вид пропуска (B34): персональный (за сотрудником) или транспортный (за
+    # единицей транспорта). Для ключей всегда «персональный» и не используется.
+    pass_kind = models.CharField(
+        "Вид пропуска", max_length=10, choices=PassKind.choices, default=PassKind.PERSONAL
+    )
     employee = models.ForeignKey(
         Employee, verbose_name="Сотрудник", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="passes",
+    )
+    # Транспортный пропуск закрепляется за единицей транспорта (аналог employee у
+    # персонального). Открепление → transport=NULL, объект уходит на склад.
+    transport = models.ForeignKey(
+        "transport.Transport", verbose_name="Транспорт", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="passes",
     )
     # Размещение (B8): свободный (не за сотрудником) пропуск/ключ лежит на складе.
@@ -166,8 +184,9 @@ class AccessPass(models.Model):
     # Учётный номер физической карточки — необязательный (карту могли выдать
     # без нанесённого номера).
     account_number = models.CharField("Учётный номер", max_length=64, blank=True)
-    # Тип пропуска: Авто и/или Пеший, можно оба, можно ни одного.
-    type_vehicle = models.BooleanField("Авто", default=False)
+    # Тип пропуска (персонального): Личный авто и/или Пеший, можно оба, можно
+    # ни одного. Для транспортного пропуска не используется.
+    type_vehicle = models.BooleanField("Личный авто", default=False)
     type_pedestrian = models.BooleanField("Пеший", default=False)
     # Один пропуск может действовать сразу в нескольких зданиях.
     buildings = models.ManyToManyField(
@@ -206,8 +225,9 @@ class AccessPass(models.Model):
 
     @property
     def is_deactivated(self):
-        # «Неиспользуемый»: отвязан, но не утилизирован.
-        return self.employee_id is None and not self.is_utilized
+        # «Неиспользуемый»: не закреплён (ни за сотрудником, ни за транспортом) и
+        # не утилизирован.
+        return self.employee_id is None and self.transport_id is None and not self.is_utilized
 
     def __str__(self):
         if self.object_type == self.ObjectType.KEY:

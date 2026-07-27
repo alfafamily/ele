@@ -20,9 +20,15 @@ export const unarchiveRoom = (id) => apiPost(`/api/rooms/${id}/unarchive/`, {})
 export const uploadRoomPlan = (id, formData) => apiPost(`/api/rooms/${id}/plan/`, formData)
 export const deleteRoomPlan = (id) => apiDelete(`/api/rooms/${id}/plan/`)
 
-// Подбор транспорта компании для закрепления за парковочным местом.
-export const getTransportPicker = (search) =>
-  apiGet(`/api/transport/picker/${search ? `?search=${encodeURIComponent(search)}` : ''}`)
+// Подбор транспорта компании. purpose='pass' (B34) — для закрепления пропуска
+// (не исключает транспорт, уже стоящий на парковке).
+export const getTransportPicker = (search, purpose) => {
+  const params = new URLSearchParams()
+  if (search) params.set('search', search)
+  if (purpose) params.set('purpose', purpose)
+  const q = params.toString()
+  return apiGet(`/api/transport/picker/${q ? `?${q}` : ''}`)
+}
 
 export const createPlace = (payload) => apiPost('/api/places/', payload)
 export const updatePlace = (id, payload) => apiPatch(`/api/places/${id}/`, payload)

@@ -156,6 +156,10 @@ class AccessPassSerializer(serializers.ModelSerializer):
     )
     is_deactivated = serializers.BooleanField(read_only=True)
     object_type_display = serializers.CharField(source="get_object_type_display", read_only=True)
+    pass_kind_display = serializers.CharField(source="get_pass_kind_display", read_only=True)
+    # Транспортный пропуск (B34): закреплён за единицей транспорта. На чтение —
+    # кратко (для карточек/списков), на запись — по id (поле transport).
+    transport_detail = serializers.SerializerMethodField()
     utilization_reason_display = serializers.CharField(source="get_utilization_reason_display", read_only=True)
     employee_name = serializers.SerializerMethodField()
     employee_avatar = serializers.SerializerMethodField()
@@ -173,11 +177,15 @@ class AccessPassSerializer(serializers.ModelSerializer):
             "id",
             "object_type",
             "object_type_display",
+            "pass_kind",
+            "pass_kind_display",
             "employee",
             "employee_name",
             "employee_avatar",
             "position",
             "department",
+            "transport",
+            "transport_detail",
             "account_number",
             "type_vehicle",
             "type_pedestrian",
@@ -224,6 +232,9 @@ class AccessPassSerializer(serializers.ModelSerializer):
     def get_storage_place_detail(self, obj):
         return place_detail(obj.storage_place) if obj.storage_place_id else None
 
+    def get_transport_detail(self, obj):
+        return TransportMiniSerializer(obj.transport).data if obj.transport_id else None
+
     def validate_account_number(self, value):
         # Уникальность проверяется в validate() — там уже известен object_type
         # (номера пропусков и ключей независимы, см. B1).
@@ -268,6 +279,36 @@ class AccessPassSerializer(serializers.ModelSerializer):
         object_type = attrs.get("object_type")
         if object_type is None:
             object_type = self.instance.object_type if self.instance else AccessPass.ObjectType.PASS
+
+        # B34. Вид пропуска: транспортный пропуск закрепляется за единицей
+        # транспорта и действует только на уровне зданий целиком (без помещений/
+        # мест и без типа Личный авто/Пеший). Ключ транспортным быть не может.
+        pass_kind = attrs.get("pass_kind")
+        if pass_kind is None:
+            pass_kind = self.instance.pass_kind if self.instance else AccessPass.PassKind.PERSONAL
+        if pass_kind == AccessPass.PassKind.TRANSPORT:
+            if object_type != AccessPass.ObjectType.PASS:
+                raise serializers.ValidationError(
+                    {"pass_kind": "Транспортным может быть только пропуск СКУД."}
+                )
+            if rooms or places:
+                raise serializers.ValidationError(
+                    {"room_ids": "У транспортного пропуска выбираются только здания."}
+                )
+            # Тип Личный авто/Пеший к транспортному пропуску не применяется.
+            attrs["type_vehicle"] = False
+            attrs["type_pedestrian"] = False
+            # Транспортный пропуск не закрепляется за сотрудником.
+            if attrs.get("employee") is not None:
+                raise serializers.ValidationError(
+                    {"employee": "Транспортный пропуск закрепляется за транспортом, а не за сотрудником."}
+                )
+        else:
+            # Персональный пропуск/ключ не может быть закреплён за транспортом.
+            if attrs.get("transport") is not None:
+                raise serializers.ValidationError(
+                    {"transport": "За транспортом закрепляется только транспортный пропуск."}
+                )
 
         # Уникальность учётного номера — в разрезе типа объекта и только среди
         # непустых (пропуска и ключи не конфликтуют между собой, см. B1).
