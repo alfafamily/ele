@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Input, Modal } from '../../shared/ui'
+import { Banner, Button, Checkbox, Input, Modal } from '../../shared/ui'
 
 // Модалка создания Типа. Доменные поля:
 //  · equipment — чекбокс «Установка SIM/E-SIM» (B17);
@@ -90,34 +90,25 @@ export function NewTypeModal({ domain, onClose, onCreate }) {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
-            <input type="checkbox" checked={allowsSim} onChange={(e) => setAllowsSim(e.target.checked)} style={{ marginTop: 2, flex: 'none' }} />
-            <span style={{ minWidth: 0 }}>
-              <span style={{ fontSize: 14, fontWeight: 500 }}>В оборудование можно устанавливать SIM/E-SIM</span>
-              <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
-                Только в оборудование этого типа можно будет устанавливать SIM/E-SIM.
-              </span>
-            </span>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
-            <input type="checkbox" checked={allowsLicense} onChange={(e) => setAllowsLicense(e.target.checked)} style={{ marginTop: 2, flex: 'none' }} />
-            <span style={{ minWidth: 0 }}>
-              <span style={{ fontSize: 14, fontWeight: 500 }}>К оборудованию можно привязывать лицензии</span>
-              <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
-                Только у оборудования этого типа будет блок «Установленные лицензии».
-              </span>
-            </span>
-          </label>
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
-            <input type="checkbox" checked={maintenanceEnabled} onChange={(e) => setMaintenanceEnabled(e.target.checked)} style={{ marginTop: 2, flex: 'none' }} />
-            <span style={{ minWidth: 0 }}>
-              <span style={{ fontSize: 14, fontWeight: 500 }}>Для оборудования можно проводить ТО</span>
-              <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
-                Включает учёт техобслуживания: кнопку «Провести ТО», статусы и индикаторы в списке.
-              </span>
-            </span>
-          </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 16 }}>
+          <div>
+            <Checkbox label="В оборудование можно устанавливать SIM/E-SIM" checked={allowsSim} onChange={setAllowsSim} />
+            <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2, marginLeft: 30 }}>
+              Только в оборудование этого типа можно будет устанавливать SIM/E-SIM.
+            </div>
+          </div>
+          <div>
+            <Checkbox label="К оборудованию можно привязывать лицензии" checked={allowsLicense} onChange={setAllowsLicense} />
+            <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2, marginLeft: 30 }}>
+              Только у оборудования этого типа будет блок «Установленные лицензии».
+            </div>
+          </div>
+          <div>
+            <Checkbox label="Для оборудования можно проводить ТО" checked={maintenanceEnabled} onChange={setMaintenanceEnabled} />
+            <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2, marginLeft: 30 }}>
+              Включает учёт техобслуживания: кнопку «Провести ТО», статусы и индикаторы в списке.
+            </div>
+          </div>
         </div>
       )}
 
