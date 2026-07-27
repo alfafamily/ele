@@ -184,11 +184,15 @@ export function BackupTab() {
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--color-text-placeholder)', fontSize: 13.5 }}>Резервных копий ещё не было.</div>
         ) : (
           <div>
-            {items.map((b) => (
-              <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: backupPad, borderTop: '1px solid var(--color-border-hairline)', flexWrap: 'wrap' }}>
-                <div style={{ font: '500 13px var(--font-mono)', minWidth: 140 }}>{formatDate(b.created_at)}</div>
-                <div style={{ color: 'var(--color-text-muted)', fontSize: 13, minWidth: 64 }}>{formatSize(b.size)}</div>
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+            {items.map((b) => {
+              const meta = (
+                <>
+                  <div style={{ font: '500 13px var(--font-mono)', minWidth: isMobile ? 0 : 140 }}>{formatDate(b.created_at)}</div>
+                  <div style={{ color: 'var(--color-text-muted)', fontSize: 13, minWidth: isMobile ? 0 : 64 }}>{formatSize(b.size)}</div>
+                </>
+              )
+              const badges = (
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', flex: isMobile ? 'none' : 1, minWidth: 0 }}>
                   <Badge>{TYPE_LABEL[b.backup_type]}</Badge>
                   {b.encrypted ? (
                     <Badge>
@@ -205,6 +209,8 @@ export function BackupTab() {
                     </span>
                   ) : null}
                 </div>
+              )
+              const actions = (
                 <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 14 }}>
                   {b.downloadable ? (
                     <a href={backupDownloadUrl(b.id)} title="Скачать">
@@ -224,8 +230,23 @@ export function BackupTab() {
                     <Icon name="trash-2" size={18} />
                   </button>
                 </div>
-              </div>
-            ))}
+              )
+              return isMobile ? (
+                <div key={b.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: backupPad, borderTop: '1px solid var(--color-border-hairline)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {meta}
+                    <div style={{ marginLeft: 'auto' }}>{actions}</div>
+                  </div>
+                  {badges}
+                </div>
+              ) : (
+                <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: backupPad, borderTop: '1px solid var(--color-border-hairline)', flexWrap: 'wrap' }}>
+                  {meta}
+                  {badges}
+                  {actions}
+                </div>
+              )
+            })}
           </div>
         )}
       </Card>
