@@ -353,9 +353,11 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         # если не указано, проверку пропускаем.
         mileage = data.get("mileage")
         if mileage is not None:
+            # Сравниваем с максимальным зафиксированным (одометр только растёт) —
+            # устойчиво к порядку ввода.
             last = (
                 transport.maintenance_records.filter(mileage__isnull=False)
-                .order_by("-performed_at", "-id").first()
+                .order_by("-mileage", "-performed_at", "-id").first()
             )
             if last is not None and mileage <= last.mileage:
                 unit = _mileage_unit_label(transport)
