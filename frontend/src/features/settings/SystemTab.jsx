@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { SmartCaptcha } from '../auth/SmartCaptcha.jsx'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
-import { Banner, Button, Card, Icon, Input, Spinner } from '../../shared/ui'
+import { Banner, Button, Card, Checkbox, Icon, Input, Spinner } from '../../shared/ui'
 import { formatBytes } from '../../shared/format.js'
 import { FieldView, fieldError, FIELD_W, IconBtn, InlineField } from './inlineFields.jsx'
 import { IpAllowlistEditor } from './IpAllowlistEditor.jsx'
@@ -541,21 +541,17 @@ export function SystemTab() {
           <InlineField label="Домен аккаунтов в системе" value={domain} onSave={saveDomain} onClear={() => saveDomain('')} />
 
           {/* B14: открытая регистрация */}
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginTop: 20, cursor: openRegSaving ? 'default' : 'pointer' }}>
-            <input
-              type="checkbox"
+          <div style={{ marginTop: 20 }}>
+            <Checkbox
+              label="Открытая регистрация"
               checked={openRegistration}
               disabled={openRegSaving}
-              onChange={(e) => toggleOpenRegistration(e.target.checked)}
-              style={{ marginTop: 2, flex: 'none' }}
+              onChange={toggleOpenRegistration}
             />
-            <span style={{ minWidth: 0 }}>
-              <span style={{ fontSize: 14, fontWeight: 500 }}>Открытая регистрация</span>
-              <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
-                Если функция включена — пользователи могут регистрироваться в системе самостоятельно, с учётом настройки по домену аккаунтов.
-              </span>
-            </span>
-          </label>
+            <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2, marginLeft: 30 }}>
+              Если функция включена — пользователи могут регистрироваться в системе самостоятельно, с учётом настройки по домену аккаунтов.
+            </div>
+          </div>
 
           <div style={{ ...sectionTitle, marginTop: 20, marginBottom: 6, fontSize: 13 }}>Разрешённые IP-адреса</div>
           <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 12 }}>
@@ -620,21 +616,17 @@ export function SystemTab() {
         <Card style={{ flex: 1, minWidth: 0 }}>
           <div style={{ ...sectionTitle, marginBottom: 14 }}>Доступ к админ-панели приложения (Django)</div>
 
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: adminToggleSaving ? 'default' : 'pointer' }}>
-            <input
-              type="checkbox"
+          <div>
+            <Checkbox
+              label="Открыть доступ в админку Django"
               checked={adminAccessEnabled}
               disabled={adminToggleSaving}
-              onChange={(e) => toggleAdminAccess(e.target.checked)}
-              style={{ marginTop: 2, flex: 'none' }}
+              onChange={toggleAdminAccess}
             />
-            <span style={{ minWidth: 0 }}>
-              <span style={{ fontSize: 14, fontWeight: 500 }}>Открыть доступ в админку Django</span>
-              <span style={{ display: 'block', fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2 }}>
-                Открывает вход в служебную панель Django по адресу /django_admin с правами только на просмотр. Вход доступен только администраторам и только с разрешённых IP-адресов.
-              </span>
-            </span>
-          </label>
+            <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2, marginLeft: 30 }}>
+              Открывает вход в служебную панель Django по адресу /django_admin с правами только на просмотр. Вход доступен только администраторам и только с разрешённых IP-адресов.
+            </div>
+          </div>
 
           {adminError ? (
             <div style={{ marginTop: 12 }}>
