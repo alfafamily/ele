@@ -16,6 +16,19 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.21.4] — 2026-07-27
+
+### Добавлено
+- В списке резервных копий (Настройки → Резервное копирование) показывается
+  версия приложения, на которой сделана копия («Версия приложения: v.X.Y.Z»).
+
+### Изменено
+- Уточнена подпись о шифровании: пароль применяется к копии из блока «Создать
+  резервную копию сейчас».
+- Документация установки (`docs/INSTALL.md`): добавлен раздел «Восстановление и
+  версии» (копию восстанавливают на инстансе той же версии, затем обновляются);
+  раздел про первого администратора приведён к единственному пути — Setup Wizard.
+
 ## [1.21.3] — 2026-07-27
 
 ### Добавлено
@@ -1405,7 +1418,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.21.3...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.21.4...HEAD
+[1.21.4]: https://github.com/alfafamily/ele/compare/v1.21.3...v1.21.4
 [1.21.3]: https://github.com/alfafamily/ele/compare/v1.21.2...v1.21.3
 [1.21.2]: https://github.com/alfafamily/ele/compare/v1.21.1...v1.21.2
 [1.21.1]: https://github.com/alfafamily/ele/compare/v1.21.0...v1.21.1
