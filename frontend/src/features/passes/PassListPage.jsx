@@ -263,14 +263,14 @@ export function PassListPage() {
                   </div>
                   <div style={{ marginTop: 5, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {isKey ? (
-                      <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+                      <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <KeyTarget pass={row} />
                       </div>
                     ) : accessLines(row).length === 0 ? (
                       <span style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5 }}>—</span>
                     ) : (
                       accessLines(row).map((a) => (
-                        <div key={a.id} style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
+                        <div key={a.id} style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           <span style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>{a.name}</span> — {a.roomsText}
                         </div>
                       ))
@@ -296,7 +296,7 @@ export function PassListPage() {
                     ) : row.storage_place_detail ? (
                       <>
                         <div className="ele-clamp-2">На складе: {row.storage_place_detail.name}</div>
-                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>
+                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {row.storage_place_detail.building_name} — {row.storage_place_detail.room_name}
                         </div>
                       </>

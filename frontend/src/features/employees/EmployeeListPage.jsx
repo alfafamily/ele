@@ -161,8 +161,8 @@ export function EmployeeListPage() {
                       {avatarNode(row)}
                       <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.full_name}</span>
                     </div>
-                    <div>{row.position || '—'}</div>
-                    <div style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{row.department || '—'}</div>
+                    <div className="ele-clamp-2">{row.position || '—'}</div>
+                    <div className="ele-clamp-2" style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{row.department || '—'}</div>
                     <div>
                       <StatusPill variant={row.is_employed ? 'assigned' : 'archived'}>{row.is_employed ? 'Работает' : 'Уволен'}</StatusPill>
                     </div>
