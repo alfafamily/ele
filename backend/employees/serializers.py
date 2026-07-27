@@ -396,7 +396,15 @@ class EmployeeSerializer(serializers.ModelSerializer):
         return EquipmentMiniSerializer(_active_equipment(obj), many=True).data
 
     def get_transport(self, obj):
-        return TransportMiniSerializer(_active_transport(obj), many=True).data
+        # К краткой карточке транспорта добавляем состояние парковки (место / на
+        # адресе сотрудника / нет) — показывается в блоке транспорта сотрудника.
+        from transport.serializers import transport_parking
+
+        items = _active_transport(obj)
+        data = TransportMiniSerializer(items, many=True).data
+        for row, t in zip(data, items):
+            row["parking"] = transport_parking(t)
+        return data
 
     def get_tools(self, obj):
         # Закреплённые за сотрудником инструменты (строкой «Название · N шт.»).

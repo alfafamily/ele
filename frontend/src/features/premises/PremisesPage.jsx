@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Can, usePermissions } from '../../app/usePermissions.js'
+import { PlanLink } from '../../shared/PlanLink.jsx'
 import { ActionMenu, Badge, Banner, Button, Icon, Modal, SearchInput, Spinner } from '../../shared/ui'
 import { BuildingModal } from './BuildingModal.jsx'
 import { PlaceModal } from './PlaceModal.jsx'
@@ -408,18 +409,7 @@ function RoomRow({ room, buildingArchived, open, onToggle, canManage, onEdit, on
               <Badge>этаж {room.floor || '—'}</Badge>
             )}
             <Badge>мест {activePlaces}</Badge>
-            {room.plan_file?.url ? (
-              <a
-                href={room.plan_file.url}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}
-              >
-                <Icon name="file-text" size={13} strokeWidth={2} />
-                План
-              </a>
-            ) : null}
+            {room.plan_file?.url ? <PlanLink file={room.plan_file} /> : null}
           </div>
         </div>
         {canManage && !buildingArchived ? (

@@ -6,6 +6,8 @@ import { unassignUnits as unassignToolUnits } from '../tools/toolsApi.js'
 import { AssignToolModal } from '../tools/AssignToolModal.jsx'
 import { DetachToStorageModal } from './DetachToStorageModal.jsx'
 import { Can, usePermissions } from '../../app/usePermissions.js'
+import { PlanLink } from '../../shared/PlanLink.jsx'
+import { TransportParkingLine } from '../../shared/TransportParkingLine.jsx'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner, StatusPill, Table, TabBar, TableRow } from '../../shared/ui'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
@@ -328,34 +330,37 @@ export function EmployeeCardPage() {
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплён транспорт.</div>
           ) : null}
           {employee.transport.map((t) => (
-            <div key={t.id} style={ROW}>
-              <Icon name="car" size={18} strokeWidth={2} style={ROW_ICON} />
-              <Link to={`/transport/${t.id}`} style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.type_and_model}</div>
-                <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>
-                  {[t.plate, t.inventory_number].filter(Boolean).join(' · ')}
-                </div>
-              </Link>
-              {employee.is_employed ? (
-                <Can perm="canManageTransport">
-                  <button
-                    type="button"
-                    title="Открепить"
-                    aria-label="Открепить"
-                    onClick={() => setConfirm({
-                      title: 'Открепить транспорт?',
-                      message: `«${t.type_and_model}» будет откреплён от сотрудника и станет свободным.`,
-                      onConfirm: async () => { await unassignTransport(t.id); setConfirm(null); load() },
-                    })}
-                    style={SQ}
-                  >
-                    <Icon name="unlink" size={16} strokeWidth={2} />
-                  </button>
-                </Can>
-              ) : null}
-              <Link to={`/transport/${t.id}`} style={{ width: 28, height: 28, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="chevron-right" size={16} strokeWidth={2} style={{ color: '#C7C9D4' }} />
-              </Link>
+            <div key={t.id} style={{ background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8, padding: '11px 13px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Icon name="car" size={18} strokeWidth={2} style={ROW_ICON} />
+                <Link to={`/transport/${t.id}`} style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.type_and_model}</div>
+                  <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>
+                    {[t.plate, t.inventory_number].filter(Boolean).join(' · ')}
+                  </div>
+                </Link>
+                {employee.is_employed ? (
+                  <Can perm="canManageTransport">
+                    <button
+                      type="button"
+                      title="Открепить"
+                      aria-label="Открепить"
+                      onClick={() => setConfirm({
+                        title: 'Открепить транспорт?',
+                        message: `«${t.type_and_model}» будет откреплён от сотрудника и станет свободным.`,
+                        onConfirm: async () => { await unassignTransport(t.id); setConfirm(null); load() },
+                      })}
+                      style={SQ}
+                    >
+                      <Icon name="unlink" size={16} strokeWidth={2} />
+                    </button>
+                  </Can>
+                ) : null}
+                <Link to={`/transport/${t.id}`} style={{ width: 28, height: 28, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="chevron-right" size={16} strokeWidth={2} style={{ color: '#C7C9D4' }} />
+                </Link>
+              </div>
+              <TransportParkingLine parking={t.parking} />
             </div>
           ))}
         </Card>
@@ -614,12 +619,7 @@ function ParkingSpotRow({ spot }) {
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 13.5, fontWeight: 600 }}>{spot.name}</div>
           <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{spot.location}</div>
-          {spot.plan_file?.url ? (
-            <a href={spot.plan_file.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, marginTop: 5 }}>
-              <Icon name="file-text" size={13} strokeWidth={2} />
-              План парковки
-            </a>
-          ) : null}
+          {spot.plan_file?.url ? <PlanLink file={spot.plan_file} style={{ marginTop: 5 }} /> : null}
         </div>
       </div>
     </div>

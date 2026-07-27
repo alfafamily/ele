@@ -13,11 +13,11 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='historicaltransport',
             name='parks_at_driver_address',
-            field=models.BooleanField(default=False, verbose_name='Парковка на адресе водителя'),
+            field=models.BooleanField(default=False, verbose_name='Парковка на адресе сотрудника'),
         ),
         migrations.AddField(
             model_name='transport',
             name='parks_at_driver_address',
-            field=models.BooleanField(default=False, verbose_name='Парковка на адресе водителя'),
+            field=models.BooleanField(default=False, verbose_name='Парковка на адресе сотрудника'),
         ),
     ]
