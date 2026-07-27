@@ -232,8 +232,9 @@ export function TransportListPage() {
                   <div style={{ minWidth: 0 }}>
                     {/* Иконки статуса ТО — инлайново в начале наименования: сидят
                         на первой строке, а перенос названия уходит под них (не
-                        расширяют строку по высоте). */}
-                    <div style={{ fontWeight: 500, lineHeight: 1.3 }}>
+                        расширяют строку по высоте). Длинное название — максимум
+                        2 строки, дальше многоточие (ele-clamp-2). */}
+                    <div className="ele-clamp-2" style={{ fontWeight: 500, lineHeight: 1.3 }}>
                       {(showTo ? maintenanceIndicators(row.maintenance_summary) : []).map((ind, i) => (
                         <span
                           key={i}
