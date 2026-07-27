@@ -7,8 +7,9 @@ import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { AssignEmployeeModal } from './AssignEmployeeModal.jsx'
+import { ParkingAssignModal } from './ParkingAssignModal.jsx'
 import { TransportRegulationsSection } from './TransportRegulationsSection.jsx'
-import { getTransport, getTransportHistoryPath, getTransportRegulations, mileageUnitLabel, unassignTransport } from './transportApi.js'
+import { getTransport, getTransportHistoryPath, getTransportRegulations, mileageUnitLabel, setTransportParking, unassignTransport } from './transportApi.js'
 import { TRANSPORT_STATUS_LABEL, planStatusIcon } from './statusLabels.js'
 import { WriteOffModal } from './WriteOffModal.jsx'
 
@@ -33,6 +34,7 @@ export function TransportCardPage() {
   const [loadError, setLoadError] = useState(false)
   const [showWriteOff, setShowWriteOff] = useState(false)
   const [showAssign, setShowAssign] = useState(false)
+  const [showParking, setShowParking] = useState(false)
   const [historyKey, setHistoryKey] = useState(0)
   const [confirm, setConfirm] = useState(null)
 
@@ -299,6 +301,26 @@ export function TransportCardPage() {
                 </Button>
               )}
             </Can>
+
+            <div style={{ borderTop: '1px solid var(--color-border-hairline)', margin: '20px 0 16px' }} />
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Парковка</div>
+            <ParkingBlock
+              parking={transport.parking}
+              canManage={perms.canManageTransport}
+              onSet={() => setShowParking(true)}
+              onClear={() =>
+                setConfirm({
+                  title: 'Снять парковку?',
+                  message: `«${transport.type_and_model}» перестанет быть закреплён за парковкой.`,
+                  confirmLabel: 'Снять',
+                  onConfirm: async () => {
+                    await setTransportParking(transport.id, { mode: 'none' })
+                    setConfirm(null)
+                    load()
+                  },
+                })
+              }
+            />
           </Card>
         ) : null}
       </div>
@@ -332,6 +354,75 @@ export function TransportCardPage() {
             load()
           }}
         />
+      ) : null}
+      {showParking ? (
+        <ParkingAssignModal
+          transport={transport}
+          onClose={() => setShowParking(false)}
+          onDone={() => {
+            setShowParking(false)
+            load()
+          }}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+// Блок «Парковка» на карточке транспорта: закреплённое место (со ссылкой на
+// «План парковки»), «на адресе водителя», либо кнопка выбора.
+function ParkingBlock({ parking, canManage, onSet, onClear }) {
+  if (parking?.kind === 'spot') {
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <Icon name="square-parking" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none', marginTop: 1 }} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>{parking.place_name}</div>
+            <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
+              {[parking.building_name, parking.room_name].filter(Boolean).join(' — ')}
+            </div>
+            {parking.plan_file?.url ? (
+              <a href={parking.plan_file.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, marginTop: 5 }}>
+                <Icon name="file-text" size={13} strokeWidth={2} />
+                План парковки
+              </a>
+            ) : null}
+          </div>
+        </div>
+        {canManage ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
+            <Button variant="secondary" fullWidth onClick={onSet}>Изменить</Button>
+            <Button variant="secondary" fullWidth onClick={onClear}>Снять парковку</Button>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+  if (parking?.kind === 'driver_address') {
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Icon name="map-pin" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+          <div style={{ fontSize: 14, fontWeight: 500 }}>Парковка на адресе водителя</div>
+        </div>
+        {canManage ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
+            <Button variant="secondary" fullWidth onClick={onSet}>Изменить</Button>
+            <Button variant="secondary" fullWidth onClick={onClear}>Снять парковку</Button>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+  return (
+    <div>
+      <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не указана</div>
+      {canManage ? (
+        <Button fullWidth style={{ marginTop: 14 }} onClick={onSet}>
+          <Icon name="plus" size={18} strokeWidth={2.2} />
+          Указать парковочное место
+        </Button>
       ) : null}
     </div>
   )

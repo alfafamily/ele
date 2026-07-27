@@ -714,7 +714,7 @@ class MyWorkPlacementTests(APITestCase):
         self.client.force_authenticate(other)
         r = self.client.get("/api/my/work-placement/")
         self.assertEqual(r.status_code, 200, r.data)
-        self.assertEqual(r.data, {"tools": [], "workplaces": []})
+        self.assertEqual(r.data, {"tools": [], "workplaces": [], "parking_spots": []})
 
 
 class SimAndPassFilterTests(APITestCase):

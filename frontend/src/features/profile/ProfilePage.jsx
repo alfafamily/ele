@@ -36,6 +36,7 @@ export function ProfilePage() {
   const [transport, setTransport] = useState([])
   const [tools, setTools] = useState([])
   const [workplaces, setWorkplaces] = useState([])
+  const [parkingSpots, setParkingSpots] = useState([])
   const fileInputRef = useRef(null)
 
   // При открытии профиля перечитываем пользователя — ФИО/аватар связанного
@@ -55,6 +56,7 @@ export function ProfilePage() {
       getMyWorkPlacement().then((d) => {
         setTools(d.tools || [])
         setWorkplaces(d.workplaces || [])
+        setParkingSpots(d.parking_spots || [])
       })
     }
   }, [employee?.id])
@@ -224,6 +226,29 @@ export function ProfilePage() {
                     ))}
                   </div>
                 ) : null}
+              </div>
+            ))}
+          </Card>
+        ) : null}
+
+        {employee && parkingSpots.length ? (
+          <Card>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Мои парковочные места</div>
+            {parkingSpots.map((sp) => (
+              <div key={sp.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <Icon name="square-parking" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none', marginTop: 1 }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600 }}>{sp.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{sp.location}</div>
+                    {sp.plan_file?.url ? (
+                      <a href={sp.plan_file.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, marginTop: 5 }}>
+                        <Icon name="file-text" size={13} strokeWidth={2} />
+                        План парковки
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             ))}
           </Card>

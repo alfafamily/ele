@@ -125,6 +125,62 @@ class TransportCrudTests(APITestCase):
         self.assertEqual(r.status_code, 405)
 
 
+class TransportParkingTests(APITestCase):
+    def setUp(self):
+        from locations.models import Building, Place, Room
+
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        ttype = TransportType.objects.create(name="Легковой")
+        self.car = Transport.objects.create(inventory_number="TS-1", transport_type=ttype)
+        self.car2 = Transport.objects.create(inventory_number="TS-2", transport_type=ttype)
+        b = Building.objects.create(name="БЦ")
+        parking = Room.objects.create(building=b, name="Паркинг", parking_type="adjacent")
+        self.spot = Place.objects.create(room=parking, name="A-1", place_type="parking_spot")
+        self.spot2 = Place.objects.create(room=parking, name="A-2", place_type="parking_spot")
+        # Место с личным авто — для транспорта компании недоступно.
+        emp = Employee.objects.create(last_name="Иванов", first_name="Иван")
+        self.personal_spot = Place.objects.create(room=parking, name="P-1", place_type="parking_spot")
+        self.personal_spot.employees.add(emp)
+
+    def test_assign_spot_and_output(self):
+        r = self.client.post(f"/api/transport/{self.car.id}/parking/", {"mode": "spot", "place": self.spot.id}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["parking"]["kind"], "spot")
+        self.assertEqual(r.data["parking"]["place"], self.spot.id)
+
+    def test_one_spot_per_transport(self):
+        self.spot.transport.add(self.car)
+        # Через premises: закрепить тот же транспорт за другим местом нельзя.
+        r = self.client.patch(f"/api/places/{self.spot2.id}/", {"transport": [self.car.id]}, format="json")
+        self.assertEqual(r.status_code, 400, r.data)
+        # Через карточку транспорта: закрепление за spot2 снимает со spot.
+        r = self.client.post(f"/api/transport/{self.car.id}/parking/", {"mode": "spot", "place": self.spot2.id}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertFalse(self.spot.transport.filter(pk=self.car.id).exists())
+        self.assertTrue(self.spot2.transport.filter(pk=self.car.id).exists())
+
+    def test_cannot_assign_to_personal_spot(self):
+        r = self.client.post(f"/api/transport/{self.car.id}/parking/", {"mode": "spot", "place": self.personal_spot.id}, format="json")
+        self.assertEqual(r.status_code, 400, r.data)
+
+    def test_driver_address_and_none(self):
+        r = self.client.post(f"/api/transport/{self.car.id}/parking/", {"mode": "driver_address"}, format="json")
+        self.assertEqual(r.data["parking"]["kind"], "driver_address")
+        r = self.client.post(f"/api/transport/{self.car.id}/parking/", {"mode": "none"}, format="json")
+        self.assertIsNone(r.data["parking"])
+
+    def test_picker_excludes_assigned(self):
+        self.spot.transport.add(self.car)
+        r = self.client.get("/api/transport/picker/")
+        ids = [t["id"] for t in r.data]
+        self.assertNotIn(self.car.id, ids)
+        self.assertIn(self.car2.id, ids)
+        # С ?place — транспорт этого места остаётся (для редактирования).
+        r = self.client.get(f"/api/transport/picker/?place={self.spot.id}")
+        self.assertIn(self.car.id, [t["id"] for t in r.data])
+
+
 class TransportMaintenanceTests(APITestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
