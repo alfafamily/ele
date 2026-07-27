@@ -72,8 +72,10 @@ class ParkingSpotSerializerTests(TestCase):
         self.parking = Room.objects.create(building=self.b, name="Паркинг", parking_type="adjacent")
         self.office = Room.objects.create(building=self.b, name="Офис")
         self.emp = Employee.objects.create(first_name="Иван", last_name="Иванов")
+        self.emp2 = Employee.objects.create(first_name="Пётр", last_name="Петров")
         ttype = TransportType.objects.create(name="Легковой")
         self.car = Transport.objects.create(inventory_number="TR-1", transport_type=ttype)
+        self.car2 = Transport.objects.create(inventory_number="TR-2", transport_type=ttype)
 
     def _valid(self, data):
         return PlaceSerializer(data=data)
@@ -101,6 +103,22 @@ class ParkingSpotSerializerTests(TestCase):
             "transport": [self.car.id],
         })
         self.assertTrue(s.is_valid(), s.errors)
+
+    def test_parking_spot_at_most_one_employee(self):
+        s = self._valid({
+            "room": self.parking.id, "name": "М1", "place_type": "parking_spot",
+            "employees": [self.emp.id, self.emp2.id],
+        })
+        self.assertFalse(s.is_valid())
+        self.assertIn("employees", s.errors)
+
+    def test_parking_spot_at_most_one_transport(self):
+        s = self._valid({
+            "room": self.parking.id, "name": "М1", "place_type": "parking_spot",
+            "transport": [self.car.id, self.car2.id],
+        })
+        self.assertFalse(s.is_valid())
+        self.assertIn("transport", s.errors)
 
     def test_transport_rejected_on_workplace(self):
         s = self._valid({

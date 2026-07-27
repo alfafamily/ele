@@ -28,9 +28,11 @@ export function ParkingAssignModal({ transport, onClose, onDone }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Доступные места: активные парковочные, без закреплённых личных авто (кроме
-  // текущего места этого транспорта — его оставляем выбираемым).
-  const available = (spots || []).filter((s) => !s.employees_detail?.length || s.id === current?.place)
+  // Доступные места: активные парковочные и свободные (одно место — один
+  // объект). Текущее место этого транспорта оставляем выбираемым.
+  const available = (spots || []).filter(
+    (s) => s.id === current?.place || (!s.employees_detail?.length && !s.transport_detail?.length)
+  )
 
   const submit = async () => {
     setSubmitting(true)

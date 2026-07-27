@@ -164,6 +164,12 @@ class TransportParkingTests(APITestCase):
         r = self.client.post(f"/api/transport/{self.car.id}/parking/", {"mode": "spot", "place": self.personal_spot.id}, format="json")
         self.assertEqual(r.status_code, 400, r.data)
 
+    def test_cannot_assign_to_spot_with_other_transport(self):
+        # Одно место — один транспорт: занятое другим авто место недоступно.
+        self.spot.transport.add(self.car2)
+        r = self.client.post(f"/api/transport/{self.car.id}/parking/", {"mode": "spot", "place": self.spot.id}, format="json")
+        self.assertEqual(r.status_code, 400, r.data)
+
     def test_driver_address_requires_employee(self):
         # Без сотрудника «на адресе сотрудника» недоступно.
         r = self.client.post(f"/api/transport/{self.car.id}/parking/", {"mode": "driver_address"}, format="json")
