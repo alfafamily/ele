@@ -50,7 +50,41 @@ class RoomViewSet(_NoDeleteViewSet):
     serializer_class = RoomSerializer
 
     def get_queryset(self):
-        return Room.objects.all().prefetch_related("places")
+        return Room.objects.all().select_related("plan_file").prefetch_related(
+            "places__employees__avatar", "places__transport__transport_type",
+        )
+
+    @action(detail=True, methods=["post", "delete"])
+    def plan(self, request, pk=None):
+        """План парковки (PDF/изображение) — загрузка (POST multipart, поле
+        `file`) и удаление (DELETE). Только для помещений-парковок."""
+        from storage.service import delete_stored_file, store_uploaded_file
+
+        room = self.get_object()
+        if request.method == "DELETE":
+            if room.plan_file_id:
+                old = room.plan_file
+                room.plan_file = None
+                room.save(update_fields=["plan_file"])
+                delete_stored_file(old)
+            return Response(RoomSerializer(room).data)
+
+        if not room.is_parking:
+            return Response({"detail": "План можно приложить только к парковке."}, status=400)
+        file_obj = request.FILES.get("file")
+        if not file_obj:
+            return Response({"detail": "Файл не передан."}, status=400)
+        ct = (getattr(file_obj, "content_type", "") or "").lower()
+        if not (ct == "application/pdf" or ct.startswith("image/")):
+            return Response({"detail": "Допустимы PDF или изображение."}, status=400)
+        if file_obj.size > 20 * 1024 * 1024:
+            return Response({"detail": "Файл больше 20 МБ."}, status=400)
+        old = room.plan_file
+        room.plan_file = store_uploaded_file(file_obj, "locations/plans")
+        room.save(update_fields=["plan_file"])
+        if old:
+            delete_stored_file(old)
+        return Response(RoomSerializer(room).data)
 
     @action(detail=True, methods=["post"])
     def archive(self, request, pk=None):
@@ -73,11 +107,15 @@ class PlaceViewSet(_NoDeleteViewSet):
     serializer_class = PlaceSerializer
 
     def get_queryset(self):
-        qs = Place.objects.select_related("room__building").prefetch_related("employees__avatar")
-        # Плоский список мест для пикеров размещения: ?place_type=storage|workplace,
-        # ?active=1 — только не архивные.
+        qs = Place.objects.select_related("room__building").prefetch_related(
+            "employees__avatar", "transport__transport_type"
+        )
+        # Плоский список мест для пикеров размещения: ?place_type=storage|workplace|
+        # parking_spot, ?active=1 — только не архивные.
         place_type = self.request.query_params.get("place_type")
-        if place_type in (Place.PlaceType.STORAGE, Place.PlaceType.WORKPLACE):
+        if place_type in (
+            Place.PlaceType.STORAGE, Place.PlaceType.WORKPLACE, Place.PlaceType.PARKING_SPOT
+        ):
             qs = qs.filter(place_type=place_type)
         if self.request.query_params.get("active") in ("1", "true"):
             qs = qs.filter(is_archived=False)

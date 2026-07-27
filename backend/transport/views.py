@@ -45,6 +45,7 @@ from .serializers import (
     MaintenanceRegulationSerializer,
     PerformMaintenanceSerializer,
     TransportFieldValueOutSerializer,
+    TransportMiniSerializer,
     TransportSerializer,
     TransportTypeFieldSerializer,
     TransportTypeSerializer,
@@ -269,6 +270,23 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 | Q(employee__department__icontains=search)
             ).distinct()
         return qs
+
+    @action(detail=False, methods=["get"], permission_classes=[IsAdminOrAccountant])
+    def picker(self, request):
+        """Плоский список действующего (не списанного) транспорта для подбора —
+        закрепление за парковочным местом. Поиск как в основном списке."""
+        qs = Transport.objects.filter(is_written_off=False).select_related("transport_type").prefetch_related(
+            "field_values__field"
+        )
+        search = request.query_params.get("search")
+        if search:
+            qs = qs.filter(
+                Q(inventory_number__icontains=search)
+                | Q(transport_type__name__icontains=search)
+                | Q(field_values__field__is_locked=True, field_values__value_text__icontains=search)
+            ).distinct()
+        qs = qs.order_by("transport_type__name", "inventory_number")[:50]
+        return Response(TransportMiniSerializer(qs, many=True).data)
 
     @action(detail=False, methods=["get"], url_path="field-values")
     def field_values(self, request):
