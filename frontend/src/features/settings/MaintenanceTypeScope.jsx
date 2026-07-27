@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getEquipmentTypes } from '../equipment/equipmentApi.js'
+import { getTransportTypes } from '../transport/transportApi.js'
 import { Icon } from '../../shared/ui'
 
 // B23. Блок «Право выполнять ТО по типам оборудования» — общий для модалок
@@ -8,15 +9,19 @@ import { Icon } from '../../shared/ui'
 // оформлен как в модалке привязки лицензий (AttachLicenseModal): строка поиска +
 // рамка-список со строками-квадратными чекбоксами.
 // value: { allTypes: boolean, typeIds: number[] }; onChange отдаёт обновлённое.
-export function MaintenanceTypeScope({ allTypes, typeIds, onChange }) {
+export function MaintenanceTypeScope({ allTypes, typeIds, onChange, domain = 'equipment' }) {
+  const isTransport = domain === 'transport'
   const [types, setTypes] = useState(null)
   const [query, setQuery] = useState('')
 
   useEffect(() => {
-    getEquipmentTypes()
-      .then((data) => setTypes(data.filter((t) => t.maintenance_enabled && !t.is_archived)))
+    const loader = isTransport ? getTransportTypes() : getEquipmentTypes()
+    loader
+      // У транспорта ТО включено всегда — фильтруем только по архиву; у
+      // оборудования — по включённому ТО.
+      .then((data) => setTypes(data.filter((t) => (isTransport || t.maintenance_enabled) && !t.is_archived)))
       .catch(() => setTypes([]))
-  }, [])
+  }, [isTransport])
 
   const selected = useMemo(() => new Set((typeIds || []).map(Number)), [typeIds])
 
@@ -44,7 +49,7 @@ export function MaintenanceTypeScope({ allTypes, typeIds, onChange }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>Право выполнять ТО по типам оборудования</div>
+      <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>Право выполнять ТО по типам {isTransport ? 'транспорта' : 'оборудования'}</div>
       <div style={{ display: 'flex', gap: 20 }}>
         {radio(true, 'Все типы')}
         {radio(false, 'Некоторые типы')}
@@ -54,7 +59,7 @@ export function MaintenanceTypeScope({ allTypes, typeIds, onChange }) {
         types === null ? (
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Загрузка…</div>
         ) : types.length === 0 ? (
-          <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Нет типов с включённым ТО.</div>
+          <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>{isTransport ? 'Типы транспорта пока не созданы.' : 'Нет типов с включённым ТО.'}</div>
         ) : (
           <>
             <input

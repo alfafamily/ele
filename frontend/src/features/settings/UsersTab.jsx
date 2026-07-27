@@ -26,7 +26,7 @@ const MOBILE_COLUMNS = [
 ]
 
 const STATUS_LABEL = { active: 'Активен', invited: 'Приглашён', deactivated: 'Деактивирован' }
-const ROLE_PILL_VARIANT = { admin: 'role-admin', accountant: 'free', maintenance: 'assigned', employee: 'archived' }
+const ROLE_PILL_VARIANT = { admin: 'role-admin', accountant: 'free', maintenance: 'assigned', automechanic: 'assigned', employee: 'archived' }
 
 function Avatar({ user }) {
   return (

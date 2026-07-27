@@ -16,6 +16,11 @@ export function computePermissions(user) {
   const canMaintainFlag = isAccountant && !!user?.can_maintain
   // B23: «Ответственный за учёт» с флагом «Может управлять регламентами ТО».
   const canManageRegulationsFlag = isAccountant && !!user?.can_manage_regulations
+  // B22: роль «Автомеханик» — раздел Транспорт (read-only объекты) + проведение ТО.
+  const isAutomechanic = role === 'automechanic'
+  // B22: «Ответственный за учёт» с флагами ТО транспорта.
+  const canMaintainTransportFlag = isAccountant && !!user?.can_maintain_transport
+  const canManageTransportRegulationsFlag = isAccountant && !!user?.can_manage_transport_regulations
   // Право открыть бизнес-раздел (Оборудование/Лицензии/Сотрудники/Связь/
   // Средства доступа/Помещения) — staff или Наблюдатель.
   const canViewBusiness = isStaff || isObserver
@@ -35,12 +40,29 @@ export function computePermissions(user) {
   const maintenanceAllTypes = isAdmin || user?.maintenance_all_types !== false
   const maintenanceTypeIds = (user?.maintenance_types || []).map(Number)
 
+  // B22: раздел Транспорт — staff / Наблюдатель / Автомеханик.
+  const canViewTransport = canViewBusiness || isAutomechanic
+  // Управление объектами транспорта (создание/редактирование/действия) — только staff.
+  const canManageTransport = isStaff
+  // Проведение ТО транспорта — admin / Автомеханик / учётчик с флагом.
+  const canPerformTransportMaintenance = isAdmin || isAutomechanic || canMaintainTransportFlag
+  // Управление регламентами ТО транспорта — admin / учётчик с флагом.
+  const canManageTransportMaintenance = isAdmin || canManageTransportRegulationsFlag
+  // Видимость ТО-блоков транспорта: все причастные к ТО транспорта + Наблюдатель.
+  // Учётчик без обоих флагов ТО транспорта эти блоки не видит.
+  const canSeeTransportMaintenance =
+    canViewTransport && !(isAccountant && !canMaintainTransportFlag && !canManageTransportRegulationsFlag)
+  // B22: область типов транспорта для проведения ТО.
+  const maintenanceAllTransportTypes = isAdmin || user?.maintenance_all_transport_types !== false
+  const maintenanceTransportTypeIds = (user?.maintenance_transport_types || []).map(Number)
+
   return {
     isAdmin,
     isAccountant,
     isStaff,
     isObserver,
     isMaintenance,
+    isAutomechanic,
     canViewBusiness,
     canViewEquipment,
     canPerformMaintenance,
@@ -48,6 +70,13 @@ export function computePermissions(user) {
     canSeeMaintenance,
     maintenanceAllTypes,
     maintenanceTypeIds,
+    canViewTransport,
+    canManageTransport,
+    canPerformTransportMaintenance,
+    canManageTransportMaintenance,
+    canSeeTransportMaintenance,
+    maintenanceAllTransportTypes,
+    maintenanceTransportTypeIds,
     // Управление объектами (создание/редактирование/действия) — только staff.
     canManageEquipment: isStaff,
     canManageLicenses: isStaff,
@@ -72,4 +101,12 @@ export function canMaintainType(perms, typeId) {
   if (!perms.canPerformMaintenance) return false
   if (perms.maintenanceAllTypes) return true
   return perms.maintenanceTypeIds.includes(Number(typeId))
+}
+
+// B22. Может ли пользователь проводить ТО транспорта данного типа — с учётом
+// права проведения ТО транспорта и области выбранных типов.
+export function canMaintainTransportType(perms, typeId) {
+  if (!perms.canPerformTransportMaintenance) return false
+  if (perms.maintenanceAllTransportTypes) return true
+  return perms.maintenanceTransportTypeIds.includes(Number(typeId))
 }

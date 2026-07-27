@@ -51,12 +51,20 @@ export function RequireStaff({ children }) {
 export function RequireViewer({ children }) {
   const { user } = useAuth()
   const canView = user.role === 'admin' || user.role === 'accountant' || (user.role === 'employee' && user.is_observer)
-  if (!canView) return <Navigate to={user.role === 'maintenance' ? '/' : '/profile'} replace />
+  if (!canView) return <Navigate to={landingFor(user.role)} replace />
   return children
 }
 
+// Посадочная для ролей с ограниченным доступом: «Механик по оборудованию» — на
+// раздел Оборудование, «Автомеханик» — на раздел Транспорт, прочие — в Профиль.
+function landingFor(role) {
+  if (role === 'maintenance') return '/'
+  if (role === 'automechanic') return '/transport'
+  return '/profile'
+}
+
 // B13+. Раздел Оборудование (список/карточка) — как RequireViewer, но
-// дополнительно пускает роль «Ответственный за ТО».
+// дополнительно пускает роль «Механик по оборудованию».
 export function RequireEquipmentViewer({ children }) {
   const { user } = useAuth()
   const canView =
@@ -64,12 +72,12 @@ export function RequireEquipmentViewer({ children }) {
     user.role === 'accountant' ||
     user.role === 'maintenance' ||
     (user.role === 'employee' && user.is_observer)
-  if (!canView) return <Navigate to="/profile" replace />
+  if (!canView) return <Navigate to={landingFor(user.role)} replace />
   return children
 }
 
-// B13+. Проведение ТО — Admin / роль «Ответственный за ТО» / «Ответственный за
-// учёт» с флагом can_maintain.
+// B13+. Проведение ТО оборудования — Admin / роль «Механик по оборудованию» /
+// «Ответственный за учёт» с флагом can_maintain.
 export function RequireMaintainer({ children }) {
   const { user } = useAuth()
   const canPerform =
@@ -77,5 +85,30 @@ export function RequireMaintainer({ children }) {
     user.role === 'maintenance' ||
     (user.role === 'accountant' && user.can_maintain)
   if (!canPerform) return <Navigate to="/" replace />
+  return children
+}
+
+// B22. Раздел Транспорт (список/карточка) — Admin/Accountant, роль «Автомеханик»
+// (только просмотр объектов) и Наблюдатель.
+export function RequireTransportViewer({ children }) {
+  const { user } = useAuth()
+  const canView =
+    user.role === 'admin' ||
+    user.role === 'accountant' ||
+    user.role === 'automechanic' ||
+    (user.role === 'employee' && user.is_observer)
+  if (!canView) return <Navigate to={landingFor(user.role)} replace />
+  return children
+}
+
+// B22. Проведение ТО транспорта — Admin / роль «Автомеханик» / «Ответственный за
+// учёт» с флагом can_maintain_transport.
+export function RequireTransportMaintainer({ children }) {
+  const { user } = useAuth()
+  const canPerform =
+    user.role === 'admin' ||
+    user.role === 'automechanic' ||
+    (user.role === 'accountant' && user.can_maintain_transport)
+  if (!canPerform) return <Navigate to="/transport" replace />
   return children
 }

@@ -7,6 +7,7 @@ from employees.models import Employee
 from employees.serializers import EmployeeListSerializer
 from equipment.models import EquipmentType
 from storage.serializers import StoredFileSerializer
+from transport.models import TransportType
 
 from .tokens import get_user_from_uid, set_password_token_generator
 
@@ -36,12 +37,18 @@ class MeSerializer(serializers.ModelSerializer):
     # B23: область типов ТО текущего пользователя — фронт по ней гейтит блок
     # «Провести ТО» на карточке оборудования (id выбранных типов + признак «все»).
     maintenance_types = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    # B22: область типов транспорта — фронт гейтит блок «Провести ТО» на карточке
+    # транспорта.
+    maintenance_transport_types = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
 
     class Meta:
         model = User
         fields = [
             "id", "email", "role", "is_observer", "can_maintain", "can_manage_regulations",
-            "maintenance_all_types", "maintenance_types", "employee", "is_email_confirmed",
+            "maintenance_all_types", "maintenance_types",
+            "can_maintain_transport", "can_manage_transport_regulations",
+            "maintenance_all_transport_types", "maintenance_transport_types",
+            "employee", "is_email_confirmed",
             "date_joined", "password_changed_at",
         ]
 
@@ -58,6 +65,8 @@ class UserListSerializer(serializers.ModelSerializer):
     employee_avatar = serializers.SerializerMethodField()
     # B23: область типов ТО — нужна для предзаполнения формы редактирования.
     maintenance_types = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    # B22: область типов транспорта для ТО — для предзаполнения формы.
+    maintenance_transport_types = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     # B9: право редактировать данные в служебной Django-админке (= is_superuser).
     admin_edit_enabled = serializers.BooleanField(source="is_superuser", read_only=True)
 
@@ -72,6 +81,10 @@ class UserListSerializer(serializers.ModelSerializer):
             "can_manage_regulations",
             "maintenance_all_types",
             "maintenance_types",
+            "can_maintain_transport",
+            "can_manage_transport_regulations",
+            "maintenance_all_transport_types",
+            "maintenance_transport_types",
             "admin_edit_enabled",
             "status",
             "employee",
@@ -106,23 +119,32 @@ class UserListSerializer(serializers.ModelSerializer):
         return None
 
 
-def normalize_maintenance_fields(attrs, *, role, can_maintain):
-    """B23. Приводит поля области ТО к согласованному виду в зависимости от роли и
-    флага проведения ТО. Правила:
-    - can_maintain / can_manage_regulations применимы только к «Ответственному за
-      учёт» — у прочих ролей сбрасываются в False;
-    - область типов (maintenance_all_types / maintenance_types) имеет смысл только
-      для роли «Ответственный за ТО» или «Ответственного за учёт» с can_maintain;
-      иначе — «все типы», список очищается.
+def normalize_maintenance_fields(attrs, *, role, can_maintain, can_maintain_transport=False):
+    """B23/B22. Приводит поля области ТО (оборудование и транспорт) к согласованному
+    виду в зависимости от роли и флагов проведения ТО. Правила:
+    - can_maintain / can_manage_regulations (оборудование) и can_maintain_transport /
+      can_manage_transport_regulations (транспорт) применимы только к «Ответственному
+      за учёт» — у прочих ролей сбрасываются в False;
+    - область типов оборудования имеет смысл для роли «Механик по оборудованию» или
+      «Ответственного за учёт» с can_maintain; иначе — «все типы», список очищается;
+    - область типов транспорта имеет смысл для роли «Автомеханик» или «Ответственного
+      за учёт» с can_maintain_transport; иначе — «все типы», список очищается.
     Мутирует и возвращает attrs (для сеттеров через сериализатор)."""
     if role != User.Role.ACCOUNTANT:
         attrs["can_maintain"] = False
         attrs["can_manage_regulations"] = False
+        attrs["can_maintain_transport"] = False
+        attrs["can_manage_transport_regulations"] = False
         can_maintain = False
-    scoped = role == User.Role.MAINTENANCE or (role == User.Role.ACCOUNTANT and can_maintain)
-    if not scoped:
+        can_maintain_transport = False
+    eq_scoped = role == User.Role.MAINTENANCE or (role == User.Role.ACCOUNTANT and can_maintain)
+    if not eq_scoped:
         attrs["maintenance_all_types"] = True
         attrs["maintenance_types"] = []
+    tr_scoped = role == User.Role.AUTOMECHANIC or (role == User.Role.ACCOUNTANT and can_maintain_transport)
+    if not tr_scoped:
+        attrs["maintenance_all_transport_types"] = True
+        attrs["maintenance_transport_types"] = []
     return attrs
 
 
@@ -134,7 +156,10 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id", "email", "role", "is_observer", "can_maintain", "can_manage_regulations",
-            "maintenance_all_types", "maintenance_types", "admin_edit_enabled", "employee",
+            "maintenance_all_types", "maintenance_types",
+            "can_maintain_transport", "can_manage_transport_regulations",
+            "maintenance_all_transport_types", "maintenance_transport_types",
+            "admin_edit_enabled", "employee",
             "is_active", "is_email_confirmed", "date_joined",
         ]
         read_only_fields = ["email", "is_active", "is_email_confirmed", "date_joined"]
@@ -148,7 +173,9 @@ class UserSerializer(serializers.ModelSerializer):
             )
         can_maintain = attrs.get("can_maintain", getattr(self.instance, "can_maintain", False))
         can_manage = attrs.get("can_manage_regulations", getattr(self.instance, "can_manage_regulations", False))
-        if (can_maintain or can_manage) and role != User.Role.ACCOUNTANT:
+        can_maintain_transport = attrs.get("can_maintain_transport", getattr(self.instance, "can_maintain_transport", False))
+        can_manage_transport = attrs.get("can_manage_transport_regulations", getattr(self.instance, "can_manage_transport_regulations", False))
+        if (can_maintain or can_manage or can_maintain_transport or can_manage_transport) and role != User.Role.ACCOUNTANT:
             raise serializers.ValidationError(
                 {"can_maintain": ["Флаги ТО применимы только к роли «Ответственный за учёт»."]}
             )
@@ -167,7 +194,9 @@ class UserSerializer(serializers.ModelSerializer):
                         "Сначала включите доступ к админ-панели в Настройках → Системные."
                     ]}
                 )
-        return normalize_maintenance_fields(attrs, role=role, can_maintain=can_maintain)
+        return normalize_maintenance_fields(
+            attrs, role=role, can_maintain=can_maintain, can_maintain_transport=can_maintain_transport
+        )
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -281,6 +310,13 @@ class InviteSerializer(serializers.Serializer):
     maintenance_types = serializers.PrimaryKeyRelatedField(
         many=True, required=False, default=list, queryset=EquipmentType.objects.all(),
     )
+    # B22: флаги и область типов ТО транспорта.
+    can_maintain_transport = serializers.BooleanField(required=False, default=False)
+    can_manage_transport_regulations = serializers.BooleanField(required=False, default=False)
+    maintenance_all_transport_types = serializers.BooleanField(required=False, default=True)
+    maintenance_transport_types = serializers.PrimaryKeyRelatedField(
+        many=True, required=False, default=list, queryset=TransportType.objects.all(),
+    )
     # Создать нового Сотрудника прямо из приглашения (свитч «Добавить сотрудника»
     # в модалке). Взаимоисключающе с выбором существующего employee_id.
     create_employee = serializers.BooleanField(required=False, default=False)
@@ -319,11 +355,18 @@ class InviteSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"is_observer": ["Признак «Наблюдатель» применим только к роли «Сотрудник»."]}
             )
-        if (attrs.get("can_maintain") or attrs.get("can_manage_regulations")) and attrs["role"] != User.Role.ACCOUNTANT:
+        if (
+            attrs.get("can_maintain") or attrs.get("can_manage_regulations")
+            or attrs.get("can_maintain_transport") or attrs.get("can_manage_transport_regulations")
+        ) and attrs["role"] != User.Role.ACCOUNTANT:
             raise serializers.ValidationError(
                 {"can_maintain": ["Флаги ТО применимы только к роли «Ответственный за учёт»."]}
             )
-        normalize_maintenance_fields(attrs, role=attrs["role"], can_maintain=attrs.get("can_maintain", False))
+        normalize_maintenance_fields(
+            attrs, role=attrs["role"],
+            can_maintain=attrs.get("can_maintain", False),
+            can_maintain_transport=attrs.get("can_maintain_transport", False),
+        )
         if attrs.get("create_employee"):
             if attrs.get("employee"):
                 raise serializers.ValidationError(
@@ -375,6 +418,9 @@ class InviteSerializer(serializers.Serializer):
                 "can_maintain": self.validated_data.get("can_maintain", False),
                 "can_manage_regulations": self.validated_data.get("can_manage_regulations", False),
                 "maintenance_all_types": self.validated_data.get("maintenance_all_types", True),
+                "can_maintain_transport": self.validated_data.get("can_maintain_transport", False),
+                "can_manage_transport_regulations": self.validated_data.get("can_manage_transport_regulations", False),
+                "maintenance_all_transport_types": self.validated_data.get("maintenance_all_transport_types", True),
                 "employee": employee,
             }
             user = User.objects.filter(email__iexact=email).first()
@@ -388,6 +434,7 @@ class InviteSerializer(serializers.Serializer):
                 user.save()
             # M2M — только после save() существующего/нового пользователя.
             user.maintenance_types.set(self.validated_data.get("maintenance_types", []))
+            user.maintenance_transport_types.set(self.validated_data.get("maintenance_transport_types", []))
 
             send_invite(user)
         return user, domain_warning
