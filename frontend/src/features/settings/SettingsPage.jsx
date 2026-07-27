@@ -20,8 +20,8 @@ const SECTIONS = [
     desc: 'Поиск и объединение дублирующихся сотрудников',
     Component: EmployeeDuplicatesTab,
   },
-  { value: 'system', label: 'Системные', desc: 'Хранилище, доступ и проверка интеграций', Component: SystemTab },
   { value: 'numbering', label: 'Префиксы', desc: 'Префиксы учётных номеров для автогенерации', Component: NumberingTab },
+  { value: 'system', label: 'Системные', desc: 'Хранилище, доступ и проверка интеграций', Component: SystemTab },
   { value: 'backup', label: 'Резервное копирование', desc: 'Настройки резервного копирования', Component: BackupTab },
   { value: 'update', label: 'Обновление', desc: 'Версия и обновление системы', Component: UpdateTab },
 ]

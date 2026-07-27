@@ -122,19 +122,8 @@ else
     warn "Локальный режим: TLS не выпускается, вход и данные идут по HTTP — используйте только в доверенной сети."
   fi
 
-  # Первый администратор — по желанию: если оставить пустым, учётку админа и
-  # компанию можно создать в браузере через Setup Wizard при первом заходе.
-  # Если задать — админ создаётся автоматически, а пароль после старта стирается
-  # из .env (см. секцию 5), чтобы не хранился в файле.
-  info "— Первый администратор (Enter — пропустить, создать через Setup Wizard в браузере) —"
-  ask ELE_ADMIN_EMAIL "Email первого администратора" ""
-  ELE_ADMIN_PASSWORD=""
-  if [ -n "$ELE_ADMIN_EMAIL" ]; then
-    while :; do
-      ask_secret ELE_ADMIN_PASSWORD "Пароль первого администратора (мин. 8 симв., буквы разных регистров, цифра, спецсимвол)"
-      [ -n "$ELE_ADMIN_PASSWORD" ] && break || warn "Пароль обязателен, если задан email админа."
-    done
-  fi
+  # Первого администратора и компанию создаёт Setup Wizard в браузере при первом
+  # заходе — в install.sh учётку админа не заводим.
   ask DEFAULT_FROM_EMAIL "Адрес отправителя писем" "ELE <no-reply@${EMAIL_HOST_DEFAULT}>"
   POSTGRES_PASSWORD="$(rand 32 24)"
 
@@ -212,9 +201,6 @@ EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
 EMAIL_USE_TLS=${EMAIL_USE_TLS}
 EMAIL_USE_SSL=${EMAIL_USE_SSL}
 
-ELE_ADMIN_EMAIL=${ELE_ADMIN_EMAIL}
-ELE_ADMIN_PASSWORD=${ELE_ADMIN_PASSWORD}
-
 ELE_STORAGE_MODE=${ELE_STORAGE_MODE}
 S3_ENDPOINT=${S3_ENDPOINT}
 S3_BUCKET=${S3_BUCKET}
@@ -289,26 +275,11 @@ until docker compose -f docker-compose.prod.yml up -d --build; do
   attempt=$((attempt + 1))
 done
 
-# Пароль первого администратора нужен только для его создания при первом старте
-# (bootstrap_admin). Стек уже поднялся (up ждёт healthy backend), админ создан —
-# стираем пароль из .env, чтобы секрет не оставался в файле. Приложение к .env
-# не прикасается: файл правит здесь сам install.sh на хосте. На повторных
-# запусках блок ввода .env пропущен, переменная пуста — ничего не трогаем.
-if [ -n "${ELE_ADMIN_PASSWORD:-}" ]; then
-  sed -i 's/^ELE_ADMIN_PASSWORD=.*/ELE_ADMIN_PASSWORD=/' .env
-  info "Администратор ${ELE_ADMIN_EMAIL} создан; пароль удалён из .env."
-fi
-
 # SITE_URL уже содержит схему (https://домен или http://IP) — используем его,
 # чтобы сообщение было корректным в обоих режимах.
 APP_URL="$(grep -E '^SITE_URL=' .env | cut -d= -f2-)"
-ADMIN_IN_ENV="$(grep -E '^ELE_ADMIN_EMAIL=' .env | cut -d= -f2-)"
 case "$APP_URL" in
   https://*) info "Готово. После получения TLS-сертификата приложение будет доступно по адресу:"; info "  ${APP_URL}" ;;
   *)         info "Готово. Локальный режим (HTTP без TLS). Приложение доступно по адресу:"; info "  ${APP_URL}" ;;
 esac
-if [ -n "$ADMIN_IN_ENV" ]; then
-  info "Первый вход — учётной записью администратора (${ADMIN_IN_ENV})."
-else
-  info "Первый вход — откройте адрес в браузере: запустится Setup Wizard для создания администратора и компании."
-fi
+info "Первый вход — откройте адрес в браузере: запустится Setup Wizard для создания администратора и компании."

@@ -7,12 +7,15 @@ import { IpAllowlistEditor } from './IpAllowlistEditor.jsx'
 import {
   checkCaptcha,
   checkYandexId,
+  getBackupSettings,
   getCompanySettings,
   getStorageMigrationStatus,
   getSystemStatus,
   retryStorageMigration,
   sendSmtpTestCode,
+  testSecondaryS3,
   testStorage,
+  updateBackupSettings,
   updateCompanySettings,
   updateStorageMode,
   verifySmtpTestCode,
@@ -79,6 +82,13 @@ export function SystemTab() {
   const [migration, setMigration] = useState(null) // { status, pending_count, error_count, target_backend }
   const [migrationRetrying, setMigrationRetrying] = useState(false)
 
+  // Хранилище резервных копий (единое назначение и ручных, и авто-копий).
+  const [backup, setBackup] = useState(null) // { backup_destination, backup_secondary_s3:{configured,bucket} }
+  const [savingBackupDest, setSavingBackupDest] = useState(false)
+  const [s3Testing, setS3Testing] = useState(false)
+  const [s3Result, setS3Result] = useState(null) // { ok, msg }
+  const [backupDestError, setBackupDestError] = useState(null)
+
   // SMTP
   const [smtpStatus, setSmtpStatus] = useState('idle') // idle|sending|sent|checking|ok
   const [smtpCode, setSmtpCode] = useState('')
@@ -95,8 +105,8 @@ export function SystemTab() {
   const [captchaChecking, setCaptchaChecking] = useState(false)
 
   useEffect(() => {
-    Promise.all([getSystemStatus(), getCompanySettings(), getStorageMigrationStatus()])
-      .then(([st, company, mig]) => {
+    Promise.all([getSystemStatus(), getCompanySettings(), getStorageMigrationStatus(), getBackupSettings()])
+      .then(([st, company, mig, bk]) => {
         setStatus(st)
         setStorageMode(st.storage_mode)
         setDomain(company.domain || '')
@@ -105,6 +115,7 @@ export function SystemTab() {
         setAdminAccessEnabled(company.admin_access_enabled === true)
         setAdminIps(normalizeIps(company.admin_access_ips))
         setMigration(mig)
+        setBackup(bk)
       })
       .catch(() => setLoadError('Не удалось загрузить системные настройки.'))
   }, [])
@@ -172,6 +183,40 @@ export function SystemTab() {
       setStorageResult({ ok: false, msg: err.detail || 'Проверка не пройдена.' })
     } finally {
       setStorageTesting(false)
+    }
+  }
+
+  // Смена единого назначения резервных копий. Выбор S3 без параметров в .env
+  // не выполняется — показываем подсказку, значение не меняем.
+  const onBackupDest = async (dest) => {
+    setBackupDestError(null)
+    if (dest === 'secondary_s3' && !backup?.backup_secondary_s3?.configured) {
+      setBackupDestError('Параметры S3 для backup не заданы в .env (BACKUP_S3_*), выбор недоступен.')
+      return
+    }
+    setSavingBackupDest(true)
+    setBackup((prev) => ({ ...prev, backup_destination: dest })) // оптимистично
+    try {
+      const updated = await updateBackupSettings({ backup_destination: dest })
+      setBackup((prev) => ({ ...prev, ...updated }))
+    } catch (err) {
+      setBackup((prev) => ({ ...prev, backup_destination: dest === 'secondary_s3' ? 'own' : prev.backup_destination }))
+      setBackupDestError(err.detail || 'Не удалось сохранить назначение резервных копий.')
+    } finally {
+      setSavingBackupDest(false)
+    }
+  }
+
+  const runSecondaryS3Test = async () => {
+    setS3Testing(true)
+    setS3Result(null)
+    try {
+      const data = await testSecondaryS3()
+      setS3Result({ ok: true, msg: data.detail })
+    } catch (err) {
+      setS3Result({ ok: false, msg: err.detail || 'Проверка не пройдена.' })
+    } finally {
+      setS3Testing(false)
     }
   }
 
@@ -341,8 +386,52 @@ export function SystemTab() {
   return (
     <div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Хранилище файлов */}
-        <Card>
+        {/* Хранилище резервных копий (слева) + хранилище приложения (справа);
+            на мобиле — друг под другом. */}
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, alignItems: 'stretch' }}>
+        {/* Хранилище резервных копий — единое назначение ручных и авто-копий. */}
+        <Card style={{ flex: 1, minWidth: 0 }}>
+          <div style={sectionTitle}>Хранилище резервных копий</div>
+          <div style={sectionHint}>Выберите куда сохранять резервные копии базы данных и файлов.</div>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 10 : 24 }}>
+            {[
+              { value: 'own', label: 'Хранилище приложения' },
+              { value: 'secondary_s3', label: 'S3 для backup' },
+            ].map((opt) => {
+              const blocked = opt.value === 'secondary_s3' && !backup?.backup_secondary_s3?.configured
+              const current = backup?.backup_destination || 'own'
+              return (
+                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: savingBackupDest ? 'default' : 'pointer', fontSize: 14, opacity: blocked ? 0.55 : 1 }}>
+                  <input type="radio" name="backup-dest" checked={current === opt.value} disabled={savingBackupDest} onChange={() => onBackupDest(opt.value)} />
+                  {opt.label}
+                </label>
+              )
+            })}
+          </div>
+          {backupDestError ? (
+            <div style={{ marginTop: 10 }}>
+              <Banner variant="error">{backupDestError}</Banner>
+            </div>
+          ) : null}
+          {backup?.backup_secondary_s3?.configured ? (
+            <div style={{ ...checkRow, marginTop: 14 }}>
+              <span style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
+                S3 для backup: <b style={{ color: 'var(--color-text-muted)' }}>{backup.backup_secondary_s3.bucket}</b>
+              </span>
+              <Button type="button" variant="secondary" loading={s3Testing} onClick={runSecondaryS3Test}>
+                Проверить подключение
+              </Button>
+              <CheckResult result={s3Result} />
+            </div>
+          ) : (
+            <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 14 }}>
+              S3 для backup не настроен в .env (BACKUP_S3_*).
+            </div>
+          )}
+        </Card>
+
+        {/* Хранилище приложения */}
+        <Card style={{ flex: 1, minWidth: 0 }}>
           <div style={sectionTitle}>Хранилище приложения</div>
           <div style={sectionHint}>Выберите где будут хранятся загруженные файлы.</div>
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 10 : 24 }}>
@@ -383,6 +472,7 @@ export function SystemTab() {
             <CheckResult result={storageResult} />
           </div>
         </Card>
+        </div>
 
         {/* Домен/ограничения входа + доступ к админ-панели — в ряд на десктопе. */}
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, alignItems: 'stretch' }}>

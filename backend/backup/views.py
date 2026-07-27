@@ -8,18 +8,16 @@ from core.pagination import ELECursorPagination
 from core.permissions import IsAdmin
 from storage.backends import get_backend
 
-from .destinations import secondary_s3_configured, test_secondary_s3_connection
-from .models import BackupDestinationStatus, BackupRecord
+from .destinations import test_secondary_s3_connection
+from .models import BackupRecord
 from .serializers import BackupCreateSerializer, BackupRecordSerializer
 from .service import backup_fully_failed, create_backup
-
-SECONDARY_NOT_CONFIGURED = "Параметры резервного S3 не заданы в .env (BACKUP_S3_*) — выбор S3 для бэкапов недоступен."
 
 
 class BackupCreateView(APIView):
     """«Создать резервную копию сейчас» — доступ строго Администратору.
-    Опционально шифрует паролем; назначение — хранилище приложения или
-    отдельный резервный S3."""
+    Опционально шифрует паролем; назначение — единая настройка
+    Company.backup_destination (см. «Системные»)."""
 
     permission_classes = [IsAdmin]
 
@@ -27,15 +25,7 @@ class BackupCreateView(APIView):
         params = BackupCreateSerializer(data=request.data)
         params.is_valid(raise_exception=True)
         passphrase = params.validated_data.get("passphrase") or None
-        destination = params.validated_data["destination"]
-        if destination == BackupDestinationStatus.Destination.SECONDARY_S3 and not secondary_s3_configured():
-            return Response({"detail": SECONDARY_NOT_CONFIGURED}, status=400)
-
-        record = create_backup(
-            BackupRecord.BackupType.MANUAL,
-            passphrase=passphrase,
-            destination=destination,
-        )
+        record = create_backup(BackupRecord.BackupType.MANUAL, passphrase=passphrase)
         data = BackupRecordSerializer(record).data
         # Ни одно назначение не удалось — сообщаем ошибкой, но запись со статусами
         # уже создана (видна в истории), тело ответа её содержит.

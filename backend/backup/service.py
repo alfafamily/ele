@@ -30,12 +30,10 @@ def create_backup(
     from company.models import Company
 
     company = Company.load()
+    # Назначение — единое для ручных и авто-копий (Company.backup_destination,
+    # настраивается в «Системные»). Явный destination передаётся только из тестов.
     if destination is None:
-        destination = (
-            company.auto_backup_destination
-            if backup_type == BackupRecord.BackupType.AUTO
-            else BackupDestinationStatus.Destination.OWN
-        )
+        destination = company.backup_destination
     # Авто-копии идут headless (cron) — ад-хок пароль передать неоткуда,
     # берём его из окружения (пусто = без шифрования).
     if passphrase is None and backup_type == BackupRecord.BackupType.AUTO:

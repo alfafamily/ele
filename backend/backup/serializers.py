@@ -34,12 +34,7 @@ class BackupRecordSerializer(serializers.ModelSerializer):
 
 
 class BackupCreateSerializer(serializers.Serializer):
-    """Параметры ручного создания копии. Пусто = без шифрования, назначение —
-    хранилище приложения по умолчанию."""
+    """Параметры ручного создания копии. Пусто = без шифрования. Назначение —
+    единая настройка Company.backup_destination (в «Системные»)."""
 
     passphrase = serializers.CharField(required=False, allow_blank=True, default="")
-    destination = serializers.ChoiceField(
-        choices=[BackupDestinationStatus.Destination.OWN, BackupDestinationStatus.Destination.SECONDARY_S3],
-        required=False,
-        default=BackupDestinationStatus.Destination.OWN,
-    )

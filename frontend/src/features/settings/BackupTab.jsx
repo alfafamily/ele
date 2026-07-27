@@ -6,7 +6,6 @@ import {
   backupDownloadUrl,
   createBackup,
   getBackupSettings,
-  testSecondaryS3,
   updateBackupSettings,
 } from './settingsApi.js'
 
@@ -18,18 +17,7 @@ function formatDate(iso) {
   return new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 const TYPE_LABEL = { manual: 'Вручную', auto: 'Авто' }
-const DEST_LABEL = { own: 'Хранилище приложения', secondary_s3: 'Отдельный S3 для бэкапов' }
-const S3_NOT_CONFIGURED = 'Параметры резервного S3 не заданы в .env (BACKUP_S3_*) — выбор S3 для бэкапов недоступен.'
-
-function CheckResult({ result }) {
-  if (!result) return null
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-      <Icon name={result.ok ? 'circle-check' : 'circle-x'} size={20} strokeWidth={2} style={{ flex: 'none', color: result.ok ? 'var(--color-success)' : 'var(--color-error)' }} />
-      {!result.ok && result.msg ? <span style={{ color: 'var(--color-error)', fontSize: 13 }}>{result.msg}</span> : null}
-    </span>
-  )
-}
+const DEST_LABEL = { own: 'Хранилище приложения', secondary_s3: 'S3 для backup' }
 
 function DestinationBadge({ dest }) {
   const label = DEST_LABEL[dest.destination] || dest.destination
@@ -41,41 +29,6 @@ function DestinationBadge({ dest }) {
   )
 }
 
-// Радиовыбор назначения копии. При попытке выбрать S3 без параметров в .env
-// вызывает onBlockedS3() и не меняет значение.
-function DestinationRadio({ name, value, onChange, s3Configured, onBlockedS3, disabled }) {
-  const options = [
-    { value: 'own', label: 'Хранилище приложения' },
-    { value: 'secondary_s3', label: 'Отдельный S3 для backup' },
-  ]
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {options.map((opt) => {
-        const blocked = opt.value === 'secondary_s3' && !s3Configured
-        return (
-          <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: disabled ? 'default' : 'pointer', fontSize: 14, opacity: blocked ? 0.55 : 1 }}>
-            <input
-              type="radio"
-              name={name}
-              checked={value === opt.value}
-              disabled={disabled}
-              onChange={() => {
-                if (blocked) {
-                  onBlockedS3?.()
-                  return
-                }
-                onChange(opt.value)
-              }}
-              style={{ flex: 'none' }}
-            />
-            {opt.label}
-          </label>
-        )
-      })}
-    </div>
-  )
-}
-
 export function BackupTab() {
   const isMobile = useMediaQuery('(max-width: 768px)')
   const backupPad = isMobile ? '12px 12px' : '12px 18px'
@@ -83,25 +36,19 @@ export function BackupTab() {
   const [creating, setCreating] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
   const [error, setError] = useState(null)
-  // Ручной экспорт: назначение + пароль шифрования.
-  const [manualDest, setManualDest] = useState('own')
+  // Ручной экспорт: только пароль шифрования (назначение — в «Системные»).
   const [passphrase, setPassphrase] = useState('')
-  // Проверка резервного S3.
-  const [s3Testing, setS3Testing] = useState(false)
-  const [s3Result, setS3Result] = useState(null)
   const { items, loading, refetch } = useCursorList('/api/backup/history/', {})
 
   useEffect(() => {
     getBackupSettings().then(setSettings)
   }, [])
 
-  const s3Configured = !!settings?.backup_secondary_s3?.configured
-
   const doCreateBackup = async () => {
     setCreating(true)
     setError(null)
     try {
-      await createBackup({ passphrase: passphrase || '', destination: manualDest })
+      await createBackup({ passphrase: passphrase || '' })
       setPassphrase('')
       refetch()
     } catch (err) {
@@ -120,38 +67,6 @@ export function BackupTab() {
       setSavingSettings(false)
     }
   }
-
-  const runS3Test = async () => {
-    setS3Testing(true)
-    setS3Result(null)
-    try {
-      const data = await testSecondaryS3()
-      setS3Result({ ok: true, msg: data.detail })
-    } catch (err) {
-      setS3Result({ ok: false, msg: err.detail || 'Проверка не пройдена.' })
-    } finally {
-      setS3Testing(false)
-    }
-  }
-
-  // Компактная строка про резервный S3 (подключён / нет) + проверка.
-  const secondaryInfo = settings ? (
-    s3Configured ? (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 4 }}>
-        <span style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
-          Резервный S3: <b style={{ color: 'var(--color-text-muted)' }}>{settings.backup_secondary_s3.bucket}</b>
-        </span>
-        <Button type="button" variant="secondary" loading={s3Testing} onClick={runS3Test}>
-          Проверить подключение
-        </Button>
-        <CheckResult result={s3Result} />
-      </div>
-    ) : (
-      <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 4 }}>
-        Отдельный S3 для бэкапов не настроен в .env (BACKUP_S3_*).
-      </div>
-    )
-  ) : null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -180,16 +95,6 @@ export function BackupTab() {
               Экспорт
             </Button>
           </div>
-
-          <div style={{ marginTop: 16, fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Куда сохранить</div>
-          <DestinationRadio
-            name="manual-dest"
-            value={manualDest}
-            onChange={(v) => { setManualDest(v); setError(null) }}
-            s3Configured={s3Configured}
-            onBlockedS3={() => setError(S3_NOT_CONFIGURED)}
-          />
-          {secondaryInfo}
 
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 16 }}>
             <Input
@@ -223,21 +128,6 @@ export function BackupTab() {
           </div>
           {settings.auto_backup_enabled ? (
             <>
-              <div style={{ marginTop: 16, fontSize: 13, fontWeight: 500, marginBottom: 8 }}>Куда сохранять</div>
-              <DestinationRadio
-                name="auto-dest"
-                value={settings.auto_backup_destination || 'own'}
-                onChange={(v) => {
-                  setSettings({ ...settings, auto_backup_destination: v })
-                  patchSettings({ auto_backup_destination: v })
-                  setError(null)
-                }}
-                s3Configured={s3Configured}
-                onBlockedS3={() => setError(S3_NOT_CONFIGURED)}
-                disabled={savingSettings}
-              />
-              {secondaryInfo}
-
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 16 }}>
                 <Input
                   label="Время автокопирования"

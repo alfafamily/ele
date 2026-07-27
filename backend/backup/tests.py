@@ -403,16 +403,17 @@ class SecondaryS3Tests(APITestCase):
         resp = self.client.post("/api/backup/secondary-s3/test/")
         self.assertEqual(resp.status_code, 400)
 
-    @override_settings(BACKUP_S3_ENDPOINT="", BACKUP_S3_BUCKET="")
-    def test_manual_create_secondary_when_not_configured_400(self):
-        resp = self.client.post("/api/backup/create/", {"destination": "secondary_s3"}, format="json")
-        self.assertEqual(resp.status_code, 400)
-        self.assertIn("BACKUP_S3", resp.data["detail"])
+    def test_manual_create_follows_company_destination(self):
+        # Назначение — единая настройка Company.backup_destination; запрос
+        # создания его не принимает и не переопределяет.
+        resp = self.client.post("/api/backup/create/", {}, format="json")
+        self.assertEqual(resp.status_code, 201)
+        self.assertEqual(resp.data["destinations"][0]["destination"], "own")
 
     @override_settings(BACKUP_S3_ENDPOINT="", BACKUP_S3_BUCKET="")
-    def test_auto_destination_secondary_when_not_configured_rejected(self):
+    def test_destination_secondary_when_not_configured_rejected(self):
         resp = self.client.patch(
-            "/api/company/backup-settings/", {"auto_backup_destination": "secondary_s3"}, format="json"
+            "/api/company/backup-settings/", {"backup_destination": "secondary_s3"}, format="json"
         )
         self.assertEqual(resp.status_code, 400)
 

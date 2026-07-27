@@ -47,16 +47,16 @@ class Company(models.Model):
     auto_backup_time = models.TimeField("Время автокопирования", default=time(3, 0))
     auto_backup_retention = models.PositiveSmallIntegerField("Хранить последних копий", default=30)
 
-    # B29: единое назначение копий — либо хранилище инстанса, либо отдельный
-    # резервный S3 (креды в .env BACKUP_S3_*; секреты в Company нельзя — она
-    # уходит в бэкап). Здесь хранится только выбор для авто-копий; для ручных
-    # назначение приходит в запросе.
+    # B29: ЕДИНОЕ назначение копий (и ручных, и авто) — либо хранилище инстанса,
+    # либо отдельный резервный S3 (креды в .env BACKUP_S3_*; секреты в Company
+    # нельзя — она уходит в бэкап). Настройка вынесена в «Системные» рядом с
+    # выбором хранилища приложения.
     class BackupDestination(models.TextChoices):
         OWN = "own", "Хранилище приложения"
-        SECONDARY_S3 = "secondary_s3", "Отдельный S3 для бэкапов"
+        SECONDARY_S3 = "secondary_s3", "S3 для backup"
 
-    auto_backup_destination = models.CharField(
-        "Назначение авто-копий", max_length=16, choices=BackupDestination.choices, default=BackupDestination.OWN
+    backup_destination = models.CharField(
+        "Хранилище резервных копий", max_length=16, choices=BackupDestination.choices, default=BackupDestination.OWN
     )
 
     # Автонумератор учётных номеров (B2). У каждого списка объектов свой префикс
