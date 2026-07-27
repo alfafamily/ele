@@ -18,8 +18,10 @@ function formatShortDate(iso) {
 }
 function formatNumber(value) {
   if (value == null) return '—'
-  // «45000.00» → «45000», «12.50» → «12.5»
-  return String(value).replace(/\.?0+$/, '')
+  // Срезаем незначащие нули только в дробной части: «45000.00» → «45000»,
+  // «12.50» → «12.5», «45000» → «45000» (целое не трогаем).
+  const s = String(value)
+  return s.includes('.') ? s.replace(/\.?0+$/, '') : s
 }
 
 export function TransportCardPage() {
