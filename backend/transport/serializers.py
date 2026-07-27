@@ -180,6 +180,7 @@ class TransportSerializer(serializers.ModelSerializer):
     position = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     parking = serializers.SerializerMethodField()
+    passes = serializers.SerializerMethodField()
     field_values = TransportFieldValueOutSerializer(many=True, read_only=True)
     custom_fields = TransportCustomFieldSerializer(many=True, required=False)
     field_values_input = TransportFieldValueInputSerializer(many=True, required=False, write_only=True)
@@ -207,6 +208,7 @@ class TransportSerializer(serializers.ModelSerializer):
             "last_mileage",
             "status",
             "parking",
+            "passes",
             "field_values",
             "field_values_input",
             "custom_fields",
@@ -216,6 +218,17 @@ class TransportSerializer(serializers.ModelSerializer):
 
     def get_parking(self, obj):
         return transport_parking(obj)
+
+    def get_passes(self, obj):
+        # B34. Транспортные пропуска, закреплённые за этой единицей (активные, не
+        # утилизированные). Только на карточке — в списке не считаем (N+1).
+        view = self.context.get("view")
+        if getattr(view, "action", None) == "list":
+            return []
+        from employees.serializers import AccessPassSerializer
+
+        passes = [p for p in obj.passes.all() if not p.is_utilized]
+        return AccessPassSerializer(passes, many=True).data
 
     def get_type_and_model(self, obj):
         model_value = _locked_value(obj, BASE_FIELD_MODEL)

@@ -83,9 +83,11 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('ru-RU')
 }
 
-// Тип пропуска для подписи «Пропуск (…)»: Авто / Пеший / Авто, Пеший.
+// Тип пропуска для подписи «Пропуск (…)». Транспортный (B34) — метка вида;
+// персональный — Личный авто / Пеший.
 function passTypes(pass) {
-  return [pass.type_vehicle && 'Авто', pass.type_pedestrian && 'Пеший'].filter(Boolean).join(', ')
+  if (pass.pass_kind === 'transport') return 'Транспортный'
+  return [pass.type_vehicle && 'Личный авто', pass.type_pedestrian && 'Пеший'].filter(Boolean).join(', ')
 }
 
 // Строки «Доступ в» для пропуска: по строке на здание с перечнем помещений (или
@@ -282,6 +284,13 @@ export function PassListPage() {
                         <div className="ele-clamp-2">{row.employee_name}</div>
                         <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {[row.position, row.department].filter(Boolean).join(' · ') || '—'}
+                        </div>
+                      </>
+                    ) : row.transport_detail ? (
+                      <>
+                        <div className="ele-clamp-2">{row.transport_detail.type_and_model}</div>
+                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {[row.transport_detail.plate, `№ ${row.transport_detail.inventory_number}`].filter(Boolean).join(' · ')}
                         </div>
                       </>
                     ) : row.storage_place_detail ? (

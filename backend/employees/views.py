@@ -853,8 +853,11 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = AccessPass.objects.select_related(
-            "employee", "employee__avatar", "storage_place__room__building"
-        ).prefetch_related("buildings", "rooms", "places__room")
+            "employee", "employee__avatar", "storage_place__room__building",
+            "transport__transport_type",
+        ).prefetch_related(
+            "buildings", "rooms", "places__room", "transport__field_values__field",
+        )
         user = self.request.user
         if user.role == "employee" and not user.is_observer:
             # Обычный «Сотрудник» — только свои пропуска (в Профиле); не привязан
@@ -864,6 +867,16 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if employee:
             qs = qs.filter(employee_id__in=csv_ids(employee))
 
+        # B34. Вид пропуска (personal/transport) — для подбора свободных
+        # транспортных пропусков на карточке транспорта. Транспорт (?transport=)
+        # — привязанные к конкретной единице (для блока «Пропуска»).
+        pass_kind = self.request.query_params.get("pass_kind")
+        if pass_kind in dict(AccessPass.PassKind.choices):
+            qs = qs.filter(pass_kind=pass_kind)
+        transport = self.request.query_params.get("transport")
+        if transport:
+            qs = qs.filter(transport_id__in=csv_ids(transport))
+
         if self.action == "list":
             # Активные (все неутилизированные) / Утилизировано. tab=deactivated
             # сохранён для подбора свободных пропусков при привязке.
@@ -871,7 +884,8 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             if tab == "active":
                 qs = qs.filter(is_utilized=False)
             elif tab == "deactivated":
-                qs = qs.filter(employee__isnull=True, is_utilized=False)
+                # Свободный = не за сотрудником И не за транспортом.
+                qs = qs.filter(employee__isnull=True, transport__isnull=True, is_utilized=False)
             elif tab == "utilized":
                 qs = qs.filter(is_utilized=True)
 
@@ -889,7 +903,9 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 ids = csv_ids(self.request.query_params.get("storage_place"))
                 qs = qs.filter(storage_place_id__in=ids) if ids else qs.filter(storage_place__isnull=False)
             elif assigned == "unattached":
-                qs = qs.filter(employee__isnull=True, storage_place__isnull=True)
+                qs = qs.filter(
+                    employee__isnull=True, transport__isnull=True, storage_place__isnull=True
+                )
 
             search = self.request.query_params.get("search")
             if search:
@@ -912,8 +928,11 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 type_keywords = [
                     ("пропуск", Q(object_type=AccessPass.ObjectType.PASS)),
                     ("ключ", Q(object_type=AccessPass.ObjectType.KEY)),
+                    ("личный авто", Q(type_vehicle=True)),
                     ("авто", Q(type_vehicle=True)),
                     ("пеший", Q(type_pedestrian=True)),
+                    ("транспортный", Q(pass_kind=AccessPass.PassKind.TRANSPORT)),
+                    ("персональный", Q(pass_kind=AccessPass.PassKind.PERSONAL)),
                 ]
                 for kw, q in type_keywords:
                     if term and (kw.startswith(term) or term.startswith(kw)):
@@ -940,31 +959,51 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def detach(self, request, pk=None):
-        """Открепить от сотрудника — пропуск/ключ уходит на склад (место
-        хранения обязательно). Остаётся для истории и повторной выдачи."""
+        """Открепить от сотрудника или транспорта (B34) — пропуск/ключ уходит на
+        склад (место хранения обязательно). Остаётся для истории и повторной
+        выдачи."""
         from core.placement import get_storage_place
 
         access_pass = self.get_object()
         storage = get_storage_place(request.data.get("storage_place"))
         access_pass.employee = None
+        access_pass.transport = None
         access_pass.storage_place = storage
         comment = (request.data.get("comment") or "").strip()
         if comment:
             access_pass._change_reason = comment
-        access_pass.save(update_fields=["employee", "storage_place"])
+        access_pass.save(update_fields=["employee", "transport", "storage_place"])
         return Response(AccessPassSerializer(access_pass).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def attach(self, request, pk=None):
-        """Привязать к сотруднику (активировать). Снимает со склада."""
+        """Привязать (активировать), снимает со склада. Персональный пропуск/ключ
+        — к сотруднику (employee); транспортный пропуск (B34) — к единице
+        транспорта (transport)."""
         access_pass = self.get_object()
-        employee = get_object_or_404(Employee, pk=request.data.get("employee"))
-        access_pass.employee = employee
+        transport_id = request.data.get("transport")
+        if transport_id:
+            from transport.models import Transport
+
+            if access_pass.pass_kind != AccessPass.PassKind.TRANSPORT:
+                return Response(
+                    {"detail": "За транспортом закрепляется только транспортный пропуск."}, status=400
+                )
+            access_pass.transport = get_object_or_404(Transport, pk=transport_id)
+            access_pass.employee = None
+        else:
+            if access_pass.pass_kind == AccessPass.PassKind.TRANSPORT:
+                return Response(
+                    {"detail": "Транспортный пропуск закрепляется за транспортом, а не за сотрудником."},
+                    status=400,
+                )
+            access_pass.employee = get_object_or_404(Employee, pk=request.data.get("employee"))
+            access_pass.transport = None
         access_pass.storage_place = None
         comment = (request.data.get("comment") or "").strip()
         if comment:
             access_pass._change_reason = comment
-        access_pass.save(update_fields=["employee", "storage_place"])
+        access_pass.save(update_fields=["employee", "transport", "storage_place"])
         return Response(AccessPassSerializer(access_pass).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
@@ -982,6 +1021,7 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             return Response({"detail": "Некорректная причина утилизации."}, status=400)
         if not access_pass.is_utilized:
             access_pass.employee = None
+            access_pass.transport = None
             access_pass.storage_place = None
             access_pass.is_utilized = True
             access_pass.utilized_at = timezone.now()
@@ -989,7 +1029,7 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             comment = (request.data.get("comment") or "").strip()
             if comment:
                 access_pass._change_reason = comment
-            access_pass.save(update_fields=["employee", "storage_place", "is_utilized", "utilized_at", "utilization_reason"])
+            access_pass.save(update_fields=["employee", "transport", "storage_place", "is_utilized", "utilized_at", "utilization_reason"])
         return Response(AccessPassSerializer(access_pass).data)
 
     @action(detail=True, methods=["get"], url_path="history")

@@ -8,12 +8,14 @@ import { detachPass, utilizePass } from './employeesApi.js'
 // только два варианта утилизации. Комментарий (необязательный, многострочный)
 // доступен для вариантов утилизации и попадает в историю движений.
 export function PassDisposeModal({ pass, onClose, onDone }) {
-  const attached = Boolean(pass.employee)
+  // Закреплён за сотрудником или (B34) за транспортом — в обоих случаях можно
+  // открепить (на склад) либо утилизировать/передать арендодателю.
+  const attached = Boolean(pass.employee) || Boolean(pass.transport)
   const kind = pass.object_type === 'key' ? 'Ключ' : 'Пропуск'
 
   const OPTIONS = attached
     ? [
-        { value: 'detach', label: 'Деактивировать', hint: 'Открепить от сотрудника — станет неиспользуемым, можно выдать снова.' },
+        { value: 'detach', label: 'Деактивировать', hint: 'Открепить — станет неиспользуемым, можно выдать снова.' },
         { value: 'utilized', label: 'Утилизировать', hint: 'Выбросить. Необратимо, уйдёт во вкладку «Утилизировано».' },
         { value: 'handed', label: 'Передать арендодателю', hint: 'Отдан арендодателю. Необратимо, уйдёт во вкладку «Утилизировано».' },
       ]

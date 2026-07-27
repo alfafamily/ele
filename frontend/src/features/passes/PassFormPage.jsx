@@ -6,6 +6,8 @@ import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { BackButton, Badge, Banner, Card, FormActions, Icon, Input, PlaceSelect, Spinner } from '../../shared/ui'
 import { getBuildings } from '../premises/premisesApi.js'
+import { TransportPicker } from '../premises/TransportPicker.jsx'
+import { SelectedTransport } from '../../shared/SelectedTransport.jsx'
 import { createPass, getPass, updatePass } from '../employees/employeesApi.js'
 import { generateNextNumber } from '../settings/settingsApi.js'
 
@@ -27,10 +29,15 @@ export function PassFormPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const employeeId = searchParams.get('employee')
+  // B34. Создание транспортного пропуска с карточки транспорта — ?transport=<id>:
+  // сразу вид «Транспортный», закрепление за этим транспортом, возврат на карточку.
+  const transportId = searchParams.get('transport')
 
   const [buildings, setBuildings] = useState(null)
   const [prefilled, setPrefilled] = useState(!isEdit)
   const [objectType, setObjectType] = useState('pass')
+  // Вид пропуска (B34): personal | transport. Ключ всегда персональный.
+  const [passKind, setPassKind] = useState(transportId ? 'transport' : 'personal')
   const [accountNumber, setAccountNumber] = useState('')
   const [typeVehicle, setTypeVehicle] = useState(false)
   const [typePedestrian, setTypePedestrian] = useState(false)
@@ -42,8 +49,12 @@ export function PassFormPage() {
   const [selPlaces, setSelPlaces] = useState(() => new Set())
   const [expanded, setExpanded] = useState(() => new Set()) // ключи 'b:<id>' / 'r:<id>'
   const [comment, setComment] = useState('')
-  const [placementMode, setPlacementMode] = useState(employeeId ? 'employee' : 'storage')
+  // placementMode: personal → employee|storage; transport → transport|storage.
+  const [placementMode, setPlacementMode] = useState(
+    transportId ? 'transport' : employeeId ? 'employee' : 'storage'
+  )
   const [placementEmployee, setPlacementEmployee] = useState(null)
+  const [placementTransport, setPlacementTransport] = useState(null)
   const [storagePlaceId, setStoragePlaceId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -51,6 +62,7 @@ export function PassFormPage() {
   const [genLoading, setGenLoading] = useState(false)
 
   const isKey = objectType === 'key'
+  const isTransport = !isKey && passKind === 'transport'
 
   // Автонумератор: подставить следующий учётный номер для текущего типа объекта
   // (ключ/пропуск — свои счётчики). Счётчик на сервере сгорает сразу.
@@ -76,9 +88,14 @@ export function PassFormPage() {
   }, [employeeId])
 
   useEffect(() => {
+    if (transportId) apiGet(`/api/transport/${transportId}/`).then(setPlacementTransport).catch(() => {})
+  }, [transportId])
+
+  useEffect(() => {
     if (!isEdit) return
     getPass(id).then((pass) => {
       setObjectType(pass.object_type || 'pass')
+      setPassKind(pass.pass_kind || 'personal')
       setAccountNumber(pass.account_number || '')
       setTypeVehicle(pass.type_vehicle || false)
       setTypePedestrian(pass.type_pedestrian || false)
@@ -188,8 +205,10 @@ export function PassFormPage() {
     if (type === objectType) return
     setObjectType(type)
     // У ключа объект доступа один — при переключении оставляем максимум одно
-    // «здание целиком», помещения/места сбрасываем.
+    // «здание целиком», помещения/места сбрасываем. Ключ всегда персональный.
     if (type === 'key') {
+      setPassKind('personal')
+      if (placementMode === 'transport') setPlacementMode(employeeId ? 'employee' : 'storage')
       setTypeVehicle(false)
       setTypePedestrian(false)
       setSelBuildings((prev) => new Set([...prev].slice(0, 1)))
@@ -198,7 +217,24 @@ export function PassFormPage() {
     }
   }
 
-  const targetCount = selBuildings.size + selRooms.size + selPlaces.size
+  // Смена вида пропуска (B34). Транспортный — только здания целиком: сбрасываем
+  // помещения/места и типы Личный авто/Пеший; закрепление переключаем между
+  // «за транспортом» и «на складе».
+  const changePassKind = (kind) => {
+    if (kind === passKind) return
+    setPassKind(kind)
+    if (kind === 'transport') {
+      setTypeVehicle(false)
+      setTypePedestrian(false)
+      setSelRooms(new Set())
+      setSelPlaces(new Set())
+      if (placementMode === 'employee') setPlacementMode(transportId ? 'transport' : 'storage')
+    } else if (placementMode === 'transport') {
+      setPlacementMode(employeeId ? 'employee' : 'storage')
+    }
+  }
+
+  const targetCount = isTransport ? selBuildings.size : selBuildings.size + selRooms.size + selPlaces.size
 
   const submit = async (e) => {
     e.preventDefault()
@@ -220,14 +256,17 @@ export function PassFormPage() {
     selPlaces.forEach((pid) => { if (placeBuilding.has(pid)) buildingIds.add(placeBuilding.get(pid)) })
     const payload = {
       object_type: objectType,
+      pass_kind: isKey ? 'personal' : passKind,
       account_number: accountNumber,
-      type_vehicle: isKey ? false : typeVehicle,
-      type_pedestrian: isKey ? false : typePedestrian,
+      // Тип Личный авто/Пеший — только у персонального пропуска.
+      type_vehicle: isKey || isTransport ? false : typeVehicle,
+      type_pedestrian: isKey || isTransport ? false : typePedestrian,
       building_ids: [...buildingIds],
-      room_ids: [...selRooms],
-      place_ids: [...selPlaces],
+      // Транспортный пропуск — только здания целиком (без помещений/мест).
+      room_ids: isTransport ? [] : [...selRooms],
+      place_ids: isTransport ? [] : [...selPlaces],
     }
-    // Размещение при создании: за сотрудником или на складе.
+    // Размещение при создании: за сотрудником / за транспортом / на складе.
     if (!isEdit) {
       if (placementMode === 'employee') {
         if (!placementEmployee) {
@@ -236,6 +275,13 @@ export function PassFormPage() {
           return
         }
         payload.employee = placementEmployee.id
+      } else if (placementMode === 'transport') {
+        if (!placementTransport) {
+          setError('Выберите транспорт или место хранения.')
+          setSubmitting(false)
+          return
+        }
+        payload.transport = placementTransport.id
       } else {
         if (!storagePlaceId) {
           setError('Укажите место хранения для свободного пропуска/ключа.')
@@ -253,8 +299,14 @@ export function PassFormPage() {
       } else {
         const created = await createPass(payload)
         // replace — чтобы форма создания не оставалась в истории. При создании из
-        // карточки сотрудника возвращаемся на неё, иначе — на карточку средства.
-        navigate(employeeId ? `/employees/${employeeId}` : `/passes/${created.id}`, { replace: true })
+        // карточки сотрудника/транспорта возвращаемся на неё, иначе — на карточку
+        // средства.
+        const back = employeeId
+          ? `/employees/${employeeId}`
+          : transportId
+            ? `/transport/${transportId}`
+            : `/passes/${created.id}`
+        navigate(back, { replace: true })
       }
     } catch (err) {
       if (err.errors) {
@@ -311,6 +363,33 @@ export function PassFormPage() {
                   </div>
                 </div>
 
+                {!isKey ? (
+                  <div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>Вид пропуска</div>
+                    <div className="ele-segmented">
+                      <button
+                        type="button"
+                        className={'ele-segmented__btn' + (passKind === 'personal' ? ' ele-segmented__btn--active' : '')}
+                        onClick={() => changePassKind('personal')}
+                      >
+                        Персональный
+                      </button>
+                      <button
+                        type="button"
+                        className={'ele-segmented__btn' + (passKind === 'transport' ? ' ele-segmented__btn--active' : '')}
+                        onClick={() => changePassKind('transport')}
+                      >
+                        Транспортный
+                      </button>
+                    </div>
+                    <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 8 }}>
+                      {isTransport
+                        ? 'Закрепляется за транспортом; действует на выбранные здания целиком.'
+                        : 'Закрепляется за сотрудником; доступ в здания, помещения и места.'}
+                    </div>
+                  </div>
+                ) : null}
+
                 <Input
                   label="Учётный номер"
                   value={accountNumber}
@@ -330,13 +409,13 @@ export function PassFormPage() {
                   ) : null}
                 />
 
-                {!isKey ? (
+                {!isKey && !isTransport ? (
                   <div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>Тип пропуска</div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <CheckRow checked={typeVehicle} onChange={setTypeVehicle}>
-                          <span style={{ fontSize: 14, fontWeight: 500 }}>Авто</span>
+                          <span style={{ fontSize: 14, fontWeight: 500 }}>Личный авто</span>
                         </CheckRow>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -352,14 +431,38 @@ export function PassFormPage() {
 
             <Card>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>
-                {isKey ? 'Здание или помещение' : 'Здания и помещения'}
+                {isKey ? 'Здание или помещение' : isTransport ? 'Здания' : 'Здания и помещения'}
               </div>
               {isKey ? (
                 <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
                   У ключа доступен строго один объект: отметьте здание целиком, одно помещение или одно место.
                 </div>
+              ) : isTransport ? (
+                <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
+                  Отметьте здания, на которые действует пропуск (целиком). Доступны здания с признаком «Требуется ключ/пропуск».
+                </div>
               ) : null}
-              {visibleBuildings().length === 0 ? (
+              {isTransport ? (
+                (() => {
+                  const list = (buildings || []).filter((b) => !b.is_archived && (b.requires_pass || selBuildings.has(b.id)))
+                  if (list.length === 0) {
+                    return (
+                      <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
+                        Нет зданий с признаком «Требуется ключ/пропуск».
+                      </div>
+                    )
+                  }
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {list.map((b) => (
+                        <CheckRow key={b.id} checked={selBuildings.has(b.id)} onChange={(v) => toggleBuilding(b, v)}>
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</span>
+                        </CheckRow>
+                      ))}
+                    </div>
+                  )
+                })()
+              ) : visibleBuildings().length === 0 ? (
                 <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
                   Нет зданий/помещений/мест, для которых требуется ключ/пропуск.
                 </div>
@@ -456,22 +559,38 @@ export function PassFormPage() {
                 <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
                   {employeeId
                     ? 'Средство доступа будет закреплено за сотрудником.'
-                    : 'За сотрудником или на складе (место хранения).'}
+                    : transportId
+                      ? 'Пропуск будет закреплён за транспортом.'
+                      : isTransport
+                        ? 'За транспортом или на складе (место хранения).'
+                        : 'За сотрудником или на складе (место хранения).'}
                 </div>
                 {employeeId ? (
                   placementEmployee ? <SelectedEmployee employee={placementEmployee} /> : null
+                ) : transportId ? (
+                  placementTransport ? <SelectedTransport transport={placementTransport} /> : null
                 ) : (
                   <>
                     <ModeToggle
                       mode={placementMode}
                       onChange={(m) => { setPlacementMode(m); setStoragePlaceId('') }}
-                      options={[{ value: 'employee', label: 'За сотрудником' }, { value: 'storage', label: 'На складе' }]}
+                      options={
+                        isTransport
+                          ? [{ value: 'transport', label: 'За транспортом' }, { value: 'storage', label: 'На складе' }]
+                          : [{ value: 'employee', label: 'За сотрудником' }, { value: 'storage', label: 'На складе' }]
+                      }
                     />
                     {placementMode === 'employee' ? (
                       placementEmployee ? (
                         <SelectedEmployee employee={placementEmployee} onClear={() => setPlacementEmployee(null)} />
                       ) : (
                         <EmployeePicker onSelect={setPlacementEmployee} />
+                      )
+                    ) : placementMode === 'transport' ? (
+                      placementTransport ? (
+                        <SelectedTransport transport={placementTransport} onClear={() => setPlacementTransport(null)} />
+                      ) : (
+                        <TransportPicker purpose="pass" onSelect={setPlacementTransport} />
                       )
                     ) : (
                       <PlaceSelect placeType="storage" label={null} required value={storagePlaceId} onChange={setStoragePlaceId} />

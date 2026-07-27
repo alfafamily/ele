@@ -389,6 +389,93 @@ class AccessPassTests(APITestCase):
         self.assertFalse(resp.data["is_deactivated"])
 
 
+class TransportPassTests(APITestCase):
+    """B34. Транспортные пропуска: закрепление за единицей транспорта, доступ
+    только на уровне зданий целиком (без помещений/мест и без типа Личный
+    авто/Пеший)."""
+
+    def setUp(self):
+        from transport.models import Transport, TransportType
+
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.employee = Employee.objects.create(first_name="Иван", last_name="Прозоров")
+        self.building = Building.objects.create(name="Главный офис", requires_pass=True)
+        self.room = Room.objects.create(building=self.building, name="101", requires_pass=True)
+        self.store = Place.objects.create(room=self.room, name="Склад", place_type=Place.PlaceType.STORAGE)
+        ttype = TransportType.objects.create(name="Легковой")
+        self.transport = Transport.objects.create(inventory_number="TS-1", transport_type=ttype)
+
+    def _create(self, **extra):
+        payload = {"pass_kind": "transport", "building_ids": [self.building.id], **extra}
+        return self.client.post("/api/access-passes/", payload, format="json")
+
+    def test_create_transport_pass_attached_to_transport(self):
+        resp = self._create(transport=self.transport.id, account_number="TP-1")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(resp.data["pass_kind"], "transport")
+        self.assertEqual(resp.data["transport"], self.transport.id)
+        self.assertEqual(resp.data["transport_detail"]["inventory_number"], "TS-1")
+        self.assertFalse(resp.data["is_deactivated"])
+
+    def test_transport_pass_rejects_rooms(self):
+        resp = self._create(transport=self.transport.id, room_ids=[self.room.id])
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("room_ids", resp.data["errors"])
+
+    def test_transport_pass_rejects_employee(self):
+        resp = self._create(employee=self.employee.id)
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("employee", resp.data["errors"])
+
+    def test_key_cannot_be_transport_kind(self):
+        resp = self._create(object_type="key", transport=self.transport.id)
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("pass_kind", resp.data["errors"])
+
+    def test_detach_and_reattach_transport_pass(self):
+        created = self._create(transport=self.transport.id)
+        pass_id = created.data["id"]
+        # Открепление → на склад, объект свободен.
+        resp = self.client.post(
+            f"/api/access-passes/{pass_id}/detach/", {"storage_place": self.store.id}, format="json"
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertIsNone(resp.data["transport"])
+        self.assertTrue(resp.data["is_deactivated"])
+        # Повторное закрепление за транспортом.
+        resp = self.client.post(
+            f"/api/access-passes/{pass_id}/attach/", {"transport": self.transport.id}, format="json"
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["transport"], self.transport.id)
+        self.assertFalse(resp.data["is_deactivated"])
+
+    def test_attach_transport_to_personal_pass_rejected(self):
+        # Персональный пропуск за транспортом закрепить нельзя.
+        p = AccessPass.objects.create(object_type="pass", pass_kind="personal", account_number="PP-1")
+        p.buildings.add(self.building)
+        resp = self.client.post(
+            f"/api/access-passes/{p.id}/attach/", {"transport": self.transport.id}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_transport_card_lists_passes(self):
+        self._create(transport=self.transport.id, account_number="TP-9")
+        resp = self.client.get(f"/api/transport/{self.transport.id}/")
+        self.assertEqual(resp.status_code, 200)
+        numbers = [p["account_number"] for p in resp.data["passes"]]
+        self.assertIn("TP-9", numbers)
+
+    def test_transport_pass_excluded_from_personal_attach_pool(self):
+        # Свободный транспортный пропуск не попадает в подбор для сотрудника.
+        self._create(account_number="TP-FREE", storage_place=self.store.id)
+        rows = self.client.get(
+            "/api/access-passes/", {"tab": "deactivated", "pass_kind": "personal"}
+        ).data["results"]
+        self.assertNotIn("TP-FREE", [r["account_number"] for r in rows])
+
+
 @override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
 class EmployeeAvatarUploadTests(APITestCase):
     """Аватар — не более 600×600px, не более 2 МБ; грузит Admin/

@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
+import { SelectedTransport } from '../../shared/SelectedTransport.jsx'
+import { TransportPicker } from '../premises/TransportPicker.jsx'
 import { Banner, Button, Modal } from '../../shared/ui'
-import { attachPass } from '../employees/employeesApi.js'
+import { attachPass, attachPassToTransport } from '../employees/employeesApi.js'
 
-// Привязка пропуска/ключа к сотруднику. После выбора сотрудника действие
+// Привязка средства доступа к владельцу. Персональный пропуск/ключ — к
+// сотруднику; транспортный пропуск (B34) — к единице транспорта. Действие
 // применяется только по подтверждению кнопкой «Закрепить».
 export function PassAttachModal({ pass, onClose, onDone }) {
+  const isTransport = pass.pass_kind === 'transport'
   const [selected, setSelected] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -16,7 +20,8 @@ export function PassAttachModal({ pass, onClose, onDone }) {
     setSubmitting(true)
     setError(null)
     try {
-      await attachPass(pass.id, selected.id)
+      if (isTransport) await attachPassToTransport(pass.id, selected.id)
+      else await attachPass(pass.id, selected.id)
       onDone()
     } catch (err) {
       setError(err.detail || 'Не удалось закрепить.')
@@ -25,9 +30,15 @@ export function PassAttachModal({ pass, onClose, onDone }) {
   }
 
   return (
-    <Modal open onClose={onClose} title="Закрепить за сотрудником">
+    <Modal open onClose={onClose} title={isTransport ? 'Закрепить за транспортом' : 'Закрепить за сотрудником'}>
       {error ? <Banner variant="error">{error}</Banner> : null}
-      {selected ? (
+      {isTransport ? (
+        selected ? (
+          <SelectedTransport transport={selected} onClear={() => setSelected(null)} />
+        ) : (
+          <TransportPicker purpose="pass" onSelect={setSelected} />
+        )
+      ) : selected ? (
         <SelectedEmployee employee={selected} onClear={() => setSelected(null)} />
       ) : (
         <EmployeePicker autoFocus onSelect={setSelected} />

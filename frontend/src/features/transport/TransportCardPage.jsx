@@ -9,6 +9,8 @@ import { PlanLink } from '../../shared/PlanLink.jsx'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { AssignEmployeeModal } from './AssignEmployeeModal.jsx'
 import { ParkingAssignModal } from './ParkingAssignModal.jsx'
+import { TransportPassAttachModal } from './TransportPassAttachModal.jsx'
+import { PassDisposeModal } from '../employees/PassDisposeModal.jsx'
 import { TransportRegulationsSection } from './TransportRegulationsSection.jsx'
 import { getTransport, getTransportHistoryPath, getTransportRegulations, mileageUnitLabel, setTransportParking, unassignTransport } from './transportApi.js'
 import { TRANSPORT_STATUS_LABEL, planStatusIcon } from './statusLabels.js'
@@ -36,6 +38,8 @@ export function TransportCardPage() {
   const [showWriteOff, setShowWriteOff] = useState(false)
   const [showAssign, setShowAssign] = useState(false)
   const [showParking, setShowParking] = useState(false)
+  const [showPassAttach, setShowPassAttach] = useState(false)
+  const [disposePass, setDisposePass] = useState(null)
   const [historyKey, setHistoryKey] = useState(0)
   const [confirm, setConfirm] = useState(null)
 
@@ -322,6 +326,15 @@ export function TransportCardPage() {
                 })
               }
             />
+
+            <div style={{ borderTop: '1px solid var(--color-border-hairline)', margin: '20px 0 16px' }} />
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Пропуска</div>
+            <PassesBlock
+              passes={transport.passes || []}
+              canManage={perms.canManageTransport}
+              onAttach={() => setShowPassAttach(true)}
+              onDetach={(p) => setDisposePass(p)}
+            />
           </Card>
         ) : null}
       </div>
@@ -365,6 +378,76 @@ export function TransportCardPage() {
             load()
           }}
         />
+      ) : null}
+      {showPassAttach ? (
+        <TransportPassAttachModal
+          transportId={transport.id}
+          onClose={() => setShowPassAttach(false)}
+          onAttached={() => {
+            setShowPassAttach(false)
+            load()
+          }}
+          onCreateNew={() => navigate(`/passes/new?transport=${transport.id}`)}
+        />
+      ) : null}
+      {disposePass ? (
+        <PassDisposeModal
+          pass={disposePass}
+          onClose={() => setDisposePass(null)}
+          onDone={() => {
+            setDisposePass(null)
+            load()
+          }}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+// Блок «Пропуска» на карточке транспорта (B34): транспортные пропуска,
+// закреплённые за этой единицей. Открепление — на склад/утилизация через
+// PassDisposeModal. Кнопка «Закрепить пропуск» открывает подбор/создание.
+function PassesBlock({ passes, canManage, onAttach, onDetach }) {
+  return (
+    <div>
+      {passes.length === 0 ? (
+        <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Нет пропусков</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {passes.map((p) => {
+            const buildings = (p.buildings || []).map((b) => b.name).join(', ')
+            return (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <Icon name="key-square" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none', marginTop: 1 }} />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <Link to={`/passes/${p.id}`} style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                    Пропуск № {p.account_number && p.account_number.trim() ? p.account_number : 'б/н'}
+                  </Link>
+                  {buildings ? (
+                    <div className="ele-clamp-2" style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>{buildings}</div>
+                  ) : null}
+                </div>
+                {canManage ? (
+                  <button
+                    type="button"
+                    title="Открепить"
+                    aria-label="Открепить"
+                    onClick={() => onDetach(p)}
+                    style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: 'var(--color-surface)', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 1px var(--color-border)' }}
+                  >
+                    <Icon name="x" size={16} strokeWidth={2} />
+                  </button>
+                ) : null}
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {canManage ? (
+        <Button fullWidth style={{ marginTop: 14 }} onClick={onAttach}>
+          <Icon name="plus" size={18} strokeWidth={2.2} />
+          Закрепить пропуск
+        </Button>
       ) : null}
     </div>
   )

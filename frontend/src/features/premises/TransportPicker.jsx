@@ -5,7 +5,7 @@ import { getTransportPicker } from './premisesApi.js'
 
 // Подбор Транспорта компании (для закрепления за парковочным местом) — по
 // образцу EmployeePicker: поиск + список результатов, клик выбирает объект.
-export function TransportPicker({ onSelect, excludeIds }) {
+export function TransportPicker({ onSelect, excludeIds, purpose }) {
   const [query, setQuery] = useState('')
   const debounced = useDebouncedValue(query, 250)
   const [results, setResults] = useState([])
@@ -15,7 +15,7 @@ export function TransportPicker({ onSelect, excludeIds }) {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    getTransportPicker(debounced)
+    getTransportPicker(debounced, purpose)
       .then((data) => {
         if (!cancelled) setResults(data)
       })
@@ -25,7 +25,7 @@ export function TransportPicker({ onSelect, excludeIds }) {
     return () => {
       cancelled = true
     }
-  }, [debounced])
+  }, [debounced, purpose])
 
   const visible = results.filter((t) => !excludeSet.has(t.id))
 
