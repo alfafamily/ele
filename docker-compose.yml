@@ -65,6 +65,7 @@ services:
       EMAIL_PORT: "1025"
     volumes:
       - ./backend:/app
+      - ./VERSION:/app/VERSION:ro
     depends_on:
       backend:
         condition: service_healthy

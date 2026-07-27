@@ -16,6 +16,17 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.25.1] — 2026-07-27
+
+### Исправлено
+- **Версия приложения в автокопиях.** Автоматические резервные копии
+  создаёт отдельный сервис `cron`, в который не был примонтирован файл
+  `VERSION`, — поэтому в манифесте копии писалось «Версия приложения:
+  v.unknown» (у ручных копий из сервиса `backend` версия определялась
+  верно). Файл `VERSION` теперь монтируется и в `cron` (dev/prod
+  compose). Ранее созданные копии остаются с `v.unknown` — их манифест
+  уже записан.
+
 ## [1.25.0] — 2026-07-27
 
 ### Добавлено
@@ -1508,7 +1519,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.25.0...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.25.1...HEAD
+[1.25.1]: https://github.com/alfafamily/ele/compare/v1.25.0...v1.25.1
 [1.25.0]: https://github.com/alfafamily/ele/compare/v1.24.0...v1.25.0
 [1.24.0]: https://github.com/alfafamily/ele/compare/v1.23.0...v1.24.0
 [1.23.0]: https://github.com/alfafamily/ele/compare/v1.22.0...v1.23.0
