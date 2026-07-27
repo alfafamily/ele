@@ -230,17 +230,20 @@ export function TransportListPage() {
               <Link key={row.id} to={`/transport/${row.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
                 <TableRow columns={columns}>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {/* Иконки статуса ТО — инлайново в начале наименования: сидят
+                        на первой строке, а перенос названия уходит под них (не
+                        расширяют строку по высоте). */}
+                    <div style={{ fontWeight: 500, lineHeight: 1.3 }}>
                       {(showTo ? maintenanceIndicators(row.maintenance_summary) : []).map((ind, i) => (
                         <span
                           key={i}
                           title={ind.title}
-                          style={{ display: 'inline-flex', alignItems: 'center', flex: 'none', color: ind.color }}
+                          style={{ display: 'inline-flex', verticalAlign: '-0.15em', marginRight: 4, color: ind.color }}
                         >
-                          <Icon name={ind.icon} size={16} strokeWidth={2} />
+                          <Icon name={ind.icon} size={14} strokeWidth={2} />
                         </span>
                       ))}
-                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.type_and_model}</span>
+                      {row.type_and_model}
                     </div>
                     <div style={{ display: 'flex', gap: 10, marginTop: 2, flexWrap: 'wrap' }}>
                       {row.plate ? (
