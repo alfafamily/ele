@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from equipment.serializers import EquipmentMiniSerializer
+from transport.serializers import TransportMiniSerializer
 from locations.models import Building, Place, Room
 from locations.serializers import BuildingMiniSerializer, PlaceMiniSerializer, RoomMiniSerializer
 from storage.serializers import StoredFileSerializer
@@ -307,6 +308,12 @@ def _active_equipment(employee):
     return [eq for eq in employee.equipment.all() if not eq.is_written_off]
 
 
+# Списанный транспорт не считается закреплённым за Сотрудником — показываем только
+# активный (B3).
+def _active_transport(employee):
+    return [t for t in employee.transport.all() if not t.is_written_off]
+
+
 # Закреплённые за сотрудником инструменты (количественные): за ним может числиться
 # часть единиц; списанные карточки закреплений не имеют.
 def _tool_entries(employee):
@@ -351,6 +358,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
 class EmployeeSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     equipment = serializers.SerializerMethodField()
+    transport = serializers.SerializerMethodField()
     tools = serializers.SerializerMethodField()
     sim_cards = serializers.SerializerMethodField()
     passes = serializers.SerializerMethodField()
@@ -370,6 +378,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "avatar",
             "is_employed",
             "equipment",
+            "transport",
             "tools",
             "sim_cards",
             "passes",
@@ -383,6 +392,9 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
     def get_equipment(self, obj):
         return EquipmentMiniSerializer(_active_equipment(obj), many=True).data
+
+    def get_transport(self, obj):
+        return TransportMiniSerializer(_active_transport(obj), many=True).data
 
     def get_tools(self, obj):
         # Закреплённые за сотрудником инструменты (строкой «Название · N шт.»).

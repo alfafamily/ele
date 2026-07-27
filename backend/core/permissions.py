@@ -161,8 +161,9 @@ class TransportRegulationAccessPermission(BasePermission):
 class TransportAccessPermission(BasePermission):
     """Транспорт (B22): admin/accountant — полный доступ; роль «Автомеханик» —
     только чтение объектов (проведение ТО — отдельный экшен со своей проверкой);
-    Наблюдатель — сквозной read-only. Список для «Автомеханика» сужается его
-    областью типов в TransportViewSet.get_queryset()."""
+    Наблюдатель — сквозной read-only; обычный «Сотрудник» — только чтение своего
+    транспорта (для блока в Профиле). Список для «Автомеханика»/«Сотрудника»
+    сужается в TransportViewSet.get_queryset()."""
 
     def has_permission(self, request, view):
         role = _role(request)
@@ -170,15 +171,18 @@ class TransportAccessPermission(BasePermission):
             return True
         if role == "automechanic":
             return request.method in _SAFE_METHODS
-        return _is_observer(request) and request.method in _SAFE_METHODS
+        return role == "employee" and request.method in _SAFE_METHODS
 
     def has_object_permission(self, request, view, obj):
         role = _role(request)
         if role in ("admin", "accountant"):
             return True
-        if role in ("automechanic",) or _is_observer(request):
+        if role == "automechanic":
             return request.method in _SAFE_METHODS
-        return False
+        if role != "employee" or request.method not in _SAFE_METHODS:
+            return False
+        # Наблюдатель видит любой транспорт; обычный сотрудник — только свой.
+        return request.user.is_observer or obj.employee_id == request.user.employee_id
 
 
 class IsAdmin(BasePermission):

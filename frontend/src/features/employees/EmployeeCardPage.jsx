@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useNavigationType, useParams } from 'react-router-dom'
 import { unassignEquipment } from '../equipment/equipmentApi.js'
+import { unassignTransport } from '../transport/transportApi.js'
 import { unassignUnits as unassignToolUnits } from '../tools/toolsApi.js'
 import { AssignToolModal } from '../tools/AssignToolModal.jsx'
 import { DetachToStorageModal } from './DetachToStorageModal.jsx'
@@ -22,6 +23,8 @@ import { TerminateModal } from './TerminateModal.jsx'
 const CNT = { fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }
 const ROW = { display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }
 const SQ = { width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+// Ведущая иконка объекта в строке блока (как чемоданчик у рабочих мест).
+const ROW_ICON = { color: 'var(--color-text-muted)', flex: 'none' }
 
 export function EmployeeCardPage() {
   const { id } = useParams()
@@ -44,6 +47,7 @@ export function EmployeeCardPage() {
   const [simAttach, setSimAttach] = useState(false)
   const [passAttach, setPassAttach] = useState(false)
   const [equipmentAttach, setEquipmentAttach] = useState(false)
+  const [transportAttach, setTransportAttach] = useState(false)
   const [toolAssign, setToolAssign] = useState(false)
   // Открепление/утилизация — выбор действия (SimDisposeModal/PassDisposeModal).
   const [disposeSim, setDisposeSim] = useState(null)
@@ -280,6 +284,7 @@ export function EmployeeCardPage() {
           ) : null}
           {employee.equipment.map((eq) => (
             <div key={eq.id} style={ROW}>
+              <Icon name="tag" size={18} strokeWidth={2} style={ROW_ICON} />
               <Link to={`/equipment/${eq.id}`} style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{eq.type_and_model}</div>
                 <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</div>
@@ -290,6 +295,53 @@ export function EmployeeCardPage() {
                 </button>
               </Can>
               <Link to={`/equipment/${eq.id}`} style={{ width: 28, height: 28, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="chevron-right" size={16} strokeWidth={2} style={{ color: '#C7C9D4' }} />
+              </Link>
+            </div>
+          ))}
+        </Card>
+
+        <Card>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>Транспорт</div>
+            <span style={CNT}>{employee.transport.length}</span>
+          </div>
+          {employee.is_employed ? (
+            <Can perm="canManageTransport">
+              <Button variant="secondary" fullWidth style={{ marginBottom: employee.transport.length ? 8 : 0 }} onClick={() => setTransportAttach(true)}>
+                <Icon name="plus" size={18} strokeWidth={2.2} />Закрепить транспорт
+              </Button>
+            </Can>
+          ) : employee.transport.length === 0 ? (
+            <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплён транспорт.</div>
+          ) : null}
+          {employee.transport.map((t) => (
+            <div key={t.id} style={ROW}>
+              <Icon name="car" size={18} strokeWidth={2} style={ROW_ICON} />
+              <Link to={`/transport/${t.id}`} style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.type_and_model}</div>
+                <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>
+                  {[t.plate, t.inventory_number].filter(Boolean).join(' · ')}
+                </div>
+              </Link>
+              {employee.is_employed ? (
+                <Can perm="canManageTransport">
+                  <button
+                    type="button"
+                    title="Открепить"
+                    aria-label="Открепить"
+                    onClick={() => setConfirm({
+                      title: 'Открепить транспорт?',
+                      message: `«${t.type_and_model}» будет откреплён от сотрудника и станет свободным.`,
+                      onConfirm: async () => { await unassignTransport(t.id); setConfirm(null); load() },
+                    })}
+                    style={SQ}
+                  >
+                    <Icon name="unlink" size={16} strokeWidth={2} />
+                  </button>
+                </Can>
+              ) : null}
+              <Link to={`/transport/${t.id}`} style={{ width: 28, height: 28, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Icon name="chevron-right" size={16} strokeWidth={2} style={{ color: '#C7C9D4' }} />
               </Link>
             </div>
@@ -312,6 +364,7 @@ export function EmployeeCardPage() {
           ) : null}
           {employee.tools.map((tool) => (
             <div key={tool.id} style={ROW}>
+              <Icon name="wrench" size={18} strokeWidth={2} style={ROW_ICON} />
               <Link to={`/tools/${tool.id}`} style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{tool.name}</div>
                 <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{tool.quantity} шт.</div>
@@ -346,6 +399,7 @@ export function EmployeeCardPage() {
           ) : null}
           {employee.sim_cards.map((sim) => (
             <div key={sim.id} style={ROW}>
+              <Icon name="radio-tower" size={18} strokeWidth={2} style={ROW_ICON} />
               <SimCardInfo sim={sim} />
               {employee.is_employed ? (
                 <Can perm="canManageEmployees">
@@ -374,6 +428,7 @@ export function EmployeeCardPage() {
           ) : null}
           {employee.passes.map((pass) => (
             <div key={pass.id} style={ROW}>
+              <Icon name="key-square" size={18} strokeWidth={2} style={ROW_ICON} />
               <PassInfo pass={pass} />
               {employee.is_employed ? (
                 <Can perm="canManageEmployees">
@@ -435,6 +490,22 @@ export function EmployeeCardPage() {
           onCreateNew={() => {
             setEquipmentAttach(false)
             navigate(`/equipment/new?employee=${employee.id}`)
+          }}
+        />
+      ) : null}
+
+      {transportAttach ? (
+        <AttachOrCreateModal
+          kind="transport"
+          employeeId={employee.id}
+          onClose={() => setTransportAttach(false)}
+          onAttached={() => {
+            setTransportAttach(false)
+            load()
+          }}
+          onCreateNew={() => {
+            setTransportAttach(false)
+            navigate(`/transport/new?employee=${employee.id}`)
           }}
         />
       ) : null}
