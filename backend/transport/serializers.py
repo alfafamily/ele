@@ -198,14 +198,15 @@ class TransportSerializer(serializers.ModelSerializer):
         return _locked_value(obj, BASE_FIELD_PLATE)
 
     def get_last_mileage(self, obj):
-        # Последний зафиксированный при ТО пробег/моточасы — не считаем в списке
-        # (там не показывается, иначе N+1); на карточке и в ответах действий — да.
+        # Текущий (максимальный зафиксированный при ТО) пробег/моточасы — одометр
+        # только растёт, поэтому берём максимум, а не последнюю по времени запись
+        # (устойчиво к порядку ввода). Не считаем в списке (N+1); на карточке — да.
         view = self.context.get("view")
         if getattr(view, "action", None) == "list":
             return None
         rec = (
             obj.maintenance_records.filter(mileage__isnull=False)
-            .order_by("-performed_at", "-id")
+            .order_by("-mileage", "-performed_at", "-id")
             .first()
         )
         if rec is None:
