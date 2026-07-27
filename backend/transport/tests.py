@@ -178,6 +178,30 @@ class TransportMaintenanceTests(APITestCase):
         self.assertEqual(r.data["last_mileage"]["unit"], "km")
         self.assertEqual(str(r.data["last_mileage"]["value"]), "45000.00")
 
+    def test_mileage_must_increase(self):
+        # Первое ТО с пробегом 45000.
+        r = self.client.post(
+            f"/api/transport/{self.transport_id}/maintenance/",
+            {"mileage": "45000", "items": [{"kind": "work", "name": "Мойка", "quantity": "1"}]},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.data)
+        # Меньший/равный пробег — отклонить.
+        for bad in ("40000", "45000"):
+            r = self.client.post(
+                f"/api/transport/{self.transport_id}/maintenance/",
+                {"mileage": bad, "items": [{"kind": "work", "name": "Мойка", "quantity": "1"}]},
+                format="json",
+            )
+            self.assertEqual(r.status_code, 400, f"{bad}: {getattr(r, 'data', r)}")
+        # Больший — принять.
+        r = self.client.post(
+            f"/api/transport/{self.transport_id}/maintenance/",
+            {"mileage": "46000", "items": [{"kind": "work", "name": "Мойка", "quantity": "1"}]},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.data)
+
     def test_perform_without_mileage_ok(self):
         r = self.client.post(
             f"/api/transport/{self.transport_id}/maintenance/",
@@ -286,6 +310,26 @@ class TransportPermissionTests(APITestCase):
             format="json",
         )
         self.assertIn(r.status_code, (403, 404))
+
+    def test_employee_sees_only_own_transport(self):
+        emp = Employee.objects.create(last_name="Иванов", first_name="Иван")
+        # Закрепляем существующий транспорт за сотрудником.
+        self.client.force_authenticate(user=self.admin)
+        self.client.post(f"/api/transport/{self.transport_id}/assign/", {"employee": emp.id}, format="json")
+        # Обычный сотрудник, связанный с этой карточкой.
+        user = User.objects.create_user(email="ivan@example.com", password="Str0ng!Pass1", role=User.Role.EMPLOYEE)
+        user.employee = emp
+        user.save()
+        self.client.force_authenticate(user=user)
+        ids = [row["id"] for row in self.client.get("/api/transport/").data["results"]]
+        self.assertEqual(ids, [self.transport_id])
+        # Свой объект открывается, чужой — нет.
+        self.assertEqual(self.client.get(f"/api/transport/{self.transport_id}/").status_code, 200)
+        # Создавать/проводить ТО обычный сотрудник не может.
+        self.assertIn(
+            self.client.post("/api/transport/", {"inventory_number": "TS-X", "transport_type": self.type_id}, format="json").status_code,
+            (403, 405),
+        )
 
     def test_accountant_transport_flags_required_for_perform(self):
         acc = User.objects.create_user(email="acc@example.com", password="Str0ng!Pass1", role=User.Role.ACCOUNTANT)

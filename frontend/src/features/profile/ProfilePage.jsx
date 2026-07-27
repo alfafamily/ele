@@ -8,7 +8,7 @@ import { PassInfo } from '../employees/PassInfo.jsx'
 import { SimCardInfo } from '../employees/SimCardInfo.jsx'
 import { ChangeEmailModal } from './ChangeEmailModal.jsx'
 import { ChangePasswordModal } from './ChangePasswordModal.jsx'
-import { getMyEquipment, getMyPasses, getMySimCards, getMyWorkPlacement } from './profileApi.js'
+import { getMyEquipment, getMyPasses, getMySimCards, getMyTransport, getMyWorkPlacement } from './profileApi.js'
 
 const avatarMenuItem = {
   border: 'none',
@@ -33,6 +33,7 @@ export function ProfilePage() {
   const [simCards, setSimCards] = useState([])
   const [passes, setPasses] = useState([])
   const [equipment, setEquipment] = useState([])
+  const [transport, setTransport] = useState([])
   const [tools, setTools] = useState([])
   const [workplaces, setWorkplaces] = useState([])
   const fileInputRef = useRef(null)
@@ -50,6 +51,7 @@ export function ProfilePage() {
       getMySimCards(employee.id).then(setSimCards)
       getMyPasses(employee.id).then(setPasses)
       getMyEquipment(employee.id).then(setEquipment)
+      getMyTransport(employee.id).then(setTransport).catch(() => setTransport([]))
       getMyWorkPlacement().then((d) => {
         setTools(d.tools || [])
         setWorkplaces(d.workplaces || [])
@@ -234,9 +236,33 @@ export function ProfilePage() {
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено оборудования.</div>
             ) : (
               equipment.map((eq) => (
-                <div key={eq.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{eq.type_and_model}</div>
-                  <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{eq.inventory_number}</div>
+                <div key={eq.id} style={P_ROW}>
+                  <Icon name="tag" size={18} strokeWidth={2} style={P_ROW_ICON} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{eq.type_and_model}</div>
+                    <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{eq.inventory_number}</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </Card>
+        ) : null}
+
+        {employee ? (
+          <Card>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданный транспорт</div>
+            {transport.length === 0 ? (
+              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплён транспорт.</div>
+            ) : (
+              transport.map((t) => (
+                <div key={t.id} style={P_ROW}>
+                  <Icon name="car" size={18} strokeWidth={2} style={P_ROW_ICON} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.type_and_model}</div>
+                    <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>
+                      {[t.plate, t.inventory_number].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
                 </div>
               ))
             )}
@@ -250,9 +276,12 @@ export function ProfilePage() {
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено инструментов.</div>
             ) : (
               tools.map((t) => (
-                <div key={t.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2 }}>{t.quantity} шт.</div>
+                <div key={t.id} style={P_ROW}>
+                  <Icon name="wrench" size={18} strokeWidth={2} style={P_ROW_ICON} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2 }}>{t.quantity} шт.</div>
+                  </div>
                 </div>
               ))
             )}
@@ -266,7 +295,8 @@ export function ProfilePage() {
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено SIM-карт.</div>
             ) : (
               simCards.map((sim) => (
-                <div key={sim.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+                <div key={sim.id} style={P_ROW}>
+                  <Icon name="radio-tower" size={18} strokeWidth={2} style={P_ROW_ICON} />
                   <SimCardInfo sim={sim} />
                 </div>
               ))
@@ -281,7 +311,8 @@ export function ProfilePage() {
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено средств доступа.</div>
             ) : (
               passes.map((pass) => (
-                <div key={pass.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+                <div key={pass.id} style={P_ROW}>
+                  <Icon name="key-square" size={18} strokeWidth={2} style={P_ROW_ICON} />
                   <PassInfo pass={pass} />
                 </div>
               ))
@@ -296,6 +327,10 @@ export function ProfilePage() {
     </div>
   )
 }
+
+// Строка выданного объекта с ведущей иконкой (как чемоданчик у рабочих мест).
+const P_ROW = { display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }
+const P_ROW_ICON = { color: 'var(--color-text-muted)', flex: 'none' }
 
 function Field({ label, value }) {
   return (

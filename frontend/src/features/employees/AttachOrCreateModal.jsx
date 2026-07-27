@@ -3,6 +3,7 @@ import { fetchAllPages } from '../../shared/api/fetchAll'
 import { Button, EmptyState, Icon, Modal } from '../../shared/ui'
 import { KeyTarget } from '../../shared/keyTarget.jsx'
 import { assignEquipment } from '../equipment/equipmentApi.js'
+import { assignTransport } from '../transport/transportApi.js'
 import { attachPass, attachSimCard } from './employeesApi.js'
 
 // Привязка к сотруднику переиспользуемых объектов (SIM/пропуск): показываем
@@ -53,6 +54,17 @@ const CONFIG = {
     attach: (id, employeeId) => assignEquipment(id, { mode: 'mobile', employeeId }),
     match: (o, q) => [o.inventory_number, o.type_and_model].some((v) => (v || '').toLowerCase().includes(q)),
   },
+  transport: {
+    title: 'Закрепить транспорт',
+    // Свободный (не закреплённый, не списанный) транспорт.
+    path: '/api/transport/?tab=active&assigned=free',
+    placeholder: 'Поиск',
+    empty: 'Нет свободного транспорта',
+    emptyHint: 'Весь транспорт закреплён за сотрудниками или списан. Создайте новый.',
+    createLabel: 'Создать транспорт',
+    attach: (id, employeeId) => assignTransport(id, employeeId),
+    match: (o, q) => [o.inventory_number, o.type_and_model, o.plate].some((v) => (v || '').toLowerCase().includes(q)),
+  },
 }
 
 function SimRow({ item }) {
@@ -73,6 +85,17 @@ function EquipmentRow({ item }) {
     <span style={{ minWidth: 0, flex: 1 }}>
       <div style={{ fontSize: 13.5, fontWeight: 600 }}>{item.type_and_model}</div>
       <div style={{ font: '500 11.5px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{item.inventory_number}</div>
+    </span>
+  )
+}
+
+function TransportRow({ item }) {
+  return (
+    <span style={{ minWidth: 0, flex: 1 }}>
+      <div style={{ fontSize: 13.5, fontWeight: 600 }}>{item.type_and_model}</div>
+      <div style={{ font: '500 11.5px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>
+        {[item.plate, item.inventory_number].filter(Boolean).join(' · ')}
+      </div>
     </span>
   )
 }
@@ -187,7 +210,7 @@ export function AttachOrCreateModal({ kind, employeeId, onClose, onAttached, onC
                     >
                       {checked ? <Icon name="check" size={12} strokeWidth={3} style={{ color: '#fff' }} /> : null}
                     </span>
-                    {kind === 'sim' ? <SimRow item={item} /> : kind === 'pass' ? <PassRow item={item} /> : <EquipmentRow item={item} />}
+                    {kind === 'sim' ? <SimRow item={item} /> : kind === 'pass' ? <PassRow item={item} /> : kind === 'transport' ? <TransportRow item={item} /> : <EquipmentRow item={item} />}
                   </div>
                 )
               })}

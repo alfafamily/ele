@@ -181,6 +181,10 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             "maintenance_plans__regulation", "maintenance_records",
         )
         user = self.request.user
+        # Обычный «Сотрудник» (не Наблюдатель) видит только свой транспорт — для
+        # блока «Транспорт» в Профиле. Не привязан к Сотруднику — не видит ничего.
+        if user.role == "employee" and not user.is_observer:
+            qs = qs.filter(employee_id=user.employee_id) if user.employee_id else qs.none()
         # Роль «Автомеханик» видит только транспорт своей области типов (и в списке,
         # и на карточке). При «все типы» — весь транспорт; при ограничении — только
         # выбранные типы. Учётчик/админ видят всё.
@@ -343,6 +347,22 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         active_items = [i for i in items if not i["is_cancelled"]]
         if not active_items:
             return Response({"detail": "Добавьте хотя бы одну (неотменённую) работу или материал."}, status=400)
+
+        # Контроль пробега: новый пробег/моточасы должен быть строго больше
+        # последнего зафиксированного (пробег только растёт). Поле необязательное —
+        # если не указано, проверку пропускаем.
+        mileage = data.get("mileage")
+        if mileage is not None:
+            last = (
+                transport.maintenance_records.filter(mileage__isnull=False)
+                .order_by("-performed_at", "-id").first()
+            )
+            if last is not None and mileage <= last.mileage:
+                unit = _mileage_unit_label(transport)
+                return Response(
+                    {"detail": f"Пробег должен быть больше последнего зафиксированного ({_fmt_quantity(last.mileage)} {unit})."},
+                    status=400,
+                )
 
         is_periodic = regulation is not None and not regulation.on_demand
         next_date = data.get("next_planned_date")

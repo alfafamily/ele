@@ -15,6 +15,10 @@ export const getMyPasses = (employeeId) =>
 export const getMyEquipment = (employeeId) =>
   apiGet(`/api/equipment/?employee=${employeeId}&tab=active`).then((d) => d.results)
 
+// Свой закреплённый транспорт (read-only) — список сужен бэкендом до своего.
+export const getMyTransport = (employeeId) =>
+  apiGet(`/api/transport/?employee=${employeeId}&tab=active`).then((d) => d.results)
+
 // Свои Инструменты и Рабочие места (с объектами) — карточка Сотрудника роли
 // «Сотрудник» недоступна, поэтому эти блоки берём отдельным эндпоинтом.
 export const getMyWorkPlacement = () => apiGet('/api/my/work-placement/')

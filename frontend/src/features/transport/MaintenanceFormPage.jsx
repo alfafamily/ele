@@ -13,6 +13,11 @@ function todayISO() {
 function formatShortDate(iso) {
   return iso ? new Date(iso).toLocaleDateString('ru-RU') : '—'
 }
+function formatNumber(value) {
+  if (value == null) return '—'
+  const s = String(value)
+  return s.includes('.') ? s.replace(/\.?0+$/, '') : s
+}
 function addMonths(iso, months) {
   const d = new Date(iso + 'T00:00:00')
   const day = d.getDate()
@@ -87,7 +92,12 @@ export function MaintenanceFormPage() {
   const activeItems = items.filter((r) => !r.cancelled && r.name.trim())
   const cancelReasonMissing = items.some((r) => r.cancelled && !r.cancel_reason.trim())
   const dateOk = !isPeriodic || (nextDate && nextDate >= todayISO() && nextDate <= maxDate)
-  const canSubmit = !!chosen && activeItems.length > 0 && !cancelReasonMissing && dateOk
+  // Контроль пробега: если указан, должен быть строго больше последнего
+  // зафиксированного (пробег только растёт). Пустое поле допустимо.
+  const lastMileage = transport?.last_mileage ? Number(transport.last_mileage.value) : null
+  const mileageNum = mileage.trim() === '' ? null : Number(mileage)
+  const mileageOk = mileageNum == null || lastMileage == null || mileageNum > lastMileage
+  const canSubmit = !!chosen && activeItems.length > 0 && !cancelReasonMissing && dateOk && mileageOk
 
   const submit = async () => {
     setSubmitting(true)
@@ -267,12 +277,21 @@ export function MaintenanceFormPage() {
                 <Input
                   label={`Текущий пробег, ${unitLabel} (необязательно)`}
                   type="number"
-                  min="0"
+                  min={lastMileage != null ? String(lastMileage) : '0'}
                   step="any"
                   value={mileage}
                   onChange={(e) => setMileage(e.target.value)}
                   placeholder={transport.type_mileage_unit === 'motohours' ? 'Например: 1250' : 'Например: 45000'}
                 />
+                {!mileageOk ? (
+                  <div style={{ fontSize: 12, color: 'var(--color-error)', marginTop: 6 }}>
+                    Пробег должен быть больше последнего зафиксированного ({formatNumber(lastMileage)} {unitLabel}).
+                  </div>
+                ) : lastMileage != null ? (
+                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 6 }}>
+                    Последний зафиксированный: {formatNumber(lastMileage)} {unitLabel}.
+                  </div>
+                ) : null}
               </div>
 
               <div style={{ marginTop: 20 }}>
