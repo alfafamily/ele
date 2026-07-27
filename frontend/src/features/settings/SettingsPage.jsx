@@ -115,9 +115,13 @@ export function SettingsPage() {
                 className={'ele-settings__nav-item' + (s.value === section ? ' ele-settings__nav-item--active' : '')}
                 onClick={() => setSection(s.value)}
               >
-                <span className="ele-settings__nav-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {/* Иконка-предупреждение инлайново в начале текста (как индикаторы
+                    ТО в списках) — при переносе названия остаётся на первой строке. */}
+                <span className="ele-settings__nav-label">
                   {(s.value === 'duplicates' && duplicatesCount > 0) || (s.value === 'system' && storageLow) ? (
-                    <Icon name="triangle-alert" size={15} strokeWidth={2.2} style={{ color: 'var(--color-warning)', flex: 'none' }} />
+                    <span style={{ display: 'inline-flex', verticalAlign: '-0.15em', marginRight: 4, color: 'var(--color-warning)' }}>
+                      <Icon name="triangle-alert" size={15} strokeWidth={2.2} />
+                    </span>
                   ) : null}
                   {s.label}
                 </span>
