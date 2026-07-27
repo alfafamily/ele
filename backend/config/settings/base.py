@@ -181,6 +181,10 @@ S3_BUCKET = env("S3_BUCKET", default="")
 S3_REGION = env("S3_REGION", default="")
 S3_ACCESS_KEY = env("S3_ACCESS_KEY", default="")
 S3_SECRET_KEY = env("S3_SECRET_KEY", default="")
+# Объём (ГБ, допускается дробное) под основной S3-бакет: у S3 нет понятия
+# «свободно», поэтому лимит задаёт администратор. 0/пусто = лимит не задан
+# (B33: тогда показываем только занятый объём, без предупреждения о нехватке).
+S3_QUOTA_GB = env.float("S3_QUOTA_GB", default=0)
 
 # --- Резервный (сторонний) S3 для ПОЛНЫХ бэкапов (B29) ---
 # Отдельное независимое хранилище: полная копия (БД + файлы) уезжает сюда, чтобы
@@ -192,6 +196,9 @@ BACKUP_S3_BUCKET = env("BACKUP_S3_BUCKET", default="")
 BACKUP_S3_REGION = env("BACKUP_S3_REGION", default="")
 BACKUP_S3_ACCESS_KEY = env("BACKUP_S3_ACCESS_KEY", default="")
 BACKUP_S3_SECRET_KEY = env("BACKUP_S3_SECRET_KEY", default="")
+# Объём (ГБ, допускается дробное) под резервный S3-бакет — как S3_QUOTA_GB, но
+# для backup-хранилища (B33). 0/пусто = лимит не задан.
+BACKUP_S3_QUOTA_GB = env.float("BACKUP_S3_QUOTA_GB", default=0)
 # Парольная фраза для шифрования АВТО-копий (cron headless — ад-хок пароль
 # передать неоткуда). Пусто = авто-копии без шифрования. Ручные копии могут
 # шифроваться паролем, переданным в запросе.

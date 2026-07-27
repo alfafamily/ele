@@ -198,3 +198,124 @@ class CompanyLogoUploadTests(APITestCase):
         resp = self.client.post("/api/company/logo/", {"file": _make_png(800, 601)}, format="multipart")
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(StoredFile.objects.count(), 0)
+
+
+# --- B33: свободное место по хранилищам ------------------------------------
+from unittest import mock  # noqa: E402
+
+from . import space as space_mod  # noqa: E402
+
+_MB = 1024 * 1024
+_GB = 1024 * _MB
+
+
+class StorageSpaceTests(APITestCase):
+    """B33: отчёт о свободном месте — Local через disk_usage, S3 через занятый
+    объём и квоту из .env; предупреждение о нехватке при <500 МБ."""
+
+    def setUp(self):
+        space_mod._s3_used_cache.clear()
+
+    def test_threshold_is_500mb(self):
+        self.assertEqual(space_mod.STORAGE_LOW_THRESHOLD_BYTES, 500 * _MB)
+
+    def test_local_reports_disk_usage_and_low_below_threshold(self):
+        Company.load()  # local по умолчанию
+        usage = mock.Mock(total=50 * _GB, free=200 * _MB, used=0)
+        with mock.patch("storage.space.shutil.disk_usage", return_value=usage):
+            report = space_mod.app_storage_space()
+        self.assertEqual(report["kind"], "local")
+        self.assertEqual(report["free_bytes"], 200 * _MB)
+        self.assertEqual(report["total_bytes"], 50 * _GB)
+        self.assertTrue(report["low"])  # 200 МБ < 500 МБ
+
+    def test_local_not_low_when_plenty_free(self):
+        Company.load()
+        usage = mock.Mock(total=50 * _GB, free=10 * _GB, used=0)
+        with mock.patch("storage.space.shutil.disk_usage", return_value=usage):
+            report = space_mod.app_storage_space()
+        self.assertFalse(report["low"])
+
+    @override_settings(S3_QUOTA_GB=20)
+    def test_s3_app_used_from_db_and_free_from_quota(self):
+        company = Company.load()
+        company.storage_mode = Company.StorageMode.S3
+        company.save(update_fields=["storage_mode"])
+        StoredFile.objects.create(backend="s3", path="a", size=8 * _GB)
+        StoredFile.objects.create(backend="local", path="b", size=100 * _GB)  # не s3 — не учитывается
+        report = space_mod.app_storage_space()
+        self.assertEqual(report["kind"], "s3")
+        self.assertEqual(report["used_bytes"], 8 * _GB)
+        self.assertEqual(report["quota_bytes"], 20 * _GB)
+        self.assertEqual(report["free_bytes"], 12 * _GB)
+        self.assertFalse(report["low"])
+
+    @override_settings(S3_QUOTA_GB=0)
+    def test_s3_app_without_quota_has_no_free_and_never_low(self):
+        company = Company.load()
+        company.storage_mode = Company.StorageMode.S3
+        company.save(update_fields=["storage_mode"])
+        StoredFile.objects.create(backend="s3", path="a", size=8 * _GB)
+        report = space_mod.app_storage_space()
+        self.assertIsNone(report["quota_bytes"])
+        self.assertIsNone(report["free_bytes"])
+        self.assertFalse(report["low"])
+
+    @override_settings(S3_QUOTA_GB=20)
+    def test_s3_app_low_when_free_below_threshold(self):
+        company = Company.load()
+        company.storage_mode = Company.StorageMode.S3
+        company.save(update_fields=["storage_mode"])
+        StoredFile.objects.create(backend="s3", path="a", size=20 * _GB - 100 * _MB)
+        report = space_mod.app_storage_space()
+        self.assertEqual(report["free_bytes"], 100 * _MB)
+        self.assertTrue(report["low"])
+
+    def test_backup_s3_none_when_not_configured(self):
+        with mock.patch("backup.destinations.secondary_s3_configured", return_value=False):
+            self.assertIsNone(space_mod.backup_s3_space())
+
+    @override_settings(BACKUP_S3_QUOTA_GB=10)
+    def test_backup_s3_used_summed_from_listing(self):
+        objects = [{"size": 3 * _GB}, {"size": 1 * _GB}]
+        with mock.patch("backup.destinations.secondary_s3_configured", return_value=True), \
+             mock.patch("backup.destinations.list_secondary_s3_backups", return_value=objects):
+            report = space_mod.backup_s3_space()
+        self.assertEqual(report["used_bytes"], 4 * _GB)
+        self.assertEqual(report["free_bytes"], 6 * _GB)
+        self.assertFalse(report["low"])
+
+    def test_report_low_true_if_any_storage_low(self):
+        Company.load()
+        usage = mock.Mock(total=50 * _GB, free=100 * _MB, used=0)
+        with mock.patch("storage.space.shutil.disk_usage", return_value=usage), \
+             mock.patch("backup.destinations.secondary_s3_configured", return_value=False):
+            report = space_mod.storage_space_report()
+        self.assertTrue(report["low"])
+        self.assertIsNone(report["backup_s3"])
+        self.assertEqual(report["threshold_bytes"], 500 * _MB)
+
+
+class StorageSpaceEndpointTests(APITestCase):
+    """Эндпоинт /api/company/storage-space/ — только администратор."""
+
+    def setUp(self):
+        space_mod._s3_used_cache.clear()
+
+    def test_requires_admin(self):
+        user = User.objects.create_user(email="viewer@test.local", password="x")
+        self.client.force_authenticate(user)
+        resp = self.client.get("/api/company/storage-space/")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_admin_gets_report(self):
+        admin = User.objects.create_user(email="admin@test.local", password="x", role="admin")
+        self.client.force_authenticate(admin)
+        usage = mock.Mock(total=50 * _GB, free=10 * _GB, used=0)
+        with mock.patch("storage.space.shutil.disk_usage", return_value=usage), \
+             mock.patch("backup.destinations.secondary_s3_configured", return_value=False):
+            resp = self.client.get("/api/company/storage-space/")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertIn("app", resp.data)
+        self.assertEqual(resp.data["app"]["kind"], "local")
+        self.assertIsNone(resp.data["backup_s3"])

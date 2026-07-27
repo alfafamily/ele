@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useDuplicatesCount } from '../../app/CompanyContext.jsx'
+import { useDuplicatesCount, useStorageLow } from '../../app/CompanyContext.jsx'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { Icon } from '../../shared/ui'
 import { BackupTab } from './BackupTab.jsx'
@@ -89,6 +89,7 @@ export function SettingsPage() {
   const [section, setSection] = useState('company')
   const isMobile = useMediaQuery('(max-width: 768px)')
   const duplicatesCount = useDuplicatesCount()
+  const storageLow = useStorageLow()
   const Active = SECTIONS.find((s) => s.value === section)?.Component ?? CompanyTab
 
   return (
@@ -115,10 +116,10 @@ export function SettingsPage() {
                 onClick={() => setSection(s.value)}
               >
                 <span className="ele-settings__nav-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  {s.label}
-                  {s.value === 'duplicates' && duplicatesCount > 0 ? (
+                  {(s.value === 'duplicates' && duplicatesCount > 0) || (s.value === 'system' && storageLow) ? (
                     <Icon name="triangle-alert" size={15} strokeWidth={2.2} style={{ color: 'var(--color-warning)', flex: 'none' }} />
                   ) : null}
+                  {s.label}
                 </span>
                 {s.desc ? <span className="ele-settings__nav-desc">{s.desc}</span> : null}
               </button>

@@ -299,6 +299,18 @@ class SystemStatusView(APIView):
         )
 
 
+class StorageSpaceView(APIView):
+    """Настройки → Системные (B33): свободное место по хранилищам приложения и
+    резервному S3 + сводный флаг low для треугольника на иконке Настроек."""
+
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        from storage.space import storage_space_report
+
+        return Response(storage_space_report())
+
+
 class CompanyStorageTestView(APIView):
     """Проверка активного хранилища: запись/чтение/удаление test_file.txt."""
 

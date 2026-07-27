@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
-import { useCompany, useDuplicatesCount, useRefreshDuplicates } from './CompanyContext.jsx'
+import { useCompany, useDuplicatesCount, useRefreshDuplicates, useStorageLow } from './CompanyContext.jsx'
 import { navSectionsForRole } from './navSections.js'
 import { HelpIcon, MenuIcon, SettingsIcon } from './navIcons.jsx'
 import { roleLabel } from '../shared/roles.js'
@@ -9,15 +9,13 @@ import { nameInitials } from '../shared/employeeName.js'
 import { Icon } from '../shared/ui'
 import './AppLayout.css'
 
-// B12: маркер-предупреждение (треугольник с восклицательным знаком) поверх
-// иконки «Настройки», пока есть неустранённые возможные дубли сотрудников.
-function DuplicateWarningMarker() {
+// Маркер-предупреждение (треугольник) поверх иконки «Настройки». Один общий
+// значок на все причины: B12 — возможные дубли сотрудников, B33 — заканчивается
+// место в хранилище. Причины перечисляем в подсказке через «; ».
+function SettingsWarningMarker({ reasons }) {
+  const title = reasons.join('; ')
   return (
-    <span
-      className="ele-nav-warning"
-      title="Обнаружены возможные дубли сотрудников"
-      aria-label="Обнаружены возможные дубли сотрудников"
-    >
+    <span className="ele-nav-warning" title={title} aria-label={title}>
       <Icon name="triangle-alert" size={13} strokeWidth={2.4} />
     </span>
   )
@@ -27,6 +25,12 @@ export function AppLayout() {
   const { user } = useAuth()
   const company = useCompany()
   const duplicatesCount = useDuplicatesCount()
+  const storageLow = useStorageLow()
+  // Причины предупреждения на иконке «Настройки» (пусто — треугольника нет).
+  const settingsWarnings = [
+    ...(duplicatesCount > 0 ? ['Обнаружены возможные дубли сотрудников'] : []),
+    ...(storageLow ? ['Заканчивается место в хранилище'] : []),
+  ]
   const sections = navSectionsForRole(user.role, user.is_observer)
   const employeeName = user.employee ? user.employee.full_name : null
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -177,7 +181,7 @@ export function AppLayout() {
           >
             <span className="ele-rail__item-icon ele-nav-warning-host">
               <SectionIcon />
-              {key === 'settings' && duplicatesCount > 0 ? <DuplicateWarningMarker /> : null}
+              {key === 'settings' && settingsWarnings.length > 0 ? <SettingsWarningMarker reasons={settingsWarnings} /> : null}
             </span>
             <span className="ele-rail__label">{label}</span>
           </NavLink>
@@ -218,7 +222,7 @@ export function AppLayout() {
           >
             <span className="ele-nav-warning-host">
               <SettingsIcon />
-              {duplicatesCount > 0 ? <DuplicateWarningMarker /> : null}
+              {settingsWarnings.length > 0 ? <SettingsWarningMarker reasons={settingsWarnings} /> : null}
             </span>
             <span>Настройки</span>
           </NavLink>

@@ -25,6 +25,8 @@ export const verifySmtpTestCode = (code) => apiPost('/api/company/verify-email/'
 export const getSystemStatus = () => apiGet('/api/company/system-status/')
 export const getUpdateInfo = () => apiGet('/api/company/update-info/')
 export const testStorage = () => apiPost('/api/company/storage-test/')
+// B33 — свободное место по хранилищам приложения и резервному S3 (+ флаг low).
+export const getStorageSpace = () => apiGet('/api/company/storage-space/')
 export const checkYandexId = () => apiPost('/api/company/yandex-id-check/')
 export const checkCaptcha = (token) => apiPost('/api/company/captcha-check/', { token })
 

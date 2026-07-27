@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { SmartCaptcha } from '../auth/SmartCaptcha.jsx'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { Banner, Button, Card, Icon, Input, Spinner } from '../../shared/ui'
+import { formatBytes } from '../../shared/format.js'
 import { FieldView, fieldError, FIELD_W, IconBtn, InlineField } from './inlineFields.jsx'
 import { IpAllowlistEditor } from './IpAllowlistEditor.jsx'
 import {
@@ -10,6 +11,7 @@ import {
   getBackupSettings,
   getCompanySettings,
   getStorageMigrationStatus,
+  getStorageSpace,
   getSystemStatus,
   retryStorageMigration,
   sendSmtpTestCode,
@@ -49,6 +51,33 @@ function CheckResult({ result }) {
   )
 }
 
+// B33: сведения о свободном месте внутри блока хранилища. Local — свободно/всего
+// по разделу диска; S3 — занято, а «свободно» — только при заданной квоте (иначе
+// «лимит не задан»). Норма — серым; при нехватке — жёлтым (как треугольник) с
+// подписью «Место заканчивается».
+function spaceText(info) {
+  if (info.kind === 'local') {
+    return `Свободно ${formatBytes(info.free_bytes)} из ${formatBytes(info.total_bytes)}`
+  }
+  if (info.quota_bytes != null) {
+    return `Занято ${formatBytes(info.used_bytes)} из ${formatBytes(info.quota_bytes)} · свободно ${formatBytes(info.free_bytes)}`
+  }
+  return `Занято ${formatBytes(info.used_bytes)} · лимит не задан`
+}
+function SpaceInfo({ info }) {
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ fontSize: 12.5, color: info.low ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>{spaceText(info)}</div>
+      {info.low ? (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--color-warning)', marginTop: 2 }}>
+          <Icon name="triangle-alert" size={14} strokeWidth={2.2} />
+          Место заканчивается
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export function SystemTab() {
   const isMobile = useMediaQuery('(max-width: 768px)')
   const [status, setStatus] = useState(null) // system-status: флаги конфигурации из .env
@@ -81,6 +110,8 @@ export function SystemTab() {
   const [storageResult, setStorageResult] = useState(null) // { ok, msg }
   const [migration, setMigration] = useState(null) // { status, pending_count, error_count, target_backend }
   const [migrationRetrying, setMigrationRetrying] = useState(false)
+  // B33: свободное место по хранилищам { threshold_bytes, app, backup_s3, low }
+  const [space, setSpace] = useState(null)
 
   // Хранилище резервных копий (единое назначение и ручных, и авто-копий).
   const [backup, setBackup] = useState(null) // { backup_destination, backup_secondary_s3:{configured,bucket} }
@@ -118,6 +149,12 @@ export function SystemTab() {
         setBackup(bk)
       })
       .catch(() => setLoadError('Не удалось загрузить системные настройки.'))
+  }, [])
+
+  // B33: свободное место грузим отдельно — опрос S3 может быть небыстрым, не
+  // блокируем им остальные системные настройки. Ошибку тихо игнорируем.
+  useEffect(() => {
+    getStorageSpace().then(setSpace).catch(() => {})
   }, [])
 
   // Пока идёт перенос файлов — периодически обновляем статус, чтобы поймать
@@ -433,6 +470,9 @@ export function SystemTab() {
             </div>
           ) : null}
 
+          {/* B33: свободное место хранилища приложения */}
+          {space?.app ? <SpaceInfo info={space.app} /> : null}
+
           <div style={{ ...checkRow, marginTop: 12 }}>
             <Button type="button" variant="secondary" loading={storageTesting} onClick={runStorageTest}>
               Проверить подключение
@@ -472,6 +512,11 @@ export function SystemTab() {
               <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 14 }}>
                 S3 для backup: <b style={{ color: 'var(--color-text-muted)' }}>{backup.backup_secondary_s3.bucket}</b>
               </div>
+              {/* B33: свободное место backup-S3 — только когда копии уходят на него
+                  (при хранении в приложении это дублировало бы блок слева). */}
+              {(backup?.backup_destination || 'own') === 'secondary_s3' && space?.backup_s3 ? (
+                <SpaceInfo info={space.backup_s3} />
+              ) : null}
               <div style={{ ...checkRow, marginTop: 12 }}>
                 <Button type="button" variant="secondary" loading={s3Testing} onClick={runSecondaryS3Test}>
                   Проверить подключение

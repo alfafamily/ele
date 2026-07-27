@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
-import { Badge, Banner, Button, Card, Checkbox, ConfirmModal, Icon, Input, Skeleton } from '../../shared/ui'
+import { Badge, Banner, Button, Card, ConfirmModal, Icon, Input, Modal, Skeleton } from '../../shared/ui'
 import {
   backupDownloadUrl,
   createBackup,
@@ -37,8 +37,16 @@ export function BackupTab() {
   const [creating, setCreating] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
   const [error, setError] = useState(null)
-  // Ручной экспорт: только пароль шифрования (назначение — в «Системные»).
+  // Ручной экспорт: подтверждение в модалке + пароль шифрования (назначение — в
+  // «Системные»).
   const [passphrase, setPassphrase] = useState('')
+  const [exportOpen, setExportOpen] = useState(false)
+  // Модалка авто-копий с черновиком времени/глубины хранения. Одна и та же для
+  // включения и настройки — различаются только кнопки внизу (см. autoMode:
+  // 'enable' задаёт параметры и включает; 'config' редактирует/выключает).
+  const [autoMode, setAutoMode] = useState(null) // 'enable' | 'config' | null
+  const [autoTime, setAutoTime] = useState('03:00')
+  const [autoRetention, setAutoRetention] = useState(30)
   // Копия, ожидающая подтверждения удаления (null — модалка закрыта).
   const [toDelete, setToDelete] = useState(null)
   const { items, loading, refetch } = useCursorList('/api/backup/history/', {})
@@ -53,12 +61,20 @@ export function BackupTab() {
     try {
       await createBackup({ passphrase: passphrase || '' })
       setPassphrase('')
+      setExportOpen(false)
       refetch()
     } catch (err) {
       setError(err.detail || 'Не удалось создать резервную копию.')
     } finally {
       setCreating(false)
     }
+  }
+
+  const closeExport = () => {
+    if (creating) return
+    setExportOpen(false)
+    setPassphrase('')
+    setError(null)
   }
 
   const patchSettings = async (patch) => {
@@ -69,6 +85,35 @@ export function BackupTab() {
     } finally {
       setSavingSettings(false)
     }
+  }
+
+  // Открыть модалку — черновик берём из текущих настроек (или дефолты).
+  const openAutoModal = (mode) => {
+    setAutoTime(settings.auto_backup_time?.slice(0, 5) || '03:00')
+    setAutoRetention(settings.auto_backup_retention ?? 30)
+    setAutoMode(mode)
+  }
+  const closeAutoModal = () => {
+    if (!savingSettings) setAutoMode(null)
+  }
+  // Включение — задаём параметры И включаем; настройка — только параметры.
+  const submitAutoModal = async () => {
+    const patch = { auto_backup_time: autoTime, auto_backup_retention: Number(autoRetention) }
+    if (autoMode === 'enable') patch.auto_backup_enabled = true
+    try {
+      await patchSettings(patch)
+    } catch {
+      return // не закрываем модалку — даём повторить
+    }
+    setAutoMode(null)
+  }
+  const disableAutoBackup = async () => {
+    try {
+      await patchSettings({ auto_backup_enabled: false })
+    } catch {
+      return
+    }
+    setAutoMode(null)
   }
 
   return (
@@ -86,84 +131,47 @@ export function BackupTab() {
         </div>
       </Card>
 
-      {/* Ручной экспорт */}
+      {/* Ручной экспорт (слева) + автокопирование (справа) — в ряд на десктопе,
+          друг под другом на мобиле. Высота блоков одинаковая (по большему —
+          растягиваем оба, stretch). */}
       {settings ? (
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>Создать резервную копию сейчас</div>
-              <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Разовый полный экспорт: база данных + файлы</div>
-            </div>
-            <Button loading={creating} onClick={doCreateBackup} style={{ flex: 'none' }}>
-              Экспорт
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, alignItems: 'stretch' }}>
+        {/* Ручной экспорт — кнопка закреплена по нижнему краю блока (flex-колонка +
+            marginTop:auto); пароль шифрования спрашиваем в модалке подтверждения. */}
+        <Card style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>Создать резервную копию</div>
+            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Разовый полный экспорт создаваемый вручную</div>
+          </div>
+
+          <div style={{ marginTop: 'auto', paddingTop: 16 }}>
+            <Button onClick={() => setExportOpen(true)} style={{ width: '100%' }}>
+              Создать резервную копию
             </Button>
           </div>
+        </Card>
 
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 16 }}>
-            <Input
-              label="Пароль для шифрования (необязательно)"
-              type="password"
-              value={passphrase}
-              onChange={(e) => setPassphrase(e.target.value)}
-              placeholder="Без пароля — архив не шифруется"
-              autoComplete="new-password"
-            />
+        {/* Автокопирование. Выключено — кнопка «Включить авто бэкапы»; включено —
+            «Настроить авто бэкапы» (открывает модалку с параметрами и выключением).
+            Кнопка на всю ширину, закреплена внизу — симметрично блоку слева. */}
+        <Card style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>Автоматическое создание резервных копий</div>
+            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Ежедневно, с настройкой глубины хранения</div>
+          </div>
+          <div style={{ marginTop: 'auto', paddingTop: 16 }}>
+            {settings.auto_backup_enabled ? (
+              <Button variant="secondary" onClick={() => openAutoModal('config')} style={{ width: '100%' }}>
+                Настроить авто бэкапы
+              </Button>
+            ) : (
+              <Button onClick={() => openAutoModal('enable')} style={{ width: '100%' }}>
+                Включить авто бэкапы
+              </Button>
+            )}
           </div>
         </Card>
-      ) : null}
-
-      {/* Автокопирование */}
-      {settings ? (
-        <Card>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 600 }}>Автоматическое создание резервных копий</div>
-              <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 4 }}>Ежедневно, полный архив (база данных + файлы), с настройкой глубины хранения</div>
-            </div>
-            <Checkbox
-              checked={settings.auto_backup_enabled}
-              onChange={(checked) => {
-                setSettings({ ...settings, auto_backup_enabled: checked })
-                patchSettings({ auto_backup_enabled: checked })
-              }}
-              disabled={savingSettings}
-            />
-          </div>
-          {settings.auto_backup_enabled ? (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 16 }}>
-                <Input
-                  label="Время автокопирования"
-                  type="time"
-                  value={settings.auto_backup_time?.slice(0, 5) || '03:00'}
-                  onChange={(e) => setSettings({ ...settings, auto_backup_time: e.target.value })}
-                  onBlur={() => patchSettings({ auto_backup_time: settings.auto_backup_time })}
-                />
-                <Input
-                  label="Хранить последних копий"
-                  type="number"
-                  min={1}
-                  value={settings.auto_backup_retention}
-                  onChange={(e) => setSettings({ ...settings, auto_backup_retention: Number(e.target.value) })}
-                  onBlur={() => patchSettings({ auto_backup_retention: settings.auto_backup_retention })}
-                />
-              </div>
-              {settings.server_time ? (
-                <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 8, lineHeight: 1.5 }}>
-                  Время указывается по часам сервера. Сейчас на сервере:{' '}
-                  <b style={{ color: 'var(--color-text-muted)' }}>
-                    {new Date(settings.server_time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: settings.server_timezone })}
-                  </b>{' '}
-                  ({settings.server_timezone}).
-                </div>
-              ) : null}
-              <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 10, lineHeight: 1.5 }}>
-                Шифрование автоматических копий задаётся переменной <b style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>BACKUP_PASSPHRASE</b> в .env сервера
-                (при пустом значении авто-копии не шифруются) — пароль в блоке создания резервной копии сейчас применяется только к ручному экспорту.
-              </div>
-            </>
-          ) : null}
-        </Card>
+        </div>
       ) : null}
 
       {/* История копий */}
@@ -221,6 +229,84 @@ export function BackupTab() {
           </div>
         )}
       </Card>
+
+      {exportOpen ? (
+        <Modal open onClose={closeExport} title="Создать резервную копию">
+          <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: '4px 0 16px' }}>
+            Будет создан полный архив: база данных и файлы. При необходимости задайте пароль шифрования.
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <Input
+              label="Пароль для шифрования (необязательно)"
+              type="password"
+              value={passphrase}
+              onChange={(e) => setPassphrase(e.target.value)}
+              placeholder="Без пароля — архив не шифруется"
+              autoComplete="new-password"
+            />
+          </div>
+          {error ? (
+            <div style={{ marginBottom: 16 }}>
+              <Banner variant="error">{error}</Banner>
+            </div>
+          ) : null}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Button fullWidth loading={creating} onClick={doCreateBackup}>
+              Создать резервную копию
+            </Button>
+            <Button variant="secondary" fullWidth onClick={closeExport} disabled={creating}>
+              Отмена
+            </Button>
+          </div>
+        </Modal>
+      ) : null}
+
+      {autoMode ? (
+        <Modal open onClose={closeAutoModal} title={autoMode === 'enable' ? 'Включить автоматические копии' : 'Автоматическое создание резервных копий'}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginTop: 4 }}>
+            <Input
+              label="Время автокопирования"
+              type="time"
+              value={autoTime}
+              onChange={(e) => setAutoTime(e.target.value)}
+            />
+            <Input
+              label="Хранить последних копий"
+              type="number"
+              min={1}
+              value={autoRetention}
+              onChange={(e) => setAutoRetention(Number(e.target.value))}
+            />
+          </div>
+          {settings.server_time ? (
+            <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 12, lineHeight: 1.5 }}>
+              Время указывается по часам сервера. Сейчас на сервере:{' '}
+              <b style={{ color: 'var(--color-text-muted)' }}>
+                {new Date(settings.server_time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: settings.server_timezone })}
+              </b>{' '}
+              ({settings.server_timezone}).
+            </div>
+          ) : null}
+          <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 10, marginBottom: 20, lineHeight: 1.5 }}>
+            Шифрование автоматических копий задаётся переменной <b style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>BACKUP_PASSPHRASE</b> в .env сервера
+            (при пустом значении авто-копии не шифруются) — пароль в блоке создания резервной копии применяется только к ручному экспорту.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Button fullWidth loading={savingSettings} onClick={submitAutoModal}>
+              {autoMode === 'enable' ? 'Включить' : 'Сохранить'}
+            </Button>
+            {autoMode === 'enable' ? (
+              <Button variant="secondary" fullWidth disabled={savingSettings} onClick={closeAutoModal}>
+                Отмена
+              </Button>
+            ) : (
+              <Button variant="secondary" fullWidth disabled={savingSettings} onClick={disableAutoBackup}>
+                Выключить авто-бэкапы
+              </Button>
+            )}
+          </div>
+        </Modal>
+      ) : null}
 
       {toDelete ? (
         <ConfirmModal

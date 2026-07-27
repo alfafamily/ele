@@ -12,6 +12,9 @@ export function CompanyProvider({ children }) {
   // B12: число активных возможных дублей сотрудников — для бейджа на иконке
   // «Настройки». Считается только для администратора (эндпоинт под IsAdmin).
   const [duplicatesCount, setDuplicatesCount] = useState(0)
+  // B33: заканчивается место хотя бы в одном хранилище — для треугольника на
+  // иконке «Настройки». Тоже только для администратора (эндпоинт под IsAdmin).
+  const [storageLow, setStorageLow] = useState(false)
 
   // Перечитать компанию (напр. после смены лого) — чтобы обновить rail и
   // карточку Настроек без полной перезагрузки страницы.
@@ -33,6 +36,7 @@ export function CompanyProvider({ children }) {
     if (!user) {
       setCompany(null)
       setDuplicatesCount(0)
+      setStorageLow(false)
       return
     }
     let cancelled = false
@@ -45,6 +49,13 @@ export function CompanyProvider({ children }) {
           if (!cancelled) setDuplicatesCount(data?.count ?? 0)
         })
         .catch(() => {})
+      // B33: свободное место опрашиваем один раз при входе (опрос S3 на бэке
+      // кэшируется) — этого достаточно для треугольника-предупреждения.
+      apiGet('/api/company/storage-space/')
+        .then((data) => {
+          if (!cancelled) setStorageLow(Boolean(data?.low))
+        })
+        .catch(() => {})
     }
     return () => {
       cancelled = true
@@ -52,7 +63,7 @@ export function CompanyProvider({ children }) {
   }, [user])
 
   return (
-    <CompanyContext.Provider value={{ company, refresh, duplicatesCount, refreshDuplicates }}>
+    <CompanyContext.Provider value={{ company, refresh, duplicatesCount, refreshDuplicates, storageLow }}>
       {children}
     </CompanyContext.Provider>
   )
@@ -72,4 +83,8 @@ export function useDuplicatesCount() {
 
 export function useRefreshDuplicates() {
   return useContext(CompanyContext)?.refreshDuplicates
+}
+
+export function useStorageLow() {
+  return useContext(CompanyContext)?.storageLow ?? false
 }
