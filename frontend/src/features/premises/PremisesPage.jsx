@@ -28,7 +28,7 @@ export function PremisesPage() {
   const [expanded, setExpanded] = useState(() => new Set())
   const [buildingModal, setBuildingModal] = useState(null) // null | 'new' | building
   const [roomModal, setRoomModal] = useState(null) // null | { room, buildingId }
-  const [placeModal, setPlaceModal] = useState(null) // null | { place, roomId }
+  const [placeModal, setPlaceModal] = useState(null) // null | { place, room }
   const [confirm, setConfirm] = useState(null) // null | { title, message, onConfirm }
   const [error, setError] = useState(null)
 
@@ -289,8 +289,8 @@ export function PremisesPage() {
                     )
                   }
                   onUnarchive={() => doUnarchive(() => unarchiveRoom(room.id))}
-                  onAddPlace={() => setPlaceModal({ place: null, roomId: room.id })}
-                  onEditPlace={(place) => setPlaceModal({ place, roomId: room.id })}
+                  onAddPlace={() => setPlaceModal({ place: null, room })}
+                  onEditPlace={(place) => setPlaceModal({ place, room })}
                   onArchivePlace={(place) =>
                     runArchive(
                       'Архивировать место?',
@@ -333,7 +333,7 @@ export function PremisesPage() {
 
       {placeModal ? (
         <PlaceModal
-          roomId={placeModal.roomId}
+          room={placeModal.room}
           place={placeModal.place}
           onClose={() => setPlaceModal(null)}
           onDone={() => {
@@ -396,9 +396,30 @@ function RoomRow({ room, buildingArchived, open, onToggle, canManage, onEdit, on
               <Icon name="key-round" size={13} strokeWidth={2} title="Требуется ключ/пропуск" style={{ flex: 'none', color: 'var(--color-text-muted)' }} />
             ) : null}
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <Badge>этаж {room.floor || '—'}</Badge>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            {room.parking_type === 'adjacent' ? (
+              <Badge>Прилегающая парковка</Badge>
+            ) : room.parking_type === 'floor' ? (
+              <>
+                <Badge>Этаж-парковка</Badge>
+                <Badge>этаж {room.floor || '—'}</Badge>
+              </>
+            ) : (
+              <Badge>этаж {room.floor || '—'}</Badge>
+            )}
             <Badge>мест {activePlaces}</Badge>
+            {room.plan_file?.url ? (
+              <a
+                href={room.plan_file.url}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)' }}
+              >
+                <Icon name="file-text" size={13} strokeWidth={2} />
+                План
+              </a>
+            ) : null}
           </div>
         </div>
         {canManage && !buildingArchived ? (
@@ -428,7 +449,7 @@ function RoomRow({ room, buildingArchived, open, onToggle, canManage, onEdit, on
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, background: 'transparent', color: 'var(--color-text-muted)', borderRadius: 8, padding: '6px 10px', boxShadow: 'inset 0 0 0 1px var(--color-border-strong)', cursor: 'pointer', border: 'none', fontFamily: 'inherit' }}
               >
                 <Icon name="plus" size={14} strokeWidth={2.2} />
-                Место
+                {room.parking_type ? 'Парковочное место' : 'Место'}
               </button>
             ) : null}
           </div>
@@ -468,6 +489,19 @@ function PlaceChip({ place, canManage, onEdit, onArchive, onUnarchive }) {
         { label: 'В архив', onClick: onArchive },
       ]
 
+  const isParkingSpot = place.place_type === 'parking_spot'
+  const icon =
+    place.place_type === 'storage' ? 'warehouse' : isParkingSpot ? 'car' : 'briefcase'
+  const iconTitle =
+    place.place_type === 'storage' ? 'Место хранения' : isParkingSpot ? 'Парковочное место' : 'Рабочее место'
+  // Число закреплённых объектов: рабочее место — сотрудники; парковочное — либо
+  // личные авто (сотрудники), либо транспорт компании.
+  const attachedCount = isParkingSpot
+    ? place.transport_detail?.length || place.employees_detail?.length || 0
+    : place.place_type === 'workplace'
+      ? place.employees_detail?.length || 0
+      : 0
+
   return (
     <div className="ele-action-menu" ref={ref}>
       <button
@@ -481,19 +515,13 @@ function PlaceChip({ place, canManage, onEdit, onArchive, onUnarchive }) {
           opacity: archived ? 0.55 : 1, textDecoration: archived ? 'line-through' : 'none',
         }}
       >
-        <Icon
-          name={place.place_type === 'storage' ? 'warehouse' : 'briefcase'}
-          size={13}
-          strokeWidth={2}
-          title={place.place_type === 'storage' ? 'Место хранения' : 'Рабочее место'}
-          style={{ color: 'var(--color-text-muted)' }}
-        />
+        <Icon name={icon} size={13} strokeWidth={2} title={iconTitle} style={{ color: 'var(--color-text-muted)' }} />
         {place.requires_pass ? (
           <Icon name="key-round" size={13} strokeWidth={2} title="Требуется ключ/пропуск" style={{ color: 'var(--color-text-muted)' }} />
         ) : null}
         {place.name}
-        {place.place_type === 'workplace' && place.employees_detail?.length ? (
-          <span style={{ color: 'var(--color-text-placeholder)' }}>· {place.employees_detail.length}</span>
+        {attachedCount ? (
+          <span style={{ color: 'var(--color-text-placeholder)' }}>· {attachedCount}</span>
         ) : null}
       </button>
       {open ? (

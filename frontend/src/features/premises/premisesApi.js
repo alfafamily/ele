@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost } from '../../shared/api/client'
+import { apiDelete, apiGet, apiPatch, apiPost } from '../../shared/api/client'
 
 // Раздел «Помещения»: справочник зданий/помещений/мест. Удаления нет —
 // только архивирование (каскадное вниз), поэтому apiDelete не используется.
@@ -16,6 +16,13 @@ export const createRoom = (payload) => apiPost('/api/rooms/', payload)
 export const updateRoom = (id, payload) => apiPatch(`/api/rooms/${id}/`, payload)
 export const archiveRoom = (id) => apiPost(`/api/rooms/${id}/archive/`, {})
 export const unarchiveRoom = (id) => apiPost(`/api/rooms/${id}/unarchive/`, {})
+// План парковки (PDF/изображение): загрузка (multipart, поле file) и удаление.
+export const uploadRoomPlan = (id, formData) => apiPost(`/api/rooms/${id}/plan/`, formData)
+export const deleteRoomPlan = (id) => apiDelete(`/api/rooms/${id}/plan/`)
+
+// Подбор транспорта компании для закрепления за парковочным местом.
+export const getTransportPicker = (search) =>
+  apiGet(`/api/transport/picker/${search ? `?search=${encodeURIComponent(search)}` : ''}`)
 
 export const createPlace = (payload) => apiPost('/api/places/', payload)
 export const updatePlace = (id, payload) => apiPatch(`/api/places/${id}/`, payload)
