@@ -261,7 +261,7 @@ export function LicenseListPage() {
                     ) : row.storage_place_detail ? (
                       <>
                         <div className="ele-clamp-2">На складе: {row.storage_place_detail.name}</div>
-                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>
+                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {row.storage_place_detail.building_name} — {row.storage_place_detail.room_name}
                         </div>
                       </>
