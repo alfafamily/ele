@@ -398,21 +398,18 @@ export function SystemTab() {
               { value: 'local', label: 'Локальное хранилище' },
               { value: 's3', label: 'S3' },
             ].map((opt) => {
-              const locked = savingStorage || migration?.status === 'in_progress'
+              const busy = savingStorage || migration?.status === 'in_progress'
+              // S3 без параметров в .env — опция «выключена» (приглушена, курсор
+              // not-allowed), но клик по ней всё равно показывает ошибку.
+              const blocked = opt.value === 's3' && !status.s3_configured
               return (
-                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: locked ? 'default' : 'pointer', fontSize: 14, opacity: locked && storageMode !== opt.value ? 0.55 : 1 }}>
-                  <input type="radio" name="storage-mode" checked={storageMode === opt.value} disabled={locked} onChange={() => onStorageMode(opt.value)} />
+                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: busy ? 'default' : blocked ? 'not-allowed' : 'pointer', fontSize: 14, opacity: blocked || (busy && storageMode !== opt.value) ? 0.55 : 1 }}>
+                  <input type="radio" name="storage-mode" checked={storageMode === opt.value} disabled={busy} onChange={() => onStorageMode(opt.value)} />
                   {opt.label}
                 </label>
               )
             })}
           </div>
-
-          {storageMode === 's3' && status.s3_bucket ? (
-            <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 12 }}>
-              Бакет S3: <b style={{ color: 'var(--color-text-muted)' }}>{status.s3_bucket}</b>
-            </div>
-          ) : null}
 
           {/* Перенос файлов между хранилищами — идёт в фоне (cron). Пока
               не завершён, смена режима заблокирована выше. */}
@@ -430,9 +427,15 @@ export function SystemTab() {
             </div>
           ) : null}
 
-          <div style={{ ...checkRow, marginTop: 14 }}>
+          {storageMode === 's3' && status.s3_bucket ? (
+            <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 12 }}>
+              Бакет S3: <b style={{ color: 'var(--color-text-muted)' }}>{status.s3_bucket}</b>
+            </div>
+          ) : null}
+
+          <div style={{ ...checkRow, marginTop: 12 }}>
             <Button type="button" variant="secondary" loading={storageTesting} onClick={runStorageTest}>
-              Выполнить проверку
+              Проверить подключение
             </Button>
             <CheckResult result={storageResult} />
           </div>
@@ -447,10 +450,12 @@ export function SystemTab() {
               { value: 'own', label: 'Хранилище приложения' },
               { value: 'secondary_s3', label: 'S3 для backup' },
             ].map((opt) => {
+              // S3 без параметров в .env — опция «выключена» (приглушена, курсор
+              // not-allowed), но клик по ней всё равно показывает ошибку.
               const blocked = opt.value === 'secondary_s3' && !backup?.backup_secondary_s3?.configured
               const current = backup?.backup_destination || 'own'
               return (
-                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: savingBackupDest ? 'default' : 'pointer', fontSize: 14, opacity: blocked ? 0.55 : 1 }}>
+                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: savingBackupDest ? 'default' : blocked ? 'not-allowed' : 'pointer', fontSize: 14, opacity: blocked ? 0.55 : 1 }}>
                   <input type="radio" name="backup-dest" checked={current === opt.value} disabled={savingBackupDest} onChange={() => onBackupDest(opt.value)} />
                   {opt.label}
                 </label>
@@ -463,15 +468,17 @@ export function SystemTab() {
             </div>
           ) : null}
           {backup?.backup_secondary_s3?.configured ? (
-            <div style={{ ...checkRow, marginTop: 14 }}>
-              <span style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
+            <>
+              <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 14 }}>
                 S3 для backup: <b style={{ color: 'var(--color-text-muted)' }}>{backup.backup_secondary_s3.bucket}</b>
-              </span>
-              <Button type="button" variant="secondary" loading={s3Testing} onClick={runSecondaryS3Test}>
-                Проверить подключение
-              </Button>
-              <CheckResult result={s3Result} />
-            </div>
+              </div>
+              <div style={{ ...checkRow, marginTop: 12 }}>
+                <Button type="button" variant="secondary" loading={s3Testing} onClick={runSecondaryS3Test}>
+                  Проверить подключение
+                </Button>
+                <CheckResult result={s3Result} />
+              </div>
+            </>
           ) : (
             <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 14 }}>
               S3 для backup не настроен в .env (BACKUP_S3_*).
