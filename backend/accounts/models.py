@@ -13,23 +13,25 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Role(models.TextChoices):
         ADMIN = "admin", "Администратор"
         ACCOUNTANT = "accountant", "Ответственный за учёт"
-        MAINTENANCE = "maintenance", "Ответственный за ТО"
+        MAINTENANCE = "maintenance", "Механик по оборудованию"
+        AUTOMECHANIC = "automechanic", "Автомеханик"
         EMPLOYEE = "employee", "Сотрудник"
 
     email = models.EmailField("Email", unique=True)
     role = models.CharField("Уровень доступа", max_length=20, choices=Role.choices, default=Role.EMPLOYEE)
     # Применимо только при role=EMPLOYEE — проверка вне модели (Фаза 3/4).
     is_observer = models.BooleanField("Наблюдатель", default=False)
-    # B13+/B23: применимо только при role=ACCOUNTANT — «Ответственный за ТО»
-    # (проведение ТО). До B23 флаг совмещал проведение и управление регламентами;
-    # с B23 управление регламентами вынесено в can_manage_regulations, а этот флаг
-    # отвечает только за проведение ТО (с учётом области типов, см. ниже).
-    can_maintain = models.BooleanField("Ответственный за ТО", default=False)
-    # B23: применимо только при role=ACCOUNTANT — «Может управлять регламентами ТО»
-    # (создавать/править/отменять типовые и индивидуальные регламенты, назначать
-    # дату первого ТО). Без флага блок «Регламенты» и настройка регламентов в типах
-    # недоступны. Не зависит от can_maintain (независимые чекбоксы).
-    can_manage_regulations = models.BooleanField("Может управлять регламентами ТО", default=False)
+    # B13+/B23: применимо только при role=ACCOUNTANT — «Ответственный за ТО
+    # Оборудования» (проведение ТО оборудования). До B23 флаг совмещал проведение
+    # и управление регламентами; с B23 управление регламентами вынесено в
+    # can_manage_regulations, а этот флаг отвечает только за проведение ТО (с учётом
+    # области типов, см. ниже).
+    can_maintain = models.BooleanField("Ответственный за ТО Оборудования", default=False)
+    # B23: применимо только при role=ACCOUNTANT — «Может управлять регламентами ТО
+    # Оборудования» (создавать/править/отменять типовые и индивидуальные регламенты,
+    # назначать дату первого ТО). Без флага блок «Регламенты» и настройка регламентов
+    # в типах недоступны. Не зависит от can_maintain (независимые чекбоксы).
+    can_manage_regulations = models.BooleanField("Может управлять регламентами ТО Оборудования", default=False)
     # B23: область типов оборудования для проведения ТО. Применимо к роли
     # MAINTENANCE и к ACCOUNTANT с can_maintain. True — все типы с включённым ТО;
     # False — только выбранные в maintenance_types. По умолчанию «все» (обратная
@@ -40,6 +42,23 @@ class User(AbstractBaseUser, PermissionsMixin):
     # ссылке (без импорта — избегаем цикла accounts<->equipment).
     maintenance_types = models.ManyToManyField(
         "equipment.EquipmentType", verbose_name="Типы оборудования для ТО",
+        blank=True, related_name="maintainer_users",
+    )
+    # B22: применимо при role=ACCOUNTANT — «Ответственный за ТО Транспорта»
+    # (проведение ТО транспорта). Зеркало can_maintain для транспорта.
+    can_maintain_transport = models.BooleanField("Ответственный за ТО Транспорта", default=False)
+    # B22: применимо при role=ACCOUNTANT — «Может управлять регламентами ТО
+    # Транспорта». Зеркало can_manage_regulations для транспорта.
+    can_manage_transport_regulations = models.BooleanField("Может управлять регламентами ТО Транспорта", default=False)
+    # B22: область типов транспорта для проведения ТО. Применимо к роли
+    # AUTOMECHANIC и к ACCOUNTANT с can_maintain_transport. True — все типы
+    # транспорта; False — только выбранные в maintenance_transport_types.
+    maintenance_all_transport_types = models.BooleanField("ТО по всем типам транспорта", default=True)
+    # B22: выбранные типы транспорта для проведения ТО, когда
+    # maintenance_all_transport_types=False. M2M на transport.TransportType по
+    # строковой ссылке (без импорта — избегаем цикла).
+    maintenance_transport_types = models.ManyToManyField(
+        "transport.TransportType", verbose_name="Типы транспорта для ТО",
         blank=True, related_name="maintainer_users",
     )
     is_active = models.BooleanField("Активен", default=True)

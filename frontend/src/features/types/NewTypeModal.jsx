@@ -11,10 +11,15 @@ export function NewTypeModal({ domain, onClose, onCreate }) {
   const [allowsLicense, setAllowsLicense] = useState(false)
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false)
   const [kind, setKind] = useState('software')
+  // B3: тип транспорта — единица учёта пробега + признак регистрации в ГИБДД
+  // (Да → есть базовый реквизит «Гос.номер»). Оба задаются при создании.
+  const [mileageUnit, setMileageUnit] = useState('km')
+  const [gibdd, setGibdd] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
   const isLicense = domain === 'license'
+  const isTransport = domain === 'transport'
 
   const submit = async () => {
     setSubmitting(true)
@@ -22,7 +27,9 @@ export function NewTypeModal({ domain, onClose, onCreate }) {
     try {
       const extra = isLicense
         ? { kind }
-        : { allows_sim: allowsSim, allows_license: allowsLicense, maintenance_enabled: maintenanceEnabled }
+        : isTransport
+          ? { mileage_unit: mileageUnit, gibdd_registration: gibdd }
+          : { allows_sim: allowsSim, allows_license: allowsLicense, maintenance_enabled: maintenanceEnabled }
       await onCreate(name, extra)
     } catch (err) {
       setError(err.errors ? Object.values(err.errors).flat().join(' ') : err.detail || 'Не удалось создать тип.')
@@ -55,6 +62,34 @@ export function NewTypeModal({ domain, onClose, onCreate }) {
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 8 }}>
             Вид задаётся один раз и не меняется после создания типа.
+          </div>
+        </div>
+      ) : isTransport ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18, marginTop: 16 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Учёт пробега</div>
+            <Segmented
+              value={mileageUnit}
+              onChange={setMileageUnit}
+              options={[
+                { value: 'km', label: 'По километрам' },
+                { value: 'motohours', label: 'По моточасам' },
+              ]}
+            />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Регистрация в ГИБДД</div>
+            <Segmented
+              value={gibdd ? 'yes' : 'no'}
+              onChange={(v) => setGibdd(v === 'yes')}
+              options={[
+                { value: 'yes', label: 'Да' },
+                { value: 'no', label: 'Нет' },
+              ]}
+            />
+            <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 8 }}>
+              «Да» — у типа есть базовый реквизит «Гос.номер» (ведётся учёт по госномерам). Задаётся один раз и не меняется после создания типа.
+            </div>
           </div>
         </div>
       ) : (
@@ -98,5 +133,34 @@ export function NewTypeModal({ domain, onClose, onCreate }) {
         </Button>
       </div>
     </Modal>
+  )
+}
+
+// Сегментированный выбор Да/Нет и т.п. (взаимоисключающий).
+function Segmented({ value, onChange, options }) {
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          style={{
+            flex: 1,
+            padding: '9px 6px',
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: 'inherit',
+            cursor: 'pointer',
+            borderRadius: 8,
+            border: 'none',
+            color: value === o.value ? 'var(--color-primary-text)' : 'var(--color-text-secondary)',
+            background: value === o.value ? 'var(--color-primary)' : 'var(--color-fill-input)',
+          }}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
   )
 }

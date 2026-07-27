@@ -66,10 +66,15 @@ export function TypesEditorPage({ domain, title }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [domain])
 
-  // Регламенты выбранного типа — только для оборудования с включённым ТО.
+  // Домены с регламентами ТО: оборудование (при включённом ТО у типа) и
+  // транспорт (ТО включено всегда). Право управления — своё на домен.
+  const canManageDomainMaintenance = domain === 'transport' ? perms.canManageTransportMaintenance : perms.canManageMaintenance
+  const typeHasMaintenance = (t) => domain === 'transport' || (domain === 'equipment' && !!t?.maintenance_enabled)
+
+  // Регламенты выбранного типа — для оборудования с включённым ТО и транспорта.
   useEffect(() => {
     const sel = types?.find((t) => t.id === selectedId)
-    if (domain !== 'equipment' || !sel || !sel.maintenance_enabled || !perms.canManageMaintenance) {
+    if (!sel || !typeHasMaintenance(sel) || !canManageDomainMaintenance) {
       setRegulations(null)
       return
     }
@@ -162,9 +167,9 @@ export function TypesEditorPage({ domain, title }) {
 
   const typeMenu = (t) => {
     const items = [
-      // У оборудования модалка редактирует и флаги (SIM/ТО), поэтому «Изменить»;
-      // у лицензий меняется только наименование — «Переименовать».
-      { label: domain === 'equipment' ? 'Изменить' : 'Переименовать', onClick: () => setRenameTarget(t) },
+      // У оборудования/транспорта модалка редактирует и доп. свойства, поэтому
+      // «Изменить»; у лицензий меняется только наименование — «Переименовать».
+      { label: domain === 'equipment' || domain === 'transport' ? 'Изменить' : 'Переименовать', onClick: () => setRenameTarget(t) },
       { label: t.is_archived ? 'Вернуть из архива' : 'Архивировать', onClick: () => toggleArchive(t) },
     ]
     // Удаление — только если к типу не привязаны объекты. Иначе пункт остаётся
@@ -280,6 +285,23 @@ export function TypesEditorPage({ domain, title }) {
               </div>
             ) : null}
 
+            {/* B3: свойства типа транспорта (единица пробега, регистрация в ГИБДД). */}
+            {domain === 'transport' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 18 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Icon name="car" size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                  <span style={{ fontSize: 13.5, fontWeight: 500 }}>
+                    Учёт пробега: {selected.mileage_unit === 'motohours' ? 'по моточасам' : 'по километрам'}
+                  </span>
+                </div>
+                <TypeFlagStatus
+                  on={!!selected.gibdd_registration}
+                  onText="Регистрация в ГИБДД (ведётся учёт по Гос.номеру)"
+                  offText="Без регистрации в ГИБДД (Гос.номер не ведётся)"
+                />
+              </div>
+            ) : null}
+
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Реквизиты типа</div>
             <Button variant="secondary" fullWidth style={{ marginBottom: 12 }} onClick={() => setFieldModal('new')}>
               <Icon name="plus" size={18} strokeWidth={2.2} />
@@ -354,9 +376,9 @@ export function TypesEditorPage({ domain, title }) {
               })()}
             </div>
 
-            {/* B13+: регламенты ТО — только для оборудования с включённым ТО и
-                только для тех, кто управляет ТО (admin / учётчик с флагом). */}
-            {domain === 'equipment' && selected.maintenance_enabled && perms.canManageMaintenance ? (
+            {/* B13+/B22: регламенты ТО — оборудование с включённым ТО и транспорт
+                (ТО всегда), только для тех, кто управляет ТО домена. */}
+            {typeHasMaintenance(selected) && canManageDomainMaintenance ? (
               <div style={{ marginTop: 28 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Регламенты ТО</div>
                 <Button variant="secondary" fullWidth style={{ marginBottom: 12 }} onClick={() => setRegModal('new')}>
@@ -486,7 +508,7 @@ export function TypesEditorPage({ domain, title }) {
       {archiveReg ? (
         <ConfirmModal
           title="Отменить регламент?"
-          message={`Регламент «${archiveReg.name}» будет отменён (в архив) для всего оборудования этого типа. Плановые даты ТО по нему обнулятся; вернуть регламент можно позже.`}
+          message={`Регламент «${archiveReg.name}» будет отменён (в архив) для всего ${domain === 'transport' ? 'транспорта' : 'оборудования'} этого типа. Плановые даты ТО по нему обнулятся; вернуть регламент можно позже.`}
           confirmLabel="Отменить"
           onConfirm={async () => {
             await toggleRegArchive(archiveReg, true)

@@ -4,6 +4,7 @@ import { getNumberingSettings, updateNumberingSettings } from './settingsApi.js'
 
 const FIELDS = [
   { key: 'equipment_number_prefix', label: 'Оборудование' },
+  { key: 'transport_number_prefix', label: 'Транспорт' },
   { key: 'key_number_prefix', label: 'Ключи' },
   { key: 'pass_number_prefix', label: 'Пропуска' },
 ]

@@ -66,9 +66,11 @@ class Company(models.Model):
     equipment_number_prefix = models.CharField("Префикс номеров оборудования", max_length=16, default="EQUIP")
     key_number_prefix = models.CharField("Префикс номеров ключей", max_length=16, default="KEY")
     pass_number_prefix = models.CharField("Префикс номеров пропусков", max_length=16, default="PASS")
+    transport_number_prefix = models.CharField("Префикс номеров транспорта", max_length=16, default="TS")
     equipment_number_seq = models.PositiveIntegerField("Счётчик номеров оборудования", default=0)
     key_number_seq = models.PositiveIntegerField("Счётчик номеров ключей", default=0)
     pass_number_seq = models.PositiveIntegerField("Счётчик номеров пропусков", default=0)
+    transport_number_seq = models.PositiveIntegerField("Счётчик номеров транспорта", default=0)
 
     class Meta:
         verbose_name = "Компания"

@@ -1,0 +1,321 @@
+from datetime import timedelta
+
+from accounts.models import User
+from django.utils import timezone
+from employees.models import Employee
+from rest_framework.test import APITestCase
+
+from .models import MaintenanceRecord, Transport, TransportType
+
+
+def _base_fields(resp_data):
+    """{name: field_id} по базовым (залоченным) реквизитам типа из ответа."""
+    return {f["name"]: f["id"] for f in resp_data["fields"] if f["is_locked"]}
+
+
+class TransportTypeTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+
+    def test_gibdd_type_seeds_model_and_plate(self):
+        resp = self.client.post(
+            "/api/transport-types/",
+            {"name": "Легковой", "mileage_unit": "km", "gibdd_registration": True},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        base = _base_fields(resp.data)
+        self.assertIn("Модель", base)
+        self.assertIn("Гос.номер", base)
+
+    def test_non_gibdd_type_has_only_model(self):
+        resp = self.client.post(
+            "/api/transport-types/",
+            {"name": "Погрузчик", "mileage_unit": "motohours", "gibdd_registration": False},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        base = _base_fields(resp.data)
+        self.assertIn("Модель", base)
+        self.assertNotIn("Гос.номер", base)
+
+    def test_gibdd_flag_immutable(self):
+        resp = self.client.post(
+            "/api/transport-types/",
+            {"name": "Легковой", "gibdd_registration": True},
+            format="json",
+        )
+        type_id = resp.data["id"]
+        resp = self.client.patch(
+            f"/api/transport-types/{type_id}/", {"gibdd_registration": False}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400, resp.data)
+
+    def test_locked_base_field_cannot_be_renamed_or_deleted(self):
+        resp = self.client.post(
+            "/api/transport-types/", {"name": "Легковой", "gibdd_registration": True}, format="json"
+        )
+        type_id = resp.data["id"]
+        plate_id = _base_fields(resp.data)["Гос.номер"]
+        r = self.client.patch(
+            f"/api/transport-types/{type_id}/fields/{plate_id}/", {"name": "VIN"}, format="json"
+        )
+        self.assertEqual(r.status_code, 400, r.data)
+        r = self.client.delete(f"/api/transport-types/{type_id}/fields/{plate_id}/")
+        self.assertEqual(r.status_code, 409, getattr(r, "data", r))
+
+
+class TransportCrudTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post(
+            "/api/transport-types/", {"name": "Легковой", "gibdd_registration": True}, format="json"
+        )
+        self.type_id = resp.data["id"]
+        self.base = _base_fields(resp.data)
+
+    def _create(self, inv="TS-1", model="Camry", plate="А001АА777"):
+        return self.client.post(
+            "/api/transport/",
+            {
+                "inventory_number": inv,
+                "transport_type": self.type_id,
+                "field_values_input": [
+                    {"field": self.base["Модель"], "value": model},
+                    {"field": self.base["Гос.номер"], "value": plate},
+                ],
+            },
+            format="json",
+        )
+
+    def test_create_and_type_and_model(self):
+        resp = self._create()
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertEqual(resp.data["type_and_model"], "Легковой Camry")
+        self.assertEqual(resp.data["plate"], "А001АА777")
+
+    def test_inventory_number_unique(self):
+        self.assertEqual(self._create(inv="TS-1", plate="А001АА777").status_code, 201)
+        resp = self._create(inv="TS-1", plate="В002ВВ777")
+        self.assertEqual(resp.status_code, 400, resp.data)
+
+    def test_plate_unique_case_insensitive(self):
+        self.assertEqual(self._create(inv="TS-1", plate="А001АА777").status_code, 201)
+        resp = self._create(inv="TS-2", plate="а001аа777")
+        self.assertEqual(resp.status_code, 400, resp.data)
+
+    def test_assign_unassign_write_off(self):
+        transport_id = self._create().data["id"]
+        emp = Employee.objects.create(last_name="Иванов", first_name="Иван")
+        r = self.client.post(f"/api/transport/{transport_id}/assign/", {"employee": emp.id}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["status"], "assigned")
+        r = self.client.post(f"/api/transport/{transport_id}/unassign/", {}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["status"], "free")
+        r = self.client.post(f"/api/transport/{transport_id}/write-off/", {"comment": "утиль"}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertTrue(Transport.objects.get(pk=transport_id).is_written_off)
+
+    def test_delete_forbidden(self):
+        transport_id = self._create().data["id"]
+        r = self.client.delete(f"/api/transport/{transport_id}/")
+        self.assertEqual(r.status_code, 405)
+
+
+class TransportMaintenanceTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post(
+            "/api/transport-types/", {"name": "Легковой", "mileage_unit": "km", "gibdd_registration": True}, format="json"
+        )
+        self.type_id = resp.data["id"]
+        base = _base_fields(resp.data)
+        self.transport_id = self.client.post(
+            "/api/transport/",
+            {
+                "inventory_number": "TS-1",
+                "transport_type": self.type_id,
+                "field_values_input": [
+                    {"field": base["Модель"], "value": "Camry"},
+                    {"field": base["Гос.номер"], "value": "А001АА777"},
+                ],
+            },
+            format="json",
+        ).data["id"]
+
+    def test_type_regulation_creates_plan_and_perform_with_mileage(self):
+        r = self.client.post(
+            f"/api/transport-types/{self.type_id}/regulations/",
+            {"name": "ТО-1", "period_months": 6, "items": [{"kind": "work", "name": "Замена масла", "quantity": "1"}]},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.data)
+        reg_id = r.data["id"]
+
+        # План появился у экземпляра.
+        rows = self.client.get(f"/api/transport/{self.transport_id}/regulations/").data
+        self.assertTrue(any(row["id"] == reg_id for row in rows))
+
+        next_date = (timezone.localdate() + timedelta(days=180)).isoformat()
+        r = self.client.post(
+            f"/api/transport/{self.transport_id}/maintenance/",
+            {
+                "regulation": reg_id,
+                "next_planned_date": next_date,
+                "mileage": "45000",
+                "items": [{"kind": "work", "name": "Замена масла", "quantity": "1", "from_regulation": True}],
+            },
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.data)
+        rec = MaintenanceRecord.objects.get(transport_id=self.transport_id)
+        self.assertEqual(str(rec.mileage), "45000.00")
+        # last_mileage на карточке.
+        self.assertEqual(r.data["last_mileage"]["unit"], "km")
+        self.assertEqual(str(r.data["last_mileage"]["value"]), "45000.00")
+
+    def test_perform_without_mileage_ok(self):
+        r = self.client.post(
+            f"/api/transport/{self.transport_id}/maintenance/",
+            {"items": [{"kind": "work", "name": "Мойка", "quantity": "1"}]},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertIsNone(r.data["last_mileage"])
+
+    def test_individual_regulation(self):
+        r = self.client.post(
+            f"/api/transport/{self.transport_id}/regulations/",
+            {"name": "Индивидуальный", "on_demand": True, "items": [{"kind": "material", "name": "Фильтр", "quantity": "2"}]},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertTrue(any(row["scope"] == "individual" for row in r.data))
+
+
+class TransportPermissionTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        # Тип и объект создаём под админом.
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post(
+            "/api/transport-types/", {"name": "Легковой", "gibdd_registration": True}, format="json"
+        )
+        self.type_id = resp.data["id"]
+        base = _base_fields(resp.data)
+        self.transport_id = self.client.post(
+            "/api/transport/",
+            {
+                "inventory_number": "TS-1",
+                "transport_type": self.type_id,
+                "field_values_input": [
+                    {"field": base["Модель"], "value": "Camry"},
+                    {"field": base["Гос.номер"], "value": "А001АА777"},
+                ],
+            },
+            format="json",
+        ).data["id"]
+        # Регламент типа — чтобы автомеханик мог провести по нему ТО.
+        self.reg_id = self.client.post(
+            f"/api/transport-types/{self.type_id}/regulations/",
+            {"name": "ТО-1", "period_months": 6, "items": [{"kind": "work", "name": "Осмотр", "quantity": "1"}]},
+            format="json",
+        ).data["id"]
+
+    def test_automechanic_read_only_can_perform_cannot_crud(self):
+        mech = User.objects.create_user(email="mech@example.com", password="Str0ng!Pass1", role=User.Role.AUTOMECHANIC)
+        self.client.force_authenticate(user=mech)
+
+        # Читает список и карточку.
+        self.assertEqual(self.client.get("/api/transport/").status_code, 200)
+        self.assertEqual(self.client.get(f"/api/transport/{self.transport_id}/").status_code, 200)
+
+        # Не может создавать объекты.
+        r = self.client.post(
+            "/api/transport/", {"inventory_number": "TS-9", "transport_type": self.type_id}, format="json"
+        )
+        self.assertIn(r.status_code, (403, 405))
+
+        # Не имеет доступа к типам.
+        self.assertEqual(self.client.get("/api/transport-types/").status_code, 403)
+
+        # Может провести ТО.
+        next_date = (timezone.localdate() + timedelta(days=180)).isoformat()
+        r = self.client.post(
+            f"/api/transport/{self.transport_id}/maintenance/",
+            {"regulation": self.reg_id, "next_planned_date": next_date,
+             "items": [{"kind": "work", "name": "Осмотр", "quantity": "1", "from_regulation": True}]},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.data)
+
+    def test_automechanic_type_scope_limits_visibility_and_perform(self):
+        # Второй тип + объект, недоступный автомеханику по области типов.
+        self.client.force_authenticate(user=self.admin)
+        resp2 = self.client.post(
+            "/api/transport-types/", {"name": "Грузовой", "gibdd_registration": True}, format="json"
+        )
+        type2 = resp2.data["id"]
+        base2 = _base_fields(resp2.data)
+        t2 = self.client.post(
+            "/api/transport/",
+            {"inventory_number": "TS-2", "transport_type": type2,
+             "field_values_input": [{"field": base2["Модель"], "value": "Gazelle"}, {"field": base2["Гос.номер"], "value": "В002ВВ777"}]},
+            format="json",
+        ).data["id"]
+
+        mech = User.objects.create_user(email="mech2@example.com", password="Str0ng!Pass1", role=User.Role.AUTOMECHANIC)
+        mech.maintenance_all_transport_types = False
+        mech.save()
+        mech.maintenance_transport_types.set([self.type_id])  # только первый тип
+        self.client.force_authenticate(user=mech)
+
+        # В списке только транспорт своей области типов.
+        ids = [row["id"] for row in self.client.get("/api/transport/").data["results"]]
+        self.assertIn(self.transport_id, ids)
+        self.assertNotIn(t2, ids)
+
+        # ТО по объекту вне области — 403 (объект не виден → 404/403).
+        r = self.client.post(
+            f"/api/transport/{t2}/maintenance/",
+            {"items": [{"kind": "work", "name": "x", "quantity": "1"}]},
+            format="json",
+        )
+        self.assertIn(r.status_code, (403, 404))
+
+    def test_accountant_transport_flags_required_for_perform(self):
+        acc = User.objects.create_user(email="acc@example.com", password="Str0ng!Pass1", role=User.Role.ACCOUNTANT)
+        self.client.force_authenticate(user=acc)
+        # Без флага can_maintain_transport — провести ТО нельзя.
+        r = self.client.post(
+            f"/api/transport/{self.transport_id}/maintenance/",
+            {"items": [{"kind": "work", "name": "x", "quantity": "1"}]},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 403, getattr(r, "data", r))
+        # С флагом — можно.
+        acc.can_maintain_transport = True
+        acc.save()
+        r = self.client.post(
+            f"/api/transport/{self.transport_id}/maintenance/",
+            {"items": [{"kind": "work", "name": "x", "quantity": "1"}]},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.data)
+
+
+class TransportNumberingTests(APITestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+
+    def test_next_number_burns(self):
+        r1 = self.client.post("/api/company/next-number/", {"kind": "transport"}, format="json")
+        self.assertEqual(r1.status_code, 200, r1.data)
+        r2 = self.client.post("/api/company/next-number/", {"kind": "transport"}, format="json")
+        self.assertNotEqual(r1.data["number"], r2.data["number"])
+        self.assertTrue(r1.data["number"].startswith("TS-"))

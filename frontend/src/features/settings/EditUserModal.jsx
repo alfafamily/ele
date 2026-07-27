@@ -7,7 +7,8 @@ import { activateUser, deactivateUser, getCompanySettings, updateUser } from './
 const ROLE_OPTIONS = [
   { value: 'admin', label: 'Администратор' },
   { value: 'accountant', label: 'Ответственный за учёт' },
-  { value: 'maintenance', label: 'Ответственный за ТО' },
+  { value: 'maintenance', label: 'Механик по оборудованию' },
+  { value: 'automechanic', label: 'Автомеханик' },
   { value: 'employee', label: 'Сотрудник' },
 ]
 
@@ -31,6 +32,11 @@ export function EditUserModal({ user, onClose, onSaved }) {
   const [canManageRegulations, setCanManageRegulations] = useState(!!user.can_manage_regulations)
   const [maintenanceAllTypes, setMaintenanceAllTypes] = useState(user.maintenance_all_types !== false)
   const [maintenanceTypeIds, setMaintenanceTypeIds] = useState(user.maintenance_types || [])
+  // B22: флаги и область типов ТО транспорта.
+  const [canMaintainTransport, setCanMaintainTransport] = useState(!!user.can_maintain_transport)
+  const [canManageTransportRegulations, setCanManageTransportRegulations] = useState(!!user.can_manage_transport_regulations)
+  const [maintenanceAllTransportTypes, setMaintenanceAllTransportTypes] = useState(user.maintenance_all_transport_types !== false)
+  const [maintenanceTransportTypeIds, setMaintenanceTransportTypeIds] = useState(user.maintenance_transport_types || [])
   // B9: право редактировать в служебной Django-админке (= is_superuser). Галка
   // доступна только роли «Администратор» и лишь при включённом глобальном
   // доступе к админ-панели (Настройки → Системные).
@@ -64,6 +70,7 @@ export function EditUserModal({ user, onClose, onSaved }) {
         await deactivateUser(user.id, employee ? terminateEmployee : false)
       } else {
         const maintainer = role === 'maintenance' || (role === 'accountant' && canMaintain)
+        const transportMaintainer = role === 'automechanic' || (role === 'accountant' && canMaintainTransport)
         await updateUser(user.id, {
           role,
           employee: employeeMode === 'existing' ? (employee?.id ?? null) : null,
@@ -72,6 +79,10 @@ export function EditUserModal({ user, onClose, onSaved }) {
           can_manage_regulations: role === 'accountant' ? canManageRegulations : false,
           maintenance_all_types: maintainer ? maintenanceAllTypes : true,
           maintenance_types: maintainer && !maintenanceAllTypes ? maintenanceTypeIds : [],
+          can_maintain_transport: role === 'accountant' ? canMaintainTransport : false,
+          can_manage_transport_regulations: role === 'accountant' ? canManageTransportRegulations : false,
+          maintenance_all_transport_types: transportMaintainer ? maintenanceAllTransportTypes : true,
+          maintenance_transport_types: transportMaintainer && !maintenanceAllTransportTypes ? maintenanceTransportTypeIds : [],
           admin_edit_enabled: role === 'admin' ? adminEditEnabled : false,
         })
         if (status === 'active' && !currentlyActive) await activateUser(user.id)
@@ -124,8 +135,10 @@ export function EditUserModal({ user, onClose, onSaved }) {
         ) : null}
         {role === 'accountant' ? (
           <>
-            <Checkbox label="Может управлять регламентами ТО" checked={canManageRegulations} onChange={setCanManageRegulations} />
-            <Checkbox label="Ответственный за ТО" checked={canMaintain} onChange={setCanMaintain} />
+            <Checkbox label="Может управлять регламентами ТО Оборудования" checked={canManageRegulations} onChange={setCanManageRegulations} />
+            <Checkbox label="Ответственный за ТО Оборудования" checked={canMaintain} onChange={setCanMaintain} />
+            <Checkbox label="Может управлять регламентами ТО Транспорта" checked={canManageTransportRegulations} onChange={setCanManageTransportRegulations} />
+            <Checkbox label="Ответственный за ТО Транспорта" checked={canMaintainTransport} onChange={setCanMaintainTransport} />
           </>
         ) : null}
         {role === 'maintenance' || (role === 'accountant' && canMaintain) ? (
@@ -135,6 +148,17 @@ export function EditUserModal({ user, onClose, onSaved }) {
             onChange={({ allTypes, typeIds }) => {
               setMaintenanceAllTypes(allTypes)
               setMaintenanceTypeIds(typeIds)
+            }}
+          />
+        ) : null}
+        {role === 'automechanic' || (role === 'accountant' && canMaintainTransport) ? (
+          <MaintenanceTypeScope
+            domain="transport"
+            allTypes={maintenanceAllTransportTypes}
+            typeIds={maintenanceTransportTypeIds}
+            onChange={({ allTypes, typeIds }) => {
+              setMaintenanceAllTransportTypes(allTypes)
+              setMaintenanceTransportTypeIds(typeIds)
             }}
           />
         ) : null}

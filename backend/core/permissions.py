@@ -89,6 +89,98 @@ class RegulationAccessPermission(BasePermission):
         return can_manage_maintenance(request)
 
 
+# --- Транспорт (B22): зеркало ТО оборудования --------------------------------
+
+def can_perform_transport_maintenance(request):
+    """B22. Кто может проводить ТО транспорта: Администратор, роль «Автомеханик»,
+    либо «Ответственный за учёт» с флагом can_maintain_transport."""
+    role = _role(request)
+    if role in ("admin", "automechanic"):
+        return True
+    if role == "accountant":
+        return bool(getattr(request.user, "can_maintain_transport", False))
+    return False
+
+
+def can_manage_transport_maintenance(request):
+    """B22. Кто может настраивать регламенты ТО транспорта: Администратор либо
+    «Ответственный за учёт» с флагом can_manage_transport_regulations. Роль
+    «Автомеханик» сюда НЕ входит — она только проводит ТО."""
+    role = _role(request)
+    if role == "admin":
+        return True
+    if role == "accountant":
+        return bool(getattr(request.user, "can_manage_transport_regulations", False))
+    return False
+
+
+def transport_maintenance_type_scope_ids(user):
+    """B22. Область типов транспорта, по которым пользователь может проводить ТО.
+    None — доступны ВСЕ типы (админ либо maintenance_all_transport_types), иначе
+    множество id выбранных типов."""
+    if getattr(user, "role", None) == "admin":
+        return None
+    if getattr(user, "maintenance_all_transport_types", True):
+        return None
+    return set(user.maintenance_transport_types.values_list("id", flat=True))
+
+
+def can_maintain_transport_type(request, type_id):
+    """B22. Может ли пользователь проводить ТО транспорта данного типа — с учётом
+    права проведения ТО и области выбранных типов."""
+    if not can_perform_transport_maintenance(request):
+        return False
+    ids = transport_maintenance_type_scope_ids(request.user)
+    return ids is None or type_id in ids
+
+
+class CanPerformTransportMaintenance(BasePermission):
+    """Проведение ТО транспорта — admin / роль automechanic / accountant+can_maintain_transport."""
+
+    def has_permission(self, request, view):
+        return can_perform_transport_maintenance(request)
+
+
+class CanManageTransportMaintenance(BasePermission):
+    """Управление регламентами ТО транспорта — admin / accountant+can_manage_transport_regulations."""
+
+    def has_permission(self, request, view):
+        return can_manage_transport_maintenance(request)
+
+
+class TransportRegulationAccessPermission(BasePermission):
+    """Регламенты транспорта: чтение — кто видит раздел Транспорт
+    (admin/accountant/automechanic/Наблюдатель); запись — управление ТО транспорта."""
+
+    def has_permission(self, request, view):
+        if request.method in _SAFE_METHODS:
+            return _role(request) in ("admin", "accountant", "automechanic") or _is_observer(request)
+        return can_manage_transport_maintenance(request)
+
+
+class TransportAccessPermission(BasePermission):
+    """Транспорт (B22): admin/accountant — полный доступ; роль «Автомеханик» —
+    только чтение объектов (проведение ТО — отдельный экшен со своей проверкой);
+    Наблюдатель — сквозной read-only. Список для «Автомеханика» сужается его
+    областью типов в TransportViewSet.get_queryset()."""
+
+    def has_permission(self, request, view):
+        role = _role(request)
+        if role in ("admin", "accountant"):
+            return True
+        if role == "automechanic":
+            return request.method in _SAFE_METHODS
+        return _is_observer(request) and request.method in _SAFE_METHODS
+
+    def has_object_permission(self, request, view, obj):
+        role = _role(request)
+        if role in ("admin", "accountant"):
+            return True
+        if role in ("automechanic",) or _is_observer(request):
+            return request.method in _SAFE_METHODS
+        return False
+
+
 class IsAdmin(BasePermission):
     """Администратор — единственная роль с доступом к разделу «Настройки»."""
 

@@ -7,7 +7,8 @@ import { inviteUser } from './settingsApi.js'
 const ROLE_OPTIONS = [
   { value: 'admin', label: 'Администратор' },
   { value: 'accountant', label: 'Ответственный за учёт' },
-  { value: 'maintenance', label: 'Ответственный за ТО' },
+  { value: 'maintenance', label: 'Механик по оборудованию' },
+  { value: 'automechanic', label: 'Автомеханик' },
   { value: 'employee', label: 'Сотрудник' },
 ]
 
@@ -26,6 +27,11 @@ export function InviteModal({ onClose, onInvited }) {
   const [canManageRegulations, setCanManageRegulations] = useState(false)
   const [maintenanceAllTypes, setMaintenanceAllTypes] = useState(true)
   const [maintenanceTypeIds, setMaintenanceTypeIds] = useState([])
+  // B22: флаги и область типов ТО транспорта.
+  const [canMaintainTransport, setCanMaintainTransport] = useState(false)
+  const [canManageTransportRegulations, setCanManageTransportRegulations] = useState(false)
+  const [maintenanceAllTransportTypes, setMaintenanceAllTransportTypes] = useState(true)
+  const [maintenanceTransportTypeIds, setMaintenanceTransportTypeIds] = useState([])
   const [empLastName, setEmpLastName] = useState('')
   const [empFirstName, setEmpFirstName] = useState('')
   const [empDepartment, setEmpDepartment] = useState('')
@@ -69,6 +75,7 @@ export function InviteModal({ onClose, onInvited }) {
     setError(null)
     try {
       const maintainer = role === 'maintenance' || (role === 'accountant' && canMaintain)
+      const transportMaintainer = role === 'automechanic' || (role === 'accountant' && canMaintainTransport)
       await inviteUser({
         email,
         role,
@@ -77,6 +84,10 @@ export function InviteModal({ onClose, onInvited }) {
         can_manage_regulations: role === 'accountant' ? canManageRegulations : false,
         maintenance_all_types: maintainer ? maintenanceAllTypes : true,
         maintenance_types: maintainer && !maintenanceAllTypes ? maintenanceTypeIds : [],
+        can_maintain_transport: role === 'accountant' ? canMaintainTransport : false,
+        can_manage_transport_regulations: role === 'accountant' ? canManageTransportRegulations : false,
+        maintenance_all_transport_types: transportMaintainer ? maintenanceAllTransportTypes : true,
+        maintenance_transport_types: transportMaintainer && !maintenanceAllTransportTypes ? maintenanceTransportTypeIds : [],
         confirm_domain: needsDomainConfirm,
         confirm_duplicate: needsDuplicateConfirm,
         ...(employeeMode === 'create'
@@ -166,8 +177,10 @@ export function InviteModal({ onClose, onInvited }) {
         ) : null}
         {role === 'accountant' ? (
           <>
-            <Checkbox label="Может управлять регламентами ТО" checked={canManageRegulations} onChange={setCanManageRegulations} />
-            <Checkbox label="Ответственный за ТО" checked={canMaintain} onChange={setCanMaintain} />
+            <Checkbox label="Может управлять регламентами ТО Оборудования" checked={canManageRegulations} onChange={setCanManageRegulations} />
+            <Checkbox label="Ответственный за ТО Оборудования" checked={canMaintain} onChange={setCanMaintain} />
+            <Checkbox label="Может управлять регламентами ТО Транспорта" checked={canManageTransportRegulations} onChange={setCanManageTransportRegulations} />
+            <Checkbox label="Ответственный за ТО Транспорта" checked={canMaintainTransport} onChange={setCanMaintainTransport} />
           </>
         ) : null}
         {role === 'maintenance' || (role === 'accountant' && canMaintain) ? (
@@ -177,6 +190,17 @@ export function InviteModal({ onClose, onInvited }) {
             onChange={({ allTypes, typeIds }) => {
               setMaintenanceAllTypes(allTypes)
               setMaintenanceTypeIds(typeIds)
+            }}
+          />
+        ) : null}
+        {role === 'automechanic' || (role === 'accountant' && canMaintainTransport) ? (
+          <MaintenanceTypeScope
+            domain="transport"
+            allTypes={maintenanceAllTransportTypes}
+            typeIds={maintenanceTransportTypeIds}
+            onChange={({ allTypes, typeIds }) => {
+              setMaintenanceAllTransportTypes(allTypes)
+              setMaintenanceTransportTypeIds(typeIds)
             }}
           />
         ) : null}

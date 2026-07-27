@@ -10,6 +10,10 @@ import { EquipmentCardPage } from '../features/equipment/EquipmentCardPage.jsx'
 import { EquipmentFormPage } from '../features/equipment/EquipmentFormPage.jsx'
 import { EquipmentListPage } from '../features/equipment/EquipmentListPage.jsx'
 import { MaintenanceFormPage } from '../features/equipment/MaintenanceFormPage.jsx'
+import { TransportListPage } from '../features/transport/TransportListPage.jsx'
+import { TransportCardPage } from '../features/transport/TransportCardPage.jsx'
+import { TransportFormPage } from '../features/transport/TransportFormPage.jsx'
+import { MaintenanceFormPage as TransportMaintenanceFormPage } from '../features/transport/MaintenanceFormPage.jsx'
 import { ToolCardPage } from '../features/tools/ToolCardPage.jsx'
 import { ToolFormPage } from '../features/tools/ToolFormPage.jsx'
 import { ToolListPage } from '../features/tools/ToolListPage.jsx'
@@ -33,7 +37,7 @@ import { ProfilePage } from '../features/profile/ProfilePage.jsx'
 import { GuidePage } from '../features/guide/GuidePage.jsx'
 import { AppLayout } from './AppLayout.jsx'
 import { NotFoundPage } from './NotFoundPage.jsx'
-import { RequireAdmin, RequireAuth, RequireEquipmentViewer, RequireGuest, RequireMaintainer, RequireSetupPending, RequireStaff, RequireViewer } from './guards.jsx'
+import { RequireAdmin, RequireAuth, RequireEquipmentViewer, RequireGuest, RequireMaintainer, RequireSetupPending, RequireStaff, RequireTransportMaintainer, RequireTransportViewer, RequireViewer } from './guards.jsx'
 
 export function AppRoutes() {
   return (
@@ -136,6 +140,54 @@ export function AppRoutes() {
           element={
             <RequireStaff>
               <TypesEditorPage domain="equipment" title="оборудования" />
+            </RequireStaff>
+          }
+        />
+        <Route
+          path="/transport"
+          element={
+            <RequireTransportViewer>
+              <TransportListPage />
+            </RequireTransportViewer>
+          }
+        />
+        <Route
+          path="/transport/new"
+          element={
+            <RequireStaff>
+              <TransportFormPage />
+            </RequireStaff>
+          }
+        />
+        <Route
+          path="/transport/:id"
+          element={
+            <RequireTransportViewer>
+              <TransportCardPage />
+            </RequireTransportViewer>
+          }
+        />
+        <Route
+          path="/transport/:id/edit"
+          element={
+            <RequireStaff>
+              <TransportFormPage />
+            </RequireStaff>
+          }
+        />
+        <Route
+          path="/transport/:id/maintenance"
+          element={
+            <RequireTransportMaintainer>
+              <TransportMaintenanceFormPage />
+            </RequireTransportMaintainer>
+          }
+        />
+        <Route
+          path="/transport-types"
+          element={
+            <RequireStaff>
+              <TypesEditorPage domain="transport" title="транспорта" />
             </RequireStaff>
           }
         />

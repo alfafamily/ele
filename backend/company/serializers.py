@@ -134,7 +134,7 @@ class NumberingSettingsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Company
-        fields = ["equipment_number_prefix", "key_number_prefix", "pass_number_prefix"]
+        fields = ["equipment_number_prefix", "key_number_prefix", "pass_number_prefix", "transport_number_prefix"]
 
     @staticmethod
     def _clean_prefix(value):
@@ -152,7 +152,10 @@ class NumberingSettingsSerializer(serializers.ModelSerializer):
     def validate_pass_number_prefix(self, value):
         return self._clean_prefix(value)
 
-    _PREFIX_FIELDS = ("equipment_number_prefix", "key_number_prefix", "pass_number_prefix")
+    def validate_transport_number_prefix(self, value):
+        return self._clean_prefix(value)
+
+    _PREFIX_FIELDS = ("equipment_number_prefix", "key_number_prefix", "pass_number_prefix", "transport_number_prefix")
 
     def validate(self, attrs):
         # Префиксы должны различаться между видами объектов — иначе номера разных

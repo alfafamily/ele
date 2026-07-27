@@ -8,10 +8,12 @@ import { Banner, Button, Input, Modal } from '../../shared/ui'
 // объекты не затрагиваются.
 export function RenameTypeModal({ type, domain, onClose, onSave }) {
   const isEquipment = domain === 'equipment'
+  const isTransport = domain === 'transport'
   const [name, setName] = useState(type.name)
   const [allowsSim, setAllowsSim] = useState(!!type.allows_sim)
   const [allowsLicense, setAllowsLicense] = useState(!!type.allows_license)
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(!!type.maintenance_enabled)
+  const [mileageUnit, setMileageUnit] = useState(type.mileage_unit || 'km')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
@@ -21,7 +23,8 @@ export function RenameTypeModal({ type, domain, onClose, onSave }) {
     (isEquipment &&
       (allowsSim !== !!type.allows_sim ||
         allowsLicense !== !!type.allows_license ||
-        maintenanceEnabled !== !!type.maintenance_enabled))
+        maintenanceEnabled !== !!type.maintenance_enabled)) ||
+    (isTransport && mileageUnit !== (type.mileage_unit || 'km'))
 
   const submit = async () => {
     setSubmitting(true)
@@ -33,6 +36,9 @@ export function RenameTypeModal({ type, domain, onClose, onSave }) {
         payload.allows_license = allowsLicense
         payload.maintenance_enabled = maintenanceEnabled
       }
+      if (isTransport) {
+        payload.mileage_unit = mileageUnit
+      }
       await onSave(payload)
     } catch (err) {
       setError(err.errors ? Object.values(err.errors).flat().join(' ') : err.detail || 'Не удалось сохранить тип.')
@@ -42,9 +48,38 @@ export function RenameTypeModal({ type, domain, onClose, onSave }) {
   }
 
   return (
-    <Modal open onClose={onClose} title={isEquipment ? 'Редактирование типа оборудования' : 'Переименовать тип'}>
+    <Modal open onClose={onClose} title={isEquipment || isTransport ? `Редактирование типа ${isTransport ? 'транспорта' : 'оборудования'}` : 'Переименовать тип'}>
       {error ? <Banner variant="error">{error}</Banner> : null}
       <Input label="Наименование" required autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+
+      {isTransport ? (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Учёт пробега</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[
+              { value: 'km', label: 'По километрам' },
+              { value: 'motohours', label: 'По моточасам' },
+            ].map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => setMileageUnit(o.value)}
+                style={{
+                  flex: 1, padding: '9px 6px', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                  borderRadius: 8, border: 'none',
+                  color: mileageUnit === o.value ? 'var(--color-primary-text)' : 'var(--color-text-secondary)',
+                  background: mileageUnit === o.value ? 'var(--color-primary)' : 'var(--color-fill-input)',
+                }}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 8 }}>
+            Регистрация в ГИБДД: {type.gibdd_registration ? 'да' : 'нет'} (задаётся при создании, не меняется).
+          </div>
+        </div>
+      ) : null}
 
       {isEquipment ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>

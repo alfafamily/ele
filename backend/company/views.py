@@ -620,6 +620,7 @@ NUMBERING_KINDS = {
     "equipment": ("equipment_number_prefix", "equipment_number_seq"),
     "key": ("key_number_prefix", "key_number_seq"),
     "pass": ("pass_number_prefix", "pass_number_seq"),
+    "transport": ("transport_number_prefix", "transport_number_seq"),
 }
 
 
