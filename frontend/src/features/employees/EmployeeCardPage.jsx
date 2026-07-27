@@ -268,6 +268,18 @@ export function EmployeeCardPage() {
           </Card>
         ) : null}
 
+        {employee.parking_spots?.length ? (
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>Парковочные места</div>
+              <span style={CNT}>{employee.parking_spots.length}</span>
+            </div>
+            {employee.parking_spots.map((sp) => (
+              <ParkingSpotRow key={sp.id} spot={sp} />
+            ))}
+          </Card>
+        ) : null}
+
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Оборудование</div>
@@ -589,6 +601,27 @@ function Field({ label, value }) {
     <div>
       <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 14, fontWeight: 500 }}>{value || '—'}</div>
+    </div>
+  )
+}
+
+// Строка парковочного места личного авто сотрудника — со ссылкой «План парковки».
+function ParkingSpotRow({ spot }) {
+  return (
+    <div style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <Icon name="square-parking" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none', marginTop: 1 }} />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600 }}>{spot.name}</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{spot.location}</div>
+          {spot.plan_file?.url ? (
+            <a href={spot.plan_file.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, marginTop: 5 }}>
+              <Icon name="file-text" size={13} strokeWidth={2} />
+              План парковки
+            </a>
+          ) : null}
+        </div>
+      </div>
     </div>
   )
 }

@@ -91,6 +91,18 @@ class PlaceSerializer(serializers.ModelSerializer):
                     "Парковочное место — либо личные авто сотрудников, либо транспорт компании, "
                     "но не то и другое вместе."
                 )
+            # Один транспорт — одно парковочное место: нельзя закрепить транспорт,
+            # уже стоящий на другом (не архивном) месте.
+            for t in transport:
+                other = Place.objects.filter(
+                    place_type=Place.PlaceType.PARKING_SPOT, is_archived=False, transport=t
+                )
+                if self.instance:
+                    other = other.exclude(pk=self.instance.pk)
+                if other.exists():
+                    raise serializers.ValidationError(
+                        {"transport": f"«{t.inventory_number}» уже закреплён за другим парковочным местом."}
+                    )
         else:  # storage
             if employees:
                 raise serializers.ValidationError(

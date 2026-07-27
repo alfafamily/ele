@@ -180,6 +180,7 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         ).prefetch_related(
             "field_values__field", "field_values__files__stored_file", "custom_fields",
             "maintenance_plans__regulation", "maintenance_records",
+            "parking_spots__room__building", "parking_spots__room__plan_file",
         )
         user = self.request.user
         # Обычный «Сотрудник» (не Наблюдатель) видит только свой транспорт — для
@@ -274,10 +275,24 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], permission_classes=[IsAdminOrAccountant])
     def picker(self, request):
         """Плоский список действующего (не списанного) транспорта для подбора —
-        закрепление за парковочным местом. Поиск как в основном списке."""
+        закрепление за парковочным местом. Поиск как в основном списке. Транспорт,
+        уже закреплённый за другим парковочным местом, исключается (одно место на
+        авто); ?place=<id> оставляет транспорт этого места (при редактировании)."""
+        from locations.models import Place
+
         qs = Transport.objects.filter(is_written_off=False).select_related("transport_type").prefetch_related(
             "field_values__field"
         )
+        occupied = Place.objects.filter(
+            place_type=Place.PlaceType.PARKING_SPOT, is_archived=False
+        )
+        place_id = request.query_params.get("place")
+        if place_id:
+            occupied = occupied.exclude(pk=place_id)
+        # Исключаем транспорт, стоящий на любом из этих мест (через reverse M2M —
+        # без NULL-ловушки NOT IN, если бы брали values("transport") пустых мест).
+        qs = qs.exclude(parking_spots__in=occupied)
+
         search = request.query_params.get("search")
         if search:
             qs = qs.filter(
@@ -287,6 +302,45 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             ).distinct()
         qs = qs.order_by("transport_type__name", "inventory_number")[:50]
         return Response(TransportMiniSerializer(qs, many=True).data)
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
+    def parking(self, request, pk=None):
+        """Парковка транспорта. body: {"mode": "spot", "place": <id>} —
+        закрепить за парковочным местом; {"mode": "driver_address"} — парковка на
+        адресе водителя; {"mode": "none"} — снять парковку. Одно место на авто."""
+        from locations.models import Place
+
+        transport = self.get_object()
+        if transport.is_written_off:
+            return Response({"detail": "Транспорт списан."}, status=400)
+        mode = request.data.get("mode")
+
+        # Снимаем с текущего места (если было) в любом режиме.
+        for spot in list(transport.parking_spots.all()):
+            spot.transport.remove(transport)
+
+        if mode == "spot":
+            place = get_object_or_404(Place, pk=request.data.get("place"))
+            if place.place_type != Place.PlaceType.PARKING_SPOT or place.is_archived:
+                return Response({"detail": "Нужно выбрать действующее парковочное место."}, status=400)
+            if place.employees.exists():
+                return Response(
+                    {"detail": "На этом месте закреплены личные авто — транспорт компании добавить нельзя."},
+                    status=400,
+                )
+            place.transport.add(transport)
+            transport.parks_at_driver_address = False
+        elif mode == "driver_address":
+            transport.parks_at_driver_address = True
+        elif mode == "none":
+            transport.parks_at_driver_address = False
+        else:
+            return Response({"detail": "Неизвестный режим парковки."}, status=400)
+        transport.save(update_fields=["parks_at_driver_address"])
+        # Сбрасываем prefetch-кэш (parking_spots M2M изменён после выборки объекта),
+        # иначе сериализатор вернёт устаревшую парковку.
+        transport._prefetched_objects_cache = {}
+        return Response(self.get_serializer(transport).data)
 
     @action(detail=False, methods=["get"], url_path="field-values")
     def field_values(self, request):

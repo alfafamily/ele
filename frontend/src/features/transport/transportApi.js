@@ -6,6 +6,11 @@ export const createTransport = (payload) => apiPost('/api/transport/', payload)
 export const updateTransport = (id, payload) => apiPatch(`/api/transport/${id}/`, payload)
 export const writeOffTransport = (id, comment) =>
   apiPost(`/api/transport/${id}/write-off/`, { ...(comment ? { comment } : {}) })
+// Парковка: закрепить за местом / на адресе водителя / снять.
+export const setTransportParking = (id, payload) => apiPost(`/api/transport/${id}/parking/`, payload)
+// Подбор парковочных мест (для закрепления транспорта): активные места-парковки.
+export const getParkingSpots = () => apiGet('/api/places/?place_type=parking_spot&active=1')
+
 // Закрепление за сотрудником / открепление (→ свободный).
 export const assignTransport = (id, employeeId, comment) =>
   apiPost(`/api/transport/${id}/assign/`, { employee: employeeId, ...(comment ? { comment } : {}) })

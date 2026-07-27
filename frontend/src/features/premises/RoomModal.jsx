@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Checkbox, Input, Modal, RadioPills } from '../../shared/ui'
+import { Banner, Button, Checkbox, Input, Modal } from '../../shared/ui'
 import { createRoom, deleteRoomPlan, updateRoom, uploadRoomPlan } from './premisesApi.js'
 
 // Создание/редактирование Помещения/зоны внутри здания. Тип выбирается сверху:
@@ -24,6 +24,9 @@ export function RoomModal({ buildingId, room, onClose, onDone }) {
   const isFloorParking = kind === 'room' && floorParking
   const parkingType = kind === 'adjacent' ? 'adjacent' : isFloorParking ? 'floor' : ''
   const isParking = Boolean(parkingType)
+  // Пока в помещении созданы места — тип (парковка ↔ помещение) и признак
+  // «Этаж-парковка» менять нельзя (места несовместимы с другим типом).
+  const typeLocked = isEdit && (room?.places?.length || 0) > 0
 
   const pickFile = (e) => {
     const f = (e.target.files || [])[0]
@@ -82,15 +85,21 @@ export function RoomModal({ buildingId, room, onClose, onDone }) {
       {error ? <Banner variant="error">{error}</Banner> : null}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, margin: '4px 0 20px' }}>
         <div>
-          <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 6 }}>Тип</div>
-          <RadioPills
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Тип</div>
+          <Segmented
             value={kind}
             onChange={setKind}
+            disabled={typeLocked}
             options={[
               { value: 'room', label: 'Помещение / зона' },
               { value: 'adjacent', label: 'Прилегающая парковка' },
             ]}
           />
+          {typeLocked ? (
+            <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 8 }}>
+              Пока в помещении есть места, тип менять нельзя.
+            </div>
+          ) : null}
         </div>
 
         <Input
@@ -103,7 +112,6 @@ export function RoomModal({ buildingId, room, onClose, onDone }) {
 
         {kind === 'room' ? (
           <>
-            <Checkbox label="Этаж-парковка" checked={floorParking} onChange={setFloorParking} />
             <Input
               label="Номер этажа"
               required={isFloorParking}
@@ -111,6 +119,12 @@ export function RoomModal({ buildingId, room, onClose, onDone }) {
               value={floor}
               onChange={(e) => setFloor(e.target.value)}
               error={fieldErrors.floor}
+            />
+            <Checkbox
+              label="Этаж-парковка"
+              checked={floorParking}
+              onChange={setFloorParking}
+              disabled={typeLocked}
             />
           </>
         ) : null}
@@ -137,6 +151,37 @@ export function RoomModal({ buildingId, room, onClose, onDone }) {
         </Button>
       </div>
     </Modal>
+  )
+}
+
+// Сегментированный переключатель — визуально как «Учёт пробега» у типа
+// транспорта. disabled блокирует смену (тип нельзя менять, пока есть места).
+function Segmented({ value, onChange, options, disabled }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, opacity: disabled ? 0.6 : 1 }}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(o.value)}
+          style={{
+            flex: 1,
+            padding: '9px 6px',
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: 'inherit',
+            cursor: disabled ? 'default' : 'pointer',
+            borderRadius: 8,
+            border: 'none',
+            color: value === o.value ? 'var(--color-primary-text)' : 'var(--color-text-secondary)',
+            background: value === o.value ? 'var(--color-primary)' : 'var(--color-fill-input)',
+          }}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
   )
 }
 

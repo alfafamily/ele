@@ -363,6 +363,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     sim_cards = serializers.SerializerMethodField()
     passes = serializers.SerializerMethodField()
     workplaces = serializers.SerializerMethodField()
+    parking_spots = serializers.SerializerMethodField()
     user_email = serializers.SerializerMethodField()
     avatar = StoredFileSerializer(read_only=True)
 
@@ -383,6 +384,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "sim_cards",
             "passes",
             "workplaces",
+            "parking_spots",
             "user_email",
         ]
         read_only_fields = ["is_employed"]
@@ -412,8 +414,12 @@ class EmployeeSerializer(serializers.ModelSerializer):
     def get_workplaces(self, obj):
         # Рабочие места, за которыми закреплён сотрудник (не архивные), с
         # перечнем объектов, стоящих на каждом месте (оборудование, инструменты).
+        # Только place_type=workplace — парковочные места отдаём отдельно.
         result = []
-        for p in obj.workplaces.filter(is_archived=False).select_related("room__building"):
+        workplaces = obj.workplaces.filter(
+            is_archived=False, place_type=Place.PlaceType.WORKPLACE
+        ).select_related("room__building")
+        for p in workplaces:
             equipment = [eq for eq in p.equipment.all() if not eq.is_written_off]
             tools = [
                 {"id": a.tool_id, "name": a.tool.name, "quantity": a.quantity}
@@ -426,6 +432,25 @@ class EmployeeSerializer(serializers.ModelSerializer):
                 "location": f"{p.room.building.name} — {p.room.name}",
                 "equipment": EquipmentMiniSerializer(equipment, many=True).data,
                 "tools": tools,
+            })
+        return result
+
+    def get_parking_spots(self, obj):
+        # Парковочные места личного авто сотрудника (не архивные), с планом парковки.
+        from storage.serializers import StoredFileSerializer
+
+        result = []
+        spots = obj.workplaces.filter(
+            is_archived=False, place_type=Place.PlaceType.PARKING_SPOT
+        ).select_related("room__building", "room__plan_file")
+        for p in spots:
+            plan = p.room.plan_file
+            result.append({
+                "id": p.id,
+                "name": p.name,
+                "location": f"{p.room.building.name} — {p.room.name}",
+                "requires_pass": p.requires_pass,
+                "plan_file": StoredFileSerializer(plan).data if plan else None,
             })
         return result
 

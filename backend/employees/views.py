@@ -1115,11 +1115,12 @@ class MyWorkPlacementView(APIView):
     def get(self, request):
         emp_id = getattr(request.user, "employee_id", None)
         if not emp_id:
-            return Response({"tools": [], "workplaces": []})
+            return Response({"tools": [], "workplaces": [], "parking_spots": []})
         emp = (
             Employee.objects.prefetch_related(
                 "tool_allocations__tool",
                 "workplaces__room__building",
+                "workplaces__room__plan_file",
                 "workplaces__equipment__equipment_type",
                 "workplaces__equipment__field_values__field",
                 "workplaces__tool_allocations__tool",
@@ -1127,7 +1128,11 @@ class MyWorkPlacementView(APIView):
             .get(pk=emp_id)
         )
         data = EmployeeSerializer(emp, context={"request": request}).data
-        return Response({"tools": data["tools"], "workplaces": data["workplaces"]})
+        return Response({
+            "tools": data["tools"],
+            "workplaces": data["workplaces"],
+            "parking_spots": data["parking_spots"],
+        })
 
 
 class EmployeeAvatarUploadView(APIView):
