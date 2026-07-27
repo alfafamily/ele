@@ -109,6 +109,10 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         qs = Employee.objects.all().prefetch_related(
             "equipment__equipment_type",
             "equipment__field_values__field",
+            # Транспорт сотрудника + состояние парковки (для блока «Транспорт»).
+            "transport__field_values__field",
+            "transport__parking_spots__room__building",
+            "transport__parking_spots__room__plan_file",
             "tool_allocations__tool",
             "sim_cards",
             "passes__buildings",

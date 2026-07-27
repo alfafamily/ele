@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../app/AuthContext.jsx'
 import { roleLabel } from '../../shared/roles.js'
 import { nameInitials } from '../../shared/employeeName.js'
+import { PlanLink } from '../../shared/PlanLink.jsx'
+import { TransportParkingLine } from '../../shared/TransportParkingLine.jsx'
 import { Button, Card, Icon, Spinner } from '../../shared/ui'
 import { deleteEmployeeAvatar, uploadEmployeeAvatar } from '../employees/employeesApi.js'
 import { PassInfo } from '../employees/PassInfo.jsx'
@@ -241,12 +243,7 @@ export function ProfilePage() {
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600 }}>{sp.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{sp.location}</div>
-                    {sp.plan_file?.url ? (
-                      <a href={sp.plan_file.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, marginTop: 5 }}>
-                        <Icon name="file-text" size={13} strokeWidth={2} />
-                        План парковки
-                      </a>
-                    ) : null}
+                    {sp.plan_file?.url ? <PlanLink file={sp.plan_file} style={{ marginTop: 5 }} /> : null}
                   </div>
                 </div>
               </div>
@@ -280,14 +277,17 @@ export function ProfilePage() {
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплён транспорт.</div>
             ) : (
               transport.map((t) => (
-                <div key={t.id} style={P_ROW}>
-                  <Icon name="car" size={18} strokeWidth={2} style={P_ROW_ICON} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.type_and_model}</div>
-                    <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>
-                      {[t.plate, t.inventory_number].filter(Boolean).join(' · ')}
+                <div key={t.id} style={{ background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8, padding: '11px 13px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Icon name="car" size={18} strokeWidth={2} style={P_ROW_ICON} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.type_and_model}</div>
+                      <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>
+                        {[t.plate, t.inventory_number].filter(Boolean).join(' · ')}
+                      </div>
                     </div>
                   </div>
+                  <TransportParkingLine parking={t.parking} />
                 </div>
               ))
             )}

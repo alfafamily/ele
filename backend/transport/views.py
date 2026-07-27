@@ -331,6 +331,12 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             place.transport.add(transport)
             transport.parks_at_driver_address = False
         elif mode == "driver_address":
+            # «На адресе сотрудника» осмысленно только при закреплённом сотруднике.
+            if not transport.employee_id:
+                return Response(
+                    {"detail": "«На адресе сотрудника» доступно только для транспорта, закреплённого за сотрудником."},
+                    status=400,
+                )
             transport.parks_at_driver_address = True
         elif mode == "none":
             transport.parks_at_driver_address = False
@@ -384,13 +390,19 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def unassign(self, request, pk=None):
-        """Открепление транспорта — становится свободным."""
+        """Открепление транспорта — становится свободным. Если была парковка «на
+        адресе сотрудника», она относилась к этому сотруднику — снимаем её тоже
+        (нового сотрудника нет). Закрепление за парковочным местом не трогаем."""
         transport = self.get_object()
         transport.employee = None
+        update_fields = ["employee"]
+        if transport.parks_at_driver_address:
+            transport.parks_at_driver_address = False
+            update_fields.append("parks_at_driver_address")
         comment = (request.data.get("comment") or "").strip()
         if comment:
             transport._change_reason = comment
-        transport.save(update_fields=["employee"])
+        transport.save(update_fields=update_fields)
         return Response(TransportSerializer(transport).data)
 
     @action(detail=True, methods=["post"], url_path="maintenance", permission_classes=[CanPerformTransportMaintenance])

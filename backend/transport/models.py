@@ -127,9 +127,10 @@ class Transport(models.Model):
         "employees.Employee", verbose_name="Сотрудник",
         on_delete=models.SET_NULL, null=True, blank=True, related_name="transport",
     )
-    # Парковка «на адресе водителя» — авто не паркуется на территории компании
+    # Парковка «на адресе сотрудника» — авто не паркуется на территории компании
     # (взаимоисключающе с закреплением за парковочным местом, см. Place.transport).
-    parks_at_driver_address = models.BooleanField("Парковка на адресе водителя", default=False)
+    # Относится к закреплённому сотруднику: при откреплении без нового — снимается.
+    parks_at_driver_address = models.BooleanField("Парковка на адресе сотрудника", default=False)
     is_written_off = models.BooleanField("Признак списания", default=False)
     written_off_at = models.DateTimeField("Дата списания", null=True, blank=True)
     # PROTECT: удаление Типа с привязанными объектами запрещено на уровне БД.

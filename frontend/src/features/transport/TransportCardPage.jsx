@@ -5,6 +5,7 @@ import { canMaintainTransportType } from '../../shared/permissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
 import { nameInitials } from '../../shared/employeeName.js'
 import { HistoryList } from '../../shared/HistoryList.jsx'
+import { PlanLink } from '../../shared/PlanLink.jsx'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { AssignEmployeeModal } from './AssignEmployeeModal.jsx'
 import { ParkingAssignModal } from './ParkingAssignModal.jsx'
@@ -382,12 +383,7 @@ function ParkingBlock({ parking, canManage, onSet, onClear }) {
             <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
               {[parking.building_name, parking.room_name].filter(Boolean).join(' — ')}
             </div>
-            {parking.plan_file?.url ? (
-              <a href={parking.plan_file.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, marginTop: 5 }}>
-                <Icon name="file-text" size={13} strokeWidth={2} />
-                План парковки
-              </a>
-            ) : null}
+            {parking.plan_file?.url ? <PlanLink file={parking.plan_file} style={{ marginTop: 5 }} /> : null}
           </div>
         </div>
         {canManage ? (
@@ -404,7 +400,7 @@ function ParkingBlock({ parking, canManage, onSet, onClear }) {
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Icon name="map-pin" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
-          <div style={{ fontSize: 14, fontWeight: 500 }}>Парковка на адресе водителя</div>
+          <div style={{ fontSize: 14, fontWeight: 500 }}>На адресе сотрудника</div>
         </div>
         {canManage ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>

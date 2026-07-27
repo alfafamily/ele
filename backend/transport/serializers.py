@@ -141,6 +141,27 @@ def _locked_value(obj, name):
     )
 
 
+def transport_parking(obj):
+    """Текущая парковка транспорта: закреплённое парковочное место (с планом
+    парковки), либо «на адресе сотрудника», либо None. Место одно — уникальность
+    гарантирована при закреплении. Требует prefetch parking_spots__room."""
+    spot = next((p for p in obj.parking_spots.all() if not p.is_archived), None)
+    if spot is not None:
+        plan = getattr(spot.room, "plan_file", None)
+        return {
+            "kind": "spot",
+            "place": spot.id,
+            "place_name": spot.name,
+            "room_name": spot.room.name,
+            "building_name": spot.room.building.name,
+            "requires_pass": spot.requires_pass,
+            "plan_file": StoredFileSerializer(plan).data if plan else None,
+        }
+    if obj.parks_at_driver_address:
+        return {"kind": "driver_address"}
+    return None
+
+
 class TransportSerializer(serializers.ModelSerializer):
     """Единый сериализатор чтения/записи. Файловые реквизиты — через отдельный
     upload-эндпоинт (см. views.py)."""
@@ -194,24 +215,7 @@ class TransportSerializer(serializers.ModelSerializer):
         read_only_fields = ["is_written_off", "written_off_at", "created_at", "parks_at_driver_address"]
 
     def get_parking(self, obj):
-        """Текущая парковка: закреплённое парковочное место (с планом парковки),
-        либо «на адресе водителя», либо null. Парковочное место одно —
-        уникальность гарантирована при закреплении."""
-        spot = next((p for p in obj.parking_spots.all() if not p.is_archived), None)
-        if spot is not None:
-            plan = getattr(spot.room, "plan_file", None)
-            return {
-                "kind": "spot",
-                "place": spot.id,
-                "place_name": spot.name,
-                "room_name": spot.room.name,
-                "building_name": spot.room.building.name,
-                "requires_pass": spot.requires_pass,
-                "plan_file": StoredFileSerializer(plan).data if plan else None,
-            }
-        if obj.parks_at_driver_address:
-            return {"kind": "driver_address"}
-        return None
+        return transport_parking(obj)
 
     def get_type_and_model(self, obj):
         model_value = _locked_value(obj, BASE_FIELD_MODEL)

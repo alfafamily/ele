@@ -164,11 +164,39 @@ class TransportParkingTests(APITestCase):
         r = self.client.post(f"/api/transport/{self.car.id}/parking/", {"mode": "spot", "place": self.personal_spot.id}, format="json")
         self.assertEqual(r.status_code, 400, r.data)
 
+    def test_driver_address_requires_employee(self):
+        # Без сотрудника «на адресе сотрудника» недоступно.
+        r = self.client.post(f"/api/transport/{self.car.id}/parking/", {"mode": "driver_address"}, format="json")
+        self.assertEqual(r.status_code, 400, r.data)
+
     def test_driver_address_and_none(self):
+        emp = Employee.objects.create(last_name="Петров", first_name="Пётр")
+        self.car.employee = emp
+        self.car.save()
         r = self.client.post(f"/api/transport/{self.car.id}/parking/", {"mode": "driver_address"}, format="json")
         self.assertEqual(r.data["parking"]["kind"], "driver_address")
         r = self.client.post(f"/api/transport/{self.car.id}/parking/", {"mode": "none"}, format="json")
         self.assertIsNone(r.data["parking"])
+
+    def test_unassign_clears_driver_address(self):
+        emp = Employee.objects.create(last_name="Петров", first_name="Пётр")
+        self.car.employee = emp
+        self.car.save()
+        self.client.post(f"/api/transport/{self.car.id}/parking/", {"mode": "driver_address"}, format="json")
+        r = self.client.post(f"/api/transport/{self.car.id}/unassign/", {}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertIsNone(r.data["parking"])
+        self.car.refresh_from_db()
+        self.assertFalse(self.car.parks_at_driver_address)
+
+    def test_unassign_keeps_spot(self):
+        # Открепление сотрудника не снимает закрепление за парковочным местом.
+        emp = Employee.objects.create(last_name="Сидоров", first_name="Сидор")
+        self.car.employee = emp
+        self.car.save()
+        self.spot.transport.add(self.car)
+        r = self.client.post(f"/api/transport/{self.car.id}/unassign/", {}, format="json")
+        self.assertEqual(r.data["parking"]["kind"], "spot")
 
     def test_picker_excludes_assigned(self):
         self.spot.transport.add(self.car)
