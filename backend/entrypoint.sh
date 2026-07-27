@@ -7,8 +7,8 @@ if [ "${DJANGO_COLLECTSTATIC:-0}" = "1" ]; then
     python manage.py collectstatic --noinput
 fi
 
-# Автосоздание первого администратора из .env, если таблица пользователей
-# пуста (сценарий 1) — no-op, если ELE_ADMIN_* не заданы.
-python manage.py bootstrap_admin
+# Первого администратора и компанию создаёт Setup Wizard в браузере при первом
+# заходе (пока в системе нет ни одного администратора) — отдельного шага
+# автосоздания из .env нет.
 
 exec "$@"

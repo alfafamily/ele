@@ -88,15 +88,13 @@ docker compose -f docker-compose.prod.yml up -d
 ```sh
 git clone https://github.com/alfafamily/ele.git /opt/ele
 cd /opt/ele
-cp .env.example .env      # заполнить SITE_ADDRESS, ELE_ADMIN_*, секреты
+cp .env.example .env      # заполнить SITE_ADDRESS, секреты
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 ## Первый вход
 
-- Если в `.env` заданы `ELE_ADMIN_EMAIL` / `ELE_ADMIN_PASSWORD` — администратор
-  создаётся автоматически при первом старте.
-- Иначе при первом заходе в браузере откроется **мастер первичной настройки**:
+- При первом заходе в браузере откроется **мастер первичной настройки**:
   создание администратора, реквизиты компании, проверка интеграций из `.env`.
 
 ## Обновление версии

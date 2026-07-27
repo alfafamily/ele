@@ -158,10 +158,6 @@ SESSION_SAVE_EVERY_REQUEST = True
 # аналогии для единообразия).
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
 
-# --- Первый администратор из .env (сценарий 1) ---
-ELE_ADMIN_EMAIL = env("ELE_ADMIN_EMAIL", default="")
-ELE_ADMIN_PASSWORD = env("ELE_ADMIN_PASSWORD", default="")
-
 # Каталог установки на хосте — install.sh пишет его в .env. Нужен только чтобы
 # показать точный путь в команде обновления (Настройки → Обновление). Для
 # инстансов, поставленных до появления этой записи, — дефолт /opt/ele.
