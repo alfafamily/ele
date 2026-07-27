@@ -159,7 +159,7 @@ export function BackupTab() {
               ) : null}
               <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 10, lineHeight: 1.5 }}>
                 Шифрование автоматических копий задаётся переменной <b style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>BACKUP_PASSPHRASE</b> в .env сервера
-                (при пустом значении авто-копии не шифруются) — пароль из формы выше применяется только к ручному экспорту.
+                (при пустом значении авто-копии не шифруются) — пароль в блоке создания резервной копии сейчас применяется только к ручному экспорту.
               </div>
             </>
           ) : null}
