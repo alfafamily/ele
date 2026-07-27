@@ -345,43 +345,27 @@ export function PassFormPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
                   <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>Тип объекта</div>
-                  <div className="ele-segmented">
-                    <button
-                      type="button"
-                      className={'ele-segmented__btn' + (!isKey ? ' ele-segmented__btn--active' : '')}
-                      onClick={() => changeObjectType('pass')}
-                    >
-                      Пропуск СКУД
-                    </button>
-                    <button
-                      type="button"
-                      className={'ele-segmented__btn' + (isKey ? ' ele-segmented__btn--active' : '')}
-                      onClick={() => changeObjectType('key')}
-                    >
-                      Ключ
-                    </button>
-                  </div>
+                  <Segmented
+                    value={objectType}
+                    onChange={changeObjectType}
+                    options={[
+                      { value: 'pass', label: 'Пропуск СКУД' },
+                      { value: 'key', label: 'Ключ' },
+                    ]}
+                  />
                 </div>
 
                 {!isKey ? (
                   <div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>Вид пропуска</div>
-                    <div className="ele-segmented">
-                      <button
-                        type="button"
-                        className={'ele-segmented__btn' + (passKind === 'personal' ? ' ele-segmented__btn--active' : '')}
-                        onClick={() => changePassKind('personal')}
-                      >
-                        Персональный
-                      </button>
-                      <button
-                        type="button"
-                        className={'ele-segmented__btn' + (passKind === 'transport' ? ' ele-segmented__btn--active' : '')}
-                        onClick={() => changePassKind('transport')}
-                      >
-                        Транспортный
-                      </button>
-                    </div>
+                    <Segmented
+                      value={passKind}
+                      onChange={changePassKind}
+                      options={[
+                        { value: 'personal', label: 'Персональный' },
+                        { value: 'transport', label: 'Транспортный' },
+                      ]}
+                    />
                     <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 8 }}>
                       {isTransport
                         ? 'Закрепляется за транспортом; действует на выбранные здания целиком.'
@@ -645,6 +629,36 @@ function ExpandToggle({ shown, open, onClick, small }) {
     >
       <Icon name="chevron-right" size={16} strokeWidth={2.2} style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .16s' }} />
     </button>
+  )
+}
+
+// Сегментированный переключатель — визуально как «Учёт пробега» / «Регистрация
+// в ГИБДД» у типа транспорта (пилюли с заливкой активного, а не вкладки).
+function Segmented({ value, onChange, options }) {
+  return (
+    <div style={{ display: 'flex', gap: 8 }}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          style={{
+            flex: 1,
+            padding: '9px 6px',
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: 'inherit',
+            cursor: 'pointer',
+            borderRadius: 8,
+            border: 'none',
+            color: value === o.value ? 'var(--color-primary-text)' : 'var(--color-text-secondary)',
+            background: value === o.value ? 'var(--color-primary)' : 'var(--color-fill-input)',
+          }}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
   )
 }
 
