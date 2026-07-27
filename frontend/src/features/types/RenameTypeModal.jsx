@@ -75,9 +75,6 @@ export function RenameTypeModal({ type, domain, onClose, onSave }) {
               </button>
             ))}
           </div>
-          <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 8 }}>
-            Регистрация в ГИБДД: {type.gibdd_registration ? 'да' : 'нет'} (задаётся при создании, не меняется).
-          </div>
         </div>
       ) : null}
 

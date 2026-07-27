@@ -87,9 +87,6 @@ export function NewTypeModal({ domain, onClose, onCreate }) {
                 { value: 'no', label: 'Нет' },
               ]}
             />
-            <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 8 }}>
-              «Да» — у типа есть базовый реквизит «Гос.номер» (ведётся учёт по госномерам). Задаётся один раз и не меняется после создания типа.
-            </div>
           </div>
         </div>
       ) : (
