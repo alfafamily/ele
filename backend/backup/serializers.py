@@ -11,7 +11,9 @@ class BackupDestinationStatusSerializer(serializers.ModelSerializer):
 
 class BackupRecordSerializer(serializers.ModelSerializer):
     destinations = BackupDestinationStatusSerializer(many=True, read_only=True)
-    # own-копию можно скачать, только если её StoredFile сохранён.
+    # Скачать можно own-копию (её StoredFile сохранён) ИЛИ копию на резервном S3
+    # (когда S3 настроен и объект успешно загружен) — бэкенд стримит её через
+    # авторизованный эндпоинт.
     downloadable = serializers.SerializerMethodField()
 
     class Meta:
@@ -30,7 +32,24 @@ class BackupRecordSerializer(serializers.ModelSerializer):
         ]
 
     def get_downloadable(self, obj):
-        return obj.file_id is not None
+        # own-копия: ссылку показываем, только если файл РЕАЛЬНО существует —
+        # иначе запись с удалённым (вне приложения) файлом давала бы битую ссылку.
+        if obj.file_id is not None:
+            from storage.backends import get_backend
+
+            try:
+                return get_backend(obj.file.backend).exists(obj.file.path)
+            except Exception:  # noqa: BLE001 — недоступное хранилище → не скачиваемо
+                return False
+        from .destinations import secondary_s3_configured
+
+        if not secondary_s3_configured():
+            return False
+        # .all() переиспользует prefetch_related из BackupListView (без доп. запроса).
+        return any(
+            d.destination == BackupDestinationStatus.Destination.SECONDARY_S3 and d.ok and d.object_key
+            for d in obj.destinations.all()
+        )
 
 
 class BackupCreateSerializer(serializers.Serializer):

@@ -40,6 +40,7 @@ export const generateNextNumber = (kind) => apiPost('/api/company/next-number/',
 // резервный S3 (по умолчанию берётся из настроек Компании).
 export const createBackup = (payload) => apiPost('/api/backup/create/', payload || {})
 export const backupDownloadUrl = (id) => `/api/backup/${id}/download/`
+export const deleteBackup = (id) => apiDelete(`/api/backup/${id}/`)
 export const testSecondaryS3 = () => apiPost('/api/backup/secondary-s3/test/')
 
 // B12 — возможные дубли сотрудников.

@@ -386,9 +386,58 @@ export function SystemTab() {
   return (
     <div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Хранилище резервных копий (слева) + хранилище приложения (справа);
+        {/* Хранилище приложения (слева) + хранилище резервных копий (справа);
             на мобиле — друг под другом. */}
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16, alignItems: 'stretch' }}>
+        {/* Хранилище приложения */}
+        <Card style={{ flex: 1, minWidth: 0 }}>
+          <div style={sectionTitle}>Хранилище приложения</div>
+          <div style={sectionHint}>Выберите где будут хранятся загруженные файлы.</div>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 10 : 24 }}>
+            {[
+              { value: 'local', label: 'Локальное хранилище' },
+              { value: 's3', label: 'S3' },
+            ].map((opt) => {
+              const locked = savingStorage || migration?.status === 'in_progress'
+              return (
+                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: locked ? 'default' : 'pointer', fontSize: 14, opacity: locked && storageMode !== opt.value ? 0.55 : 1 }}>
+                  <input type="radio" name="storage-mode" checked={storageMode === opt.value} disabled={locked} onChange={() => onStorageMode(opt.value)} />
+                  {opt.label}
+                </label>
+              )
+            })}
+          </div>
+
+          {storageMode === 's3' && status.s3_bucket ? (
+            <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 12 }}>
+              Бакет S3: <b style={{ color: 'var(--color-text-muted)' }}>{status.s3_bucket}</b>
+            </div>
+          ) : null}
+
+          {/* Перенос файлов между хранилищами — идёт в фоне (cron). Пока
+              не завершён, смена режима заблокирована выше. */}
+          {migration && migration.status === 'in_progress' ? (
+            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted)' }}>
+              <Spinner size={14} />
+              Идёт перенос файлов в «{migration.target_backend === 's3' ? 'S3' : 'Локальное хранилище'}»: осталось {migration.pending_count}. Смена режима недоступна до завершения.
+            </div>
+          ) : migration && migration.status === 'error' ? (
+            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <Banner variant="error">Не удалось перенести файлов: {migration.error_count}.</Banner>
+              <Button type="button" variant="secondary" loading={migrationRetrying} onClick={retryMigration}>
+                Повторить перенос
+              </Button>
+            </div>
+          ) : null}
+
+          <div style={{ ...checkRow, marginTop: 14 }}>
+            <Button type="button" variant="secondary" loading={storageTesting} onClick={runStorageTest}>
+              Выполнить проверку
+            </Button>
+            <CheckResult result={storageResult} />
+          </div>
+        </Card>
+
         {/* Хранилище резервных копий — единое назначение ручных и авто-копий. */}
         <Card style={{ flex: 1, minWidth: 0 }}>
           <div style={sectionTitle}>Хранилище резервных копий</div>
@@ -428,49 +477,6 @@ export function SystemTab() {
               S3 для backup не настроен в .env (BACKUP_S3_*).
             </div>
           )}
-        </Card>
-
-        {/* Хранилище приложения */}
-        <Card style={{ flex: 1, minWidth: 0 }}>
-          <div style={sectionTitle}>Хранилище приложения</div>
-          <div style={sectionHint}>Выберите где будут хранятся загруженные файлы.</div>
-          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? 10 : 24 }}>
-            {[
-              { value: 'local', label: 'Локальное хранилище' },
-              { value: 's3', label: 'S3' },
-            ].map((opt) => {
-              const locked = savingStorage || migration?.status === 'in_progress'
-              return (
-                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: locked ? 'default' : 'pointer', fontSize: 14, opacity: locked && storageMode !== opt.value ? 0.55 : 1 }}>
-                  <input type="radio" name="storage-mode" checked={storageMode === opt.value} disabled={locked} onChange={() => onStorageMode(opt.value)} />
-                  {opt.label}
-                </label>
-              )
-            })}
-          </div>
-
-          {/* Перенос файлов между хранилищами — идёт в фоне (cron). Пока
-              не завершён, смена режима заблокирована выше. */}
-          {migration && migration.status === 'in_progress' ? (
-            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-muted)' }}>
-              <Spinner size={14} />
-              Идёт перенос файлов в «{migration.target_backend === 's3' ? 'S3' : 'Локальное хранилище'}»: осталось {migration.pending_count}. Смена режима недоступна до завершения.
-            </div>
-          ) : migration && migration.status === 'error' ? (
-            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <Banner variant="error">Не удалось перенести файлов: {migration.error_count}.</Banner>
-              <Button type="button" variant="secondary" loading={migrationRetrying} onClick={retryMigration}>
-                Повторить перенос
-              </Button>
-            </div>
-          ) : null}
-
-          <div style={{ ...checkRow, marginTop: 14 }}>
-            <Button type="button" variant="secondary" loading={storageTesting} onClick={runStorageTest}>
-              Выполнить проверку
-            </Button>
-            <CheckResult result={storageResult} />
-          </div>
         </Card>
         </div>
 

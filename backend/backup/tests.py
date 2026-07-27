@@ -122,6 +122,33 @@ class ManualBackupTests(APITestCase):
             if os.path.exists(result.path):
                 os.remove(result.path)
 
+    def test_delete_backup_removes_record_and_file(self):
+        record = create_backup(BackupRecord.BackupType.MANUAL)
+        from storage.backends import get_backend
+
+        sf = record.file
+        self.assertTrue(get_backend(sf.backend).exists(sf.path))
+
+        resp = self.client.delete(f"/api/backup/{record.id}/")
+        self.assertEqual(resp.status_code, 204)
+        self.assertFalse(BackupRecord.objects.filter(pk=record.pk).exists())
+        self.assertFalse(StoredFile.objects.filter(pk=sf.pk).exists())
+        self.assertFalse(get_backend(sf.backend).exists(sf.path))
+
+    def test_not_downloadable_when_own_file_missing(self):
+        # Файл удалён вне приложения (StoredFile-строка осталась) → ссылки быть
+        # не должно, чтобы не вести на битую загрузку.
+        record = create_backup(BackupRecord.BackupType.MANUAL)
+        from storage.backends import get_backend
+
+        get_backend(record.file.backend).delete(record.file.path)
+
+        resp = self.client.get("/api/backup/history/")
+        row = next(r for r in resp.data["results"] if r["id"] == record.id)
+        self.assertFalse(row["downloadable"])
+        # И сама попытка скачивания даёт корректный отказ, а не 500.
+        self.assertIn(self.client.get(f"/api/backup/{record.id}/download/").status_code, (404, 409))
+
 
 @override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
 class ScheduledBackupTests(APITestCase):
@@ -450,3 +477,49 @@ class SecondaryS3Tests(APITestCase):
         self.assertIsNone(record.file)
         resp = self.client.get(f"/api/backup/{record.id}/download/")
         self.assertEqual(resp.status_code, 409)
+
+    @override_settings(
+        BACKUP_S3_ENDPOINT="https://s3.example.com",
+        BACKUP_S3_BUCKET="b",
+        BACKUP_S3_REGION="r",
+        BACKUP_S3_ACCESS_KEY="k",
+        BACKUP_S3_SECRET_KEY="s",
+    )
+    def test_download_from_secondary_s3(self):
+        # Копия только на резервном S3 (own нет) — скачивание стримит объект.
+        record = BackupRecord.objects.create(
+            backup_type=BackupRecord.BackupType.MANUAL,
+            format=BackupRecord.Format.V2_ARCHIVE,
+            filename="ele-backup.tar.gz",
+            size=6,
+        )
+        BackupDestinationStatus.objects.create(
+            backup=record,
+            destination=BackupDestinationStatus.Destination.SECONDARY_S3,
+            ok=True,
+            object_key="backups/ele-backup.tar.gz",
+            size=6,
+        )
+        hist = self.client.get("/api/backup/history/")
+        row = next(r for r in hist.data["results"] if r["id"] == record.id)
+        self.assertTrue(row["downloadable"])
+
+        def fake_dl(object_key, dst_path):
+            with open(dst_path, "wb") as fh:
+                fh.write(b"S3DATA")
+
+        with mock.patch("backup.destinations.download_secondary_s3", side_effect=fake_dl):
+            resp = self.client.get(f"/api/backup/{record.id}/download/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(b"".join(resp.streaming_content), b"S3DATA")
+
+    def test_delete_secondary_only_backup(self):
+        record = BackupRecord.objects.create(backup_type=BackupRecord.BackupType.MANUAL, filename="x.tar.gz", size=1)
+        BackupDestinationStatus.objects.create(
+            backup=record, destination=BackupDestinationStatus.Destination.SECONDARY_S3, ok=True, object_key="backups/x.tar.gz"
+        )
+        with mock.patch("backup.destinations.delete_secondary_s3_object") as dele:
+            resp = self.client.delete(f"/api/backup/{record.id}/")
+        self.assertEqual(resp.status_code, 204)
+        dele.assert_called_once()
+        self.assertFalse(BackupRecord.objects.filter(pk=record.pk).exists())

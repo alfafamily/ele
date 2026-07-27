@@ -290,6 +290,7 @@ class SystemStatusView(APIView):
             {
                 "storage_mode": Company.load().storage_mode,
                 "s3_configured": _s3_env_configured(),
+                "s3_bucket": settings.S3_BUCKET or None,
                 "email_configured": settings.EMAIL_CONFIGURED,
                 "yandex_id_configured": is_yandex_id_enabled(),
                 "captcha_configured": is_captcha_enabled(),

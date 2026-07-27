@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
-import { Badge, Banner, Button, Card, Checkbox, Icon, Input, Skeleton } from '../../shared/ui'
+import { Badge, Banner, Button, Card, Checkbox, ConfirmModal, Icon, Input, Skeleton } from '../../shared/ui'
 import {
   backupDownloadUrl,
   createBackup,
+  deleteBackup,
   getBackupSettings,
   updateBackupSettings,
 } from './settingsApi.js'
@@ -38,6 +39,8 @@ export function BackupTab() {
   const [error, setError] = useState(null)
   // Ручной экспорт: только пароль шифрования (назначение — в «Системные»).
   const [passphrase, setPassphrase] = useState('')
+  // Копия, ожидающая подтверждения удаления (null — модалка закрыта).
+  const [toDelete, setToDelete] = useState(null)
   const { items, loading, refetch } = useCursorList('/api/backup/history/', {})
 
   useEffect(() => {
@@ -189,22 +192,43 @@ export function BackupTab() {
                     <DestinationBadge key={d.destination} dest={d} />
                   ))}
                 </div>
-                <div style={{ flex: 'none' }}>
+                <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 14 }}>
                   {b.downloadable ? (
                     <a href={backupDownloadUrl(b.id)} title="Скачать">
                       <Icon name="download" size={18} style={{ color: '#757784' }} />
                     </a>
                   ) : (
-                    <span title="Копия хранится только на резервном S3 — восстановление командой на сервере" style={{ color: 'var(--color-text-placeholder)' }}>
+                    <span title="Файл копии недоступен для скачивания" style={{ color: 'var(--color-text-placeholder)', display: 'inline-flex' }}>
                       <Icon name="cloud" size={18} />
                     </span>
                   )}
+                  <button
+                    type="button"
+                    title="Удалить копию"
+                    onClick={() => setToDelete(b)}
+                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-flex', color: 'var(--color-text-placeholder)' }}
+                  >
+                    <Icon name="trash-2" size={18} />
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
       </Card>
+
+      {toDelete ? (
+        <ConfirmModal
+          title="Удалить резервную копию?"
+          message={`Копия от ${formatDate(toDelete.created_at)} будет удалена без возможности восстановления (в т.ч. из хранилища приложения и с резервного S3).`}
+          confirmLabel="Удалить"
+          onConfirm={async () => {
+            await deleteBackup(toDelete.id)
+            refetch()
+          }}
+          onClose={() => setToDelete(null)}
+        />
+      ) : null}
     </div>
   )
 }
