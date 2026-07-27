@@ -70,17 +70,21 @@ export function RegulationFormModal({ regulation, onClose, onSave, title, showFi
 
       <div style={{ marginTop: 18 }}>
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Периодичность</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
-          <PeriodOption label="Периодический" active={!onDemand} onClick={() => setOnDemand(false)} />
-          <PeriodOption
-            label="По потребности"
-            active={onDemand}
-            onClick={() => {
+        <Segmented
+          value={onDemand ? 'demand' : 'periodic'}
+          onChange={(v) => {
+            if (v === 'demand') {
               setOnDemand(true)
               setPeriodMonths('') // очищаем период при переключении
-            }}
-          />
-        </div>
+            } else {
+              setOnDemand(false)
+            }
+          }}
+          options={[
+            { value: 'periodic', label: 'Периодический' },
+            { value: 'demand', label: 'По потребности' },
+          ]}
+        />
         {!onDemand ? (
           <div style={{ marginTop: 12 }}>
             <Input
@@ -147,26 +151,32 @@ export function RegulationFormModal({ regulation, onClose, onSave, title, showFi
 }
 
 // Взаимоисключающий выбор периодичности (радио в виде плитки-чекбокса).
-function PeriodOption({ label, active, onClick }) {
+// Сегментированный переключатель — как «Учёт пробега» у типа транспорта и
+// «Тип объекта»/«Вид пропуска» у средств доступа (пилюли с заливкой активного).
+function Segmented({ value, onChange, options }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: '11px 13px', borderRadius: 10,
-        background: active ? 'var(--color-fill-active-tint)' : 'var(--color-fill-input)',
-        border: 'none', boxShadow: 'none',
-        cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-      }}
-    >
-      <span
-        style={{
-          width: 18, height: 18, flex: 'none', borderRadius: '50%',
-          border: active ? '5px solid var(--color-primary)' : '2px solid var(--color-border-strong)',
-          boxSizing: 'border-box', background: 'var(--color-surface)',
-        }}
-      />
-      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{label}</span>
-    </button>
+    <div style={{ display: 'flex', gap: 8 }}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          style={{
+            flex: 1,
+            padding: '9px 6px',
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: 'inherit',
+            cursor: 'pointer',
+            borderRadius: 8,
+            border: 'none',
+            color: value === o.value ? 'var(--color-primary-text)' : 'var(--color-text-secondary)',
+            background: value === o.value ? 'var(--color-primary)' : 'var(--color-fill-input)',
+          }}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
   )
 }

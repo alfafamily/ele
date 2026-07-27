@@ -258,7 +258,9 @@ export function EquipmentListPage() {
                 {/* Наименование (Тип+Модель) в 2 строки + учётный номер ниже.
                     B13: пара иконок статуса ТО (гаечный ключ + часы). */}
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {/* Иконки статуса ТО — инлайново в начале наименования: сидят на
+                      первой строке, перенос названия уходит под них. */}
+                  <div style={{ fontWeight: 500, lineHeight: 1.3 }}>
                     {/* B23: цветные статусы проведения ТО — только для типов, по
                         которым пользователь проводит ТО (в своей области) или для
                         Наблюдателя; серый «нет даты» — дополнительно для тех, кто
@@ -270,12 +272,12 @@ export function EquipmentListPage() {
                       <span
                         key={i}
                         title={ind.title}
-                        style={{ display: 'inline-flex', alignItems: 'center', flex: 'none', color: ind.color }}
+                        style={{ display: 'inline-flex', verticalAlign: '-0.15em', marginRight: 4, color: ind.color }}
                       >
-                        <Icon name={ind.icon} size={16} strokeWidth={2} />
+                        <Icon name={ind.icon} size={14} strokeWidth={2} />
                       </span>
                     ))}
-                    <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.type_and_model}</span>
+                    {row.type_and_model}
                   </div>
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{row.inventory_number}</div>
                 </div>
