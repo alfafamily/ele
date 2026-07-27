@@ -325,7 +325,12 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 return Response({"detail": "Нужно выбрать действующее парковочное место."}, status=400)
             if place.employees.exists():
                 return Response(
-                    {"detail": "На этом месте закреплены личные авто — транспорт компании добавить нельзя."},
+                    {"detail": "На этом месте закреплён личный авто сотрудника — транспорт компании добавить нельзя."},
+                    status=400,
+                )
+            if place.transport.exclude(pk=transport.pk).exists():
+                return Response(
+                    {"detail": "Это парковочное место уже занято другим транспортом."},
                     status=400,
                 )
             place.transport.add(transport)

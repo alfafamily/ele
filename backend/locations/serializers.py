@@ -86,10 +86,19 @@ class PlaceSerializer(serializers.ModelSerializer):
                     {"transport": "Транспорт закрепляется только за парковочным местом."}
                 )
         elif place_type == Place.PlaceType.PARKING_SPOT:
+            # Одно место — один объект: либо один сотрудник (личное авто), либо
+            # один транспорт компании.
             if employees and transport:
                 raise serializers.ValidationError(
-                    "Парковочное место — либо личные авто сотрудников, либо транспорт компании, "
-                    "но не то и другое вместе."
+                    "Парковочное место — либо личное авто сотрудника, либо транспорт компании."
+                )
+            if len(employees) > 1:
+                raise serializers.ValidationError(
+                    {"employees": "За парковочным местом можно закрепить только одного сотрудника."}
+                )
+            if len(transport) > 1:
+                raise serializers.ValidationError(
+                    {"transport": "За парковочным местом можно закрепить только один транспорт."}
                 )
             # Один транспорт — одно парковочное место: нельзя закрепить транспорт,
             # уже стоящий на другом (не архивном) месте.
