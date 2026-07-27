@@ -191,6 +191,11 @@ export function BackupTab() {
                   {(b.destinations || []).map((d) => (
                     <DestinationBadge key={d.destination} dest={d} />
                   ))}
+                  {b.app_version ? (
+                    <span style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
+                      Версия приложения: v.{b.app_version}
+                    </span>
+                  ) : null}
                 </div>
                 <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 14 }}>
                   {b.downloadable ? (
