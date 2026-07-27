@@ -296,8 +296,8 @@ export function TypesEditorPage({ domain, title }) {
                 </div>
                 <TypeFlagStatus
                   on={!!selected.gibdd_registration}
-                  onText="Регистрация в ГИБДД (ведётся учёт по Гос.номеру)"
-                  offText="Без регистрации в ГИБДД (Гос.номер не ведётся)"
+                  onText="Регистрация в ГИБДД (ведётся учёт по гос.номеру)"
+                  offText="Без регистрации в ГИБДД (не ведётся учёт по гос.номеру)"
                 />
               </div>
             ) : null}
