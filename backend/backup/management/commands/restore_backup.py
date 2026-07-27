@@ -167,6 +167,13 @@ class Command(BaseCommand):
             manifest = json.loads(tar.extractfile("manifest.json").read().decode("utf-8"))
 
             self._check_schema(manifest, options)
+            # Целевое хранилище файлов определяем ДО flush — по состоянию ТЕКУЩЕГО
+            # инстанса, а не из дампа. Иначе после loaddata Company.storage_mode
+            # берётся из копии: копия с исходного S3-инстанса разложила бы файлы в
+            # S3 с пустыми (на свежем инстансе) кредами → botocore «Invalid bucket
+            # name ""». Файлы кладём туда, где их сможет читать этот инстанс, и
+            # StoredFile.backend перенаправляем на него же.
+            target_backend = self._resolve_target_backend()
             self._confirm()
             self._safety_backup(options)
 
@@ -198,7 +205,7 @@ class Command(BaseCommand):
                 from backup.export import BACKUP_SUBDIR
 
                 StoredFile.objects.filter(path__startswith=f"{BACKUP_SUBDIR}/").delete()
-                restored_files, missing = self._restore_files(tar, manifest, tmp_dir)
+                restored_files, missing = self._restore_files(tar, manifest, tmp_dir, target_backend)
 
         self.stdout.write(
             self.style.SUCCESS(
@@ -207,13 +214,28 @@ class Command(BaseCommand):
             )
         )
 
-    def _restore_files(self, tar, manifest, tmp_dir):
-        """Раскладывает бинарники в ТЕКУЩЕЕ целевое хранилище инстанса (может
-        отличаться от исходного) и обновляет StoredFile.backend/path."""
-        from storage.backends import get_backend, target_backend_name
-        from storage.models import StoredFile
+    def _resolve_target_backend(self) -> str:
+        """Хранилище ТЕКУЩЕГО инстанса, куда лягут восстановленные файлы (снимок
+        до flush). Если это S3 без заданного bucket в .env — восстанавливать
+        файлы некуда: даём внятную ошибку вместо botocore «Invalid bucket name»."""
+        from storage.backends import target_backend_name
 
         backend_name = target_backend_name()
+        if backend_name == "s3" and not settings.S3_BUCKET:
+            raise CommandError(
+                "Хранилище файлов этого инстанса — S3, но параметры S3 (.env "
+                "S3_BUCKET и др.) не заданы. Настройте хранилище инстанса до "
+                "восстановления либо переведите инстанс на локальное хранилище."
+            )
+        return backend_name
+
+    def _restore_files(self, tar, manifest, tmp_dir, backend_name):
+        """Раскладывает бинарники в целевое хранилище ТЕКУЩЕГО инстанса
+        (backend_name снят до flush, может отличаться от исходного из копии)
+        и обновляет StoredFile.backend/path на него."""
+        from storage.backends import get_backend
+        from storage.models import StoredFile
+
         backend = get_backend(backend_name)
         restored = 0
         missing = 0

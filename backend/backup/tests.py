@@ -314,6 +314,62 @@ class RestoreBackupTests(APITransactionTestCase):
         self.assertNotEqual(new_ap.pk, ap.pk)
         self.assertTrue(new_ap.history.exists())
 
+    def test_files_restored_into_current_instance_storage_not_backup_source(self):
+        """Регресс: файлы раскладываются в хранилище ТЕКУЩЕГО инстанса, а не то,
+        что записано в копии. Копия снята с инстанса на S3 (storage_mode=s3), а
+        восстанавливаем на свежем инстансе с локальным хранилищем и пустым
+        S3_BUCKET. Раньше _restore_files брал storage_mode из уже загруженной
+        (дамповой) Company → S3-бэкенд с пустым bucket → botocore Invalid bucket."""
+        from company.models import Company
+
+        avatar, employee = self._seed()
+        # Копию снимаем на локальном инстансе (own-архив в local), затем в самом
+        # дампе выставляем storage_mode=s3 — сымитировали копию с S3-инстанса, не
+        # гоняя выгрузку через реальный S3.
+        record = create_backup(BackupRecord.BackupType.MANUAL)
+        tmp_path = _download_own_to_temp(record)
+
+        def _mark_s3(objects):
+            for obj in objects:
+                if obj.get("model") == "company.company":
+                    obj["fields"]["storage_mode"] = Company.StorageMode.S3
+        tmp_path = _tamper_db_json(tmp_path, _mark_s3)
+
+        # Текущий инстанс — локальный (как свежеустановленный), S3 не настроен.
+        with override_settings(S3_BUCKET=""):
+            # Раньше здесь падало botocore ParamValidationError.
+            call_command("restore_backup", tmp_path, "--noinput", "--no-safety-backup")
+
+        # storage_mode восстановлен из копии (s3), но файлы разложены локально —
+        # StoredFile.backend перенаправлен на хранилище текущего инстанса.
+        self.assertEqual(Company.objects.get(pk=1).storage_mode, Company.StorageMode.S3)
+        sf = Employee.objects.get(pk=employee.pk).avatar
+        self.assertEqual(sf.backend, "local")
+        from storage.backends import get_backend
+
+        self.assertEqual(get_backend("local").open(sf.path).read(), b"fake-avatar-bytes")
+
+
+def _tamper_db_json(tar_path: str, mutate) -> str:
+    """Пересобирает архив, применив mutate(list_of_fixture_objects) к db.json —
+    чтобы сымитировать копию, снятую с инстанса с иными настройками (напр.
+    storage_mode=s3), не гоняя выгрузку через реальный S3."""
+    import io
+
+    out = tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False).name
+    with tarfile.open(tar_path, "r:gz") as src:
+        objects = json.loads(src.extractfile("db.json").read())
+        mutate(objects)
+        with tarfile.open(out, "w:gz") as dst:
+            for member in src.getmembers():
+                if member.name == "db.json":
+                    data = json.dumps(objects).encode("utf-8")
+                    member.size = len(data)
+                    dst.addfile(member, io.BytesIO(data))
+                else:
+                    dst.addfile(member, src.extractfile(member))
+    return out
+
 
 def _tamper_manifest(tar_path: str, overrides: dict) -> str:
     """Пересобирает архив, подменив поля manifest.json — для проверки схемы."""
