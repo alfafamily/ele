@@ -265,8 +265,10 @@ export function LicenseListPage() {
                           {row.storage_place_detail.building_name} — {row.storage_place_detail.room_name}
                         </div>
                       </>
+                    ) : row.license_type_kind === 'hardware' ? (
+                      <div className="ele-clamp-2">На складе: Без склада</div>
                     ) : (
-                      <span style={{ color: 'var(--color-text-placeholder)' }}>Не привязана</span>
+                      <span style={{ color: 'var(--color-text-placeholder)' }}>Не хранится физически</span>
                     )}
                   </div>
                 ) : (

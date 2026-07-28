@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
+import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
+import { PlacementRow } from '../../shared/PlacementRow.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { AttachEquipmentModal } from './AttachEquipmentModal.jsx'
@@ -169,68 +171,56 @@ export function LicenseCardPage() {
             перед Историей (mobile); у утилизированной всегда пуст — скрыт. */}
         {!license.is_retired ? (
         <Card className="ele-obj-layout__side ele-card-sticky">
-          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Лицензия установлена на</div>
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Размещение</div>
           {license.equipment_detail ? (
             <>
-              <Link
-                to={`/equipment/${license.equipment_detail.id}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  justifyContent: 'space-between',
-                  padding: '12px 14px',
-                  background: 'var(--color-fill-input)',
-                  borderRadius: 10,
-                }}
-              >
-                <Icon name="tag" size={16} strokeWidth={2} style={{ flex: 'none', color: 'var(--color-text-muted)' }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="ele-clamp-2" style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>{license.equipment_detail.type_and_model}</div>
-                  <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', overflowWrap: 'anywhere' }}>{license.equipment_detail.inventory_number}</div>
-                </div>
-                <Icon name="chevron-right" size={16} strokeWidth={2} style={{ flex: 'none', color: '#C7C9D4' }} />
-              </Link>
-              {!license.is_retired ? (
-                <Can perm="canManageLicenses">
-                  <Button variant="secondary" fullWidth style={{ marginTop: 10 }} onClick={() => (license.is_hardware ? setDetachToStorage(true) : setConfirmDetach(true))}>
-                    Отвязать
-                  </Button>
-                </Can>
-              ) : null}
+              <PlacementRow
+                circle={<LeadIconCircle name="tag" size={46} iconSize={20} />}
+                label="В оборудовании"
+                title={<Link to={`/equipment/${license.equipment_detail.id}`} style={{ color: 'var(--color-text-primary)' }}>{license.equipment_detail.type_and_model}</Link>}
+                sub={license.equipment_detail.inventory_number || undefined}
+              />
+              <Can perm="canManageLicenses">
+                <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => (license.is_hardware ? setDetachToStorage(true) : setConfirmDetach(true))}>
+                  Отвязать
+                </Button>
+              </Can>
+            </>
+          ) : license.is_hardware ? (
+            <>
+              {license.storage_place_detail ? (
+                <PlacementRow
+                  circle={<LeadIconCircle name="warehouse" size={46} iconSize={20} />}
+                  label="На складе"
+                  title={license.storage_place_detail.name}
+                  sub={`${license.storage_place_detail.building_name} — ${license.storage_place_detail.room_name}`}
+                />
+              ) : (
+                <PlacementRow
+                  circle={<LeadIconCircle name="warehouse" size={46} iconSize={20} />}
+                  label="На складе"
+                  title="Без склада"
+                />
+              )}
+              <Can perm="canManageLicenses">
+                <Button fullWidth style={{ marginTop: 14 }} onClick={() => setShowAttach(true)}>
+                  <Icon name="plus" size={18} strokeWidth={2.2} />
+                  Привязать к оборудованию
+                </Button>
+              </Can>
             </>
           ) : (
             <>
-              {license.is_hardware && license.storage_place_detail ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
-                  <Icon name="warehouse" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>На складе</div>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{license.storage_place_detail.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{license.storage_place_detail.building_name} — {license.storage_place_detail.room_name}</div>
-                  </div>
-                </div>
-              ) : (
-                <div
-                  style={{
-                    border: '1.5px dashed var(--color-border-strong)',
-                    borderRadius: 10,
-                    padding: 14,
-                    textAlign: 'center',
-                    fontSize: 13,
-                    color: 'var(--color-text-placeholder)',
-                  }}
-                >
-                  Не привязана к оборудованию
-                </div>
-              )}
-              {!license.is_retired ? (
-                <Can perm="canManageLicenses">
-                  <Button fullWidth style={{ marginTop: 12 }} onClick={() => setShowAttach(true)}>
-                    Привязать к оборудованию
-                  </Button>
-                </Can>
-              ) : null}
+              <PlacementRow
+                circle={<LeadIconCircle name="cloud" size={46} iconSize={20} />}
+                title="Не хранится физически"
+              />
+              <Can perm="canManageLicenses">
+                <Button fullWidth style={{ marginTop: 14 }} onClick={() => setShowAttach(true)}>
+                  <Icon name="plus" size={18} strokeWidth={2.2} />
+                  Привязать к оборудованию
+                </Button>
+              </Can>
             </>
           )}
         </Card>

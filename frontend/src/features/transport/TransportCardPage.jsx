@@ -3,8 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { canMaintainTransportType } from '../../shared/permissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
-import { nameInitials } from '../../shared/employeeName.js'
-import { AcceptanceOverlay } from '../../shared/AcceptanceIcon.jsx'
+import { AvatarCircle } from '../../shared/AvatarCircle.jsx'
+import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
+import { PlacementRow } from '../../shared/PlacementRow.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { PlanLink } from '../../shared/PlanLink.jsx'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
@@ -256,25 +257,12 @@ export function TransportCardPage() {
 
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Закрепление</div>
             {transport.employee ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ position: 'relative', flex: 'none' }}>
-                  <span style={{ width: 46, height: 46, display: 'flex', borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
-                    {transport.employee_avatar ? (
-                      <img src={transport.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      nameInitials(transport.employee_name)
-                    )}
-                  </span>
-                  <AcceptanceOverlay status={transport.acceptance_status} size={18} />
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>За сотрудником</div>
-                  <Link className="ele-clamp-2" to={`/employees/${transport.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                    {transport.employee_name}
-                  </Link>
-                  <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>{transport.department || '—'}</div>
-                </div>
-              </div>
+              <PlacementRow
+                circle={<AvatarCircle avatar={transport.employee_avatar} name={transport.employee_name} size={46} status={transport.acceptance_status} overlaySize={18} />}
+                label="За сотрудником"
+                title={<Link to={`/employees/${transport.employee}`} style={{ color: 'var(--color-text-primary)' }}>{transport.employee_name}</Link>}
+                sub={transport.department || '—'}
+              />
             ) : (
               <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Свободный</div>
             )}
@@ -463,16 +451,12 @@ function ParkingBlock({ parking, canManage, onSet, onClear }) {
   if (parking?.kind === 'spot') {
     return (
       <div>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-          <Icon name="square-parking" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none', marginTop: 1 }} />
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>{parking.place_name}</div>
-            <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
-              {[parking.building_name, parking.room_name].filter(Boolean).join(' — ')}
-            </div>
-            {parking.plan_file?.url ? <PlanLink file={parking.plan_file} style={{ marginTop: 5 }} /> : null}
-          </div>
-        </div>
+        <PlacementRow
+          circle={<LeadIconCircle name="square-parking" size={46} iconSize={20} />}
+          title={parking.place_name}
+          sub={[parking.building_name, parking.room_name].filter(Boolean).join(' — ') || undefined}
+        />
+        {parking.plan_file?.url ? <PlanLink file={parking.plan_file} style={{ marginTop: 10 }} /> : null}
         {canManage ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
             <Button variant="secondary" fullWidth onClick={onSet}>Изменить</Button>
@@ -485,10 +469,10 @@ function ParkingBlock({ parking, canManage, onSet, onClear }) {
   if (parking?.kind === 'driver_address') {
     return (
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Icon name="map-pin" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
-          <div style={{ fontSize: 14, fontWeight: 500 }}>На адресе сотрудника</div>
-        </div>
+        <PlacementRow
+          circle={<LeadIconCircle name="map-pin" size={46} iconSize={20} />}
+          title="На адресе сотрудника"
+        />
         {canManage ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
             <Button variant="secondary" fullWidth onClick={onSet}>Изменить</Button>

@@ -10,7 +10,7 @@ export function SelectedTransport({ transport, onClear }) {
     .join(' · ')
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
-      <span style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ width: 30, height: 30, flex: 'none', borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Icon name="car" size={17} strokeWidth={2} />
       </span>
       <span style={{ minWidth: 0, flex: 1 }}>

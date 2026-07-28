@@ -298,7 +298,7 @@ export function EquipmentListPage() {
                         </div>
                       </>
                     ) : (
-                      <span style={{ color: 'var(--color-text-placeholder)' }}>Не размещено</span>
+                      <div className="ele-clamp-2">На складе: Без склада</div>
                     )}
                   </div>
                 ) : (

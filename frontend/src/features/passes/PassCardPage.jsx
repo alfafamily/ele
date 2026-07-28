@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
-import { nameInitials } from '../../shared/employeeName.js'
-import { AcceptanceOverlay } from '../../shared/AcceptanceIcon.jsx'
+import { AvatarCircle } from '../../shared/AvatarCircle.jsx'
+import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
+import { PlacementRow } from '../../shared/PlacementRow.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
 import { getPass, getPassHistoryPath } from '../employees/employeesApi.js'
@@ -136,38 +137,25 @@ export function PassCardPage() {
             (терминальный статус) всегда пуст — не показываем (одна колонка). */}
         {!pass.is_utilized ? (
         <Card className="ele-obj-layout__side ele-card-sticky">
-          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Закреплено за</div>
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Размещение</div>
           {pass.employee ? (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ position: 'relative', flex: 'none' }}>
-                  <span style={{ width: 46, height: 46, display: 'flex', borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
-                    {pass.employee_avatar ? (
-                      <img src={pass.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      nameInitials(pass.employee_name)
-                    )}
-                  </span>
-                  <AcceptanceOverlay status={pass.acceptance_status} size={18} />
-                </div>
-                <Link className="ele-clamp-2" to={`/employees/${pass.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', minWidth: 0 }}>
-                  {pass.employee_name}
-                </Link>
-              </div>
+              <PlacementRow
+                circle={<AvatarCircle avatar={pass.employee_avatar} name={pass.employee_name} size={46} status={pass.acceptance_status} overlaySize={18} />}
+                label="За сотрудником"
+                title={<Link to={`/employees/${pass.employee}`} style={{ color: 'var(--color-text-primary)' }}>{pass.employee_name}</Link>}
+              />
               <Can perm="canManageEmployees">
                 <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>
               </Can>
             </>
           ) : pass.transport ? (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: 12, background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name="car" size={22} strokeWidth={2} />
-                </span>
-                <Link className="ele-clamp-2" to={`/transport/${pass.transport}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', minWidth: 0 }}>
-                  {pass.transport_detail ? pass.transport_detail.type_and_model : 'Транспорт'}
-                </Link>
-              </div>
+              <PlacementRow
+                circle={<LeadIconCircle name="car" size={46} iconSize={22} />}
+                label="За транспортом"
+                title={<Link to={`/transport/${pass.transport}`} style={{ color: 'var(--color-text-primary)' }}>{pass.transport_detail ? pass.transport_detail.type_and_model : 'Транспорт'}</Link>}
+              />
               <Can perm="canManageEmployees">
                 <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>
               </Can>
@@ -175,11 +163,18 @@ export function PassCardPage() {
           ) : (
             <>
               {pass.storage_place_detail ? (
-                <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>
-                  На складе «{pass.storage_place_detail.name}» ({pass.storage_place_detail.building_name} — {pass.storage_place_detail.room_name})
-                </div>
+                <PlacementRow
+                  circle={<LeadIconCircle name="warehouse" size={46} iconSize={20} />}
+                  label="На складе"
+                  title={pass.storage_place_detail.name}
+                  sub={`${pass.storage_place_detail.building_name} — ${pass.storage_place_detail.room_name}`}
+                />
               ) : (
-                <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не закреплён</div>
+                <PlacementRow
+                  circle={<LeadIconCircle name="warehouse" size={46} iconSize={20} />}
+                  label="На складе"
+                  title="Без склада"
+                />
               )}
               <Can perm="canManageEmployees">
                 <Button fullWidth style={{ marginTop: 14 }} onClick={() => setShowAttach(true)}><Icon name="plus" size={18} strokeWidth={2.2} />Закрепить</Button>

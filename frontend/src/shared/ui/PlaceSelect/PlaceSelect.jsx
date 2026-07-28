@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { apiGet } from '../../api/client'
 import { Icon } from '../Icon/Icon.jsx'
+import { LeadIconCircle } from '../../LeadIconCircle.jsx'
 
 // Выбор Места нужного типа (B8). Пока ничего не выбрано — блок «поиск + список»
 // (не выпадающий, чтобы модалка подстраивалась под размер). Как только место
@@ -101,6 +102,7 @@ export function PlaceSelect({
       <div>
         {labelNode}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
+          <LeadIconCircle name={placeType === 'workplace' ? 'briefcase' : 'warehouse'} size={30} iconSize={15} />
           {meta(name, location, qty)}
           {showQuantity && typeof qty === 'number' ? (
             <span style={{ fontSize: 13, fontWeight: 600, flex: 'none', color: 'var(--color-text-muted)' }}>{qty} шт.</span>

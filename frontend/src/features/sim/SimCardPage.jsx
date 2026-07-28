@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
-import { nameInitials } from '../../shared/employeeName.js'
-import { AcceptanceOverlay } from '../../shared/AcceptanceIcon.jsx'
+import { AvatarCircle } from '../../shared/AvatarCircle.jsx'
+import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
+import { PlacementRow } from '../../shared/PlacementRow.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
 import { getSimCard, getSimHistoryPath } from '../employees/employeesApi.js'
@@ -104,44 +105,23 @@ export function SimCardPage() {
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Размещение</div>
           {sim.employee ? (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ position: 'relative', flex: 'none' }}>
-                  <span style={{ width: 46, height: 46, display: 'flex', borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
-                    {sim.employee_avatar ? (
-                      <img src={sim.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      nameInitials(sim.employee_name)
-                    )}
-                  </span>
-                  <AcceptanceOverlay status={sim.acceptance_status} size={18} />
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>За сотрудником</div>
-                  <Link className="ele-clamp-2" to={`/employees/${sim.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                    {sim.employee_name}
-                  </Link>
-                </div>
-              </div>
+              <PlacementRow
+                circle={<AvatarCircle avatar={sim.employee_avatar} name={sim.employee_name} size={46} status={sim.acceptance_status} overlaySize={18} />}
+                label="За сотрудником"
+                title={<Link to={`/employees/${sim.employee}`} style={{ color: 'var(--color-text-primary)' }}>{sim.employee_name}</Link>}
+              />
               <Can perm="canManageEmployees">
                 <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>
               </Can>
             </>
           ) : sim.equipment ? (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name="tag" size={20} strokeWidth={2} />
-                </span>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>В оборудовании</div>
-                  <Link className="ele-clamp-2" to={`/equipment/${sim.equipment}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                    {sim.equipment_detail?.type_and_model || '—'}
-                  </Link>
-                  {sim.equipment_detail?.inventory_number ? (
-                    <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2, overflowWrap: 'anywhere' }}>{sim.equipment_detail.inventory_number}</div>
-                  ) : null}
-                </div>
-              </div>
+              <PlacementRow
+                circle={<LeadIconCircle name="tag" size={46} iconSize={20} />}
+                label="В оборудовании"
+                title={<Link to={`/equipment/${sim.equipment}`} style={{ color: 'var(--color-text-primary)' }}>{sim.equipment_detail?.type_and_model || '—'}</Link>}
+                sub={sim.equipment_detail?.inventory_number || undefined}
+              />
               <Can perm="canManageEmployees">
                 <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>
               </Can>
@@ -149,11 +129,18 @@ export function SimCardPage() {
           ) : (
             <>
               {sim.storage_place_detail ? (
-                <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginBottom: 12 }}>
-                  На складе «{sim.storage_place_detail.name}» ({sim.storage_place_detail.building_name} — {sim.storage_place_detail.room_name})
-                </div>
+                <PlacementRow
+                  circle={<LeadIconCircle name="warehouse" size={46} iconSize={20} />}
+                  label="На складе"
+                  title={sim.storage_place_detail.name}
+                  sub={`${sim.storage_place_detail.building_name} — ${sim.storage_place_detail.room_name}`}
+                />
               ) : (
-                <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не закреплена</div>
+                <PlacementRow
+                  circle={<LeadIconCircle name="warehouse" size={46} iconSize={20} />}
+                  label="На складе"
+                  title="Без склада"
+                />
               )}
               <Can perm="canManageEmployees">
                 <Button fullWidth style={{ marginTop: 14 }} onClick={() => setAttachMode('employee')}>
