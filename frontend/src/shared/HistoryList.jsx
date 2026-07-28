@@ -22,10 +22,17 @@ function AcceptanceLines({ items }) {
     const tone = typeof a === 'string' ? null : a.tone
     const snapshot = typeof a === 'string' ? null : a.snapshot
     return (
-      <div key={j} className="ele-history__acceptance" style={{ flexWrap: 'wrap' }}>
-        <AcceptanceIcon status={tone} size={14} style={{ opacity: 0.9 }} />
-        <span>{text}</span>
-        {snapshot ? <DeviceSnapshotChip snapshot={snapshot} /> : null}
+      <div key={j}>
+        <div className="ele-history__acceptance">
+          <AcceptanceIcon status={tone} size={14} style={{ opacity: 0.9 }} />
+          <span>{text}</span>
+        </div>
+        {/* Слепок устройства — отдельной строкой под статусом (плашка). */}
+        {snapshot ? (
+          <div className="ele-history__acceptance" style={{ borderLeft: 'none', marginTop: 4, paddingLeft: 20 }}>
+            <DeviceSnapshotChip snapshot={snapshot} />
+          </div>
+        ) : null}
       </div>
     )
   })

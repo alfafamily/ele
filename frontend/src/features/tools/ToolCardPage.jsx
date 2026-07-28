@@ -333,9 +333,9 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
             <div key={a.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ position: 'relative', flex: 'none' }}>
-                <span style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
+                <span style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
                   {a.kind === 'workplace' ? (
-                    <Icon name="briefcase" size={20} strokeWidth={2} style={{ color: 'var(--color-text-muted)' }} />
+                    <Icon name="briefcase" size={20} strokeWidth={2} style={{ color: 'var(--color-text-secondary)' }} />
                   ) : a.employee_avatar ? (
                     <img src={a.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
@@ -367,7 +367,7 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
                   <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>Сотрудники рабочего места</div>
                   {a.place_employees.map((e) => (
                     <Link key={e.id} to={`/employees/${e.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-primary)' }}>
-                      <span style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>
+                      <span style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>
                         {nameInitials(e.name)}
                       </span>
                       {e.name}

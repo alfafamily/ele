@@ -107,7 +107,7 @@ export function PlaceSelect({
       <div>
         {labelNode}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
-          <LeadIconCircle name={placeType === 'workplace' ? 'briefcase' : 'warehouse'} size={30} iconSize={15} />
+          <LeadIconCircle name={placeType === 'workplace' ? 'briefcase' : 'warehouse'} size={30} iconSize={15} tinted />
           {meta(name, location, qty)}
           {showQuantity && typeof qty === 'number' ? (
             <span style={{ fontSize: 13, fontWeight: 600, flex: 'none', color: 'var(--color-text-muted)' }}>{qty} шт.</span>

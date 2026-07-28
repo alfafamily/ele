@@ -165,7 +165,7 @@ function SelectedRow({ selected, onClear }) {
     : [selected.building_name, selected.room_name].filter(Boolean).join(' — ')
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
-      <LeadIconCircle name={icon} size={30} iconSize={16} />
+      <LeadIconCircle name={icon} size={30} iconSize={16} tinted />
       <span style={{ minWidth: 0, flex: 1 }}>
         <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
         <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subtitle}</span>
