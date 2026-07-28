@@ -20,9 +20,10 @@ from core.permissions import (
 from storage.service import delete_stored_file, store_uploaded_file
 from storage.validators import validate_image_max_dimensions
 
-from .models import AccessPass, Employee, SimCard
+from .models import AccessPass, Employee, EmployeeAssignment, SimCard
 from .serializers import (
     AccessPassSerializer,
+    EmployeeAssignmentSerializer,
     EmployeeListSerializer,
     EmployeeSerializer,
     SimCardSerializer,
@@ -394,6 +395,11 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         employee.is_employed = False
         employee.save(update_fields=["is_employed"])
 
+        # B32: увольнение сняло все объекты — закрываем все открытые эпизоды акцепта.
+        from core.assignments import close_employee_assignments
+
+        close_employee_assignments(employee)
+
         deactivated_user = False
         if request.data.get("deactivate_user") and hasattr(employee, "user"):
             user = employee.user
@@ -596,10 +602,22 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     ordering_fields = ["phone_number", "network_operator", "provider", "employee__last_name", "created_at"]
     ordering = ["-created_at"]
 
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        # B32: SIM создана сразу за сотрудником — эпизод акцепта.
+        sim = serializer.instance
+        if sim.employee_id:
+            from core.assignments import create_assignment
+
+            create_assignment(sim, sim.employee, self.request.user, return_place=None)
+
     def get_queryset(self):
+        from core.assignments import annotate_acceptance
+
         qs = SimCard.objects.select_related(
             "employee", "employee__avatar", "equipment__equipment_type", "storage_place__room__building"
         ).all()
+        qs = annotate_acceptance(qs, SimCard)  # B32
         user = self.request.user
         if user.role == "employee" and not user.is_observer:
             # Обычный «Сотрудник» — только свои номера (в Профиле); не привязан к
@@ -702,14 +720,21 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if comment:
             sim._change_reason = comment
         sim.save(update_fields=["employee", "equipment", "storage_place"])
+        from core.assignments import close_open_assignment
+
+        close_open_assignment(sim)  # B32
         return Response(SimCardSerializer(sim).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def attach(self, request, pk=None):
         """Разместить SIM: mode=employee — за сотрудником; mode=equipment — в
         оборудовании (симка в модеме). Прежнее размещение очищается."""
+        from core.assignments import close_open_assignment, create_assignment
+
         sim = self.get_object()
+        prev_storage = sim.storage_place  # снимок для отката
         mode = request.data.get("mode", "employee")
+        employee = None
         if mode == "equipment":
             from equipment.models import Equipment
 
@@ -730,6 +755,11 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if comment:
             sim._change_reason = comment
         sim.save(update_fields=["employee", "equipment", "storage_place"])
+        # B32: за сотрудником — эпизод акцепта; в оборудование — закрыть эпизод.
+        if employee is not None:
+            create_assignment(sim, employee, request.user, return_place=prev_storage)
+        else:
+            close_open_assignment(sim)
         return Response(SimCardSerializer(sim).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
@@ -750,6 +780,9 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             if comment:
                 sim._change_reason = comment
             sim.save(update_fields=["employee", "equipment", "storage_place", "is_utilized", "utilized_at"])
+            from core.assignments import close_open_assignment
+
+            close_open_assignment(sim)  # B32
         return Response(SimCardSerializer(sim).data)
 
     @action(detail=True, methods=["get"], url_path="history")
@@ -792,6 +825,8 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             "equipment": {"label": "В оборудовании", "format": fmt_equipment, "in_created": False},
             "storage_place": {"label": "Место хранения", "format": fmt_storage, "in_created": False},
         }
+        from core.assignments import acceptance_annotator
+
         rows = build_history_rows(
             sim, field_specs,
             movement_fields={"employee", "equipment", "storage_place"},
@@ -800,6 +835,7 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 "consume": ["is_utilized", "utilized_at", "employee", "equipment", "storage_place"],
                 "label": "Утилизирована",
             }],
+            acceptance_for=acceptance_annotator(sim),
         )
         rows.sort(key=lambda r: r["date"], reverse=True)
         return Response(rows)
@@ -851,13 +887,25 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     ordering_fields = ["account_number", "employee__last_name", "created_at"]
     ordering = ["-created_at"]
 
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        # B32: пропуск/ключ создан сразу за сотрудником — эпизод акцепта.
+        ap = serializer.instance
+        if ap.employee_id:
+            from core.assignments import create_assignment
+
+            create_assignment(ap, ap.employee, self.request.user, return_place=None)
+
     def get_queryset(self):
+        from core.assignments import annotate_acceptance
+
         qs = AccessPass.objects.select_related(
             "employee", "employee__avatar", "storage_place__room__building",
             "transport__transport_type",
         ).prefetch_related(
             "buildings", "rooms", "places__room", "transport__field_values__field",
         )
+        qs = annotate_acceptance(qs, AccessPass)  # B32
         user = self.request.user
         if user.role == "employee" and not user.is_observer:
             # Обычный «Сотрудник» — только свои пропуска (в Профиле); не привязан
@@ -973,6 +1021,9 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if comment:
             access_pass._change_reason = comment
         access_pass.save(update_fields=["employee", "transport", "storage_place"])
+        from core.assignments import close_open_assignment
+
+        close_open_assignment(access_pass)  # B32
         return Response(AccessPassSerializer(access_pass).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
@@ -980,8 +1031,12 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         """Привязать (активировать), снимает со склада. Персональный пропуск/ключ
         — к сотруднику (employee); транспортный пропуск (B34) — к единице
         транспорта (transport)."""
+        from core.assignments import close_open_assignment, create_assignment
+
         access_pass = self.get_object()
+        prev_storage = access_pass.storage_place  # снимок для отката
         transport_id = request.data.get("transport")
+        employee = None
         if transport_id:
             from transport.models import Transport
 
@@ -997,13 +1052,19 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                     {"detail": "Транспортный пропуск закрепляется за транспортом, а не за сотрудником."},
                     status=400,
                 )
-            access_pass.employee = get_object_or_404(Employee, pk=request.data.get("employee"))
+            employee = get_object_or_404(Employee, pk=request.data.get("employee"))
+            access_pass.employee = employee
             access_pass.transport = None
         access_pass.storage_place = None
         comment = (request.data.get("comment") or "").strip()
         if comment:
             access_pass._change_reason = comment
         access_pass.save(update_fields=["employee", "transport", "storage_place"])
+        # B32: за сотрудником — эпизод акцепта; за транспортом — без.
+        if employee is not None:
+            create_assignment(access_pass, employee, request.user, return_place=prev_storage)
+        else:
+            close_open_assignment(access_pass)
         return Response(AccessPassSerializer(access_pass).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
@@ -1030,6 +1091,9 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             if comment:
                 access_pass._change_reason = comment
             access_pass.save(update_fields=["employee", "transport", "storage_place", "is_utilized", "utilized_at", "utilization_reason"])
+            from core.assignments import close_open_assignment
+
+            close_open_assignment(access_pass)  # B32
         return Response(AccessPassSerializer(access_pass).data)
 
     @action(detail=True, methods=["get"], url_path="history")
@@ -1121,6 +1185,8 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 "in_created": False,
             },
         }
+        from core.assignments import acceptance_annotator
+
         rows = build_history_rows(
             access_pass, field_specs,
             movement_fields={"employee", "storage_place"},
@@ -1131,6 +1197,7 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             }],
             created_extra_lines=_created_access_lines(),
             m2m_specs=m2m_specs,
+            acceptance_for=acceptance_annotator(access_pass),
         )
         rows.sort(key=lambda r: r["date"], reverse=True)
         return Response(rows)
@@ -1211,3 +1278,83 @@ class EmployeeAvatarUploadView(APIView):
         employee.save(update_fields=["avatar"])
         delete_stored_file(old_avatar)
         return Response(status=204)
+
+
+class EmployeeAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
+    """B32. Эпизоды закрепления + акцепт.
+
+    • list/retrieve — контрольный подраздел «Операции закрепления» (admin/
+      accountant): все эпизоды, фильтры по статусу/сотруднику/виду объекта.
+    • mine — открытые эпизоды текущего пользователя, ожидающие его решения
+      (для блока в Профиле).
+    • accept/reject — решение принимает ТОЛЬКО сам сотрудник-пользователь по
+      своему открытому pending-эпизоду.
+    """
+
+    serializer_class = EmployeeAssignmentSerializer
+    pagination_class = ELECursorPagination
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ["assigned_at", "decided_at", "status"]
+    ordering = ["-assigned_at"]
+
+    def get_permissions(self):
+        if self.action in ("mine", "accept", "reject"):
+            return [IsAuthenticated()]
+        return [IsAdminOrAccountant()]
+
+    def get_queryset(self):
+        qs = EmployeeAssignment.objects.select_related(
+            "employee", "content_type", "decided_by"
+        ).all()
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            qs = qs.filter(status__in=[s for s in status_param.split(",") if s])
+        employee = self.request.query_params.get("employee")
+        if employee:
+            qs = qs.filter(employee_id__in=csv_ids(employee))
+        kind = self.request.query_params.get("object_kind")
+        if kind:
+            qs = qs.filter(object_kind__in=[k for k in kind.split(",") if k])
+        if self.request.query_params.get("open") in ("1", "true"):
+            qs = qs.filter(closed_at__isnull=True)
+        return qs
+
+    @action(detail=False, methods=["get"])
+    def mine(self, request):
+        """Открытые pending-эпизоды текущего пользователя (блок акцепта в Профиле)."""
+        emp_id = getattr(request.user, "employee_id", None)
+        if not emp_id:
+            return Response([])
+        qs = EmployeeAssignment.objects.filter(
+            employee_id=emp_id, closed_at__isnull=True,
+            status=EmployeeAssignment.Status.PENDING,
+        ).select_related("content_type").order_by("assigned_at", "id")
+        return Response(EmployeeAssignmentSerializer(qs, many=True).data)
+
+    def _own_pending(self, request, pk):
+        a = get_object_or_404(EmployeeAssignment, pk=pk)
+        if a.employee_id != getattr(request.user, "employee_id", None):
+            return None, Response({"detail": "Решение принимает только сам сотрудник."}, status=403)
+        if a.closed_at is not None or a.status != EmployeeAssignment.Status.PENDING:
+            return None, Response({"detail": "По этому закреплению решение уже принято."}, status=409)
+        return a, None
+
+    @action(detail=True, methods=["post"])
+    def accept(self, request, pk=None):
+        from core.assignments import accept_assignment
+
+        a, err = self._own_pending(request, pk)
+        if err is not None:
+            return err
+        accept_assignment(a, request)
+        return Response(EmployeeAssignmentSerializer(a).data)
+
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        from core.assignments import reject_assignment
+
+        a, err = self._own_pending(request, pk)
+        if err is not None:
+            return err
+        reject_assignment(a, request)
+        return Response(EmployeeAssignmentSerializer(a).data)

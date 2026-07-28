@@ -1,0 +1,8 @@
+{% extends "email/base.html" %}
+{% block subject %}Подтвердите получение — {{ company_name }}{% endblock %}
+{% block preheader %}За вами закрепили имущество — подтвердите или отклоните получение{% endblock %}
+{% block heading %}Требуется подтверждение получения{% endblock %}
+{% block body %}
+В системе учёта ELE компании {{ company_name }} за вами закрепили <b>{{ object_label }}</b>. Пожалуйста, подтвердите или отклоните получение в своём профиле.
+{% endblock %}
+{% block cta_text %}Перейти в профиль{% endblock %}

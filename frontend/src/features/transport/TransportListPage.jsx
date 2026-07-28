@@ -8,6 +8,7 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterModal, Icon, MultiSelectList, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { AcceptanceBadge } from '../../shared/AcceptanceBadge.jsx'
 import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
 import { TypeRequisiteFilter } from '../../shared/TypeRequisiteFilter.jsx'
 import { csvParam, reqParams } from '../../shared/filterParams.js'
@@ -257,7 +258,10 @@ export function TransportListPage() {
                     <div style={{ minWidth: 0 }}>
                       {row.employee_name ? (
                         <>
-                          <div className="ele-clamp-2">{row.employee_name}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <div className="ele-clamp-2">{row.employee_name}</div>
+                            <AcceptanceBadge status={row.acceptance_status} />
+                          </div>
                           <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {[row.position, row.department].filter(Boolean).join(' · ') || '—'}
                           </div>

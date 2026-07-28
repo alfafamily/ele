@@ -402,18 +402,32 @@ class UserViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def deactivate(self, request, pk=None):
+        from core.assignments import close_open_assignment, has_open_assignments
+
         user = self.get_object()
+
+        # B32: снять связь с сотрудником, за которым есть закреплённые объекты,
+        # нельзя — сначала открепить всё (иначе объекты «повиснут» без владельца
+        # и нового пользователя нельзя корректно попросить об акцепте).
+        want_terminate = bool(request.data.get("terminate_employee"))
+        if not want_terminate and user.employee_id and has_open_assignments(user.employee):
+            return Response(
+                {"detail": "Сначала открепите все объекты сотрудника, затем можно сменить пользователя."},
+                status=409,
+            )
+
         user.is_active = False
         user.save(update_fields=["is_active"])
         # Прочие сессии инвалидируются автоматически проверкой is_active в
         # ModelBackend.user_can_authenticate() — доп. кода не нужно.
 
         terminated_employee = False
-        if request.data.get("terminate_employee") and user.employee_id:
+        if want_terminate and user.employee_id:
             employee = user.employee
             for eq in employee.equipment.all():
                 eq.employee = None
                 eq.save(update_fields=["employee"])
+                close_open_assignment(eq)  # B32
             employee.is_employed = False
             employee.save(update_fields=["is_employed"])
             terminated_employee = True

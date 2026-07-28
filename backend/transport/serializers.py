@@ -179,6 +179,7 @@ class TransportSerializer(serializers.ModelSerializer):
     department = serializers.SerializerMethodField()
     position = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
+    acceptance_status = serializers.SerializerMethodField()
     parking = serializers.SerializerMethodField()
     passes = serializers.SerializerMethodField()
     field_values = TransportFieldValueOutSerializer(many=True, read_only=True)
@@ -207,6 +208,7 @@ class TransportSerializer(serializers.ModelSerializer):
             "plate",
             "last_mileage",
             "status",
+            "acceptance_status",
             "parking",
             "passes",
             "field_values",
@@ -259,6 +261,9 @@ class TransportSerializer(serializers.ModelSerializer):
 
     def get_employee_name(self, obj):
         return str(obj.employee) if obj.employee_id else None
+
+    def get_acceptance_status(self, obj):
+        return getattr(obj, "acceptance_status", None)  # B32
 
     def get_employee_avatar(self, obj):
         if obj.employee_id and obj.employee.avatar_id:

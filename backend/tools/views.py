@@ -228,6 +228,15 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             tool, ToolMovement.Kind.ASSIGN, qty, request.user, comment,
             employee=employee, place=target_place, storage_place=storage,
         )
+        # B32: раздача за сотрудником — эпизод акцепта (каждый ASSIGN отдельно;
+        # прежние эпизоды не закрываем). Рабочее место — без акцепта.
+        if employee is not None:
+            from core.assignments import create_assignment
+
+            create_assignment(
+                tool, employee, request.user, return_place=storage,
+                return_quantity=qty, close_prior=False,
+            )
         return Response(ToolSerializer(self.get_object()).data)
 
     @action(detail=True, methods=["post"], url_path="unassign-units", permission_classes=[IsAdminOrAccountant])
@@ -264,6 +273,11 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             tool, ToolMovement.Kind.UNASSIGN, qty, request.user, comment,
             employee=employee, place=source_place, storage_place=storage,
         )
+        # B32: возврат от сотрудника закрывает эпизоды акцепта (FIFO по qty).
+        if employee is not None:
+            from core.assignments import close_tool_episodes
+
+            close_tool_episodes(tool, employee, qty)
         return Response(ToolSerializer(self.get_object()).data)
 
     @action(detail=True, methods=["post"], url_path="transfer-units", permission_classes=[IsAdminOrAccountant])
@@ -310,11 +324,15 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         comment = (request.data.get("comment") or "").strip()
         # Фиксируем открепление закреплённых (за сотрудниками/рабочими местами)
         # частей; свободный складской остаток просто уходит вместе с карточкой.
+        from core.assignments import close_tool_episodes
+
         for alloc in list(tool.allocations.filter(Q(employee__isnull=False) | Q(place__place_type="workplace"))):
             self._record_movement(
                 tool, ToolMovement.Kind.UNASSIGN, alloc.quantity, request.user, comment,
                 employee=alloc.employee, place=alloc.place,
             )
+            if alloc.employee_id:  # B32: закрыть все эпизоды акцепта сотрудника
+                close_tool_episodes(tool, alloc.employee, None)
         tool.allocations.all().delete()
         tool.quantity = 0
         tool.is_written_off = True
@@ -383,17 +401,25 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 return f"Закреплено: {m.quantity} шт. за {target(m)}{store}"
             return f"Откреплено: {m.quantity} шт. от {target(m)}{store}"
 
+        from core.assignments import acceptance_annotator
+
+        annot = acceptance_annotator(tool)  # B32: статус акцепта для ASSIGN-строк
         for m in tool.movements.select_related(
             "created_by", "employee",
             "place__room__building", "storage_place__room__building",
         ):
-            related_rows.append({
+            row = {
                 "date": m.created_at,
                 "author": m.created_by.email if m.created_by_id else None,
                 "kind": "movement", "category": "movement",
                 "label": mv_label(m), "old": None, "new": None,
                 "secret": False, "comment": m.comment or None,
-            })
+            }
+            if m.kind == ToolMovement.Kind.ASSIGN and m.employee_id:
+                texts = annot("employee", m.employee_id, m.created_at)
+                if texts:
+                    row["acceptance"] = texts
+            related_rows.append(row)
 
         initial = tool.history.filter(history_type="+").values_list("quantity", flat=True).first()
         if initial is not None:

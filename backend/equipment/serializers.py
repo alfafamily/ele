@@ -154,6 +154,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
     department = serializers.SerializerMethodField()
     position = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
+    acceptance_status = serializers.SerializerMethodField()
     place_detail = serializers.SerializerMethodField()
     field_values = EquipmentFieldValueOutSerializer(many=True, read_only=True)
     custom_fields = EquipmentCustomFieldSerializer(many=True, required=False)
@@ -183,6 +184,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
             "maintenance_summary",
             "type_and_model",
             "status",
+            "acceptance_status",
             "field_values",
             "field_values_input",
             "custom_fields",
@@ -202,6 +204,10 @@ class EquipmentSerializer(serializers.ModelSerializer):
 
     def get_employee_name(self, obj):
         return str(obj.employee) if obj.employee_id else None
+
+    def get_acceptance_status(self, obj):
+        # B32: статус акцепта из аннотации queryset списка (None в detail).
+        return getattr(obj, "acceptance_status", None)
 
     def get_employee_avatar(self, obj):
         # Аватар закреплённого Сотрудника — для отображения на карточке
@@ -328,6 +334,12 @@ class EquipmentSerializer(serializers.ModelSerializer):
         # При создании файловые реквизиты пропускаем: файл прикладывается
         # отдельным эндпоинтом уже после того, как объект существует.
         self._raise_if_missing_required(instance, skip_file_fields=True)
+        # B32: если оборудование сразу закреплено за сотрудником — эпизод акцепта.
+        if instance.employee_id:
+            from core.assignments import create_assignment
+
+            req = self.context.get("request")
+            create_assignment(instance, instance.employee, getattr(req, "user", None), return_place=None)
         return instance
 
     @transaction.atomic

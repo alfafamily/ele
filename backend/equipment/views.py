@@ -187,6 +187,8 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         return Response({"detail": "Оборудование не удаляется — только списание."}, status=405)
 
     def get_queryset(self):
+        from core.assignments import annotate_acceptance
+
         qs = Equipment.objects.select_related(
             "employee", "employee__avatar", "equipment_type", "place__room__building"
         ).prefetch_related(
@@ -194,6 +196,7 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             # B13+: планы+регламенты для сводной индикации ТО (без N+1).
             "maintenance_plans__regulation",
         )
+        qs = annotate_acceptance(qs, Equipment)  # B32: статус акцепта для плашки
         user = self.request.user
         if user.role == "employee" and not user.is_observer:
             # Не привязан к Сотруднику — не видит ничего, а не «все свободные».
@@ -372,6 +375,9 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if comment:
             equipment._change_reason = comment
         equipment.save(update_fields=["employee", "place", "is_written_off", "written_off_at"])
+        from core.assignments import close_open_assignment
+
+        close_open_assignment(equipment)  # B32: списание закрывает эпизод акцепта
         # B13+: списание выводит ТО из обращения — индивидуальные регламенты в
         # архив, планы отменены, даты обнулены (контроль/проведение недоступны).
         archive_equipment_maintenance(equipment)
@@ -386,6 +392,9 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         equipment = self.get_object()
         if equipment.is_written_off:
             return Response({"detail": "Списанное оборудование нельзя разместить."}, status=409)
+        from core.assignments import close_open_assignment, create_assignment
+
+        prev_place = equipment.place  # снимок размещения ДО закрепления (для отката)
         mode = request.data.get("mode", "mobile")
         if mode == "stationary":
             place = get_workplace(request.data.get("place"))
@@ -399,12 +408,19 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if comment:
             equipment._change_reason = comment
         equipment.save(update_fields=["employee", "place"])
+        # B32: закрепление за сотрудником — эпизод акцепта; рабочее место — без.
+        if mode == "stationary":
+            close_open_assignment(equipment)
+        else:
+            create_assignment(equipment, employee, request.user, return_place=prev_place)
         return Response(EquipmentSerializer(equipment).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
     def unassign(self, request, pk=None):
         """Открепление: оборудование уходит на склад (место хранения обязательно)."""
         from core.placement import get_storage_place
+
+        from core.assignments import close_open_assignment
 
         equipment = self.get_object()
         place = get_storage_place(request.data.get("place"), field="place")
@@ -414,6 +430,7 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if comment:
             equipment._change_reason = comment
         equipment.save(update_fields=["employee", "place"])
+        close_open_assignment(equipment)  # B32: открепление закрывает эпизод акцепта
         return Response(EquipmentSerializer(equipment).data)
 
     @action(detail=True, methods=["post"], url_path="maintenance", permission_classes=[CanPerformMaintenance])
@@ -775,6 +792,8 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         # разворачиваем прямо из MaintenanceRecord.
         related_rows += _maintenance_history_rows(eq)
 
+        from core.assignments import acceptance_annotator
+
         rows = build_history_rows(
             eq, field_specs,
             movement_fields={"employee", "place"},
@@ -784,6 +803,7 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 "label": "Списано",
             }],
             created_extra_lines=created_extra,
+            acceptance_for=acceptance_annotator(eq),
         )
         rows += related_rows
 

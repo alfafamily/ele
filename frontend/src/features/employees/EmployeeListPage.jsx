@@ -89,7 +89,14 @@ export function EmployeeListPage() {
           Сотрудники
         </h1>
         <Can perm="canManageEmployees">
-          <div className="ele-page-head__actions">
+          <div className="ele-page-head__actions" style={{ display: 'flex', gap: 8 }}>
+            <Link to="/employees/assignments">
+              <Button variant="secondary" title="Операции закрепления" aria-label="Операции закрепления">
+                <Icon className="ele-only-desktop" name="circle-check" size={18} strokeWidth={2.2} />
+                <span className="ele-only-desktop">Операции закрепления</span>
+                <Icon className="ele-only-mobile" name="circle-check" size={22} strokeWidth={2.4} />
+              </Button>
+            </Link>
             <Link to="/employees/new">
               <Button title="Добавить сотрудника" aria-label="Добавить сотрудника">
                 <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />

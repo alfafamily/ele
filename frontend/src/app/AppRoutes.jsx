@@ -23,6 +23,7 @@ import { LicenseListPage } from '../features/licenses/LicenseListPage.jsx'
 import { EmployeeCardPage } from '../features/employees/EmployeeCardPage.jsx'
 import { EmployeeFormPage } from '../features/employees/EmployeeFormPage.jsx'
 import { EmployeeListPage } from '../features/employees/EmployeeListPage.jsx'
+import { AssignmentsPage } from '../features/employees/AssignmentsPage.jsx'
 import { SimListPage } from '../features/sim/SimListPage.jsx'
 import { SimFormPage } from '../features/sim/SimFormPage.jsx'
 import { SimCardPage } from '../features/sim/SimCardPage.jsx'
@@ -269,6 +270,14 @@ export function AppRoutes() {
             <RequireViewer>
               <EmployeeListPage />
             </RequireViewer>
+          }
+        />
+        <Route
+          path="/employees/assignments"
+          element={
+            <RequireStaff>
+              <AssignmentsPage />
+            </RequireStaff>
           }
         />
         <Route

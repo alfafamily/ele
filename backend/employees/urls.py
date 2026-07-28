@@ -7,6 +7,7 @@ router = DefaultRouter()
 router.register("employees", views.EmployeeViewSet, basename="employee")
 router.register("sim-cards", views.SimCardViewSet, basename="sim-card")
 router.register("access-passes", views.AccessPassViewSet, basename="access-pass")
+router.register("assignments", views.EmployeeAssignmentViewSet, basename="assignment")
 
 urlpatterns = [
     path(

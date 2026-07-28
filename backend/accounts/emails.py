@@ -19,6 +19,7 @@ _SUBJECTS = {
     "invite": "Вас пригласили в ELE — {company_name}",
     "password_reset": "Восстановление пароля — ELE",
     "email_change_confirm": "Подтвердите новый email — ELE",
+    "assignment_pending": "Подтвердите получение — {company_name}",
 }
 
 
@@ -59,6 +60,23 @@ def send_password_reset(user):
     uid, token = make_set_password_link(user)
     cta_url = f"{settings.SITE_URL}/reset-password/{uid}/{token}/"
     _send("password_reset", "password_reset.html", [user.email], {"cta_url": cta_url, "user_email": user.email})
+
+
+def send_assignment_pending(user, assignment):
+    """B32. Уведомление сотруднику-пользователю о новой выдаче, требующей акцепта.
+    Сбои отправки не должны ломать закрепление — гасим исключения."""
+    from core.assignments import object_label
+
+    try:
+        label = object_label(assignment.content_object) if assignment.content_object is not None else "имущество"
+    except Exception:
+        label = "имущество"
+    cta_url = f"{settings.SITE_URL}/profile"
+    try:
+        _send("assignment_pending", "assignment_pending.html", [user.email],
+              {"cta_url": cta_url, "object_label": label})
+    except Exception:
+        pass
 
 
 def send_email_change_confirm(user, new_email: str):
