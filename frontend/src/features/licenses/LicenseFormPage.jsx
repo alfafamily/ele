@@ -242,7 +242,7 @@ export function LicenseFormPage() {
               {placementMode === 'equipment' ? (
                 placementEquipment ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
-                    <LeadIconCircle name="tag" size={30} iconSize={15} />
+                    <LeadIconCircle name="tag" size={30} iconSize={15} tinted />
                     <span style={{ minWidth: 0, flex: 1 }}>
                       <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{placementEquipment.type_and_model}</span>
                       <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', fontFamily: 'var(--font-mono)' }}>{placementEquipment.inventory_number}</span>

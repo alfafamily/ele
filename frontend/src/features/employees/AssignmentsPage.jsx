@@ -109,8 +109,8 @@ export function AssignmentsPage() {
               {/* 2 строка — объект (иконка со статусом в углу) + сотрудник, оба кликабельны */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ position: 'relative', flex: 'none' }}>
-                  <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon name={KIND_ICON[a.object_kind] || 'tag'} size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)' }} />
+                  <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--color-fill-active-tint)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name={KIND_ICON[a.object_kind] || 'tag'} size={18} strokeWidth={2} style={{ color: 'var(--color-text-secondary)' }} />
                   </span>
                   <AcceptanceOverlay status={a.status} size={16} />
                 </div>

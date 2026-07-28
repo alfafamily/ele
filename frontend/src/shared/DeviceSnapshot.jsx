@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { usePermissions } from '../app/usePermissions.js'
 import { Icon, Modal } from './ui'
 
 // B32. Слепок устройства пользователя (снимается при подтверждении/отказе, если
@@ -29,7 +30,9 @@ function snapshotRows(snap) {
 // Плашка-триггер: иконка form + «Слепок устройства».
 export function DeviceSnapshotChip({ snapshot }) {
   const [open, setOpen] = useState(false)
-  if (!snapshot || typeof snapshot !== 'object') return null
+  const { isStaff } = usePermissions()
+  // Слепок — ПДн; плашку видят только Администратор и Ответственный за учёт.
+  if (!isStaff || !snapshot || typeof snapshot !== 'object') return null
   return (
     <>
       <button
