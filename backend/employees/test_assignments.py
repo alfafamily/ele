@@ -96,7 +96,6 @@ class DecisionTests(AssignmentBaseTests):
         eq = self._equip(place=self.storage)
         self._assign(eq, self.emp)
         a = open_assignment(eq)
-        hist_before = eq.history.count()
         self.client.force_authenticate(self.user)
         self.client.post(f"/api/assignments/{a.id}/reject/")
         a.refresh_from_db()
@@ -105,8 +104,27 @@ class DecisionTests(AssignmentBaseTests):
         self.assertIsNotNone(a.closed_at)
         self.assertIsNone(eq.employee_id)
         self.assertEqual(eq.place_id, self.storage.id)  # вернулось на прежний склад
-        # Откат объекта не плодит записей истории (skip_history_when_saving).
-        self.assertEqual(eq.history.count(), hist_before)
+
+    def test_reassign_after_reject_shows_new_pending(self):
+        # assign → reject → assign снова: новая запись закрепления должна появиться
+        # (регресс: skip_history рвал diff-цепочку, и повтор не отражался).
+        eq = self._equip(place=self.storage)
+        self._assign(eq, self.emp)
+        a1 = open_assignment(eq)
+        self.client.force_authenticate(self.user)
+        self.client.post(f"/api/assignments/{a1.id}/reject/")
+        self.client.force_authenticate(self.admin)
+        self.client.post(f"/api/equipment/{eq.id}/assign/", {"mode": "mobile", "employee": self.emp.id})
+        h = self.client.get(f"/api/equipment/{eq.id}/history/").json()
+        # Две записи «Закрепление за сотрудником»: первая — отклонена, вторая — ждёт.
+        zakr = [r for r in h if r.get("title") == "Закрепление за сотрудником"]
+        self.assertEqual(len(zakr), 2)
+        self.assertEqual(zakr[0]["acceptance"][0]["tone"], "pending")  # верхняя — новая
+        self.assertEqual(zakr[1]["acceptance"][0]["tone"], "rejected")  # нижняя — прежняя
+        # Служебный откат при отказе (сотрудник → склад) в истории не показан
+        # (запись создания «— → склад» — легитимна, её не считаем).
+        self.assertFalse(any(r.get("title") == "Размещение на место"
+                             and str(self.emp) in (r.get("old") or "") for r in h))
 
     def test_reject_history_has_no_rollback_rows(self):
         eq = self._equip(place=self.storage)
