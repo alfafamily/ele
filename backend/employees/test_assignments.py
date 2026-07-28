@@ -178,11 +178,12 @@ class HistoryAcceptanceTests(AssignmentBaseTests):
         self.assertEqual(resp.status_code, 201, resp.data)
         eq_id = resp.data["id"]
         h = self.client.get(f"/api/equipment/{eq_id}/history/").json()
-        # «Объект создан» — запись типа изменение, без сотрудника и без акцепта.
+        # «Объект создан» — без сотрудника и без акцепта (размещение — отдельно).
         created = next(r for r in h if r["kind"] == "created")
-        self.assertEqual(created["category"], "change")
         self.assertIsNone(created.get("acceptance"))
         self.assertNotIn("Закреплённый сотрудник", [ln["label"] for ln in created.get("lines", [])])
+        # Порядок: «Объект создан» — самая нижняя (старая) запись.
+        self.assertEqual(h[-1]["kind"], "created")
         # Отдельная запись-движение закрепления со статусом акцепта.
         mv = next(r for r in h if r["category"] == "movement" and r.get("label") == "Закреплённый сотрудник")
         self.assertEqual(mv["new"], str(emp))

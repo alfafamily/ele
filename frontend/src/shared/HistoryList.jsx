@@ -135,10 +135,14 @@ export function HistoryList({ path, reloadKey }) {
   const filtered = useMemo(() => {
     if (!items) return items
     if (filter === 'all') return items
-    // Движения — записи с category==='movement' (создание/привязка/утилизация);
-    // Изменения — правки реквизитов (category==='change'); Выполненные ТО —
-    // category==='maintenance'. Старые записи без category считаем изменениями.
-    return items.filter((h) => (h.category || 'change') === filter)
+    // Движения — записи с category==='movement' (привязка/утилизация); Изменения —
+    // правки реквизитов (category==='change'); Выполненные ТО — 'maintenance'.
+    // «Объект создан» — гибрид: показываем и в «Движениях» (поступление,
+    // комментарий откуда), и в «Изменениях» (реквизиты создания).
+    return items.filter((h) => {
+      if (h.kind === 'created') return filter === 'movement' || filter === 'change'
+      return (h.category || 'change') === filter
+    })
   }, [items, filter])
 
   return (
