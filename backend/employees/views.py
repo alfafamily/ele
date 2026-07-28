@@ -1178,6 +1178,14 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             p = Place.objects.select_related("room__building").filter(pk=v).first()
             return f"«{p.name}» ({p.room.building.name} — {p.room.name})" if p else "—"
 
+        def fmt_transport(v):
+            if not v:
+                return "—"
+            from transport.models import Transport
+
+            t = Transport.objects.filter(pk=v).first()
+            return str(t) if t else "—"
+
         def utilize_label(record):
             reason = record.utilization_reason
             return dict(AccessPass.UtilizationReason.choices).get(reason, "Утилизирован")
@@ -1188,6 +1196,7 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             "type_vehicle": {"label": "Тип «Авто»", "format": yes_no},
             "type_pedestrian": {"label": "Тип «Пеший»", "format": yes_no},
             "employee": {"label": "Закреплён за", "format": fmt_employee, "in_created": False},
+            "transport": {"label": "Транспорт", "format": fmt_transport, "in_created": False},
             "storage_place": {
                 "label": "Место хранения",
                 "format": lambda v: _fmt_storage_place(v),
@@ -1198,19 +1207,23 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
         rows = build_history_rows(
             access_pass, field_specs,
-            movement_fields={"employee", "storage_place"},
+            movement_fields={"employee", "transport", "storage_place"},
             movement_events=[{
                 "trigger": "is_utilized", "to": True,
-                "consume": ["is_utilized", "utilized_at", "utilization_reason", "employee", "storage_place"],
+                "consume": ["is_utilized", "utilized_at", "utilization_reason", "employee", "transport", "storage_place"],
                 "label": utilize_label,
             }],
             created_extra_lines=_created_access_lines(),
             m2m_specs=m2m_specs,
             acceptance_for=acceptance_annotator(access_pass),
+            # B34: транспортный пропуск закрепляется за транспортом — поле transport
+            # тоже в группе размещения (иначе привязка к транспорту выглядела бы как
+            # «Открепление»).
             placement_group={
-                "fields": ["employee", "storage_place"],
+                "fields": ["employee", "transport", "storage_place"],
                 "titles": {
                     "employee": "Закрепление за сотрудником",
+                    "transport": "Закрепление за транспортом",
                     "storage_place": "Размещение на склад",
                 },
                 "empty_title": "Открепление",

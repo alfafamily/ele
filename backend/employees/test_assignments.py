@@ -142,6 +142,7 @@ class DecisionTests(AssignmentBaseTests):
             "text": f"Сотрудник отклонил закрепление, {eq.equipment_type.name} возвращено на "
                     f"Место хранения «{self.storage.name}» ({self.b.name} — {self.r.name}). Причина: не подходит",
             "tone": "rejected",
+            "snapshot": None,
         }])
 
     def test_reject_requires_comment(self):
