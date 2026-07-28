@@ -1339,21 +1339,28 @@ class EmployeeAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
             from tools.models import Tool
             from transport.models import Transport
 
-            # Поиск по сотруднику (ФИО/должность/отдел) и учётному идентификатору
-            # объекта каждого вида (учётный номер/телефон/номер пропуска/наименование).
+            s = search
+            # Поиск как в списках объектов: сотрудник (ФИО/должность/отдел) +
+            # идентификатор/тип/Модель объекта каждого вида. «Модель» — залоченный
+            # реквизит Типа (value_text); тип SIM/пропуска — по метке кода.
+            model_field_q = Q(field_values__field__is_locked=True, field_values__value_text__icontains=s)
+            per_model = [
+                (Equipment, Q(inventory_number__icontains=s) | Q(equipment_type__name__icontains=s) | model_field_q),
+                (Transport, Q(inventory_number__icontains=s) | Q(transport_type__name__icontains=s) | model_field_q),
+                (SimCard, Q(phone_number__icontains=s) | Q(network_operator__icontains=s)
+                          | Q(provider__icontains=s) | _type_code_match(s, SimCard.SimType.choices, "sim_type")),
+                (AccessPass, Q(account_number__icontains=s) | _type_code_match(s, AccessPass.ObjectType.choices, "object_type")),
+                (Tool, Q(name__icontains=s)),
+            ]
             q = (
-                Q(employee__last_name__icontains=search)
-                | Q(employee__first_name__icontains=search)
-                | Q(employee__position__icontains=search)
-                | Q(employee__department__icontains=search)
+                Q(employee__last_name__icontains=s)
+                | Q(employee__first_name__icontains=s)
+                | Q(employee__position__icontains=s)
+                | Q(employee__department__icontains=s)
             )
-            for model, field in [
-                (Equipment, "inventory_number"), (SimCard, "phone_number"),
-                (AccessPass, "account_number"), (Transport, "inventory_number"),
-                (Tool, "name"),
-            ]:
+            for model, model_q in per_model:
                 ct = ContentType.objects.get_for_model(model)
-                ids = model.objects.filter(**{f"{field}__icontains": search}).values("id")
+                ids = model.objects.filter(model_q).values("id")
                 q |= Q(content_type=ct, object_id__in=ids)
             qs = qs.filter(q)
         if self.request.query_params.get("open") in ("1", "true"):

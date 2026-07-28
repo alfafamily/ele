@@ -106,7 +106,7 @@ export function SimCardPage() {
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ position: 'relative', flex: 'none' }}>
-                  <span style={{ width: 46, height: 46, display: 'flex', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
+                  <span style={{ width: 46, height: 46, display: 'flex', borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
                     {sim.employee_avatar ? (
                       <img src={sim.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (

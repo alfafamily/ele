@@ -13,6 +13,7 @@ import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { nameInitials } from '../../shared/employeeName.js'
+import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { getEmployee, getEmployeeAssignments, getEmployeeIssuedArchive, restoreEmployee, uploadEmployeeAvatar } from './employeesApi.js'
 import { AttachOrCreateModal } from './AttachOrCreateModal.jsx'
 import { PassInfo } from './PassInfo.jsx'
@@ -25,8 +26,6 @@ import { TerminateModal } from './TerminateModal.jsx'
 const CNT = { fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }
 const ROW = { display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }
 const SQ = { width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
-// Ведущая иконка объекта в строке блока (как чемоданчик у рабочих мест).
-const ROW_ICON = { color: 'var(--color-text-muted)', flex: 'none' }
 
 export function EmployeeCardPage() {
   const { id } = useParams()
@@ -258,7 +257,7 @@ export function EmployeeCardPage() {
             </div>
             {pendingAssignments.map((a) => (
               <Link key={a.id} to={`/${OBJ_ROUTE[a.object_kind]}/${a.object_id}`} style={{ ...ROW, textDecoration: 'none', color: 'inherit' }}>
-                <Icon name="tag" size={16} strokeWidth={2} style={ROW_ICON} />
+                <LeadIconCircle name="tag" />
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {a.object_label || a.object_kind_display}
@@ -283,7 +282,7 @@ export function EmployeeCardPage() {
             {employee.workplaces.map((wp) => (
               <div key={wp.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Icon name="briefcase" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                  <LeadIconCircle name="briefcase" />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600 }}>{wp.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{wp.location}</div>
@@ -341,7 +340,7 @@ export function EmployeeCardPage() {
           ) : null}
           {heldEquipment.map((eq) => (
             <div key={eq.id} style={ROW}>
-              <Icon name="tag" size={18} strokeWidth={2} style={ROW_ICON} />
+              <LeadIconCircle name="tag" />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Link to={`/equipment/${eq.id}`} style={{ display: 'block' }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{eq.type_and_model}</div>
@@ -377,7 +376,7 @@ export function EmployeeCardPage() {
           {heldTransport.map((t) => (
             <div key={t.id} style={{ background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8, padding: '11px 13px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Icon name="car" size={18} strokeWidth={2} style={ROW_ICON} />
+                <LeadIconCircle name="car" />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Link to={`/transport/${t.id}`} style={{ display: 'block' }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.type_and_model}</div>
@@ -428,7 +427,7 @@ export function EmployeeCardPage() {
           ) : null}
           {heldTools.map((tool) => (
             <div key={tool.id} style={ROW}>
-              <Icon name="wrench" size={18} strokeWidth={2} style={ROW_ICON} />
+              <LeadIconCircle name="wrench" />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Link to={`/tools/${tool.id}`} style={{ display: 'block' }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{tool.name}</div>
@@ -465,7 +464,7 @@ export function EmployeeCardPage() {
           ) : null}
           {heldSims.map((sim) => (
             <div key={sim.id} style={ROW}>
-              <Icon name="radio-tower" size={18} strokeWidth={2} style={ROW_ICON} />
+              <LeadIconCircle name="radio-tower" />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <SimCardInfo sim={sim} />
               </div>
@@ -496,7 +495,7 @@ export function EmployeeCardPage() {
           ) : null}
           {heldPasses.map((pass) => (
             <div key={pass.id} style={ROW}>
-              <Icon name="key-square" size={18} strokeWidth={2} style={ROW_ICON} />
+              <LeadIconCircle name="key-square" />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <PassInfo pass={pass} />
               </div>
