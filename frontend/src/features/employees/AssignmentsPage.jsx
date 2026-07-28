@@ -7,6 +7,7 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { csvParam } from '../../shared/filterParams.js'
 import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
 import { AcceptanceOverlay } from '../../shared/AcceptanceIcon.jsx'
+import { DeviceSnapshotChip } from '../../shared/DeviceSnapshot.jsx'
 
 // B32. Контрольный подраздел «Операции закрепления» (admin/accountant): все
 // эпизоды закрепления с их статусом акцепта; поиск + фильтры (статус, сотрудник).
@@ -17,7 +18,7 @@ const STATUS_OPTIONS = [
   { value: 'rejected', label: 'Отклонено' },
   { value: 'cancelled', label: 'Отменено' },
 ]
-const KIND_ICON = { equipment: 'tag', sim: 'radio-tower', pass: 'key-square', tool: 'wrench', transport: 'car' }
+const KIND_ICON = { equipment: 'tag', sim: 'radio-tower', pass: 'key-square', tool: 'hammer', transport: 'car' }
 const OBJ_ROUTE = { equipment: 'equipment', tool: 'tools', sim: 'sim-cards', pass: 'passes', transport: 'transport' }
 const EMPTY_FILTERS = { statuses: [], employees: [] }
 const countActive = (f) => f.statuses.length + f.employees.length
@@ -108,7 +109,7 @@ export function AssignmentsPage() {
               {/* 2 строка — объект (иконка со статусом в углу) + сотрудник, оба кликабельны */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ position: 'relative', flex: 'none' }}>
-                  <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--color-fill-input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Icon name={KIND_ICON[a.object_kind] || 'tag'} size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)' }} />
                   </span>
                   <AcceptanceOverlay status={a.status} size={16} />
@@ -121,6 +122,7 @@ export function AssignmentsPage() {
                   <Link to={`/employees/${a.employee_id}`} style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>{a.employee_name}</Link>
                 </div>
               </div>
+              {a.device_snapshot ? <DeviceSnapshotChip snapshot={a.device_snapshot} /> : null}
             </div>
           ))}
           <InfiniteScrollSentinel hasMore={hasMore} loading={loadingMore} onLoadMore={loadMore} />

@@ -333,7 +333,8 @@ export function TypesEditorPage({ domain, title }) {
                         key={f.id}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 10,
-                          background: 'var(--color-fill-input)', borderRadius: 10, padding: '11px 13px',
+                          background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)',
+                          borderRadius: 10, padding: '11px 13px',
                         }}
                       >
                         {inner(f)}
