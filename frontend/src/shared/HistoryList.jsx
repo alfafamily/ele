@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { apiGet } from './api/client'
 import { Skeleton, TabBar } from './ui'
 import { Icon } from './ui/Icon/Icon.jsx'
+import { AcceptanceIcon } from './AcceptanceIcon.jsx'
 import './HistoryList.css'
 
 function formatDate(iso) {
@@ -9,24 +10,18 @@ function formatDate(iso) {
   return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-// B32. Строки статуса акцепта под движением закрепления. tone задаёт негромкую
-// иконку: accepted — зелёная галочка, rejected — красный крестик, pending —
-// нейтральные часы, absentia — без иконки.
-const ACCEPTANCE_TONES = {
-  accepted: { icon: 'circle-check', color: 'var(--color-success)' },
-  rejected: { icon: 'circle-x', color: 'var(--color-error)' },
-  pending: { icon: 'clock', color: 'var(--color-text-placeholder)' },
-}
-
+// B32. Строки статуса акцепта под движением закрепления: негромкая иконка тона
+// (единый набор — absentia жёлтая галочка, pending часы, accepted зелёная
+// галочка, rejected красный крестик) + текст.
 function AcceptanceLines({ items }) {
   if (!items?.length) return null
   return items.map((a, j) => {
     // Обратная совместимость: старый формат — просто строка.
     const text = typeof a === 'string' ? a : a.text
-    const t = typeof a === 'string' ? null : ACCEPTANCE_TONES[a.tone]
+    const tone = typeof a === 'string' ? null : a.tone
     return (
       <div key={j} className="ele-history__acceptance">
-        {t ? <Icon name={t.icon} size={14} strokeWidth={2} style={{ color: t.color, flex: 'none', opacity: 0.85 }} /> : null}
+        <AcceptanceIcon status={tone} size={14} style={{ opacity: 0.9 }} />
         <span>{text}</span>
       </div>
     )
@@ -76,7 +71,10 @@ function HistoryLine({ line }) {
 function HistoryWhen({ row }) {
   return (
     <div className="ele-history__when">
-      <div className="ele-history__date">{formatDate(row.date)}</div>
+      <div className="ele-history__date">
+        <Icon name="calendar-clock" size={13} strokeWidth={2} style={{ color: 'var(--color-text-placeholder)', flex: 'none' }} />
+        <span>{formatDate(row.date)}</span>
+      </div>
       <div className="ele-history__author">{row.author || 'Система'}</div>
     </div>
   )

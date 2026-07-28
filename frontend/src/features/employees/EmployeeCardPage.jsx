@@ -14,7 +14,6 @@ import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { nameInitials } from '../../shared/employeeName.js'
 import { getEmployee, getEmployeeAssignments, getEmployeeIssuedArchive, restoreEmployee, uploadEmployeeAvatar } from './employeesApi.js'
-import { AcceptanceBadge } from '../../shared/AcceptanceBadge.jsx'
 import { AttachOrCreateModal } from './AttachOrCreateModal.jsx'
 import { PassInfo } from './PassInfo.jsx'
 import { PassDisposeModal } from './PassDisposeModal.jsx'
@@ -267,7 +266,6 @@ export function EmployeeCardPage() {
                   </div>
                   <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>{a.object_kind_display}</div>
                 </div>
-                <AcceptanceBadge status={a.status} />
                 <Icon name="chevron-right" size={16} strokeWidth={2} style={{ color: '#C7C9D4', flex: 'none' }} />
               </Link>
             ))}
@@ -349,7 +347,6 @@ export function EmployeeCardPage() {
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{eq.type_and_model}</div>
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</div>
                 </Link>
-                <AcceptanceBadge status={acceptanceOf('equipment', eq.id)} style={{ marginTop: 5 }} />
               </div>
               <Can perm="canManageEquipment">
                 <button type="button" title="Открепить" aria-label="Открепить" onClick={() => setDetach({ kind: 'equipment', obj: eq })} style={SQ}>
@@ -388,7 +385,6 @@ export function EmployeeCardPage() {
                       {[t.plate, t.inventory_number].filter(Boolean).join(' · ')}
                     </div>
                   </Link>
-                  <AcceptanceBadge status={acceptanceOf('transport', t.id)} style={{ marginTop: 5 }} />
                 </div>
                 {employee.is_employed ? (
                   <Can perm="canManageTransport">
@@ -438,7 +434,6 @@ export function EmployeeCardPage() {
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{tool.name}</div>
                   <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{tool.quantity} шт.</div>
                 </Link>
-                <AcceptanceBadge status={acceptanceOf('tool', tool.id)} style={{ marginTop: 5 }} />
               </div>
               {employee.is_employed ? (
                 <Can perm="canManageEquipment">
@@ -473,7 +468,6 @@ export function EmployeeCardPage() {
               <Icon name="radio-tower" size={18} strokeWidth={2} style={ROW_ICON} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <SimCardInfo sim={sim} />
-                <AcceptanceBadge status={acceptanceOf('sim', sim.id)} style={{ marginTop: 5 }} />
               </div>
               {employee.is_employed ? (
                 <Can perm="canManageEmployees">
@@ -505,7 +499,6 @@ export function EmployeeCardPage() {
               <Icon name="key-square" size={18} strokeWidth={2} style={ROW_ICON} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <PassInfo pass={pass} />
-                <AcceptanceBadge status={acceptanceOf('pass', pass.id)} style={{ marginTop: 5 }} />
               </div>
               {employee.is_employed ? (
                 <Can perm="canManageEmployees">

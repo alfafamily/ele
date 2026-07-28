@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BackButton, Badge, Icon, Spinner, TabBar } from '../../shared/ui'
+import { BackButton, Icon, Spinner, TabBar } from '../../shared/ui'
+import { AcceptanceOverlay } from '../../shared/AcceptanceIcon.jsx'
 import { getAssignments } from './employeesApi.js'
 
 // B32. Контрольный подраздел «Операции закрепления» (admin/accountant): все
@@ -69,17 +70,28 @@ export function AssignmentsPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {rows.map((a) => (
-            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, flexWrap: 'wrap' }}>
-              <Icon name={KIND_ICON[a.object_kind] || 'tag'} size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {a.object_label || a.object_kind_display}
-                  {a.object_kind === 'tool' && a.return_quantity ? ` · ${a.return_quantity} шт.` : ''}
-                </div>
-                <Link to={`/employees/${a.employee_id}`} style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>{a.employee_name}</Link>
+            <div key={a.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12 }}>
+              {/* 1 строка — дата и время с иконкой календаря */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--color-text-placeholder)', font: '500 12px var(--font-mono)' }}>
+                <Icon name="calendar-clock" size={13} strokeWidth={2} style={{ flex: 'none' }} />
+                {fmtDate(a.assigned_at)}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', flex: 'none' }}>{fmtDate(a.assigned_at)}</div>
-              <Badge>{a.status_display}</Badge>
+              {/* 2 строка — объект (иконка со статусом в углу) + сотрудник */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ position: 'relative', flex: 'none' }}>
+                  <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--color-fill-input)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name={KIND_ICON[a.object_kind] || 'tag'} size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)' }} />
+                  </span>
+                  <AcceptanceOverlay status={a.status} size={16} />
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {a.object_label || a.object_kind_display}
+                    {a.object_kind === 'tool' && a.return_quantity ? ` · ${a.return_quantity} шт.` : ''}
+                  </div>
+                  <Link to={`/employees/${a.employee_id}`} style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>{a.employee_name}</Link>
+                </div>
+              </div>
             </div>
           ))}
           {next ? (

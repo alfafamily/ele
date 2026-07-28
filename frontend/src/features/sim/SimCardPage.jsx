@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { nameInitials } from '../../shared/employeeName.js'
+import { AcceptanceOverlay } from '../../shared/AcceptanceIcon.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
 import { getSimCard, getSimHistoryPath } from '../employees/employeesApi.js'
@@ -104,13 +105,16 @@ export function SimCardPage() {
           {sim.employee ? (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
-                  {sim.employee_avatar ? (
-                    <img src={sim.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    nameInitials(sim.employee_name)
-                  )}
-                </span>
+                <div style={{ position: 'relative', flex: 'none' }}>
+                  <span style={{ width: 46, height: 46, display: 'flex', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
+                    {sim.employee_avatar ? (
+                      <img src={sim.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      nameInitials(sim.employee_name)
+                    )}
+                  </span>
+                  <AcceptanceOverlay status={sim.acceptance_status} size={18} />
+                </div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>За сотрудником</div>
                   <Link className="ele-clamp-2" to={`/employees/${sim.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>

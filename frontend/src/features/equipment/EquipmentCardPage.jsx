@@ -5,6 +5,7 @@ import { Can, usePermissions } from '../../app/usePermissions.js'
 import { canMaintainType } from '../../shared/permissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
 import { nameInitials } from '../../shared/employeeName.js'
+import { AcceptanceOverlay } from '../../shared/AcceptanceIcon.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { AttachLicenseModal } from './AttachLicenseModal.jsx'
@@ -259,13 +260,16 @@ export function EquipmentCardPage() {
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Размещение</div>
           {equipment.employee ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
-                {equipment.employee_avatar ? (
-                  <img src={equipment.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  nameInitials(equipment.employee_name)
-                )}
-              </span>
+              <div style={{ position: 'relative', flex: 'none' }}>
+                <span style={{ width: 46, height: 46, display: 'flex', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
+                  {equipment.employee_avatar ? (
+                    <img src={equipment.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    nameInitials(equipment.employee_name)
+                  )}
+                </span>
+                <AcceptanceOverlay status={equipment.acceptance_status} size={18} />
+              </div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>За сотрудником</div>
                 <Link className="ele-clamp-2" to={`/employees/${equipment.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
