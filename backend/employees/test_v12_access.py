@@ -230,7 +230,9 @@ class HistoryTests(APITestCase):
         rows = self.client.get(f"/api/access-passes/{resp.data['id']}/history/").data
         created = [r for r in rows if r["kind"] == "created"]
         self.assertEqual(len(created), 1)
-        self.assertEqual(created[0]["category"], "movement")
+        # B32: «Объект создан» — запись типа изменение (реквизиты); размещение,
+        # выбранное при создании, выносится отдельными записями-движениями.
+        self.assertEqual(created[0]["category"], "change")
         self.assertEqual(created[0]["comment"], "получен на складе")
         labels = {ln["label"]: ln["value"] for ln in created[0]["lines"]}
         self.assertEqual(labels.get("Учётный номер"), "AP-1")

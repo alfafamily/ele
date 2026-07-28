@@ -277,26 +277,29 @@ def _rollback_object(a, request):
     obj = a.content_object
     if obj is None:
         return
-    reason = "Отклонено сотрудником"
+    # Возврат объекта на прежнее место НЕ пишем в историю (skip_history_when_saving):
+    # факт отказа и возврата уже отражён в записи-движении закрепления (её строка
+    # статуса акцепта: «Сотрудник отклонил закрепление, … возвращено на …»). Иначе
+    # плодятся лишние записи «Размещение → …» и «Закреплённый сотрудник → Не закреплено».
     if isinstance(obj, Equipment):
         obj.employee = None
         obj.place = a.return_place
-        obj._change_reason = reason
+        obj.skip_history_when_saving = True
         obj.save(update_fields=["employee", "place"])
     elif isinstance(obj, Transport):
         # У транспорта нет складов — отказ просто открепляет.
         obj.employee = None
-        obj._change_reason = reason
+        obj.skip_history_when_saving = True
         obj.save(update_fields=["employee"])
     elif isinstance(obj, SimCard):
         obj.employee = None
         obj.storage_place = a.return_place
-        obj._change_reason = reason
+        obj.skip_history_when_saving = True
         obj.save(update_fields=["employee", "storage_place"])
     elif isinstance(obj, AccessPass):
         obj.employee = None
         obj.storage_place = a.return_place
-        obj._change_reason = reason
+        obj.skip_history_when_saving = True
         obj.save(update_fields=["employee", "storage_place"])
     elif isinstance(obj, Tool):
         qty = a.return_quantity or 0
@@ -316,10 +319,12 @@ def _rollback_object(a, request):
             )
             dest.quantity += qty
             dest.save(update_fields=["quantity"])
+        # Для инструмента журнал ToolMovement нужен для целостности баланса
+        # (реконструкция «Выдано/Архив» по движениям) — его оставляем.
         ToolMovement.objects.create(
             tool=obj, kind=ToolMovement.Kind.UNASSIGN, quantity=qty,
             employee=a.employee, storage_place=a.return_place,
-            comment=reason,
+            comment="Отклонено сотрудником",
             created_by=request.user if getattr(request.user, "is_authenticated", False) else None,
         )
 
