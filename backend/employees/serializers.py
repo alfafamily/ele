@@ -15,6 +15,7 @@ class EmployeeAssignmentSerializer(serializers.ModelSerializer):
 
     object_kind_display = serializers.CharField(source="get_object_kind_display", read_only=True)
     object_label = serializers.SerializerMethodField()
+    object_number = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     movement_texts = serializers.SerializerMethodField()
     employee_id = serializers.IntegerField(read_only=True)
@@ -25,6 +26,7 @@ class EmployeeAssignmentSerializer(serializers.ModelSerializer):
         model = EmployeeAssignment
         fields = [
             "id", "object_kind", "object_kind_display", "object_id", "object_label",
+            "object_number",
             "employee_id", "employee_name", "status", "status_display", "was_in_absentia",
             "movement_texts", "assigned_at", "decided_at", "decided_by_email",
             "device_snapshot", "return_quantity",
@@ -37,6 +39,23 @@ class EmployeeAssignmentSerializer(serializers.ModelSerializer):
             return object_label(obj.content_object) if obj.content_object is not None else None
         except Exception:
             return None
+
+    def get_object_number(self, obj):
+        # Учётный номер объекта (для подписи в блоках ожидания). Инструмент —
+        # без номера (у него только наименование = object_label).
+        o = obj.content_object
+        if o is None:
+            return None
+        from equipment.models import Equipment
+        from transport.models import Transport
+
+        if isinstance(o, (Equipment, Transport)):
+            return o.inventory_number
+        if isinstance(o, SimCard):
+            return o.phone_number
+        if isinstance(o, AccessPass):
+            return o.account_number or None
+        return None
 
     def get_movement_texts(self, obj):
         from core.assignments import movement_texts

@@ -13,6 +13,8 @@ import { ChangeEmailModal } from './ChangeEmailModal.jsx'
 import { ChangePasswordModal } from './ChangePasswordModal.jsx'
 import { acceptAssignment, getMyEquipment, getMyPasses, getMyPendingAssignments, getMySimCards, getMyTransport, getMyWorkPlacement, rejectAssignment } from './profileApi.js'
 
+const KIND_ICON = { equipment: 'tag', sim: 'radio-tower', pass: 'key-square', tool: 'wrench', transport: 'car' }
+
 const avatarMenuItem = {
   border: 'none',
   background: 'none',
@@ -86,6 +88,14 @@ export function ProfilePage() {
       setDecidingId(null)
     }
   }
+  // Объект, ожидающий решения, показываем только в блоке «Ожидают вашего
+  // решения» — из обычных блоков раздела исключаем (без дублей).
+  const pendingKey = new Set(pending.map((a) => `${a.object_kind}:${a.object_id}`))
+  const shownEquipment = equipment.filter((e) => !pendingKey.has(`equipment:${e.id}`))
+  const shownSims = simCards.filter((s) => !pendingKey.has(`sim:${s.id}`))
+  const shownPasses = passes.filter((p) => !pendingKey.has(`pass:${p.id}`))
+  const shownTransport = transport.filter((t) => !pendingKey.has(`transport:${t.id}`))
+  const shownTools = tools.filter((t) => !pendingKey.has(`tool:${t.id}`))
   const displayName = employee?.full_name || user.email
 
   const onAvatarSelected = async (e) => {
@@ -230,13 +240,15 @@ export function ProfilePage() {
             {pending.map((a) => (
               <div key={a.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
-                  <LeadIconCircle name="tag" />
+                  <LeadIconCircle name={KIND_ICON[a.object_kind] || 'tag'} />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {a.object_label || a.object_kind_display}
                       {a.object_kind === 'tool' && a.return_quantity ? ` · ${a.return_quantity} шт.` : ''}
                     </div>
-                    <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>{a.object_kind_display}</div>
+                    {a.object_number ? (
+                      <div style={{ font: '500 11.5px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{a.object_number}</div>
+                    ) : null}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
@@ -317,10 +329,10 @@ export function ProfilePage() {
         {employee ? (
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданное оборудование</div>
-            {equipment.length === 0 ? (
+            {shownEquipment.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено оборудования.</div>
             ) : (
-              equipment.map((eq) => (
+              shownEquipment.map((eq) => (
                 <div key={eq.id} style={P_ROW}>
                   <LeadIconCircle name="tag" />
                   <div style={{ minWidth: 0 }}>
@@ -336,10 +348,10 @@ export function ProfilePage() {
         {employee ? (
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданный транспорт</div>
-            {transport.length === 0 ? (
+            {shownTransport.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплён транспорт.</div>
             ) : (
-              transport.map((t) => (
+              shownTransport.map((t) => (
                 <div key={t.id} style={{ background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8, padding: '11px 13px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <LeadIconCircle name="car" />
@@ -360,10 +372,10 @@ export function ProfilePage() {
         {employee ? (
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданный инструмент</div>
-            {tools.length === 0 ? (
+            {shownTools.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено инструментов.</div>
             ) : (
-              tools.map((t) => (
+              shownTools.map((t) => (
                 <div key={t.id} style={P_ROW}>
                   <LeadIconCircle name="wrench" />
                   <div style={{ minWidth: 0 }}>
@@ -379,10 +391,10 @@ export function ProfilePage() {
         {employee ? (
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданные SIM</div>
-            {simCards.length === 0 ? (
+            {shownSims.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено SIM-карт.</div>
             ) : (
-              simCards.map((sim) => (
+              shownSims.map((sim) => (
                 <div key={sim.id} style={P_ROW}>
                   <LeadIconCircle name="radio-tower" />
                   <SimCardInfo sim={sim} />
@@ -395,10 +407,10 @@ export function ProfilePage() {
         {employee ? (
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданные средства доступа</div>
-            {passes.length === 0 ? (
+            {shownPasses.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено средств доступа.</div>
             ) : (
-              passes.map((pass) => (
+              shownPasses.map((pass) => (
                 <div key={pass.id} style={P_ROW}>
                   <LeadIconCircle name="key-square" />
                   <PassInfo pass={pass} />
