@@ -184,6 +184,7 @@ class BackupSettingsSerializer(serializers.ModelSerializer):
         fields = [
             "auto_backup_enabled",
             "auto_backup_time",
+            "auto_backup_timezone",
             "auto_backup_retention",
             "backup_destination",
         ]
@@ -191,6 +192,18 @@ class BackupSettingsSerializer(serializers.ModelSerializer):
     def validate_auto_backup_retention(self, value):
         if value < 1:
             raise serializers.ValidationError("Глубина хранения должна быть не меньше 1.")
+        return value
+
+    def validate_auto_backup_timezone(self, value):
+        # Принимаем только валидную IANA-зону — иначе cron не сможет её применить.
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        if not value:
+            return "UTC"
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError):
+            raise serializers.ValidationError("Неизвестный часовой пояс.")
         return value
 
     def validate_backup_destination(self, value):

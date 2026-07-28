@@ -2,6 +2,7 @@
 (БД + файлы, опц. шифрование) → выгрузить в назначения (своё хранилище и/или
 резервный S3) → зафиксировать запись со статусом по каждому назначению."""
 import os
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
 from django.utils import timezone
@@ -76,18 +77,32 @@ def backup_fully_failed(record: BackupRecord) -> bool:
     return not record.destinations.filter(ok=True).exists()
 
 
+def _company_tz(company) -> ZoneInfo:
+    """Часовой пояс расписания автокопий. На случай удалённой из системы зоны
+    (tzdata) откатываемся к UTC, чтобы cron не падал."""
+    try:
+        return ZoneInfo(company.auto_backup_timezone or "UTC")
+    except (ZoneInfoNotFoundError, ValueError):
+        return ZoneInfo("UTC")
+
+
 def run_scheduled_backup_if_due() -> BackupRecord | None:
     """Вызывается каждый тик cron (расписание + глубина хранения).
-    Не более одной авто-копии в календарные сутки, начиная с заданного часа."""
+    Не более одной авто-копии в календарные сутки, начиная с заданного часа.
+
+    Час и «календарные сутки» считаются в часовом поясе компании
+    (auto_backup_timezone), а не в UTC — чтобы админ задавал время в своей зоне.
+    ZoneInfo учитывает переход на летнее/зимнее время на каждом тике."""
     from company.models import Company
 
     company = Company.load()
     if not company.auto_backup_enabled:
         return None
 
-    now = timezone.localtime()
+    tz = _company_tz(company)
+    now = timezone.now().astimezone(tz)
     last_auto = BackupRecord.objects.filter(backup_type=BackupRecord.BackupType.AUTO).order_by("-created_at").first()
-    if last_auto and timezone.localtime(last_auto.created_at).date() == now.date():
+    if last_auto and last_auto.created_at.astimezone(tz).date() == now.date():
         return None
     if now.time() < company.auto_backup_time:
         return None
