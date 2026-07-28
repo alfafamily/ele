@@ -9,6 +9,30 @@ function formatDate(iso) {
   return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+// B32. Строки статуса акцепта под движением закрепления. tone задаёт негромкую
+// иконку: accepted — зелёная галочка, rejected — красный крестик, pending —
+// нейтральные часы, absentia — без иконки.
+const ACCEPTANCE_TONES = {
+  accepted: { icon: 'circle-check', color: 'var(--color-success)' },
+  rejected: { icon: 'circle-x', color: 'var(--color-error)' },
+  pending: { icon: 'clock', color: 'var(--color-text-placeholder)' },
+}
+
+function AcceptanceLines({ items }) {
+  if (!items?.length) return null
+  return items.map((a, j) => {
+    // Обратная совместимость: старый формат — просто строка.
+    const text = typeof a === 'string' ? a : a.text
+    const t = typeof a === 'string' ? null : ACCEPTANCE_TONES[a.tone]
+    return (
+      <div key={j} className="ele-history__acceptance">
+        {t ? <Icon name={t.icon} size={14} strokeWidth={2} style={{ color: t.color, flex: 'none', opacity: 0.85 }} /> : null}
+        <span>{text}</span>
+      </div>
+    )
+  })
+}
+
 // Значение изменения «было → стало». Секретные реквизиты (Номер/ключ у лицензий)
 // по умолчанию маскируются, раскрываются кнопкой-«глаз».
 function HistoryValue({ row }) {
@@ -76,11 +100,7 @@ function HistoryEventRow({ row }) {
         ) : null}
         {row.comment ? <div className="ele-history__comment">Комментарий: {row.comment}</div> : null}
         {/* B32: статус акцепта под движением закрепления (создание / раздача инструмента). */}
-        {row.acceptance?.length
-          ? row.acceptance.map((t, j) => (
-              <div key={j} className="ele-history__acceptance">{t}</div>
-            ))
-          : null}
+        <AcceptanceLines items={row.acceptance} />
       </div>
     </div>
   )
@@ -186,11 +206,7 @@ export function HistoryList({ path, reloadKey }) {
                           <HistoryValue row={h} />
                           {h.comment ? <div className="ele-history__comment">Комментарий: {h.comment}</div> : null}
                           {/* B32: статус акцепта, подшитый к движению закрепления. */}
-                          {h.acceptance?.length
-                            ? h.acceptance.map((t, j) => (
-                                <div key={j} className="ele-history__acceptance">{t}</div>
-                              ))
-                            : null}
+                          <AcceptanceLines items={h.acceptance} />
                         </div>
                       </div>
                     </div>

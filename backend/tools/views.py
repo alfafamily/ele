@@ -224,19 +224,23 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if storage is not None:
             self._dec_alloc(tool.allocations.get(place=storage), qty)
         self._inc_alloc(tool, qty, employee=employee, place=target_place)
-        self._record_movement(
+        mv = self._record_movement(
             tool, ToolMovement.Kind.ASSIGN, qty, request.user, comment,
             employee=employee, place=target_place, storage_place=storage,
         )
         # B32: раздача за сотрудником — эпизод акцепта (каждый ASSIGN отдельно;
-        # прежние эпизоды не закрываем). Рабочее место — без акцепта.
+        # прежние эпизоды не закрываем). ASSIGN-движение связываем с эпизодом,
+        # чтобы парный возврат при отказе показывался одной записью. Рабочее
+        # место — без акцепта.
         if employee is not None:
             from core.assignments import create_assignment
 
-            create_assignment(
+            a = create_assignment(
                 tool, employee, request.user, return_place=storage,
                 return_quantity=qty, close_prior=False,
             )
+            mv.assignment = a
+            mv.save(update_fields=["assignment"])
         return Response(ToolSerializer(self.get_object()).data)
 
     @action(detail=True, methods=["post"], url_path="unassign-units", permission_classes=[IsAdminOrAccountant])
@@ -401,13 +405,17 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 return f"Закреплено: {m.quantity} шт. за {target(m)}{store}"
             return f"Откреплено: {m.quantity} шт. от {target(m)}{store}"
 
-        from core.assignments import acceptance_annotator
+        from core.assignments import acceptance_annotator, movement_texts
 
         annot = acceptance_annotator(tool)  # B32: статус акцепта для ASSIGN-строк
         for m in tool.movements.select_related(
-            "created_by", "employee",
+            "created_by", "employee", "assignment",
             "place__room__building", "storage_place__room__building",
         ):
+            # B32: возврат-по-отказу (UNASSIGN, привязан к эпизоду) отдельной
+            # строкой не показываем — факт отказа виден в парной записи ASSIGN.
+            if m.kind == ToolMovement.Kind.UNASSIGN and m.assignment_id:
+                continue
             row = {
                 "date": m.created_at,
                 "author": m.created_by.email if m.created_by_id else None,
@@ -416,7 +424,9 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 "secret": False, "comment": m.comment or None,
             }
             if m.kind == ToolMovement.Kind.ASSIGN and m.employee_id:
-                texts = annot("employee", m.employee_id, m.created_at)
+                # Статус берём из связанного эпизода напрямую (надёжнее, чем по
+                # дате); для старых движений без связи — по ближайшей дате.
+                texts = movement_texts(m.assignment) if m.assignment_id else annot("employee", m.employee_id, m.created_at)
                 if texts:
                     row["acceptance"] = texts
             related_rows.append(row)
