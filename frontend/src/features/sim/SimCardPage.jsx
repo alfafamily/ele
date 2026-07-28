@@ -109,6 +109,7 @@ export function SimCardPage() {
                 circle={<AvatarCircle avatar={sim.employee_avatar} name={sim.employee_name} size={46} status={sim.acceptance_status} overlaySize={18} />}
                 label="За сотрудником"
                 title={<Link to={`/employees/${sim.employee}`} style={{ color: 'var(--color-text-primary)' }}>{sim.employee_name}</Link>}
+                sub={sim.position || '—'}
               />
               <Can perm="canManageEmployees">
                 <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>

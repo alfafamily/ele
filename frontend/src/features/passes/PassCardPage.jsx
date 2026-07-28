@@ -144,6 +144,7 @@ export function PassCardPage() {
                 circle={<AvatarCircle avatar={pass.employee_avatar} name={pass.employee_name} size={46} status={pass.acceptance_status} overlaySize={18} />}
                 label="За сотрудником"
                 title={<Link to={`/employees/${pass.employee}`} style={{ color: 'var(--color-text-primary)' }}>{pass.employee_name}</Link>}
+                sub={pass.position || '—'}
               />
               <Can perm="canManageEmployees">
                 <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>
