@@ -81,7 +81,9 @@ export function AssignmentsPage() {
               aside: (
                 <div>
                   <div className="ele-filter-section__title">Сотрудник</div>
-                  <EmployeeMultiPicker value={draft.employees} onChange={(e) => setDraft((d) => ({ ...d, employees: e }))} />
+                  {/* Высота списка выровнена с блоком статусов слева (5 пунктов):
+                      статус-бокс ≈ 200px, минус поле поиска сотрудников (~48px). */}
+                  <EmployeeMultiPicker value={draft.employees} onChange={(e) => setDraft((d) => ({ ...d, employees: e }))} listMaxHeight={152} />
                 </div>
               ),
             })}
