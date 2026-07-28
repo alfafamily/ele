@@ -65,8 +65,8 @@ class ToolTests(APITestCase):
         storages = {a["place"]: a["quantity"] for a in resp.data["allocations"] if a["kind"] == "storage"}
         self.assertEqual(storages[self.store1.id], 6)
         labels = [r["label"] for r in self.client.get(f"/api/tools/{resp.data['id']}/history/").data]
-        self.assertTrue(any("Приход: +6 шт." in ln for ln in labels))
-        self.assertTrue(any("Закреплено: 4 шт." in ln for ln in labels))
+        self.assertTrue(any("Приход · 6 шт." in ln for ln in labels))
+        self.assertTrue(any("Закрепление за сотрудником · 4 шт." in ln for ln in labels))
 
     def test_create_employee_more_than_quantity_rejected(self):
         resp = self.client.post(
@@ -210,8 +210,8 @@ class ToolTests(APITestCase):
         self._post(tid, "assign-units", employee=self.emp_a.id, from_place=self.store1.id, quantity=2)
         self._post(tid, "write-off", comment="")
         labels = [r["label"] for r in self.client.get(f"/api/tools/{tid}/history/").data]
-        self.assertTrue(any("Приход: +5 шт." in ln for ln in labels))
-        self.assertTrue(any("Закреплено: 2 шт." in ln for ln in labels))
+        self.assertTrue(any("Приход · 5 шт." in ln for ln in labels))
+        self.assertTrue(any("Закрепление за сотрудником · 2 шт." in ln for ln in labels))
         self.assertIn("Списано: 15 шт.", labels)
 
     def test_no_delete(self):

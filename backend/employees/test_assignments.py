@@ -289,8 +289,8 @@ class HistoryAcceptanceTests(AssignmentBaseTests):
         self.assertEqual(tool.allocations.filter(place=self.storage).first().quantity, 5)
         self.client.force_authenticate(self.admin)
         h = self.client.get(f"/api/tools/{tool.id}/history/").json()
-        assigns = [r for r in h if r["label"].startswith("Закреплено:")]
-        unassigns = [r for r in h if r["label"].startswith("Откреплено:")]
+        assigns = [r for r in h if r["label"].startswith("Закрепление за сотрудником")]
+        unassigns = [r for r in h if r["label"].startswith("Открепление")]
         self.assertEqual(len(assigns), 1)
         self.assertEqual(len(unassigns), 0)  # возврат-по-отказу скрыт
         self.assertEqual(assigns[0]["acceptance"][0]["tone"], "rejected")
