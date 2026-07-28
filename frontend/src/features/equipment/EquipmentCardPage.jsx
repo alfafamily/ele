@@ -264,7 +264,7 @@ export function EquipmentCardPage() {
               circle={<AvatarCircle avatar={equipment.employee_avatar} name={equipment.employee_name} size={46} status={equipment.acceptance_status} overlaySize={18} />}
               label="За сотрудником"
               title={<Link to={`/employees/${equipment.employee}`} style={{ color: 'var(--color-text-primary)' }}>{equipment.employee_name}</Link>}
-              sub={equipment.department || '—'}
+              sub={equipment.position || '—'}
             />
           ) : equipment.place_detail ? (
             <>

@@ -27,6 +27,7 @@ class ToolAllocationSerializer(serializers.ModelSerializer):
     employee_name = serializers.SerializerMethodField()
     employee_avatar = serializers.SerializerMethodField()
     department = serializers.SerializerMethodField()
+    position = serializers.SerializerMethodField()
     place_name = serializers.SerializerMethodField()
     place_location = serializers.SerializerMethodField()
     place_employees = serializers.SerializerMethodField()
@@ -35,7 +36,7 @@ class ToolAllocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ToolAllocation
         fields = [
-            "id", "kind", "employee", "employee_name", "employee_avatar", "department",
+            "id", "kind", "employee", "employee_name", "employee_avatar", "department", "position",
             "place", "place_name", "place_location", "place_employees", "quantity",
             "acceptance_status",
         ]
@@ -71,6 +72,9 @@ class ToolAllocationSerializer(serializers.ModelSerializer):
 
     def get_department(self, obj):
         return obj.employee.department if obj.employee_id else None
+
+    def get_position(self, obj):
+        return obj.employee.position if obj.employee_id else None
 
     def get_place_name(self, obj):
         return obj.place.name if obj.place_id else None

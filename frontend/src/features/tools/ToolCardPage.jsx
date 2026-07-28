@@ -224,22 +224,24 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove, onTransfer })
       </div>
       {storages.length || tool.free_unplaced > 0 ? (
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>Свободно по складам</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>Свободно на складах</div>
           {storages.map((a) => (
             <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10 }}>
               <LeadIconCircle name="warehouse" size={46} iconSize={20} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>{a.place_name}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>{a.place_location}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.place_name}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.place_location}</div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 1 }}>{a.quantity} шт.</div>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{a.quantity} шт.</div>
             </div>
           ))}
           {tool.free_unplaced > 0 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10 }}>
               <LeadIconCircle name="blocks" size={46} iconSize={20} />
-              <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>Без склада</div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>{tool.free_unplaced} шт.</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Без склада</div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 1 }}>{tool.free_unplaced} шт.</div>
+              </div>
             </div>
           ) : null}
         </div>
@@ -319,7 +321,7 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ fontSize: 16, fontWeight: 600 }}>Закреплено</div>
+        <div style={{ fontSize: 16, fontWeight: 600 }}>Размещение</div>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
           {tool.allocated} / {tool.quantity}
         </span>
@@ -345,15 +347,18 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
                 <AcceptanceOverlay status={a.acceptance_status} size={18} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {a.quantity} шт. {a.kind === 'workplace' ? 'на рабочем месте' : 'за сотрудником'}
+                </div>
                 {a.kind === 'workplace' ? (
-                  <div style={{ fontSize: 13.5, fontWeight: 600 }}>{a.place_name}</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.place_name}</div>
                 ) : (
-                  <Link className="ele-clamp-2" to={`/employees/${a.employee}`} style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                  <Link to={`/employees/${a.employee}`} style={{ display: 'block', fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {a.employee_name}
                   </Link>
                 )}
-                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
-                  {a.kind === 'workplace' ? a.place_location : a.department || '—'} · {a.quantity} шт.
+                <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {a.kind === 'workplace' ? a.place_location : (a.position || '—')}
                 </div>
               </div>
               {canManage ? (
@@ -363,7 +368,7 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
               ) : null}
               </div>
               {a.kind === 'workplace' && a.place_employees?.length ? (
-                <div style={{ paddingLeft: 46, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>Сотрудники рабочего места</div>
                   {a.place_employees.map((e) => (
                     <Link key={e.id} to={`/employees/${e.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-primary)' }}>

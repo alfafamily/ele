@@ -261,7 +261,7 @@ export function TransportCardPage() {
                 circle={<AvatarCircle avatar={transport.employee_avatar} name={transport.employee_name} size={46} status={transport.acceptance_status} overlaySize={18} />}
                 label="За сотрудником"
                 title={<Link to={`/employees/${transport.employee}`} style={{ color: 'var(--color-text-primary)' }}>{transport.employee_name}</Link>}
-                sub={transport.department || '—'}
+                sub={transport.position || '—'}
               />
             ) : (
               <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Свободный</div>
