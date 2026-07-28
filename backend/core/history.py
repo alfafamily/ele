@@ -26,6 +26,12 @@ CREATION_WINDOW = timedelta(seconds=10)
 # Значения, которые не показываем в перечне полей записи «Объект создан».
 _EMPTY_CREATED_VALUES = {None, "", "—", "Нет"}
 
+# B32. Служебная причина для записи истории, которую откат объекта пишет при
+# отказе сотрудника: сама запись в истории не показывается (факт отказа виден в
+# строке статуса записи закрепления), но остаётся в БД, чтобы не рвать цепочку
+# diff simple-history для последующих закреплений того же объекта.
+REJECT_ROLLBACK_REASON = "__b32_reject_rollback__"
+
 
 def _fmt_text(value):
     return "—" if value in (None, "") else str(value)
@@ -115,6 +121,11 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
         author = record.history_user.email if record.history_user_id else None
         date = record.history_date
         reason = (getattr(record, "history_change_reason", None) or "").strip()
+
+        # B32: служебный откат при отказе — в истории не показываем (но запись
+        # остаётся в БД и участвует в diff-цепочке для следующих записей).
+        if reason == REJECT_ROLLBACK_REASON:
+            continue
 
         if record.history_type == "+":
             lines = _created_lines(record, field_specs)
