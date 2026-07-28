@@ -381,29 +381,32 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         def place_label(p):
             return f"«{p.name}» ({p.room.building.name} — {p.room.name})"
 
-        def target(m):
+        def counterpart(m):
             # Контрагент движения: сотрудник (мобильно) или рабочее место (стац.).
             if m.employee_id:
                 return f"«{m.employee}»"
             if m.place_id:
-                return f"рабочее место {place_label(m.place)}"
+                return place_label(m.place)
             return "—"
 
-        def mv_label(m):
-            if m.kind == ToolMovement.Kind.ADD:
-                where = f" на {place_label(m.place)}" if m.place_id else ""
-                return f"Приход: +{m.quantity} шт.{where}"
-            if m.kind == ToolMovement.Kind.WRITE_OFF:
-                where = f" со склада {place_label(m.place)}" if m.place_id else ""
-                return f"Списание: −{m.quantity} шт.{where}"
-            if m.kind == ToolMovement.Kind.TRANSFER:
-                src = place_label(m.storage_place) if m.storage_place_id else "—"
-                dst = place_label(m.place) if m.place_id else "—"
-                return f"Перемещено: {m.quantity} шт. со склада {src} на склад {dst}"
-            store = f" (склад {place_label(m.storage_place)})" if m.storage_place_id else ""
-            if m.kind == ToolMovement.Kind.ASSIGN:
-                return f"Закреплено: {m.quantity} шт. за {target(m)}{store}"
-            return f"Откреплено: {m.quantity} шт. от {target(m)}{store}"
+        # Формат как у поэкземплярных объектов: заголовок (со штуками) первой
+        # строкой + «было → стало» под ним. Возвращает (title, old, new).
+        def mv_parts(m):
+            qty = f"{m.quantity} шт."
+            store = place_label(m.storage_place) if m.storage_place_id else "Без склада"
+            K = ToolMovement.Kind
+            if m.kind == K.ADD:
+                return f"Приход · {qty}", "—", (place_label(m.place) if m.place_id else "Без склада")
+            if m.kind == K.WRITE_OFF:
+                return f"Списание · {qty}", (place_label(m.place) if m.place_id else "Без склада"), "—"
+            if m.kind == K.TRANSFER:
+                src = place_label(m.storage_place) if m.storage_place_id else "Без склада"
+                dst = place_label(m.place) if m.place_id else "Без склада"
+                return f"Перемещение · {qty}", src, dst
+            if m.kind == K.ASSIGN:
+                title = "Закрепление за рабочим местом" if m.place_id else "Закрепление за сотрудником"
+                return f"{title} · {qty}", store, counterpart(m)
+            return f"Открепление · {qty}", counterpart(m), store
 
         from core.assignments import acceptance_annotator, movement_texts
 
@@ -416,11 +419,12 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             # строкой не показываем — факт отказа виден в парной записи ASSIGN.
             if m.kind == ToolMovement.Kind.UNASSIGN and m.assignment_id:
                 continue
+            title, old, new = mv_parts(m)
             row = {
                 "date": m.created_at,
                 "author": m.created_by.email if m.created_by_id else None,
-                "kind": "movement", "category": "movement",
-                "label": mv_label(m), "old": None, "new": None,
+                "kind": "changed", "category": "movement",
+                "title": title, "label": title, "old": old, "new": new,
                 "secret": False, "comment": m.comment or None,
             }
             if m.kind == ToolMovement.Kind.ASSIGN and m.employee_id:
