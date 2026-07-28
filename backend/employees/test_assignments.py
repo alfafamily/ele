@@ -96,6 +96,7 @@ class DecisionTests(AssignmentBaseTests):
         eq = self._equip(place=self.storage)
         self._assign(eq, self.emp)
         a = open_assignment(eq)
+        hist_before = eq.history.count()
         self.client.force_authenticate(self.user)
         self.client.post(f"/api/assignments/{a.id}/reject/")
         a.refresh_from_db()
@@ -104,6 +105,25 @@ class DecisionTests(AssignmentBaseTests):
         self.assertIsNotNone(a.closed_at)
         self.assertIsNone(eq.employee_id)
         self.assertEqual(eq.place_id, self.storage.id)  # вернулось на прежний склад
+        # Откат объекта не плодит записей истории (skip_history_when_saving).
+        self.assertEqual(eq.history.count(), hist_before)
+
+    def test_reject_history_has_no_rollback_rows(self):
+        eq = self._equip(place=self.storage)
+        self._assign(eq, self.emp)
+        a = open_assignment(eq)
+        self.client.force_authenticate(self.user)
+        self.client.post(f"/api/assignments/{a.id}/reject/")
+        self.client.force_authenticate(self.admin)
+        h = self.client.get(f"/api/equipment/{eq.id}/history/").json()
+        # Ровно одна запись-движение закрепления (assign), без строк отката
+        # («Не закреплено» как new и повторного «Размещение»).
+        emp_moves = [r for r in h if r["category"] == "movement" and r.get("label") == "Закреплённый сотрудник"]
+        self.assertEqual(len(emp_moves), 1)
+        self.assertEqual(emp_moves[0]["new"], str(self.emp))
+        self.assertEqual(emp_moves[0]["acceptance"],
+                         [f"Сотрудник отклонил закрепление, {eq.equipment_type.name} возвращено на "
+                          f"Место хранения «{self.storage.name}» ({self.b.name} — {self.r.name})"])
 
     def test_only_owner_decides(self):
         other = User.objects.create_user(email="o@e.ru", password="Str0ng!Pass1", role=User.Role.ADMIN)
@@ -149,7 +169,7 @@ class TransportTests(AssignmentBaseTests):
 
 
 class HistoryAcceptanceTests(AssignmentBaseTests):
-    def test_created_assigned_equipment_shows_acceptance_in_created_row(self):
+    def test_created_assigned_equipment_splits_created_and_movement(self):
         emp = _emp()
         self.client.force_authenticate(self.admin)
         resp = self.client.post("/api/equipment/", {
@@ -158,8 +178,15 @@ class HistoryAcceptanceTests(AssignmentBaseTests):
         self.assertEqual(resp.status_code, 201, resp.data)
         eq_id = resp.data["id"]
         h = self.client.get(f"/api/equipment/{eq_id}/history/").json()
+        # «Объект создан» — запись типа изменение, без сотрудника и без акцепта.
         created = next(r for r in h if r["kind"] == "created")
-        self.assertEqual(created.get("acceptance"), ["Заочно закреплено за сотрудником"])
+        self.assertEqual(created["category"], "change")
+        self.assertIsNone(created.get("acceptance"))
+        self.assertNotIn("Закреплённый сотрудник", [ln["label"] for ln in created.get("lines", [])])
+        # Отдельная запись-движение закрепления со статусом акцепта.
+        mv = next(r for r in h if r["category"] == "movement" and r.get("label") == "Закреплённый сотрудник")
+        self.assertEqual(mv["new"], str(emp))
+        self.assertEqual(mv.get("acceptance"), ["Заочно закреплено за сотрудником"])
 
     def test_tool_movement_shows_acceptance(self):
         emp = _emp()

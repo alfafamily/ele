@@ -91,18 +91,33 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
                 lines = lines + [
                     ln for ln in created_extra_lines if ln["value"] not in _EMPTY_CREATED_VALUES
                 ]
-            created_row = {
-                "date": date, "author": author, "kind": "created", "category": "movement",
+            # «Объект создан» — запись типа ИЗМЕНЕНИЕ: только заполненные реквизиты,
+            # без размещения (сотрудник/место). Размещение, выбранное при создании,
+            # выносим отдельными записями-движениями ниже (как и последующие
+            # закрепления), со статусом акцепта для сотрудника (B32).
+            rows.append({
+                "date": date, "author": author, "kind": "created", "category": "change",
                 "label": "Объект создан", "old": None, "new": None, "secret": False,
                 "comment": reason or None, "lines": lines,
-            }
-            # B32: объект создан сразу за сотрудником — подшить статус акцепта.
-            emp_id = getattr(record, "employee_id", None)
-            if acceptance_for is not None and emp_id:
-                texts = acceptance_for("employee", emp_id, date)
-                if texts:
-                    created_row["acceptance"] = texts
-            rows.append(created_row)
+            })
+            for field in movement_fields:
+                raw = _raw_field(record, field)
+                if not raw:
+                    continue
+                spec = field_specs.get(field)
+                if not spec:
+                    continue
+                fmt = spec.get("format", _fmt_text)
+                mv = {
+                    "date": date, "author": author, "kind": "changed", "category": "movement",
+                    "label": spec["label"], "old": fmt(None), "new": fmt(raw),
+                    "secret": False, "comment": None,
+                }
+                if acceptance_for is not None and field == "employee":
+                    texts = acceptance_for("employee", raw, date)
+                    if texts:
+                        mv["acceptance"] = texts
+                rows.append(mv)
             continue
 
         older = history[i + 1] if i + 1 < len(history) else None
