@@ -133,9 +133,11 @@ export function ToolCardPage() {
             )}
           </Card>
 
-          <Card>
-            <HistoryList path={getToolHistoryPath(tool.id)} reloadKey={historyKey} />
-          </Card>
+          {perms.isStaff ? (
+            <Card>
+              <HistoryList path={getToolHistoryPath(tool.id)} reloadKey={historyKey} />
+            </Card>
+          ) : null}
         </div>
 
         {!tool.is_written_off ? (

@@ -22,14 +22,16 @@ function AcceptanceLines({ items }) {
     const tone = typeof a === 'string' ? null : a.tone
     const snapshot = typeof a === 'string' ? null : a.snapshot
     return (
-      <div key={j}>
-        <div className="ele-history__acceptance">
+      // Серая черта слева охватывает и статус, и плашку слепка — единый контейнер
+      // с border-left (колонкой), внутри строка «иконка + текст» и плашка ниже.
+      <div key={j} className="ele-history__acceptance" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
           <AcceptanceIcon status={tone} size={14} style={{ opacity: 0.9 }} />
           <span>{text}</span>
         </div>
         {/* Слепок устройства — отдельной строкой под статусом (плашка). */}
         {snapshot ? (
-          <div className="ele-history__acceptance" style={{ borderLeft: 'none', marginTop: 4, paddingLeft: 20 }}>
+          <div style={{ paddingLeft: 20 }}>
             <DeviceSnapshotChip snapshot={snapshot} />
           </div>
         ) : null}
@@ -130,17 +132,19 @@ const MAINTENANCE_FILTER = { value: 'maintenance', label: 'Выполненны�
 // увеличивает после действий: привязка/открепление/списание/утилизация). Пока
 // история раскрыта, её изменение перезапрашивает данные — чтобы новое движение
 // появлялось сразу, без перезагрузки страницы.
-export function HistoryList({ path, reloadKey }) {
+// maintenanceOnly — для ролей ТО (Автомеханик / Механик по оборудованию):
+// показываем ТОЛЬКО выполненные ТО, без остальных вкладок и записей.
+export function HistoryList({ path, reloadKey, maintenanceOnly = false }) {
   const [items, setItems] = useState(null)
   const [open, setOpen] = useState(false)
-  const [filter, setFilter] = useState('all')
+  const [filter, setFilter] = useState(maintenanceOnly ? 'maintenance' : 'all')
 
   // Смена объекта — сбрасываем состояние.
   useEffect(() => {
     setItems(null)
     setOpen(false)
-    setFilter('all')
-  }, [path])
+    setFilter(maintenanceOnly ? 'maintenance' : 'all')
+  }, [path, maintenanceOnly])
 
   // Грузим при раскрытии и перезапрашиваем при смене reloadKey (старые строки при
   // этом остаются на экране до прихода новых — без «мигания» скелетоном).
@@ -190,9 +194,11 @@ export function HistoryList({ path, reloadKey }) {
           <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginTop: 12 }}>Изменений пока нет.</div>
         ) : (
           <>
-            <div className="ele-history__filter">
-              <TabBar options={filters} value={filter} onChange={setFilter} size="control" variant="filter" />
-            </div>
+            {maintenanceOnly ? null : (
+              <div className="ele-history__filter">
+                <TabBar options={filters} value={filter} onChange={setFilter} size="control" variant="filter" />
+              </div>
+            )}
             {filtered.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginTop: 12 }}>
                 {filter === 'movement'

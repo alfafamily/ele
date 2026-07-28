@@ -226,9 +226,11 @@ export function LicenseCardPage() {
         </Card>
         ) : null}
 
-        <Card className="ele-obj-layout__history">
-          <HistoryList path={getLicenseHistoryPath(license.id)} reloadKey={historyKey} />
-        </Card>
+        {perms.isStaff ? (
+          <Card className="ele-obj-layout__history">
+            <HistoryList path={getLicenseHistoryPath(license.id)} reloadKey={historyKey} />
+          </Card>
+        ) : null}
       </div>
 
       {confirmDetach && license.equipment_detail ? (

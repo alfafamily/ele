@@ -94,6 +94,19 @@ export function computePermissions(user) {
   }
 }
 
+// B32. Доступ к «Истории изменений» на карточке объекта:
+//  'full' — Администратор / Ответственный за учёт (вся история);
+//  'maintenance' — только выполненные ТО (Механик по оборудованию на
+//  Оборудовании, Автомеханик на Транспорте);
+//  'none' — остальным (Наблюдатель / Сотрудник) историю не показываем.
+// section: 'equipment' | 'transport' | 'other'.
+export function historyMode(perms, section) {
+  if (perms.isStaff) return 'full'
+  if (section === 'equipment' && perms.isMaintenance) return 'maintenance'
+  if (section === 'transport' && perms.isAutomechanic) return 'maintenance'
+  return 'none'
+}
+
 // B23. Может ли пользователь проводить ТО оборудования данного типа — с учётом
 // права проведения ТО и области выбранных типов (все / некоторые). typeId — id
 // типа оборудования (equipment.equipment_type).

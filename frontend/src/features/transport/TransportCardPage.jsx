@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
-import { canMaintainTransportType } from '../../shared/permissions.js'
+import { canMaintainTransportType, historyMode } from '../../shared/permissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
 import { AvatarCircle } from '../../shared/AvatarCircle.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
@@ -34,6 +34,7 @@ export function TransportCardPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const perms = usePermissions()
+  const hMode = historyMode(perms, 'transport')
   const [transport, setTransport] = useState(null)
   const [regulations, setRegulations] = useState(null)
   const [loadError, setLoadError] = useState(false)
@@ -203,9 +204,11 @@ export function TransportCardPage() {
             </Card>
           ) : null}
 
-          <Card>
-            <HistoryList path={getTransportHistoryPath(transport.id)} reloadKey={historyKey} />
-          </Card>
+          {hMode !== 'none' ? (
+            <Card>
+              <HistoryList path={getTransportHistoryPath(transport.id)} reloadKey={historyKey} maintenanceOnly={hMode === 'maintenance'} />
+            </Card>
+          ) : null}
         </div>
 
         {!transport.is_written_off ? (
