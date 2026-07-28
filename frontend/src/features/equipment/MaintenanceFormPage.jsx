@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Banner, BackButton, Button, Card, DatePicker, FormActions, Icon, Input, SearchInput, Select, Spinner } from '../../shared/ui'
+import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { getEquipment, getEquipmentRegulations, performMaintenance } from './equipmentApi.js'
 import { regulationPeriodLabel } from '../types/TypesEditorPage.jsx'
 import { planStatusIcon } from './statusLabels.js'
@@ -165,9 +166,7 @@ export function MaintenanceFormPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {/* Внеплановое ТО — всегда первым. */}
               <button type="button" onClick={() => choose('unplanned')} style={pickerRowStyle}>
-                <span style={{ flex: 'none', color: 'var(--color-text-muted)' }}>
-                  <Icon name="wrench" size={17} strokeWidth={2} />
-                </span>
+                <LeadIconCircle name="wrench" />
                 <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>Внеплановое ТО</div>
                   <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>Без плановой даты, вне регламента</div>
@@ -178,8 +177,8 @@ export function MaintenanceFormPage() {
                 const ic = r.on_demand ? { icon: 'wrench', color: 'var(--color-text-muted)', title: 'По потребности' } : planStatusIcon(r.status)
                 return (
                   <button key={r.id} type="button" onClick={() => choose(r)} style={pickerRowStyle}>
-                    <span style={{ flex: 'none', color: ic.color }} title={ic.title}>
-                      <Icon name={ic.icon} size={17} strokeWidth={2} />
+                    <span title={ic.title} style={{ flex: 'none' }}>
+                      <LeadIconCircle name={ic.icon} color={ic.color} />
                     </span>
                     <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                       <div className="ele-clamp-2" style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</div>

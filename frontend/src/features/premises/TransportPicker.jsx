@@ -64,9 +64,6 @@ export function TransportPicker({ onSelect, excludeIds, purpose }) {
                 background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
               }}
             >
-              <span style={{ flex: 'none', width: 30, height: 30, borderRadius: 8, background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="car" size={16} />
-              </span>
               <span style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {t.type_and_model}

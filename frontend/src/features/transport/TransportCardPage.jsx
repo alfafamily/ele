@@ -229,9 +229,9 @@ export function TransportCardPage() {
                       {active.map((r) => {
                         const ic = planStatusIcon(r.status)
                         return (
-                          <div key={r.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                            <span style={{ flex: 'none', marginTop: 1, color: ic.color }} title={ic.title}>
-                              <Icon name={ic.icon} size={17} strokeWidth={2} />
+                          <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span title={ic.title} style={{ flex: 'none' }}>
+                              <LeadIconCircle name={ic.icon} color={ic.color} />
                             </span>
                             <div style={{ minWidth: 0 }}>
                               <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600 }}>{r.name}</div>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { EquipmentPicker } from '../../shared/EquipmentPicker.jsx'
+import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { Banner, Button, Icon, Modal } from '../../shared/ui'
 import { attachSimCard, attachSimToEquipment } from '../employees/employeesApi.js'
@@ -66,7 +67,7 @@ export function SimAttachModal({ sim, initialMode = 'employee', onClose, onDone 
           <SelectedEmployee employee={selected} onClear={() => setSelected(null)} />
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
-            <Icon name="tag" size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+            <LeadIconCircle name="tag" size={30} iconSize={15} />
             <span style={{ minWidth: 0, flex: 1 }}>
               <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.type_and_model}</span>
               <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', fontFamily: 'var(--font-mono)' }}>{selected.inventory_number}</span>

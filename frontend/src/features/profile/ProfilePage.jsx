@@ -283,7 +283,7 @@ export function ProfilePage() {
                   </div>
                 </div>
                 {wp.equipment?.length || wp.tools?.length ? (
-                  <div style={{ marginTop: 8, paddingLeft: 28, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>На этом рабочем месте</div>
                     {(wp.equipment || []).map((eq) => (
                       <div key={`e${eq.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>

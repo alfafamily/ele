@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { apiGet } from '../../shared/api/client'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { EquipmentPicker } from '../../shared/EquipmentPicker.jsx'
+import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
@@ -225,7 +226,7 @@ export function SimFormPage() {
                   ) : placementMode === 'equipment' ? (
                     placementEquipment ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
-                        <Icon name="tag" size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                        <LeadIconCircle name="tag" size={30} iconSize={15} />
                         <span style={{ minWidth: 0, flex: 1 }}>
                           <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{placementEquipment.type_and_model}</span>
                           <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', fontFamily: 'var(--font-mono)' }}>{placementEquipment.inventory_number}</span>
