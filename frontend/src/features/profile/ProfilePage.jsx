@@ -239,8 +239,20 @@ export function ProfilePage() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
-                  <Button variant="secondary" onClick={() => decide(a.id, false)} disabled={decidingId === a.id}>Отказаться</Button>
-                  <Button onClick={() => decide(a.id, true)} disabled={decidingId === a.id}>Принять</Button>
+                  <button
+                    type="button" title="Отказаться" aria-label="Отказаться"
+                    onClick={() => decide(a.id, false)} disabled={decidingId === a.id}
+                    style={{ width: 40, height: 40, flex: 'none', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Icon name="x" size={18} strokeWidth={2.2} />
+                  </button>
+                  <button
+                    type="button" title="Принять" aria-label="Принять"
+                    onClick={() => decide(a.id, true)} disabled={decidingId === a.id}
+                    style={{ width: 40, height: 40, flex: 'none', borderRadius: 10, border: 'none', background: 'var(--color-text-primary)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Icon name="check" size={18} strokeWidth={2.2} />
+                  </button>
                 </div>
               </div>
             ))}

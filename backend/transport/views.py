@@ -754,6 +754,11 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             }],
             created_extra_lines=created_extra,
             acceptance_for=acceptance_annotator(obj),
+            placement_group={
+                "fields": ["employee"],
+                "titles": {"employee": "Закрепление за сотрудником"},
+                "empty_title": "Открепление",
+            },
         )
         rows += related_rows
 
