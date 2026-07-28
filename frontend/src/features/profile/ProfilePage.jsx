@@ -14,7 +14,7 @@ import { ChangeEmailModal } from './ChangeEmailModal.jsx'
 import { ChangePasswordModal } from './ChangePasswordModal.jsx'
 import { acceptAssignment, getMyEquipment, getMyPasses, getMyPendingAssignments, getMySimCards, getMyTransport, getMyWorkPlacement, rejectAssignment } from './profileApi.js'
 
-const KIND_ICON = { equipment: 'tag', sim: 'radio-tower', pass: 'key-square', tool: 'wrench', transport: 'car' }
+const KIND_ICON = { equipment: 'tag', sim: 'radio-tower', pass: 'key-square', tool: 'hammer', transport: 'car' }
 
 const avatarMenuItem = {
   border: 'none',
@@ -236,7 +236,7 @@ export function ProfilePage() {
               За вами закрепили имущество — подтвердите или отклоните получение
             </div>
             {pending.map((a) => (
-              <div key={a.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div key={a.id} style={{ padding: '11px 13px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
                   <LeadIconCircle name={KIND_ICON[a.object_kind] || 'tag'} />
                   <div style={{ minWidth: 0 }}>
@@ -274,7 +274,7 @@ export function ProfilePage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Мои рабочие места</div>
             {workplaces.map((wp) => (
-              <div key={wp.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+              <div key={wp.id} style={{ padding: '11px 13px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <LeadIconCircle name="briefcase" />
                   <div style={{ minWidth: 0 }}>
@@ -295,7 +295,7 @@ export function ProfilePage() {
                     ))}
                     {(wp.tools || []).map((t) => (
                       <div key={`t${t.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                        <Icon name="wrench" size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                        <Icon name="hammer" size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
                         <span>{t.name} · {t.quantity} шт.</span>
                       </div>
                     ))}
@@ -310,7 +310,7 @@ export function ProfilePage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Мои парковочные места</div>
             {parkingSpots.map((sp) => (
-              <div key={sp.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+              <div key={sp.id} style={{ padding: '11px 13px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                   <Icon name="square-parking" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none', marginTop: 1 }} />
                   <div style={{ minWidth: 0 }}>
@@ -350,7 +350,7 @@ export function ProfilePage() {
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплён транспорт.</div>
             ) : (
               shownTransport.map((t) => (
-                <div key={t.id} style={{ background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8, padding: '11px 13px' }}>
+                <div key={t.id} style={{ background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8, padding: '11px 13px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <LeadIconCircle name="car" />
                     <div style={{ minWidth: 0 }}>
@@ -375,7 +375,7 @@ export function ProfilePage() {
             ) : (
               shownTools.map((t) => (
                 <div key={t.id} style={P_ROW}>
-                  <LeadIconCircle name="wrench" />
+                  <LeadIconCircle name="hammer" />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2 }}>{t.quantity} шт.</div>
@@ -444,7 +444,7 @@ export function ProfilePage() {
 }
 
 // Строка выданного объекта с ведущей иконкой (как чемоданчик у рабочих мест).
-const P_ROW = { display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }
+const P_ROW = { display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8 }
 
 function Field({ label, value }) {
   return (

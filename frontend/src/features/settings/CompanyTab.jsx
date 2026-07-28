@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useCompany, useRefreshCompany } from '../../app/CompanyContext.jsx'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
-import { Banner, Card, Icon, Spinner } from '../../shared/ui'
+import { Banner, Card, Checkbox, Icon, Spinner } from '../../shared/ui'
 import { fieldError, InlineField } from './inlineFields.jsx'
 import { deleteCompanyLogo, getCompanySettings, updateCompanySettings, uploadCompanyLogo } from './settingsApi.js'
 
@@ -25,6 +25,8 @@ function readImageSize(file) {
 
 const TILE = 96
 const menuItem = { border: 'none', background: 'none', textAlign: 'left', padding: '10px 12px', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--color-text-primary)', whiteSpace: 'nowrap' }
+// Заголовок блока — как в «Системные».
+const sectionTitle = { fontSize: 15, fontWeight: 600, marginBottom: 14 }
 
 // Настройки → Компания — реквизиты организации: логотип, название, ИНН.
 // Технические настройки — в отдельной вкладке «Системные» (SystemTab).
@@ -37,12 +39,16 @@ export function CompanyTab() {
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoMenu, setLogoMenu] = useState(false)
   const [logoError, setLogoError] = useState(null)
+  // B32: сбор слепков устройств при акцепте — переехал сюда из «Системные».
+  const [deviceSnapshot, setDeviceSnapshot] = useState(false)
+  const [deviceSnapSaving, setDeviceSnapSaving] = useState(false)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
     getCompanySettings().then((c) => {
       setName(c.name || '')
       setInn(c.inn || '')
+      setDeviceSnapshot(c.device_snapshot_enabled === true)
     })
   }, [])
 
@@ -69,6 +75,18 @@ export function CompanyTab() {
       setInn(u.inn || '')
     } catch (err) {
       return fieldError(err)
+    }
+  }
+  const toggleDeviceSnapshot = async (val) => {
+    setDeviceSnapSaving(true)
+    setDeviceSnapshot(val)
+    try {
+      const u = await updateCompanySettings({ device_snapshot_enabled: val })
+      setDeviceSnapshot(u.device_snapshot_enabled === true)
+    } catch {
+      setDeviceSnapshot(!val)
+    } finally {
+      setDeviceSnapSaving(false)
     }
   }
 
@@ -174,13 +192,28 @@ export function CompanyTab() {
         </div>
       ) : null}
 
-      <Card>
+      <Card style={{ marginBottom: 16 }}>
+        <div style={sectionTitle}>Данные компании</div>
         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'center' : 'stretch', gap: 20 }}>
           {logoBlock}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
             <InlineField label="Название компании" value={name} onSave={saveName} />
             <InlineField label="ИНН" value={inn} onSave={saveInn} onClear={() => saveInn('')} />
           </div>
+        </div>
+      </Card>
+
+      {/* B32: сбор слепков устройств при акцепте (переехал из «Системные»). */}
+      <Card>
+        <div style={sectionTitle}>Сбор слепков устройств пользователей</div>
+        <Checkbox
+          label="Сбор слепков устройств при подтверждении/отказе сотрудников при закреплении оборудования"
+          checked={deviceSnapshot}
+          disabled={deviceSnapSaving}
+          onChange={toggleDeviceSnapshot}
+        />
+        <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2, marginLeft: 30 }}>
+          При включении настройки система будет добавлять слепок устройства пользователя в принятие или отказ сотрудника при закреплении за ним имущества. Слепок устанавливается только в том случае, если сотрудник сам подтверждает/отклоняет закрепление за ним оборудования, для этого требуется связанный с сотрудником пользователь. При включении настройки убедитесь что у вас есть разрешение от сотрудника на сбор и обработку ПДн.
         </div>
       </Card>
     </div>

@@ -24,9 +24,9 @@ import { TerminateModal } from './TerminateModal.jsx'
 
 // Стили строк/счётчика/квадратной кнопки в блоках карточки.
 const CNT = { fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }
-const ROW = { display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }
+const ROW = { display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8 }
 const SQ = { width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
-const PEND_ICON = { equipment: 'tag', sim: 'radio-tower', pass: 'key-square', tool: 'wrench', transport: 'car' }
+const PEND_ICON = { equipment: 'tag', sim: 'radio-tower', pass: 'key-square', tool: 'hammer', transport: 'car' }
 
 export function EmployeeCardPage() {
   const { id } = useParams()
@@ -284,7 +284,7 @@ export function EmployeeCardPage() {
               </span>
             </div>
             {employee.workplaces.map((wp) => (
-              <div key={wp.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+              <div key={wp.id} style={{ padding: '11px 13px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <LeadIconCircle name="briefcase" />
                   <div style={{ minWidth: 0 }}>
@@ -305,7 +305,7 @@ export function EmployeeCardPage() {
                     ))}
                     {(wp.tools || []).map((t) => (
                       <Link key={`t${t.id}`} to={`/tools/${t.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-primary)' }}>
-                        <Icon name="wrench" size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                        <Icon name="hammer" size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
                         <span>{t.name} · {t.quantity} шт.</span>
                       </Link>
                     ))}
@@ -378,7 +378,7 @@ export function EmployeeCardPage() {
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплён транспорт.</div>
           ) : null}
           {heldTransport.map((t) => (
-            <div key={t.id} style={{ background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8, padding: '11px 13px' }}>
+            <div key={t.id} style={{ background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8, padding: '11px 13px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <LeadIconCircle name="car" />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -431,7 +431,7 @@ export function EmployeeCardPage() {
           ) : null}
           {heldTools.map((tool) => (
             <div key={tool.id} style={ROW}>
-              <LeadIconCircle name="wrench" />
+              <LeadIconCircle name="hammer" />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Link to={`/tools/${tool.id}`} style={{ display: 'block' }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{tool.name}</div>
@@ -669,7 +669,7 @@ function Field({ label, value }) {
 // Строка парковочного места личного авто сотрудника — со ссылкой «План парковки».
 function ParkingSpotRow({ spot }) {
   return (
-    <div style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
+    <div style={{ padding: '11px 13px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <Icon name="square-parking" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none', marginTop: 1 }} />
         <div style={{ minWidth: 0 }}>

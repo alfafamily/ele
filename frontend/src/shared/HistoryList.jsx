@@ -3,6 +3,7 @@ import { apiGet } from './api/client'
 import { Skeleton, TabBar } from './ui'
 import { Icon } from './ui/Icon/Icon.jsx'
 import { AcceptanceIcon } from './AcceptanceIcon.jsx'
+import { DeviceSnapshotChip } from './DeviceSnapshot.jsx'
 import './HistoryList.css'
 
 function formatDate(iso) {
@@ -19,10 +20,12 @@ function AcceptanceLines({ items }) {
     // Обратная совместимость: старый формат — просто строка.
     const text = typeof a === 'string' ? a : a.text
     const tone = typeof a === 'string' ? null : a.tone
+    const snapshot = typeof a === 'string' ? null : a.snapshot
     return (
-      <div key={j} className="ele-history__acceptance">
+      <div key={j} className="ele-history__acceptance" style={{ flexWrap: 'wrap' }}>
         <AcceptanceIcon status={tone} size={14} style={{ opacity: 0.9 }} />
         <span>{text}</span>
+        {snapshot ? <DeviceSnapshotChip snapshot={snapshot} /> : null}
       </div>
     )
   })

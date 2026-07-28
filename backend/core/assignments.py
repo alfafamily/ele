@@ -94,13 +94,13 @@ def movement_texts(a):
         base = [absentia] if a.was_in_absentia else []
         return base + [{"text": "Ожидание подтверждения от сотрудника", "tone": "pending"}]
     if a.status == S.ACCEPTED:
-        return [{"text": "Сотрудник подтвердил закрепление", "tone": "accepted"}]
+        return [{"text": "Сотрудник подтвердил закрепление", "tone": "accepted", "snapshot": a.device_snapshot or None}]
     if a.status == S.REJECTED:
         label = object_label(a.content_object) if a.content_object is not None else f"объект #{a.object_id}"
         text = f"Сотрудник отклонил закрепление, {label} возвращено на {place_label(a.return_place)}"
         if a.decision_comment:
             text += f". Причина: {a.decision_comment}"
-        return [{"text": text, "tone": "rejected"}]
+        return [{"text": text, "tone": "rejected", "snapshot": a.device_snapshot or None}]
     if a.status == S.CANCELLED:
         return [{"text": "Передача отменена ответственным", "tone": "cancelled"}]
     return []

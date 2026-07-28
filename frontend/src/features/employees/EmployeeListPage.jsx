@@ -8,7 +8,7 @@ import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { nameInitials } from '../../shared/employeeName.js'
-import { Button, EmptyState, Icon, SearchInput, Skeleton, StatusPill, Table, TabBar, TableRow } from '../../shared/ui'
+import { Button, EmptyState, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 
 const CACHE_KEY = 'employee-list'
 
@@ -23,7 +23,6 @@ const DESKTOP_COLUMNS = [
   { key: 'last_name', label: 'ФИО', sortable: true, width: '1fr' },
   { key: 'position', label: 'Должность', width: '190px' },
   { key: 'department', label: 'Отдел', width: '160px' },
-  { key: 'status', label: 'Статус', width: '120px' },
   { key: 'chevron', label: '', width: '30px' },
 ]
 const MOBILE_COLUMNS = [
@@ -158,9 +157,6 @@ export function EmployeeListPage() {
                       <div style={{ color: 'var(--color-text-muted)', fontSize: 12, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {[row.position, row.department].filter(Boolean).join(' · ') || '—'}
                       </div>
-                      <div style={{ marginTop: 6 }}>
-                        <StatusPill variant={row.is_employed ? 'assigned' : 'archived'}>{row.is_employed ? 'Работает' : 'Уволен'}</StatusPill>
-                      </div>
                     </div>
                   </div>
                 ) : (
@@ -171,9 +167,6 @@ export function EmployeeListPage() {
                     </div>
                     <div className="ele-clamp-2">{row.position || '—'}</div>
                     <div className="ele-clamp-2" style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{row.department || '—'}</div>
-                    <div>
-                      <StatusPill variant={row.is_employed ? 'assigned' : 'archived'}>{row.is_employed ? 'Работает' : 'Уволен'}</StatusPill>
-                    </div>
                     <div style={{ textAlign: 'right', color: 'var(--color-border-strong)' }}>
                       <Icon name="chevron-right" size={18} strokeWidth={2} />
                     </div>
