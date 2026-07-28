@@ -8,7 +8,7 @@ export function TransportParkingLine({ parking }) {
   return (
     <div
       style={{
-        marginTop: 8, paddingLeft: 28, fontSize: 12, color: 'var(--color-text-placeholder)',
+        marginTop: 8, paddingLeft: 46, fontSize: 12, color: 'var(--color-text-placeholder)',
         display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
       }}
     >
