@@ -239,15 +239,30 @@ export function ProfilePage() {
               <div key={a.id} style={{ padding: '11px 13px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
                   <LeadIconCircle name={KIND_ICON[a.object_kind] || 'tag'} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {a.object_label || a.object_kind_display}
-                      {a.object_kind === 'tool' && a.return_quantity ? ` · ${a.return_quantity} шт.` : ''}
-                    </div>
-                    {a.object_number ? (
-                      <div style={{ font: '500 11.5px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{a.object_number}</div>
-                    ) : null}
-                  </div>
+                  {(() => {
+                    // Для SIM и пропусков/ключей показываем те же поля, что и в
+                    // списках закреплённого (полные объекты уже загружены), иначе
+                    // номер дублировался бы в двух строках.
+                    if (a.object_kind === 'sim') {
+                      const sim = simCards.find((s) => s.id === a.object_id)
+                      if (sim) return <SimCardInfo sim={sim} />
+                    }
+                    if (a.object_kind === 'pass') {
+                      const pass = passes.find((p) => p.id === a.object_id)
+                      if (pass) return <PassInfo pass={pass} />
+                    }
+                    return (
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {a.object_label || a.object_kind_display}
+                          {a.object_kind === 'tool' && a.return_quantity ? ` · ${a.return_quantity} шт.` : ''}
+                        </div>
+                        {a.object_number ? (
+                          <div style={{ font: '500 11.5px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{a.object_number}</div>
+                        ) : null}
+                      </div>
+                    )
+                  })()}
                 </div>
                 <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
                   <button
