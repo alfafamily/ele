@@ -804,6 +804,13 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             }],
             created_extra_lines=created_extra,
             acceptance_for=acceptance_annotator(eq),
+            # B32: сотрудник↔место — одна запись «было → стало» с заголовком по
+            # направлению (Закрепление за сотрудником / Размещение на место).
+            placement_group={
+                "fields": ["employee", "place"],
+                "titles": {"employee": "Закрепление за сотрудником", "place": "Размещение на место"},
+                "empty_title": "Открепление",
+            },
         )
         rows += related_rows
 

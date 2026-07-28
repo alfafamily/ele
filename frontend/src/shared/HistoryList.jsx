@@ -201,7 +201,7 @@ export function HistoryList({ path, reloadKey }) {
                     <div className="ele-history__row" key={i}>
                       <HistoryWhen row={h} />
                       <div className="ele-history__change">
-                        <div className="ele-history__what">{`Изменено «${h.label}»`}</div>
+                        <div className="ele-history__what">{h.title || `Изменено «${h.label}»`}</div>
                         <div className="ele-history__value">
                           <HistoryValue row={h} />
                           {h.comment ? <div className="ele-history__comment">Комментарий: {h.comment}</div> : null}
