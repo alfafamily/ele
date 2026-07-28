@@ -591,12 +591,9 @@ class BackupSettingsView(APIView):
         from backup.destinations import secondary_s3_configured
 
         data = BackupSettingsSerializer(Company.load()).data
-        # Время автокопирования сравнивается с localtime() сервера (TIME_ZONE),
-        # поэтому отдаём текущее серверное время и зону — чтобы админ понимал,
-        # в какой зоне задаёт расписание.
-        now = timezone.localtime()
-        data["server_time"] = now.isoformat()
-        data["server_timezone"] = settings.TIME_ZONE
+        # Время автокопирования (auto_backup_time) трактуется в зоне
+        # auto_backup_timezone (её задаёт админ в UI по своему устройству), cron
+        # сам считает «сейчас» в этой зоне — серверное время фронту не нужно.
         # B29: статус резервного S3 из .env — чтобы фронт знал, можно ли включать
         # выгрузку и показывать «Проверить подключение». Секреты не отдаём.
         data["backup_secondary_s3"] = {

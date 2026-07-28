@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
-import { Badge, Banner, Button, Card, ConfirmModal, Icon, Input, Modal, Skeleton } from '../../shared/ui'
+import { Badge, Banner, Button, Card, ConfirmModal, Icon, Input, Modal, Select, Skeleton } from '../../shared/ui'
 import {
   backupDownloadUrl,
   createBackup,
@@ -19,6 +19,21 @@ function formatDate(iso) {
 }
 const TYPE_LABEL = { manual: 'Вручную', auto: 'Авто' }
 const DEST_LABEL = { own: 'Хранилище приложения', secondary_s3: 'S3 для backup' }
+
+// Часовой пояс устройства и универсальный список IANA-зон для селекта расписания
+// автокопий. supportedValuesOf есть во всех актуальных браузерах; фолбэк на
+// минимальный набор — на случай очень старого движка.
+const DEVICE_TZ = (() => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  } catch {
+    return 'UTC'
+  }
+})()
+const TIMEZONES = (() => {
+  const base = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : ['UTC']
+  return base.includes(DEVICE_TZ) ? base : [DEVICE_TZ, ...base]
+})()
 
 function DestinationBadge({ dest }) {
   const label = DEST_LABEL[dest.destination] || dest.destination
@@ -46,6 +61,7 @@ export function BackupTab() {
   // 'enable' задаёт параметры и включает; 'config' редактирует/выключает).
   const [autoMode, setAutoMode] = useState(null) // 'enable' | 'config' | null
   const [autoTime, setAutoTime] = useState('03:00')
+  const [autoTz, setAutoTz] = useState(DEVICE_TZ)
   const [autoRetention, setAutoRetention] = useState(30)
   // Копия, ожидающая подтверждения удаления (null — модалка закрыта).
   const [toDelete, setToDelete] = useState(null)
@@ -90,6 +106,9 @@ export function BackupTab() {
   // Открыть модалку — черновик берём из текущих настроек (или дефолты).
   const openAutoModal = (mode) => {
     setAutoTime(settings.auto_backup_time?.slice(0, 5) || '03:00')
+    // При первом включении зону предлагаем по устройству; при настройке уже
+    // включённого расписания — сохранённую (фолбэк на зону устройства).
+    setAutoTz(mode === 'enable' ? DEVICE_TZ : settings.auto_backup_timezone || DEVICE_TZ)
     setAutoRetention(settings.auto_backup_retention ?? 30)
     setAutoMode(mode)
   }
@@ -98,7 +117,7 @@ export function BackupTab() {
   }
   // Включение — задаём параметры И включаем; настройка — только параметры.
   const submitAutoModal = async () => {
-    const patch = { auto_backup_time: autoTime, auto_backup_retention: Number(autoRetention) }
+    const patch = { auto_backup_time: autoTime, auto_backup_timezone: autoTz, auto_backup_retention: Number(autoRetention) }
     if (autoMode === 'enable') patch.auto_backup_enabled = true
     try {
       await patchSettings(patch)
@@ -299,15 +318,22 @@ export function BackupTab() {
               onChange={(e) => setAutoRetention(Number(e.target.value))}
             />
           </div>
-          {settings.server_time ? (
-            <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 12, lineHeight: 1.5 }}>
-              Время указывается по часам сервера. Сейчас на сервере:{' '}
-              <b style={{ color: 'var(--color-text-muted)' }}>
-                {new Date(settings.server_time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: settings.server_timezone })}
-              </b>{' '}
-              ({settings.server_timezone}).
-            </div>
-          ) : null}
+          <div style={{ marginTop: 12 }}>
+            <Select label="Часовой пояс" value={autoTz} onChange={setAutoTz}>
+              {TIMEZONES.map((tz) => (
+                <option key={tz} value={tz}>{tz}</option>
+              ))}
+            </Select>
+          </div>
+          <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 12, lineHeight: 1.5 }}>
+            Время указывается в выбранном часовом поясе. По умолчанию — пояс вашего устройства.
+            {autoTime ? (
+              <>
+                {' '}Копии будут создаваться в <b style={{ color: 'var(--color-text-muted)' }}>{autoTime}</b> по зоне{' '}
+                <b style={{ color: 'var(--color-text-muted)' }}>{autoTz}</b>.
+              </>
+            ) : null}
+          </div>
           <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 10, marginBottom: 20, lineHeight: 1.5 }}>
             Шифрование автоматических копий задаётся переменной <b style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>BACKUP_PASSPHRASE</b> в .env сервера
             (при пустом значении авто-копии не шифруются) — пароль в блоке создания резервной копии применяется только к ручному экспорту.

@@ -45,6 +45,11 @@ class Company(models.Model):
     # backup_type=AUTO, ручные копии не подчищаются автоматически.
     auto_backup_enabled = models.BooleanField("Автокопирование включено", default=False)
     auto_backup_time = models.TimeField("Время автокопирования", default=time(3, 0))
+    # Часовой пояс (IANA), в котором трактуется auto_backup_time. Дефолт "UTC" —
+    # у существующих компаний время задавалось по UTC-часам сервера, так что
+    # зона UTC сохраняет прежнее поведение расписания без пересчёта. Cron
+    # (backup/service.py) вычисляет «сейчас» в этой зоне, DST учитывается.
+    auto_backup_timezone = models.CharField("Часовой пояс автокопий", max_length=64, default="UTC")
     auto_backup_retention = models.PositiveSmallIntegerField("Хранить последних копий", default=30)
 
     # B29: ЕДИНОЕ назначение копий (и ручных, и авто) — либо хранилище инстанса,

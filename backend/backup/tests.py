@@ -181,6 +181,30 @@ class ScheduledBackupTests(APITestCase):
         company.save()
         self.assertIsNone(run_scheduled_backup_if_due())
 
+    def test_schedule_respects_company_timezone(self):
+        # Час расписания трактуется в зоне компании, а не в UTC. Фиксируем момент
+        # 20:00 UTC и один и тот же час (19:00): в UTC-зоне он уже наступил, а в
+        # Гонолулу (UTC-10) локально ещё только 10:00 — копия не создаётся.
+        from datetime import datetime
+        from datetime import timezone as dt_timezone
+
+        company = Company.load()
+        company.auto_backup_enabled = True
+        company.auto_backup_time = time(19, 0)
+        company.save()
+
+        fixed_now = datetime(2026, 1, 15, 20, 0, tzinfo=dt_timezone.utc)
+        with mock.patch("backup.service.timezone.now", return_value=fixed_now):
+            company.auto_backup_timezone = "Pacific/Honolulu"
+            company.save()
+            self.assertIsNone(run_scheduled_backup_if_due())
+
+            company.auto_backup_timezone = "UTC"
+            company.save()
+            record = run_scheduled_backup_if_due()
+            self.assertIsNotNone(record)
+            self.assertEqual(record.backup_type, BackupRecord.BackupType.AUTO)
+
     def test_retention_trims_old_auto_backups_only(self):
         company = Company.load()
         company.auto_backup_enabled = True
