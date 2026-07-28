@@ -185,9 +185,11 @@ export function PassCardPage() {
         </Card>
         ) : null}
 
-        <Card className="ele-obj-layout__history">
-          <HistoryList path={getPassHistoryPath(pass.id)} reloadKey={historyKey} />
-        </Card>
+        {perms.isStaff ? (
+          <Card className="ele-obj-layout__history">
+            <HistoryList path={getPassHistoryPath(pass.id)} reloadKey={historyKey} />
+          </Card>
+        ) : null}
       </div>
 
       {disposeModal ? (

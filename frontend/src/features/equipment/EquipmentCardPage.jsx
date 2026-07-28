@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { apiPatch } from '../../shared/api/client'
 import { Can, usePermissions } from '../../app/usePermissions.js'
-import { canMaintainType } from '../../shared/permissions.js'
+import { canMaintainType, historyMode } from '../../shared/permissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
 import { AvatarCircle } from '../../shared/AvatarCircle.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
@@ -29,6 +29,7 @@ export function EquipmentCardPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const perms = usePermissions()
+  const hMode = historyMode(perms, 'equipment')
   const [equipment, setEquipment] = useState(null)
   const [regulations, setRegulations] = useState(null)
   const [loadError, setLoadError] = useState(false)
@@ -198,10 +199,13 @@ export function EquipmentCardPage() {
           ) : null}
 
           {/* История — в основной колонке (следует сразу за блоками), чтобы не
-              оставался большой отступ, когда боковой блок выше основного. */}
-          <Card>
-            <HistoryList path={getEquipmentHistoryPath(equipment.id)} reloadKey={historyKey} />
-          </Card>
+              оставался большой отступ, когда боковой блок выше основного.
+              B32: видна только staff (полная) и ролям ТО (только выполненные ТО). */}
+          {hMode !== 'none' ? (
+            <Card>
+              <HistoryList path={getEquipmentHistoryPath(equipment.id)} reloadKey={historyKey} maintenanceOnly={hMode === 'maintenance'} />
+            </Card>
+          ) : null}
         </div>
 
         {/* Боковой блок: «Закреплено за» + «Установленные лицензии». У списанного
