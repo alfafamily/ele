@@ -27,7 +27,7 @@ class EmployeeAssignmentSerializer(serializers.ModelSerializer):
             "id", "object_kind", "object_kind_display", "object_id", "object_label",
             "employee_id", "employee_name", "status", "status_display", "was_in_absentia",
             "movement_texts", "assigned_at", "decided_at", "decided_by_email",
-            "device_snapshot",
+            "device_snapshot", "return_quantity",
         ]
 
     def get_object_label(self, obj):
