@@ -81,20 +81,26 @@ def subsection_text(a):
 
 def movement_texts(a):
     """Строки статуса акцепта для истории движений (подшиваются к закреплению).
-    Возвращает список строк — для «заочно → появился юзер» их две."""
+    Каждая строка — {text, tone}; tone задаёт иконку на фронте (accepted —
+    зелёная галочка, rejected — красный крестик, pending/absentia — нейтрально).
+    Для «заочно → появился юзер» строк две."""
     from employees.models import EmployeeAssignment
 
     S = EmployeeAssignment.Status
+    absentia = {"text": "Заочно закреплено за сотрудником", "tone": "absentia"}
     if a.status == S.IN_ABSENTIA:
-        return ["Заочно закреплено за сотрудником"]
+        return [absentia]
     if a.status == S.PENDING:
-        base = ["Заочно закреплено за сотрудником"] if a.was_in_absentia else []
-        return base + ["Ожидание подтверждения от сотрудника"]
+        base = [absentia] if a.was_in_absentia else []
+        return base + [{"text": "Ожидание подтверждения от сотрудника", "tone": "pending"}]
     if a.status == S.ACCEPTED:
-        return ["Сотрудник подтвердил закрепление"]
+        return [{"text": "Сотрудник подтвердил закрепление", "tone": "accepted"}]
     if a.status == S.REJECTED:
         label = object_label(a.content_object) if a.content_object is not None else f"объект #{a.object_id}"
-        return [f"Сотрудник отклонил закрепление, {label} возвращено на {place_label(a.return_place)}"]
+        return [{
+            "text": f"Сотрудник отклонил закрепление, {label} возвращено на {place_label(a.return_place)}",
+            "tone": "rejected",
+        }]
     return []
 
 
@@ -320,11 +326,13 @@ def _rollback_object(a, request):
             dest.quantity += qty
             dest.save(update_fields=["quantity"])
         # Для инструмента журнал ToolMovement нужен для целостности баланса
-        # (реконструкция «Выдано/Архив» по движениям) — его оставляем.
+        # (реконструкция «Выдано/Архив» по движениям). Возврат-движение
+        # привязываем к тому же эпизоду закрепления (assignment=a) — в истории
+        # оно не показывается отдельной строкой, факт отказа виден в записи ASSIGN.
         ToolMovement.objects.create(
             tool=obj, kind=ToolMovement.Kind.UNASSIGN, quantity=qty,
             employee=a.employee, storage_place=a.return_place,
-            comment="Отклонено сотрудником",
+            comment="Отклонено сотрудником", assignment=a,
             created_by=request.user if getattr(request.user, "is_authenticated", False) else None,
         )
 

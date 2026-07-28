@@ -121,9 +121,11 @@ class DecisionTests(AssignmentBaseTests):
         emp_moves = [r for r in h if r["category"] == "movement" and r.get("label") == "Закреплённый сотрудник"]
         self.assertEqual(len(emp_moves), 1)
         self.assertEqual(emp_moves[0]["new"], str(self.emp))
-        self.assertEqual(emp_moves[0]["acceptance"],
-                         [f"Сотрудник отклонил закрепление, {eq.equipment_type.name} возвращено на "
-                          f"Место хранения «{self.storage.name}» ({self.b.name} — {self.r.name})"])
+        self.assertEqual(emp_moves[0]["acceptance"], [{
+            "text": f"Сотрудник отклонил закрепление, {eq.equipment_type.name} возвращено на "
+                    f"Место хранения «{self.storage.name}» ({self.b.name} — {self.r.name})",
+            "tone": "rejected",
+        }])
 
     def test_only_owner_decides(self):
         other = User.objects.create_user(email="o@e.ru", password="Str0ng!Pass1", role=User.Role.ADMIN)
@@ -187,7 +189,8 @@ class HistoryAcceptanceTests(AssignmentBaseTests):
         # Отдельная запись-движение закрепления со статусом акцепта.
         mv = next(r for r in h if r["category"] == "movement" and r.get("label") == "Закреплённый сотрудник")
         self.assertEqual(mv["new"], str(emp))
-        self.assertEqual(mv.get("acceptance"), ["Заочно закреплено за сотрудником"])
+        self.assertEqual(mv.get("acceptance"),
+                         [{"text": "Заочно закреплено за сотрудником", "tone": "absentia"}])
 
     def test_tool_movement_shows_acceptance(self):
         emp = _emp()
@@ -198,7 +201,30 @@ class HistoryAcceptanceTests(AssignmentBaseTests):
                          {"mode": "mobile", "employee": emp.id, "quantity": 2, "from_place": self.storage.id})
         h = self.client.get(f"/api/tools/{tool.id}/history/").json()
         assign_row = next(r for r in h if r.get("acceptance"))
-        self.assertIn("Заочно закреплено за сотрудником", assign_row["acceptance"])
+        self.assertIn("Заочно закреплено за сотрудником",
+                      [a["text"] for a in assign_row["acceptance"]])
+
+    def test_tool_reject_collapses_to_single_row(self):
+        emp = _emp()
+        user = User.objects.create_user(email="tw@e.ru", password="Str0ng!Pass1", employee=emp)
+        tool = Tool.objects.create(name="Дрель", quantity=5)
+        ToolAllocation.objects.create(tool=tool, place=self.storage, quantity=5)
+        self.client.force_authenticate(self.admin)
+        self.client.post(f"/api/tools/{tool.id}/assign-units/",
+                         {"mode": "mobile", "employee": emp.id, "quantity": 2, "from_place": self.storage.id})
+        a = open_assignment(tool)
+        self.client.force_authenticate(user)
+        self.client.post(f"/api/assignments/{a.id}/reject/")
+        # Возврат вернул единицы на склад (баланс цел), но в истории — одна запись
+        # ASSIGN со статусом «отклонил», без отдельной строки возврата.
+        self.assertEqual(tool.allocations.filter(place=self.storage).first().quantity, 5)
+        self.client.force_authenticate(self.admin)
+        h = self.client.get(f"/api/tools/{tool.id}/history/").json()
+        assigns = [r for r in h if r["label"].startswith("Закреплено:")]
+        unassigns = [r for r in h if r["label"].startswith("Откреплено:")]
+        self.assertEqual(len(assigns), 1)
+        self.assertEqual(len(unassigns), 0)  # возврат-по-отказу скрыт
+        self.assertEqual(assigns[0]["acceptance"][0]["tone"], "rejected")
 
 
 class ToolTests(AssignmentBaseTests):

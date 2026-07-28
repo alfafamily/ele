@@ -133,6 +133,14 @@ class ToolMovement(models.Model):
         on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
     )
     comment = models.TextField("Комментарий", blank=True)
+    # B32: раздача/возврат по одной операции закрепления. ASSIGN за сотрудником и
+    # парный UNASSIGN-возврат при отказе ссылаются на один EmployeeAssignment —
+    # в истории эта пара показывается ОДНОЙ записью (как у оборудования), а оба
+    # движения остаются в журнале для целостности количественного баланса.
+    assignment = models.ForeignKey(
+        "employees.EmployeeAssignment", verbose_name="Закрепление",
+        on_delete=models.SET_NULL, null=True, blank=True, related_name="tool_movements",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(
         "accounts.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
