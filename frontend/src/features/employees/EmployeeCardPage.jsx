@@ -102,6 +102,16 @@ export function EmployeeCardPage() {
   const acceptanceOf = (kind, objId) =>
     assignments.find((a) => a.object_kind === kind && a.object_id === objId)?.status || null
   const pendingAssignments = assignments.filter((a) => a.status === 'pending')
+  const isPending = (kind, objId) => acceptanceOf(kind, objId) === 'pending'
+  // Ожидающие решения объекты показываем ТОЛЬКО в блоке «Ожидает решения
+  // сотрудника» — из обычных блоков раздела их исключаем.
+  const heldEquipment = employee.equipment.filter((e) => !isPending('equipment', e.id))
+  const heldTools = employee.tools.filter((t) => !isPending('tool', t.id))
+  const heldSims = employee.sim_cards.filter((s) => !isPending('sim', s.id))
+  const heldPasses = employee.passes.filter((p) => !isPending('pass', p.id))
+  const heldTransport = employee.transport.filter((t) => !isPending('transport', t.id))
+  // Маршрут детальной страницы объекта по виду (для клика в блоке ожидания).
+  const OBJ_ROUTE = { equipment: 'equipment', tool: 'tools', sim: 'sim-cards', pass: 'passes', transport: 'transport' }
 
   const onAvatarSelected = async (e) => {
     const file = e.target.files?.[0]
@@ -245,20 +255,21 @@ export function EmployeeCardPage() {
               <span style={CNT}>{pendingAssignments.length}</span>
             </div>
             <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 12 }}>
-              Сотрудник ещё не подтвердил и не отклонил получение этих объектов.
+              Сотрудник ещё не подтвердил и не отклонил получение этих объектов
             </div>
             {pendingAssignments.map((a) => (
-              <div key={a.id} style={ROW}>
+              <Link key={a.id} to={`/${OBJ_ROUTE[a.object_kind]}/${a.object_id}`} style={{ ...ROW, textDecoration: 'none', color: 'inherit' }}>
                 <Icon name="tag" size={16} strokeWidth={2} style={ROW_ICON} />
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {a.object_label || a.object_kind_display}
                     {a.object_kind === 'tool' && a.return_quantity ? ` · ${a.return_quantity} шт.` : ''}
                   </div>
                   <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>{a.object_kind_display}</div>
                 </div>
                 <AcceptanceBadge status={a.status} />
-              </div>
+                <Icon name="chevron-right" size={16} strokeWidth={2} style={{ color: '#C7C9D4', flex: 'none' }} />
+              </Link>
             ))}
           </Card>
         ) : null}
@@ -319,18 +330,18 @@ export function EmployeeCardPage() {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Оборудование</div>
-            <span style={CNT}>{employee.equipment.length}</span>
+            <span style={CNT}>{heldEquipment.length}</span>
           </div>
           {employee.is_employed ? (
             <Can perm="canManageEquipment">
-              <Button variant="secondary" fullWidth style={{ marginBottom: employee.equipment.length ? 8 : 0 }} onClick={() => setEquipmentAttach(true)}>
+              <Button variant="secondary" fullWidth style={{ marginBottom: heldEquipment.length ? 8 : 0 }} onClick={() => setEquipmentAttach(true)}>
                 <Icon name="plus" size={18} strokeWidth={2.2} />Закрепить оборудование
               </Button>
             </Can>
-          ) : employee.equipment.length === 0 ? (
+          ) : heldEquipment.length === 0 ? (
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено оборудование.</div>
           ) : null}
-          {employee.equipment.map((eq) => (
+          {heldEquipment.map((eq) => (
             <div key={eq.id} style={ROW}>
               <Icon name="tag" size={18} strokeWidth={2} style={ROW_ICON} />
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -355,18 +366,18 @@ export function EmployeeCardPage() {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Транспорт</div>
-            <span style={CNT}>{employee.transport.length}</span>
+            <span style={CNT}>{heldTransport.length}</span>
           </div>
           {employee.is_employed ? (
             <Can perm="canManageTransport">
-              <Button variant="secondary" fullWidth style={{ marginBottom: employee.transport.length ? 8 : 0 }} onClick={() => setTransportAttach(true)}>
+              <Button variant="secondary" fullWidth style={{ marginBottom: heldTransport.length ? 8 : 0 }} onClick={() => setTransportAttach(true)}>
                 <Icon name="plus" size={18} strokeWidth={2.2} />Закрепить транспорт
               </Button>
             </Can>
-          ) : employee.transport.length === 0 ? (
+          ) : heldTransport.length === 0 ? (
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплён транспорт.</div>
           ) : null}
-          {employee.transport.map((t) => (
+          {heldTransport.map((t) => (
             <div key={t.id} style={{ background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8, padding: '11px 13px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Icon name="car" size={18} strokeWidth={2} style={ROW_ICON} />
@@ -408,18 +419,18 @@ export function EmployeeCardPage() {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Инструменты</div>
-            <span style={CNT}>{employee.tools.length}</span>
+            <span style={CNT}>{heldTools.length}</span>
           </div>
           {employee.is_employed ? (
             <Can perm="canManageEquipment">
-              <Button variant="secondary" fullWidth style={{ marginBottom: employee.tools.length ? 8 : 0 }} onClick={() => setToolAssign(true)}>
+              <Button variant="secondary" fullWidth style={{ marginBottom: heldTools.length ? 8 : 0 }} onClick={() => setToolAssign(true)}>
                 <Icon name="plus" size={18} strokeWidth={2.2} />Закрепить инструмент
               </Button>
             </Can>
-          ) : employee.tools.length === 0 ? (
+          ) : heldTools.length === 0 ? (
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплены инструменты.</div>
           ) : null}
-          {employee.tools.map((tool) => (
+          {heldTools.map((tool) => (
             <div key={tool.id} style={ROW}>
               <Icon name="wrench" size={18} strokeWidth={2} style={ROW_ICON} />
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -446,18 +457,18 @@ export function EmployeeCardPage() {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Корпоративная связь</div>
-            <span style={CNT}>{employee.sim_cards.length}</span>
+            <span style={CNT}>{heldSims.length}</span>
           </div>
           {employee.is_employed ? (
             <Can perm="canManageEmployees">
-              <Button variant="secondary" fullWidth style={{ marginBottom: employee.sim_cards.length ? 8 : 0 }} onClick={() => setSimAttach(true)}>
+              <Button variant="secondary" fullWidth style={{ marginBottom: heldSims.length ? 8 : 0 }} onClick={() => setSimAttach(true)}>
                 <Icon name="plus" size={18} strokeWidth={2.2} />Закрепить SIM-карту
               </Button>
             </Can>
-          ) : employee.sim_cards.length === 0 ? (
+          ) : heldSims.length === 0 ? (
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено SIM-карт.</div>
           ) : null}
-          {employee.sim_cards.map((sim) => (
+          {heldSims.map((sim) => (
             <div key={sim.id} style={ROW}>
               <Icon name="radio-tower" size={18} strokeWidth={2} style={ROW_ICON} />
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -478,18 +489,18 @@ export function EmployeeCardPage() {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Средства доступа</div>
-            <span style={CNT}>{employee.passes.length}</span>
+            <span style={CNT}>{heldPasses.length}</span>
           </div>
           {employee.is_employed ? (
             <Can perm="canManageEmployees">
-              <Button variant="secondary" fullWidth style={{ marginBottom: employee.passes.length ? 8 : 0 }} onClick={() => setPassAttach(true)}>
+              <Button variant="secondary" fullWidth style={{ marginBottom: heldPasses.length ? 8 : 0 }} onClick={() => setPassAttach(true)}>
                 <Icon name="plus" size={18} strokeWidth={2.2} />Закрепить средство доступа
               </Button>
             </Can>
-          ) : employee.passes.length === 0 ? (
+          ) : heldPasses.length === 0 ? (
             <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено средств доступа.</div>
           ) : null}
-          {employee.passes.map((pass) => (
+          {heldPasses.map((pass) => (
             <div key={pass.id} style={ROW}>
               <Icon name="key-square" size={18} strokeWidth={2} style={ROW_ICON} />
               <div style={{ flex: 1, minWidth: 0 }}>
