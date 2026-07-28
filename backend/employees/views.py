@@ -836,6 +836,15 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 "label": "Утилизирована",
             }],
             acceptance_for=acceptance_annotator(sim),
+            placement_group={
+                "fields": ["employee", "equipment", "storage_place"],
+                "titles": {
+                    "employee": "Закрепление за сотрудником",
+                    "equipment": "Установка в оборудование",
+                    "storage_place": "Размещение на склад",
+                },
+                "empty_title": "Открепление",
+            },
         )
         rows.sort(key=lambda r: r["date"], reverse=True)
         return Response(rows)
@@ -1198,6 +1207,14 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             created_extra_lines=_created_access_lines(),
             m2m_specs=m2m_specs,
             acceptance_for=acceptance_annotator(access_pass),
+            placement_group={
+                "fields": ["employee", "storage_place"],
+                "titles": {
+                    "employee": "Закрепление за сотрудником",
+                    "storage_place": "Размещение на склад",
+                },
+                "empty_title": "Открепление",
+            },
         )
         rows.sort(key=lambda r: r["date"], reverse=True)
         return Response(rows)

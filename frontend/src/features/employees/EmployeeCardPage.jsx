@@ -333,11 +333,13 @@ export function EmployeeCardPage() {
           {employee.equipment.map((eq) => (
             <div key={eq.id} style={ROW}>
               <Icon name="tag" size={18} strokeWidth={2} style={ROW_ICON} />
-              <Link to={`/equipment/${eq.id}`} style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{eq.type_and_model}</div>
-                <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</div>
-              </Link>
-              <AcceptanceBadge status={acceptanceOf('equipment', eq.id)} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Link to={`/equipment/${eq.id}`} style={{ display: 'block' }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{eq.type_and_model}</div>
+                  <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{eq.inventory_number}</div>
+                </Link>
+                <AcceptanceBadge status={acceptanceOf('equipment', eq.id)} style={{ marginTop: 5 }} />
+              </div>
               <Can perm="canManageEquipment">
                 <button type="button" title="Открепить" aria-label="Открепить" onClick={() => setDetach({ kind: 'equipment', obj: eq })} style={SQ}>
                   <Icon name="unlink" size={16} strokeWidth={2} />
@@ -368,13 +370,15 @@ export function EmployeeCardPage() {
             <div key={t.id} style={{ background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8, padding: '11px 13px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Icon name="car" size={18} strokeWidth={2} style={ROW_ICON} />
-                <Link to={`/transport/${t.id}`} style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.type_and_model}</div>
-                  <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>
-                    {[t.plate, t.inventory_number].filter(Boolean).join(' · ')}
-                  </div>
-                </Link>
-                <AcceptanceBadge status={acceptanceOf('transport', t.id)} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Link to={`/transport/${t.id}`} style={{ display: 'block' }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.type_and_model}</div>
+                    <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>
+                      {[t.plate, t.inventory_number].filter(Boolean).join(' · ')}
+                    </div>
+                  </Link>
+                  <AcceptanceBadge status={acceptanceOf('transport', t.id)} style={{ marginTop: 5 }} />
+                </div>
                 {employee.is_employed ? (
                   <Can perm="canManageTransport">
                     <button
@@ -418,11 +422,13 @@ export function EmployeeCardPage() {
           {employee.tools.map((tool) => (
             <div key={tool.id} style={ROW}>
               <Icon name="wrench" size={18} strokeWidth={2} style={ROW_ICON} />
-              <Link to={`/tools/${tool.id}`} style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{tool.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{tool.quantity} шт.</div>
-              </Link>
-              <AcceptanceBadge status={acceptanceOf('tool', tool.id)} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Link to={`/tools/${tool.id}`} style={{ display: 'block' }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{tool.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{tool.quantity} шт.</div>
+                </Link>
+                <AcceptanceBadge status={acceptanceOf('tool', tool.id)} style={{ marginTop: 5 }} />
+              </div>
               {employee.is_employed ? (
                 <Can perm="canManageEquipment">
                   <button type="button" title="Открепить" aria-label="Открепить" onClick={() => setDetach({ kind: 'tool', obj: tool })} style={SQ}>
@@ -454,8 +460,10 @@ export function EmployeeCardPage() {
           {employee.sim_cards.map((sim) => (
             <div key={sim.id} style={ROW}>
               <Icon name="radio-tower" size={18} strokeWidth={2} style={ROW_ICON} />
-              <SimCardInfo sim={sim} />
-              <AcceptanceBadge status={acceptanceOf('sim', sim.id)} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <SimCardInfo sim={sim} />
+                <AcceptanceBadge status={acceptanceOf('sim', sim.id)} style={{ marginTop: 5 }} />
+              </div>
               {employee.is_employed ? (
                 <Can perm="canManageEmployees">
                   <button type="button" title="Открепить" aria-label="Открепить" onClick={() => askDetachSim(sim)} style={SQ}>
@@ -484,8 +492,10 @@ export function EmployeeCardPage() {
           {employee.passes.map((pass) => (
             <div key={pass.id} style={ROW}>
               <Icon name="key-square" size={18} strokeWidth={2} style={ROW_ICON} />
-              <PassInfo pass={pass} />
-              <AcceptanceBadge status={acceptanceOf('pass', pass.id)} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <PassInfo pass={pass} />
+                <AcceptanceBadge status={acceptanceOf('pass', pass.id)} style={{ marginTop: 5 }} />
+              </div>
               {employee.is_employed ? (
                 <Can perm="canManageEmployees">
                   <button type="button" title="Открепить" aria-label="Открепить" onClick={() => askDetachPass(pass)} style={SQ}>
