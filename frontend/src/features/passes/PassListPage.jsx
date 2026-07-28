@@ -8,6 +8,7 @@ import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterModal, Icon, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 import { EmployeeNameCell } from '../../shared/EmployeeNameCell.jsx'
+import { TruncatedText } from '../../shared/TruncatedText.jsx'
 import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
 import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
 import { PassAccessFilter } from '../../shared/PassAccessFilter.jsx'
@@ -256,9 +257,9 @@ export function PassListPage() {
                 {/* Название: тип + учётный номер, ниже — плашки типа (у пропуска) и
                     «Доступ в» (здания/помещения или объект ключа). */}
                 <div style={{ minWidth: 0 }}>
-                  <div className="ele-clamp-2" style={{ fontWeight: 600 }}>
+                  <TruncatedText singleLine={false} className="ele-clamp-2" style={{ fontWeight: 600 }}>
                     {isKey ? 'Ключ' : `Пропуск${passTypes(row) ? ` (${passTypes(row)})` : ''}`}
-                  </div>
+                  </TruncatedText>
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>
                     № {row.account_number && row.account_number.trim() ? row.account_number : 'б/н'}
                   </div>
@@ -284,17 +285,17 @@ export function PassListPage() {
                       <EmployeeNameCell name={row.employee_name} position={row.position} department={row.department} status={row.acceptance_status} />
                     ) : row.transport_detail ? (
                       <>
-                        <div className="ele-clamp-2">{row.transport_detail.type_and_model}</div>
-                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <TruncatedText singleLine={false} className="ele-clamp-2">{row.transport_detail.type_and_model}</TruncatedText>
+                        <TruncatedText style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>
                           {[row.transport_detail.plate, `№ ${row.transport_detail.inventory_number}`].filter(Boolean).join(' · ')}
-                        </div>
+                        </TruncatedText>
                       </>
                     ) : row.storage_place_detail ? (
                       <>
-                        <div className="ele-clamp-2">На складе: {row.storage_place_detail.name}</div>
-                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <TruncatedText singleLine={false} className="ele-clamp-2">На складе: {row.storage_place_detail.name}</TruncatedText>
+                        <TruncatedText style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>
                           {row.storage_place_detail.building_name} — {row.storage_place_detail.room_name}
-                        </div>
+                        </TruncatedText>
                       </>
                     ) : (
                       <div className="ele-clamp-2">На складе: Без склада</div>

@@ -9,6 +9,7 @@ import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterModal, Icon, MultiSelectList, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 import { EmployeeNameCell } from '../../shared/EmployeeNameCell.jsx'
+import { TruncatedText } from '../../shared/TruncatedText.jsx'
 import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
 import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
 import { TypeRequisiteFilter } from '../../shared/TypeRequisiteFilter.jsx'
@@ -262,7 +263,7 @@ export function EquipmentListPage() {
                   {/* Иконки статуса ТО — инлайново в начале наименования: сидят на
                       первой строке, перенос названия уходит под них. Длинное
                       название — максимум 2 строки, дальше многоточие (ele-clamp-2). */}
-                  <div className="ele-clamp-2" style={{ fontWeight: 500, lineHeight: 1.3 }}>
+                  <TruncatedText singleLine={false} className="ele-clamp-2" style={{ fontWeight: 500, lineHeight: 1.3 }} text={row.type_and_model}>
                     {/* B23: цветные статусы проведения ТО — только для типов, по
                         которым пользователь проводит ТО (в своей области) или для
                         Наблюдателя; серый «нет даты» — дополнительно для тех, кто
@@ -280,7 +281,7 @@ export function EquipmentListPage() {
                       </span>
                     ))}
                     {row.type_and_model}
-                  </div>
+                  </TruncatedText>
                   <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{row.inventory_number}</div>
                 </div>
                 {tab === 'active' ? (
@@ -290,12 +291,12 @@ export function EquipmentListPage() {
                       <EmployeeNameCell name={row.employee_name} position={row.position} department={row.department} status={row.acceptance_status} />
                     ) : row.place_detail ? (
                       <>
-                        <div className="ele-clamp-2">
+                        <TruncatedText singleLine={false} className="ele-clamp-2">
                           {row.place_detail.place_type === 'workplace' ? 'На рабочем месте' : 'На складе'}: {row.place_detail.name}
-                        </div>
-                        <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        </TruncatedText>
+                        <TruncatedText style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>
                           {row.place_detail.building_name} — {row.place_detail.room_name}
-                        </div>
+                        </TruncatedText>
                       </>
                     ) : (
                       <div className="ele-clamp-2">На складе: Без склада</div>
