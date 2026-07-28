@@ -26,6 +26,7 @@ import { TerminateModal } from './TerminateModal.jsx'
 const CNT = { fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }
 const ROW = { display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }
 const SQ = { width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+const PEND_ICON = { equipment: 'tag', sim: 'radio-tower', pass: 'key-square', tool: 'wrench', transport: 'car' }
 
 export function EmployeeCardPage() {
   const { id } = useParams()
@@ -257,13 +258,15 @@ export function EmployeeCardPage() {
             </div>
             {pendingAssignments.map((a) => (
               <Link key={a.id} to={`/${OBJ_ROUTE[a.object_kind]}/${a.object_id}`} style={{ ...ROW, textDecoration: 'none', color: 'inherit' }}>
-                <LeadIconCircle name="tag" />
+                <LeadIconCircle name={PEND_ICON[a.object_kind] || 'tag'} />
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {a.object_label || a.object_kind_display}
                     {a.object_kind === 'tool' && a.return_quantity ? ` · ${a.return_quantity} шт.` : ''}
                   </div>
-                  <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>{a.object_kind_display}</div>
+                  {a.object_number ? (
+                    <div style={{ font: '500 11.5px var(--font-mono)', color: 'var(--color-text-placeholder)' }}>{a.object_number}</div>
+                  ) : null}
                 </div>
                 <Icon name="chevron-right" size={16} strokeWidth={2} style={{ color: '#C7C9D4', flex: 'none' }} />
               </Link>
