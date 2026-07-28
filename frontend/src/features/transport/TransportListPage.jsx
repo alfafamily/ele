@@ -8,7 +8,7 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterModal, Icon, MultiSelectList, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
-import { AcceptanceIcon } from '../../shared/AcceptanceIcon.jsx'
+import { EmployeeNameCell } from '../../shared/EmployeeNameCell.jsx'
 import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
 import { TypeRequisiteFilter } from '../../shared/TypeRequisiteFilter.jsx'
 import { csvParam, reqParams } from '../../shared/filterParams.js'
@@ -257,14 +257,7 @@ export function TransportListPage() {
                   {tab === 'active' ? (
                     <div style={{ minWidth: 0 }}>
                       {row.employee_name ? (
-                        <>
-                          <div className="ele-clamp-2">
-                            <AcceptanceIcon status={row.acceptance_status} inline />{row.employee_name}
-                          </div>
-                          <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {[row.position, row.department].filter(Boolean).join(' · ') || '—'}
-                          </div>
-                        </>
+                        <EmployeeNameCell name={row.employee_name} position={row.position} department={row.department} status={row.acceptance_status} />
                       ) : (
                         <span style={{ color: 'var(--color-text-placeholder)' }}>Свободный</span>
                       )}

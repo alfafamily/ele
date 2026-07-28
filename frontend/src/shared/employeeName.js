@@ -11,3 +11,10 @@ export function nameInitials(name) {
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
   return (parts[0][0] + parts[1][0]).toUpperCase()
 }
+
+// Разбор строки «Фамилия Имя» (Employee.__str__) на фамилию (первое слово) и имя
+// (остальное). Нужен для списков: фамилия и имя на разных строках.
+export function splitName(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
+  return { last: parts[0] || '', first: parts.slice(1).join(' ') }
+}

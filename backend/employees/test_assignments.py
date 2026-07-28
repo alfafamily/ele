@@ -154,6 +154,47 @@ class DecisionTests(AssignmentBaseTests):
         self.assertEqual(resp.status_code, 403)
 
 
+class CancelTests(AssignmentBaseTests):
+    def test_reassign_before_decision_cancels_prior(self):
+        emp_a = _emp(last="Первый")
+        user_a = User.objects.create_user(email="a@e.ru", password="Str0ng!Pass1", employee=emp_a)
+        emp_b = _emp(last="Второй")
+        eq = self._equip(place=self.storage)
+        self._assign(eq, emp_a)
+        a1 = open_assignment(eq)
+        self.assertEqual(a1.status, EmployeeAssignment.Status.PENDING)
+        # Перезакрепляем за другим до решения A.
+        self.client.post(f"/api/equipment/{eq.id}/assign/", {"mode": "mobile", "employee": emp_b.id})
+        a1.refresh_from_db()
+        self.assertEqual(a1.status, EmployeeAssignment.Status.CANCELLED)
+        self.assertIsNotNone(a1.closed_at)
+        # A больше не видит объект в «ожидающих» и не может принять.
+        self.client.force_authenticate(user_a)
+        self.assertEqual(self.client.get("/api/assignments/mine/").json(), [])
+        resp = self.client.post(f"/api/assignments/{a1.id}/accept/")
+        self.assertEqual(resp.status_code, 409)
+        # История: у записи A — «Передача отменена ответственным».
+        self.client.force_authenticate(self.admin)
+        h = self.client.get(f"/api/equipment/{eq.id}/history/").json()
+        a_moves = [r for r in h if r.get("title") == "Закрепление за сотрудником" and r.get("new") == str(emp_a)]
+        self.assertEqual(a_moves[0]["acceptance"],
+                         [{"text": "Передача отменена ответственным", "tone": "cancelled"}])
+
+    def test_accepted_then_detached_keeps_accepted(self):
+        emp = _emp()
+        user = User.objects.create_user(email="acc@e.ru", password="Str0ng!Pass1", employee=emp)
+        eq = self._equip(place=self.storage)
+        self._assign(eq, emp)
+        a = open_assignment(eq)
+        self.client.force_authenticate(user)
+        self.client.post(f"/api/assignments/{a.id}/accept/")
+        # Открепление принятого — статус остаётся accepted (не cancelled).
+        self.client.force_authenticate(self.admin)
+        self.client.post(f"/api/equipment/{eq.id}/unassign/", {"place": self.storage.id})
+        a.refresh_from_db()
+        self.assertEqual(a.status, EmployeeAssignment.Status.ACCEPTED)
+
+
 class RelinkTests(AssignmentBaseTests):
     def test_linking_user_flips_in_absentia_to_pending(self):
         emp = _emp()
