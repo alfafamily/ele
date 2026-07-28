@@ -1404,5 +1404,7 @@ class EmployeeAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
         a, err = self._own_pending(request, pk)
         if err is not None:
             return err
+        if not (request.data.get("comment") or "").strip():
+            return Response({"detail": "Укажите причину отказа."}, status=400)
         reject_assignment(a, request)
         return Response(EmployeeAssignmentSerializer(a).data)

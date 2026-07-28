@@ -4,8 +4,9 @@ import { roleLabel } from '../../shared/roles.js'
 import { nameInitials } from '../../shared/employeeName.js'
 import { PlanLink } from '../../shared/PlanLink.jsx'
 import { TransportParkingLine } from '../../shared/TransportParkingLine.jsx'
-import { Button, Card, Icon, Spinner } from '../../shared/ui'
+import { Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
+import { RejectAssignmentModal } from './RejectAssignmentModal.jsx'
 import { deleteEmployeeAvatar, uploadEmployeeAvatar } from '../employees/employeesApi.js'
 import { PassInfo } from '../employees/PassInfo.jsx'
 import { SimCardInfo } from '../employees/SimCardInfo.jsx'
@@ -43,7 +44,7 @@ export function ProfilePage() {
   const [workplaces, setWorkplaces] = useState([])
   const [parkingSpots, setParkingSpots] = useState([])
   const [pending, setPending] = useState([]) // B32: закрепления, ждущие решения
-  const [decidingId, setDecidingId] = useState(null)
+  const [decideModal, setDecideModal] = useState(null) // { a, accept } — подтверждение
   const fileInputRef = useRef(null)
 
   // При открытии профиля перечитываем пользователя — ФИО/аватар связанного
@@ -78,15 +79,12 @@ export function ProfilePage() {
     getMyWorkPlacement().then((d) => setTools(d.tools || []))
   }
 
-  const decide = async (id, accept) => {
-    setDecidingId(id)
-    try {
-      await (accept ? acceptAssignment(id) : rejectAssignment(id))
-      setPending((prev) => prev.filter((a) => a.id !== id))
-      reloadHeldObjects()
-    } finally {
-      setDecidingId(null)
-    }
+  // Решение подтверждается модалкой (случайный клик не срабатывает мгновенно);
+  // отказ требует причину, которая уходит в историю.
+  const doDecide = async (a, accept, comment) => {
+    await (accept ? acceptAssignment(a.id, comment) : rejectAssignment(a.id, comment))
+    setPending((prev) => prev.filter((x) => x.id !== a.id))
+    reloadHeldObjects()
   }
   // Объект, ожидающий решения, показываем только в блоке «Ожидают вашего
   // решения» — из обычных блоков раздела исключаем (без дублей).
@@ -254,14 +252,14 @@ export function ProfilePage() {
                 <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
                   <button
                     type="button" title="Отказаться" aria-label="Отказаться"
-                    onClick={() => decide(a.id, false)} disabled={decidingId === a.id}
+                    onClick={() => setDecideModal({ a, accept: false })}
                     style={{ width: 40, height: 40, flex: 'none', borderRadius: 10, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
                     <Icon name="x" size={18} strokeWidth={2.2} />
                   </button>
                   <button
                     type="button" title="Принять" aria-label="Принять"
-                    onClick={() => decide(a.id, true)} disabled={decidingId === a.id}
+                    onClick={() => setDecideModal({ a, accept: true })}
                     style={{ width: 40, height: 40, flex: 'none', borderRadius: 10, border: 'none', background: 'var(--color-text-primary)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
                     <Icon name="check" size={18} strokeWidth={2.2} />
@@ -424,6 +422,23 @@ export function ProfilePage() {
 
       {showChangePassword ? <ChangePasswordModal onClose={() => setShowChangePassword(false)} onDone={() => setShowChangePassword(false)} /> : null}
       {showChangeEmail ? <ChangeEmailModal onClose={() => setShowChangeEmail(false)} /> : null}
+      {decideModal?.accept ? (
+        <ConfirmModal
+          title="Подтвердите получение"
+          message={`Подтвердите получение «${decideModal.a.object_label || decideModal.a.object_kind_display}».`}
+          confirmLabel="Принять"
+          danger={false}
+          onConfirm={() => doDecide(decideModal.a, true, '')}
+          onClose={() => setDecideModal(null)}
+        />
+      ) : null}
+      {decideModal && !decideModal.accept ? (
+        <RejectAssignmentModal
+          assignment={decideModal.a}
+          onConfirm={(comment) => doDecide(decideModal.a, false, comment)}
+          onClose={() => setDecideModal(null)}
+        />
+      ) : null}
     </div>
   )
 }

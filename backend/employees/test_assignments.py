@@ -97,7 +97,7 @@ class DecisionTests(AssignmentBaseTests):
         self._assign(eq, self.emp)
         a = open_assignment(eq)
         self.client.force_authenticate(self.user)
-        self.client.post(f"/api/assignments/{a.id}/reject/")
+        self.client.post(f"/api/assignments/{a.id}/reject/", {"comment": "не подходит"})
         a.refresh_from_db()
         eq.refresh_from_db()
         self.assertEqual(a.status, EmployeeAssignment.Status.REJECTED)
@@ -112,7 +112,7 @@ class DecisionTests(AssignmentBaseTests):
         self._assign(eq, self.emp)
         a1 = open_assignment(eq)
         self.client.force_authenticate(self.user)
-        self.client.post(f"/api/assignments/{a1.id}/reject/")
+        self.client.post(f"/api/assignments/{a1.id}/reject/", {"comment": "не подходит"})
         self.client.force_authenticate(self.admin)
         self.client.post(f"/api/equipment/{eq.id}/assign/", {"mode": "mobile", "employee": self.emp.id})
         h = self.client.get(f"/api/equipment/{eq.id}/history/").json()
@@ -131,7 +131,7 @@ class DecisionTests(AssignmentBaseTests):
         self._assign(eq, self.emp)
         a = open_assignment(eq)
         self.client.force_authenticate(self.user)
-        self.client.post(f"/api/assignments/{a.id}/reject/")
+        self.client.post(f"/api/assignments/{a.id}/reject/", {"comment": "не подходит"})
         self.client.force_authenticate(self.admin)
         h = self.client.get(f"/api/equipment/{eq.id}/history/").json()
         # Ровно одна запись-движение закрепления (assign), без строк отката.
@@ -140,9 +140,19 @@ class DecisionTests(AssignmentBaseTests):
         self.assertEqual(emp_moves[0]["new"], str(self.emp))
         self.assertEqual(emp_moves[0]["acceptance"], [{
             "text": f"Сотрудник отклонил закрепление, {eq.equipment_type.name} возвращено на "
-                    f"Место хранения «{self.storage.name}» ({self.b.name} — {self.r.name})",
+                    f"Место хранения «{self.storage.name}» ({self.b.name} — {self.r.name}). Причина: не подходит",
             "tone": "rejected",
         }])
+
+    def test_reject_requires_comment(self):
+        eq = self._equip(place=self.storage)
+        self._assign(eq, self.emp)
+        a = open_assignment(eq)
+        self.client.force_authenticate(self.user)
+        resp = self.client.post(f"/api/assignments/{a.id}/reject/")
+        self.assertEqual(resp.status_code, 400)
+        a.refresh_from_db()
+        self.assertEqual(a.status, EmployeeAssignment.Status.PENDING)  # не отклонено
 
     def test_only_owner_decides(self):
         other = User.objects.create_user(email="o@e.ru", password="Str0ng!Pass1", role=User.Role.ADMIN)
@@ -223,7 +233,7 @@ class TransportTests(AssignmentBaseTests):
         self.assertEqual(a.object_kind, EmployeeAssignment.ObjectKind.TRANSPORT)
         self.assertEqual(a.status, EmployeeAssignment.Status.PENDING)
         self.client.force_authenticate(user)
-        self.client.post(f"/api/assignments/{a.id}/reject/")
+        self.client.post(f"/api/assignments/{a.id}/reject/", {"comment": "не подходит"})
         tr.refresh_from_db()
         self.assertIsNone(tr.employee_id)
 
@@ -272,7 +282,7 @@ class HistoryAcceptanceTests(AssignmentBaseTests):
                          {"mode": "mobile", "employee": emp.id, "quantity": 2, "from_place": self.storage.id})
         a = open_assignment(tool)
         self.client.force_authenticate(user)
-        self.client.post(f"/api/assignments/{a.id}/reject/")
+        self.client.post(f"/api/assignments/{a.id}/reject/", {"comment": "не подходит"})
         # Возврат вернул единицы на склад (баланс цел), но в истории — одна запись
         # ASSIGN со статусом «отклонил», без отдельной строки возврата.
         self.assertEqual(tool.allocations.filter(place=self.storage).first().quantity, 5)

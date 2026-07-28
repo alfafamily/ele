@@ -46,10 +46,10 @@ async function collectDevice() {
   return d
 }
 
-export const acceptAssignment = async (id) =>
-  apiPost(`/api/assignments/${id}/accept/`, { device: await collectDevice() })
-export const rejectAssignment = async (id) =>
-  apiPost(`/api/assignments/${id}/reject/`, { device: await collectDevice() })
+export const acceptAssignment = async (id, comment = '') =>
+  apiPost(`/api/assignments/${id}/accept/`, { device: await collectDevice(), comment })
+export const rejectAssignment = async (id, comment = '') =>
+  apiPost(`/api/assignments/${id}/reject/`, { device: await collectDevice(), comment })
 
 export const changePassword = (payload) => apiPost('/api/auth/change-password/', payload)
 export const requestEmailChange = (newEmail) => apiPost('/api/auth/change-email/', { new_email: newEmail })
