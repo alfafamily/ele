@@ -97,10 +97,10 @@ def movement_texts(a):
         return [{"text": "Сотрудник подтвердил закрепление", "tone": "accepted"}]
     if a.status == S.REJECTED:
         label = object_label(a.content_object) if a.content_object is not None else f"объект #{a.object_id}"
-        return [{
-            "text": f"Сотрудник отклонил закрепление, {label} возвращено на {place_label(a.return_place)}",
-            "tone": "rejected",
-        }]
+        text = f"Сотрудник отклонил закрепление, {label} возвращено на {place_label(a.return_place)}"
+        if a.decision_comment:
+            text += f". Причина: {a.decision_comment}"
+        return [{"text": text, "tone": "rejected"}]
     if a.status == S.CANCELLED:
         return [{"text": "Передача отменена ответственным", "tone": "cancelled"}]
     return []
@@ -269,14 +269,19 @@ def close_tool_episodes(tool, employee, qty, *, when=None):
 
 # ——— решение сотрудника ———————————————————————————————————————————————————————
 
+def _decision_comment(request):
+    return (request.data.get("comment") or "").strip() if isinstance(getattr(request, "data", None), dict) else ""
+
+
 def accept_assignment(a, request):
     from employees.models import EmployeeAssignment
 
     a.status = EmployeeAssignment.Status.ACCEPTED
     a.decided_by = request.user
     a.decided_at = timezone.now()
+    a.decision_comment = _decision_comment(request)
     a.device_snapshot = capture_device_snapshot(request)
-    a.save(update_fields=["status", "decided_by", "decided_at", "device_snapshot"])
+    a.save(update_fields=["status", "decided_by", "decided_at", "decision_comment", "device_snapshot"])
     return a
 
 
@@ -287,9 +292,10 @@ def reject_assignment(a, request):
     a.status = EmployeeAssignment.Status.REJECTED
     a.decided_by = request.user
     a.decided_at = timezone.now()
+    a.decision_comment = _decision_comment(request)
     a.device_snapshot = capture_device_snapshot(request)
     a.closed_at = timezone.now()
-    a.save(update_fields=["status", "decided_by", "decided_at", "device_snapshot", "closed_at"])
+    a.save(update_fields=["status", "decided_by", "decided_at", "decision_comment", "device_snapshot", "closed_at"])
     _rollback_object(a, request)
     return a
 

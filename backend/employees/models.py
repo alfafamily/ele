@@ -110,6 +110,9 @@ class EmployeeAssignment(models.Model):
         null=True, blank=True, related_name="+",
     )
     decided_at = models.DateTimeField("Дата решения", null=True, blank=True)
+    # Комментарий сотрудника к решению — обязателен при отказе (причина), попадает
+    # в строку статуса в истории.
+    decision_comment = models.TextField("Комментарий к решению", blank=True)
 
     # Куда вернуть объект при отказе — снимок размещения ДО закрепления
     # (склад / рабочее место; NULL = «Без склада»/виртуальное хранение).
