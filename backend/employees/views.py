@@ -1332,6 +1332,30 @@ class EmployeeAssignmentViewSet(viewsets.ReadOnlyModelViewSet):
         kind = self.request.query_params.get("object_kind")
         if kind:
             qs = qs.filter(object_kind__in=[k for k in kind.split(",") if k])
+        search = (self.request.query_params.get("search") or "").strip()
+        if search:
+            from django.contrib.contenttypes.models import ContentType
+            from equipment.models import Equipment
+            from tools.models import Tool
+            from transport.models import Transport
+
+            # Поиск по сотруднику (ФИО/должность/отдел) и учётному идентификатору
+            # объекта каждого вида (учётный номер/телефон/номер пропуска/наименование).
+            q = (
+                Q(employee__last_name__icontains=search)
+                | Q(employee__first_name__icontains=search)
+                | Q(employee__position__icontains=search)
+                | Q(employee__department__icontains=search)
+            )
+            for model, field in [
+                (Equipment, "inventory_number"), (SimCard, "phone_number"),
+                (AccessPass, "account_number"), (Transport, "inventory_number"),
+                (Tool, "name"),
+            ]:
+                ct = ContentType.objects.get_for_model(model)
+                ids = model.objects.filter(**{f"{field}__icontains": search}).values("id")
+                q |= Q(content_type=ct, object_id__in=ids)
+            qs = qs.filter(q)
         if self.request.query_params.get("open") in ("1", "true"):
             qs = qs.filter(closed_at__isnull=True)
         return qs

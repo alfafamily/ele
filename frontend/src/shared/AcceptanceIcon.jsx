@@ -10,6 +10,7 @@ const ACCEPTANCE_CFG = {
   pending: { icon: 'clock', color: 'var(--color-text-placeholder)', label: 'Ожидает подтверждения' },
   accepted: { icon: 'circle-check', color: 'var(--color-success)', label: 'Подтверждено' },
   rejected: { icon: 'circle-x', color: 'var(--color-error)', label: 'Отклонено' },
+  cancelled: { icon: 'circle-x', color: 'var(--color-error)', label: 'Передача отменена ответственным' },
 }
 
 // Иконка статуса. inline=true — выравнивание для потока текста (перед именем

@@ -101,6 +101,8 @@ def movement_texts(a):
             "text": f"Сотрудник отклонил закрепление, {label} возвращено на {place_label(a.return_place)}",
             "tone": "rejected",
         }]
+    if a.status == S.CANCELLED:
+        return [{"text": "Передача отменена ответственным", "tone": "cancelled"}]
     return []
 
 
@@ -218,10 +220,24 @@ def create_assignment(obj, employee, by_user, *, return_place=None, return_quant
     return a
 
 
+def _close_queryset(qs, when):
+    """Закрыть эпизоды (открепление/переназначение/списание ответственным).
+    Недорешённые (ожидание/заочно) → «Передача отменена ответственным» — решение
+    сотрудника больше не требуется. Принятые/отклонённые статус сохраняют."""
+    from employees.models import EmployeeAssignment
+
+    S = EmployeeAssignment.Status
+    when = when or timezone.now()
+    qs.filter(closed_at__isnull=True, status__in=[S.PENDING, S.IN_ABSENTIA]).update(
+        status=S.CANCELLED, closed_at=when
+    )
+    qs.filter(closed_at__isnull=True).update(closed_at=when)
+
+
 def close_open_assignment(obj, *, when=None):
     """Закрыть открытые эпизоды объекта (открепление/переназначение/списание/
     утилизация). Для поштучных объектов — единственный; для инструмента — все."""
-    open_assignments(obj).update(closed_at=when or timezone.now())
+    _close_queryset(open_assignments(obj), when)
 
 
 def close_tool_episodes(tool, employee, qty, *, when=None):
@@ -229,6 +245,7 @@ def close_tool_episodes(tool, employee, qty, *, when=None):
     количество (старые эпизоды первыми). qty=None — закрыть все (увольнение)."""
     from employees.models import EmployeeAssignment
 
+    S = EmployeeAssignment.Status
     eps = list(
         EmployeeAssignment.objects.filter(
             content_type=_ct_for(tool), object_id=tool.pk, employee=employee,
@@ -241,7 +258,11 @@ def close_tool_episodes(tool, employee, qty, *, when=None):
         if remaining is not None and remaining <= 0:
             break
         ep.closed_at = when
-        ep.save(update_fields=["closed_at"])
+        if ep.status in (S.PENDING, S.IN_ABSENTIA):
+            ep.status = S.CANCELLED
+            ep.save(update_fields=["status", "closed_at"])
+        else:
+            ep.save(update_fields=["closed_at"])
         if remaining is not None:
             remaining -= (ep.return_quantity or 0)
 
@@ -362,12 +383,11 @@ def has_open_assignments(employee):
 
 
 def close_employee_assignments(employee, *, when=None):
-    """Закрыть все открытые эпизоды сотрудника (увольнение — снимаются все объекты)."""
+    """Закрыть все открытые эпизоды сотрудника (увольнение — снимаются все объекты).
+    Недорешённые → «Передача отменена ответственным»."""
     from employees.models import EmployeeAssignment
 
-    EmployeeAssignment.objects.filter(employee=employee, closed_at__isnull=True).update(
-        closed_at=when or timezone.now()
-    )
+    _close_queryset(EmployeeAssignment.objects.filter(employee=employee, closed_at__isnull=True), when)
 
 
 # ——— слепок устройства ————————————————————————————————————————————————————————

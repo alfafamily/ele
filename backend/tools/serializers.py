@@ -30,16 +30,39 @@ class ToolAllocationSerializer(serializers.ModelSerializer):
     place_name = serializers.SerializerMethodField()
     place_location = serializers.SerializerMethodField()
     place_employees = serializers.SerializerMethodField()
+    acceptance_status = serializers.SerializerMethodField()
 
     class Meta:
         model = ToolAllocation
         fields = [
             "id", "kind", "employee", "employee_name", "employee_avatar", "department",
             "place", "place_name", "place_location", "place_employees", "quantity",
+            "acceptance_status",
         ]
 
     def get_employee_name(self, obj):
         return str(obj.employee) if obj.employee_id else None
+
+    def get_acceptance_status(self, obj):
+        # B32: репрезентативный статус акцепта размещения за сотрудником —
+        # приоритет «требующего внимания»: pending > in_absentia > accepted.
+        if not obj.employee_id or obj.target_kind == "workplace":
+            return None
+        from django.contrib.contenttypes.models import ContentType
+
+        from employees.models import EmployeeAssignment
+        from .models import Tool
+
+        ct = ContentType.objects.get_for_model(Tool)
+        statuses = set(
+            EmployeeAssignment.objects.filter(
+                content_type=ct, object_id=obj.tool_id, employee_id=obj.employee_id, closed_at__isnull=True
+            ).values_list("status", flat=True)
+        )
+        for s in ("pending", "in_absentia", "accepted"):
+            if s in statuses:
+                return s
+        return None
 
     def get_employee_avatar(self, obj):
         if obj.employee_id and obj.employee.avatar_id:

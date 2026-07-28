@@ -224,7 +224,7 @@ export function ProfilePage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>Ожидают вашего решения</div>
             <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginBottom: 12 }}>
-              За вами закрепили имущество — подтвердите или отклоните получение.
+              За вами закрепили имущество — подтвердите или отклоните получение
             </div>
             {pending.map((a) => (
               <div key={a.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>

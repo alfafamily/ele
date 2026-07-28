@@ -75,6 +75,9 @@ class EmployeeAssignment(models.Model):
         IN_ABSENTIA = "in_absentia", "Закреплено заочно"
         ACCEPTED = "accepted", "Закрепление подтверждено сотрудником"
         REJECTED = "rejected", "Закрепление отклонено сотрудником"
+        # B32: объект перезакреплён/откреплён ответственным до решения сотрудника —
+        # решение больше не требуется (в отличие от rejected — там решил сотрудник).
+        CANCELLED = "cancelled", "Передача отменена ответственным"
 
     class ObjectKind(models.TextChoices):
         EQUIPMENT = "equipment", "Оборудование"

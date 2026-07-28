@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { usePermissions } from '../../app/usePermissions.js'
 import { nameInitials } from '../../shared/employeeName.js'
+import { AcceptanceOverlay } from '../../shared/AcceptanceIcon.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
 import { QuantityMoveModal } from './QuantityMoveModal.jsx'
@@ -330,15 +331,18 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
           {visibleAllocations.map((a) => (
             <div key={a.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ width: 36, height: 36, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, overflow: 'hidden' }}>
-                {a.kind === 'workplace' ? (
-                  <Icon name="briefcase" size={16} strokeWidth={2} />
-                ) : a.employee_avatar ? (
-                  <img src={a.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  nameInitials(a.employee_name)
-                )}
-              </span>
+              <div style={{ position: 'relative', flex: 'none' }}>
+                <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, overflow: 'hidden' }}>
+                  {a.kind === 'workplace' ? (
+                    <Icon name="briefcase" size={16} strokeWidth={2} />
+                  ) : a.employee_avatar ? (
+                    <img src={a.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    nameInitials(a.employee_name)
+                  )}
+                </span>
+                <AcceptanceOverlay status={a.acceptance_status} size={15} />
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 {a.kind === 'workplace' ? (
                   <div style={{ fontSize: 13.5, fontWeight: 600 }}>{a.place_name}</div>
