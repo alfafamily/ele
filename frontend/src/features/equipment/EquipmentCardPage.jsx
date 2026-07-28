@@ -261,7 +261,7 @@ export function EquipmentCardPage() {
           {equipment.employee ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ position: 'relative', flex: 'none' }}>
-                <span style={{ width: 46, height: 46, display: 'flex', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
+                <span style={{ width: 46, height: 46, display: 'flex', borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
                   {equipment.employee_avatar ? (
                     <img src={equipment.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
@@ -281,12 +281,14 @@ export function EquipmentCardPage() {
           ) : equipment.place_detail ? (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <Icon
-                  name={equipment.place_detail.place_type === 'storage' ? 'warehouse' : 'briefcase'}
-                  size={20}
-                  strokeWidth={2}
-                  style={{ color: 'var(--color-text-muted)' }}
-                />
+                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon
+                    name={equipment.place_detail.place_type === 'storage' ? 'warehouse' : 'briefcase'}
+                    size={20}
+                    strokeWidth={2}
+                    style={{ color: 'var(--color-text-muted)' }}
+                  />
+                </span>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
                     {equipment.place_detail.place_type === 'storage' ? 'На складе' : 'На рабочем месте'}
@@ -303,7 +305,7 @@ export function EquipmentCardPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {equipment.place_detail.employees.map((e) => (
                       <Link key={e.id} to={`/employees/${e.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: 'var(--color-text-primary)' }}>
-                        <span style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>
+                        <span style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>
                           {nameInitials(e.name)}
                         </span>
                         {e.name}

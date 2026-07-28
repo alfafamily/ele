@@ -332,7 +332,7 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
             <div key={a.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ position: 'relative', flex: 'none' }}>
-                <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, overflow: 'hidden' }}>
+                <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, overflow: 'hidden' }}>
                   {a.kind === 'workplace' ? (
                     <Icon name="briefcase" size={16} strokeWidth={2} />
                   ) : a.employee_avatar ? (

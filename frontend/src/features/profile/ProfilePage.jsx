@@ -5,6 +5,7 @@ import { nameInitials } from '../../shared/employeeName.js'
 import { PlanLink } from '../../shared/PlanLink.jsx'
 import { TransportParkingLine } from '../../shared/TransportParkingLine.jsx'
 import { Button, Card, Icon, Spinner } from '../../shared/ui'
+import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { deleteEmployeeAvatar, uploadEmployeeAvatar } from '../employees/employeesApi.js'
 import { PassInfo } from '../employees/PassInfo.jsx'
 import { SimCardInfo } from '../employees/SimCardInfo.jsx'
@@ -229,7 +230,7 @@ export function ProfilePage() {
             {pending.map((a) => (
               <div key={a.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
-                  <Icon name="tag" size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                  <LeadIconCircle name="tag" />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {a.object_label || a.object_kind_display}
@@ -265,7 +266,7 @@ export function ProfilePage() {
             {workplaces.map((wp) => (
               <div key={wp.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Icon name="briefcase" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                  <LeadIconCircle name="briefcase" />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600 }}>{wp.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{wp.location}</div>
@@ -321,7 +322,7 @@ export function ProfilePage() {
             ) : (
               equipment.map((eq) => (
                 <div key={eq.id} style={P_ROW}>
-                  <Icon name="tag" size={18} strokeWidth={2} style={P_ROW_ICON} />
+                  <LeadIconCircle name="tag" />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{eq.type_and_model}</div>
                     <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{eq.inventory_number}</div>
@@ -341,7 +342,7 @@ export function ProfilePage() {
               transport.map((t) => (
                 <div key={t.id} style={{ background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8, padding: '11px 13px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Icon name="car" size={18} strokeWidth={2} style={P_ROW_ICON} />
+                    <LeadIconCircle name="car" />
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.type_and_model}</div>
                       <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>
@@ -364,7 +365,7 @@ export function ProfilePage() {
             ) : (
               tools.map((t) => (
                 <div key={t.id} style={P_ROW}>
-                  <Icon name="wrench" size={18} strokeWidth={2} style={P_ROW_ICON} />
+                  <LeadIconCircle name="wrench" />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2 }}>{t.quantity} шт.</div>
@@ -383,7 +384,7 @@ export function ProfilePage() {
             ) : (
               simCards.map((sim) => (
                 <div key={sim.id} style={P_ROW}>
-                  <Icon name="radio-tower" size={18} strokeWidth={2} style={P_ROW_ICON} />
+                  <LeadIconCircle name="radio-tower" />
                   <SimCardInfo sim={sim} />
                 </div>
               ))
@@ -399,7 +400,7 @@ export function ProfilePage() {
             ) : (
               passes.map((pass) => (
                 <div key={pass.id} style={P_ROW}>
-                  <Icon name="key-square" size={18} strokeWidth={2} style={P_ROW_ICON} />
+                  <LeadIconCircle name="key-square" />
                   <PassInfo pass={pass} />
                 </div>
               ))
@@ -417,7 +418,6 @@ export function ProfilePage() {
 
 // Строка выданного объекта с ведущей иконкой (как чемоданчик у рабочих мест).
 const P_ROW = { display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }
-const P_ROW_ICON = { color: 'var(--color-text-muted)', flex: 'none' }
 
 function Field({ label, value }) {
   return (
