@@ -91,15 +91,14 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
                 lines = lines + [
                     ln for ln in created_extra_lines if ln["value"] not in _EMPTY_CREATED_VALUES
                 ]
-            # «Объект создан» — запись типа ИЗМЕНЕНИЕ: только заполненные реквизиты,
-            # без размещения (сотрудник/место). Размещение, выбранное при создании,
-            # выносим отдельными записями-движениями ниже (как и последующие
-            # закрепления), со статусом акцепта для сотрудника (B32).
-            rows.append({
-                "date": date, "author": author, "kind": "created", "category": "change",
-                "label": "Объект создан", "old": None, "new": None, "secret": False,
-                "comment": reason or None, "lines": lines,
-            })
+            # «Объект создан» — гибридная запись: это и ИЗМЕНЕНИЕ (перечень
+            # реквизитов, с которыми создан объект), и ДВИЖЕНИЕ (поступление —
+            # комментарий «откуда поступил»). На фронте показывается в обоих
+            # фильтрах (спец-случай kind='created'); размещение при создании
+            # выносим отдельными записями-движениями со статусом акцепта (B32).
+            # Порядок эмиссии: сначала движения, потом «Объект создан» — у них
+            # одинаковый timestamp, и стабильная сортировка (новые сверху) оставит
+            # «Объект создан» В САМОМ НИЗУ (сначала объект создали, потом закрепили).
             for field in movement_fields:
                 raw = _raw_field(record, field)
                 if not raw:
@@ -118,6 +117,11 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
                     if texts:
                         mv["acceptance"] = texts
                 rows.append(mv)
+            rows.append({
+                "date": date, "author": author, "kind": "created", "category": "movement",
+                "label": "Объект создан", "old": None, "new": None, "secret": False,
+                "comment": reason or None, "lines": lines,
+            })
             continue
 
         older = history[i + 1] if i + 1 < len(history) else None
