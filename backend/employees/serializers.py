@@ -6,7 +6,48 @@ from locations.models import Building, Place, Room
 from locations.serializers import BuildingMiniSerializer, PlaceMiniSerializer, RoomMiniSerializer
 from storage.serializers import StoredFileSerializer
 
-from .models import AccessPass, Employee, SimCard
+from .models import AccessPass, Employee, EmployeeAssignment, SimCard
+
+
+class EmployeeAssignmentSerializer(serializers.ModelSerializer):
+    """B32. Эпизод закрепления + статус акцепта — для Профиля, карточки и
+    контрольного подраздела «Операции закрепления»."""
+
+    object_kind_display = serializers.CharField(source="get_object_kind_display", read_only=True)
+    object_label = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    movement_texts = serializers.SerializerMethodField()
+    employee_id = serializers.IntegerField(read_only=True)
+    employee_name = serializers.SerializerMethodField()
+    decided_by_email = serializers.SerializerMethodField()
+
+    class Meta:
+        model = EmployeeAssignment
+        fields = [
+            "id", "object_kind", "object_kind_display", "object_id", "object_label",
+            "employee_id", "employee_name", "status", "status_display", "was_in_absentia",
+            "movement_texts", "assigned_at", "decided_at", "decided_by_email",
+            "device_snapshot",
+        ]
+
+    def get_object_label(self, obj):
+        from core.assignments import object_label
+
+        try:
+            return object_label(obj.content_object) if obj.content_object is not None else None
+        except Exception:
+            return None
+
+    def get_movement_texts(self, obj):
+        from core.assignments import movement_texts
+
+        return movement_texts(obj)
+
+    def get_employee_name(self, obj):
+        return str(obj.employee) if obj.employee_id else None
+
+    def get_decided_by_email(self, obj):
+        return obj.decided_by.email if obj.decided_by_id else None
 
 
 def place_detail(place):
@@ -28,6 +69,7 @@ class SimCardSerializer(serializers.ModelSerializer):
     is_deactivated = serializers.BooleanField(read_only=True)
     employee_name = serializers.SerializerMethodField()
     employee_avatar = serializers.SerializerMethodField()
+    acceptance_status = serializers.SerializerMethodField()
     # Должность/Отдел закреплённого сотрудника — для строки списка (под ФИО).
     position = serializers.SerializerMethodField()
     department = serializers.SerializerMethodField()
@@ -46,6 +88,7 @@ class SimCardSerializer(serializers.ModelSerializer):
             "employee",
             "employee_name",
             "employee_avatar",
+            "acceptance_status",
             "position",
             "department",
             "equipment",
@@ -69,6 +112,9 @@ class SimCardSerializer(serializers.ModelSerializer):
 
     def get_employee_name(self, obj):
         return str(obj.employee) if obj.employee_id else None
+
+    def get_acceptance_status(self, obj):
+        return getattr(obj, "acceptance_status", None)  # B32
 
     def get_employee_avatar(self, obj):
         if obj.employee_id and obj.employee.avatar_id:
@@ -163,6 +209,7 @@ class AccessPassSerializer(serializers.ModelSerializer):
     utilization_reason_display = serializers.CharField(source="get_utilization_reason_display", read_only=True)
     employee_name = serializers.SerializerMethodField()
     employee_avatar = serializers.SerializerMethodField()
+    acceptance_status = serializers.SerializerMethodField()
     # Должность/Отдел закреплённого сотрудника — для строки списка (под ФИО).
     position = serializers.SerializerMethodField()
     department = serializers.SerializerMethodField()
@@ -182,6 +229,7 @@ class AccessPassSerializer(serializers.ModelSerializer):
             "employee",
             "employee_name",
             "employee_avatar",
+            "acceptance_status",
             "position",
             "department",
             "transport",
@@ -217,6 +265,9 @@ class AccessPassSerializer(serializers.ModelSerializer):
 
     def get_employee_name(self, obj):
         return str(obj.employee) if obj.employee_id else None
+
+    def get_acceptance_status(self, obj):
+        return getattr(obj, "acceptance_status", None)  # B32
 
     def get_employee_avatar(self, obj):
         if obj.employee_id and obj.employee.avatar_id:

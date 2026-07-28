@@ -175,6 +175,12 @@ export function HistoryList({ path, reloadKey }) {
                         <div className="ele-history__value">
                           <HistoryValue row={h} />
                           {h.comment ? <div className="ele-history__comment">Комментарий: {h.comment}</div> : null}
+                          {/* B32: статус акцепта, подшитый к движению закрепления. */}
+                          {h.acceptance?.length
+                            ? h.acceptance.map((t, j) => (
+                                <div key={j} className="ele-history__acceptance">{t}</div>
+                              ))
+                            : null}
                         </div>
                       </div>
                     </div>

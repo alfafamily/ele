@@ -171,10 +171,21 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     ordering_fields = ["created_at", "transport_type__name", "employee__last_name"]
     ordering = ["-created_at"]
 
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        # B32: транспорт создан сразу за сотрудником — эпизод акцепта.
+        t = serializer.instance
+        if t.employee_id:
+            from core.assignments import create_assignment
+
+            create_assignment(t, t.employee, self.request.user, return_place=None)
+
     def destroy(self, request, *args, **kwargs):
         return Response({"detail": "Транспорт не удаляется — только списание."}, status=405)
 
     def get_queryset(self):
+        from core.assignments import annotate_acceptance
+
         qs = Transport.objects.select_related(
             "employee", "employee__avatar", "transport_type"
         ).prefetch_related(
@@ -183,6 +194,7 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             "parking_spots__room__building", "parking_spots__room__plan_file",
             "passes__buildings",
         )
+        qs = annotate_acceptance(qs, Transport)  # B32
         user = self.request.user
         # Обычный «Сотрудник» (не Наблюдатель) видит только свой транспорт — для
         # блока «Транспорт» в Профиле. Не привязан к Сотруднику — не видит ничего.
@@ -379,6 +391,9 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if comment:
             transport._change_reason = comment
         transport.save(update_fields=["employee", "is_written_off", "written_off_at"])
+        from core.assignments import close_open_assignment
+
+        close_open_assignment(transport)  # B32
         # Списание выводит ТО из обращения.
         archive_transport_maintenance(transport)
         return Response(TransportSerializer(transport).data)
@@ -395,6 +410,9 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if comment:
             transport._change_reason = comment
         transport.save(update_fields=["employee"])
+        from core.assignments import create_assignment
+
+        create_assignment(transport, employee, request.user, return_place=None)  # B32
         return Response(TransportSerializer(transport).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
@@ -412,6 +430,9 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         if comment:
             transport._change_reason = comment
         transport.save(update_fields=update_fields)
+        from core.assignments import close_open_assignment
+
+        close_open_assignment(transport)  # B32
         return Response(TransportSerializer(transport).data)
 
     @action(detail=True, methods=["post"], url_path="maintenance", permission_classes=[CanPerformTransportMaintenance])
@@ -721,6 +742,8 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         # Проведённые ТО — отдельная категория «maintenance».
         related_rows += _maintenance_history_rows(obj)
 
+        from core.assignments import acceptance_annotator
+
         rows = build_history_rows(
             obj, field_specs,
             movement_fields={"employee"},
@@ -730,6 +753,7 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 "label": "Списано",
             }],
             created_extra_lines=created_extra,
+            acceptance_for=acceptance_annotator(obj),
         )
         rows += related_rows
 

@@ -252,6 +252,15 @@ def merge_employee(target, source):
     # не осиротела при удалении source.
     ToolMovement.objects.filter(employee=source).update(employee=target)
 
+    # B32: эпизоды закрепления (employee=PROTECT) перецепляем на target — иначе
+    # source.delete() упадёт; если у target есть пользователь, перенесённые
+    # заочные эпизоды становятся «ожидает подтверждения».
+    from core.assignments import relink_in_absentia
+    from employees.models import EmployeeAssignment
+
+    EmployeeAssignment.objects.filter(employee=source).update(employee=target)
+    relink_in_absentia(target)
+
     # Рабочие места (M2M) — по одному, чтобы сработала m2m-история Места.
     for wp in source.workplaces.all():
         wp.employees.add(target)

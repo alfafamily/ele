@@ -71,6 +71,16 @@
   overflow-wrap: anywhere;
 }
 
+/* B32: строка статуса акцепта под движением закрепления. */
+.ele-history__acceptance {
+  margin-top: 6px;
+  padding-left: 10px;
+  border-left: 2px solid var(--color-border);
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
 .ele-history__row {
   display: grid;
   grid-template-columns: 140px minmax(0, 1fr);

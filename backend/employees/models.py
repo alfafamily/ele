@@ -1,5 +1,8 @@
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 from simple_history.models import HistoricalRecords
 
 
@@ -48,6 +51,93 @@ class EmployeeDuplicateDismissal(models.Model):
 
     def __str__(self):
         return self.signature
+
+
+class EmployeeAssignment(models.Model):
+    """B32. Эпизод закрепления объекта за сотрудником + статус акцепта.
+
+    Отдельная сущность (а не поля на объекте), потому что статус акцепта подчинён
+    движению закрепления и меняется во времени до финального. Один объект в один
+    момент имеет максимум один ОТКРЫТЫЙ эпизод (`closed_at is null`). Объект —
+    через GenericForeignKey (Оборудование/SIM/Пропуск/Инструмент), чтобы одна
+    модель обслуживала все разделы без циклов импорта.
+
+    Статусы:
+      • pending — у сотрудника есть пользователь, он ещё не решил;
+      • in_absentia — у сотрудника нет пользователя (заочно), финальный до увязки;
+      • accepted / rejected — пользователь подтвердил / отклонил.
+    `was_in_absentia` — эпизод был заочным и стал pending после увязки пользователя
+    (для показа обеих строк в истории). Рабочие места эпизодов НЕ создают.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Ожидает подтверждения сотрудника"
+        IN_ABSENTIA = "in_absentia", "Закреплено заочно"
+        ACCEPTED = "accepted", "Закрепление подтверждено сотрудником"
+        REJECTED = "rejected", "Закрепление отклонено сотрудником"
+
+    class ObjectKind(models.TextChoices):
+        EQUIPMENT = "equipment", "Оборудование"
+        SIM = "sim", "SIM-карта"
+        PASS = "pass", "Пропуск/Ключ"
+        TOOL = "tool", "Инструмент"
+        TRANSPORT = "transport", "Транспорт"
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, related_name="+")
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey("content_type", "object_id")
+    # Денормализация вида объекта — для списка контрольного подраздела и фильтров
+    # без джойна к content_type.
+    object_kind = models.CharField("Вид объекта", max_length=10, choices=ObjectKind.choices)
+
+    employee = models.ForeignKey(
+        Employee, verbose_name="Сотрудник", on_delete=models.PROTECT, related_name="assignments"
+    )
+    status = models.CharField("Статус акцепта", max_length=12, choices=Status.choices)
+    was_in_absentia = models.BooleanField("Было заочным", default=False)
+
+    assigned_by = models.ForeignKey(
+        "accounts.User", verbose_name="Кто закрепил", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="+",
+    )
+    # Не auto_now_add — data-миграция проставляет дату из истории закрепления.
+    assigned_at = models.DateTimeField("Дата закрепления", default=timezone.now)
+    decided_by = models.ForeignKey(
+        "accounts.User", verbose_name="Кто принял решение", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="+",
+    )
+    decided_at = models.DateTimeField("Дата решения", null=True, blank=True)
+
+    # Куда вернуть объект при отказе — снимок размещения ДО закрепления
+    # (склад / рабочее место; NULL = «Без склада»/виртуальное хранение).
+    return_place = models.ForeignKey(
+        "locations.Place", verbose_name="Вернуть на", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="+",
+    )
+    # Для инструментов (количественный учёт) — сколько единиц вернуть на склад.
+    return_quantity = models.PositiveIntegerField("Кол-во к возврату", null=True, blank=True)
+
+    # Слепок устройства при решении (если включён флаг компании).
+    device_snapshot = models.JSONField("Слепок устройства", null=True, blank=True)
+
+    # Эпизод закрыт: объект откреплён/переназначен/списан/утилизирован или отклонён.
+    closed_at = models.DateTimeField("Эпизод закрыт", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Закрепление за сотрудником"
+        verbose_name_plural = "Закрепления за сотрудниками"
+        ordering = ["-assigned_at", "-id"]
+        indexes = [
+            models.Index(fields=["content_type", "object_id", "closed_at"]),
+            models.Index(fields=["employee", "closed_at"]),
+        ]
+
+    @property
+    def is_open(self):
+        return self.closed_at is None
+
+    def __str__(self):
+        return f"{self.get_object_kind_display()} #{self.object_id} → {self.employee} ({self.status})"
 
 
 class SimCard(models.Model):

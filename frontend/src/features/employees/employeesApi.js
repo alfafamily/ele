@@ -16,6 +16,13 @@ export const restoreEmployee = (id) => apiPost(`/api/employees/${id}/restore/`, 
 // Архив выданного: завершённые эпизоды владения (объект + даты закрепления/открепления).
 export const getEmployeeIssuedArchive = (id) => apiGet(`/api/employees/${id}/issued-archive/`)
 
+// B32: открытые эпизоды закрепления сотрудника (для статусов акцепта на карточке).
+export const getEmployeeAssignments = (id) =>
+  apiGet(`/api/assignments/?employee=${id}&open=1`).then((d) => d.results || d)
+
+// B32: контрольный подраздел «Операции закрепления» (admin/accountant).
+export const getAssignments = (params = '') => apiGet(`/api/assignments/${params}`)
+
 // Корпоративные SIM/E-SIM — самостоятельный раздел + привязка из карточки Сотрудника.
 export const getSimCard = (id) => apiGet(`/api/sim-cards/${id}/`)
 export const createSimCard = (payload) => apiPost('/api/sim-cards/', payload)

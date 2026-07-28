@@ -10,7 +10,7 @@ import { PassInfo } from '../employees/PassInfo.jsx'
 import { SimCardInfo } from '../employees/SimCardInfo.jsx'
 import { ChangeEmailModal } from './ChangeEmailModal.jsx'
 import { ChangePasswordModal } from './ChangePasswordModal.jsx'
-import { getMyEquipment, getMyPasses, getMySimCards, getMyTransport, getMyWorkPlacement } from './profileApi.js'
+import { acceptAssignment, getMyEquipment, getMyPasses, getMyPendingAssignments, getMySimCards, getMyTransport, getMyWorkPlacement, rejectAssignment } from './profileApi.js'
 
 const avatarMenuItem = {
   border: 'none',
@@ -39,6 +39,8 @@ export function ProfilePage() {
   const [tools, setTools] = useState([])
   const [workplaces, setWorkplaces] = useState([])
   const [parkingSpots, setParkingSpots] = useState([])
+  const [pending, setPending] = useState([]) // B32: закрепления, ждущие решения
+  const [decidingId, setDecidingId] = useState(null)
   const fileInputRef = useRef(null)
 
   // При открытии профиля перечитываем пользователя — ФИО/аватар связанного
@@ -60,8 +62,29 @@ export function ProfilePage() {
         setWorkplaces(d.workplaces || [])
         setParkingSpots(d.parking_spots || [])
       })
+      getMyPendingAssignments().then(setPending).catch(() => setPending([]))
     }
   }, [employee?.id])
+
+  const reloadHeldObjects = () => {
+    if (!employee?.id) return
+    getMyEquipment(employee.id).then(setEquipment)
+    getMySimCards(employee.id).then(setSimCards)
+    getMyPasses(employee.id).then(setPasses)
+    getMyTransport(employee.id).then(setTransport).catch(() => {})
+    getMyWorkPlacement().then((d) => setTools(d.tools || []))
+  }
+
+  const decide = async (id, accept) => {
+    setDecidingId(id)
+    try {
+      await (accept ? acceptAssignment(id) : rejectAssignment(id))
+      setPending((prev) => prev.filter((a) => a.id !== id))
+      reloadHeldObjects()
+    } finally {
+      setDecidingId(null)
+    }
+  }
   const displayName = employee?.full_name || user.email
 
   const onAvatarSelected = async (e) => {
@@ -194,6 +217,30 @@ export function ProfilePage() {
               <Field label="Отдел" value={employee.department} />
               <Field label="Должность" value={employee.position} />
             </div>
+          </Card>
+        ) : null}
+
+        {employee && pending.length ? (
+          <Card>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>Ожидают вашего решения</div>
+            <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginBottom: 12 }}>
+              За вами закрепили имущество — подтвердите или отклоните получение.
+            </div>
+            {pending.map((a) => (
+              <div key={a.id} style={{ padding: '11px 13px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                  <Icon name="tag" size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.object_label || a.object_kind_display}</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>{a.object_kind_display}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flex: 'none' }}>
+                  <Button variant="secondary" onClick={() => decide(a.id, false)} disabled={decidingId === a.id}>Отказаться</Button>
+                  <Button onClick={() => decide(a.id, true)} disabled={decidingId === a.id}>Принять</Button>
+                </div>
+              </div>
+            ))}
           </Card>
         ) : null}
 

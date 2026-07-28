@@ -89,6 +89,9 @@ export function SystemTab() {
   // B14: открытая регистрация
   const [openRegistration, setOpenRegistration] = useState(true)
   const [openRegSaving, setOpenRegSaving] = useState(false)
+  // B32: сбор слепков устройств при акцепте
+  const [deviceSnapshot, setDeviceSnapshot] = useState(false)
+  const [deviceSnapSaving, setDeviceSnapSaving] = useState(false)
   const [ipList, setIpList] = useState([]) // сохранённые [{ ip, note }]
   const [addingIp, setAddingIp] = useState(false)
   const [ipDraft, setIpDraft] = useState({ ip: '', note: '' })
@@ -142,6 +145,7 @@ export function SystemTab() {
         setStorageMode(st.storage_mode)
         setDomain(company.domain || '')
         setOpenRegistration(company.open_registration !== false)
+        setDeviceSnapshot(company.device_snapshot_enabled === true)
         setIpList(normalizeIps(company.ip_allowlist))
         setAdminAccessEnabled(company.admin_access_enabled === true)
         setAdminIps(normalizeIps(company.admin_access_ips))
@@ -277,6 +281,19 @@ export function SystemTab() {
       setOpenRegistration(!val)
     } finally {
       setOpenRegSaving(false)
+    }
+  }
+
+  const toggleDeviceSnapshot = async (val) => {
+    setDeviceSnapSaving(true)
+    setDeviceSnapshot(val)
+    try {
+      const u = await updateCompanySettings({ device_snapshot_enabled: val })
+      setDeviceSnapshot(u.device_snapshot_enabled === true)
+    } catch {
+      setDeviceSnapshot(!val)
+    } finally {
+      setDeviceSnapSaving(false)
     }
   }
 
@@ -550,6 +567,19 @@ export function SystemTab() {
             />
             <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2, marginLeft: 30 }}>
               Если функция включена — пользователи могут регистрироваться в системе самостоятельно, с учётом настройки по домену аккаунтов.
+            </div>
+          </div>
+
+          {/* B32: сбор слепков устройств при акцепте */}
+          <div style={{ marginTop: 20 }}>
+            <Checkbox
+              label="Сбор слепков устройств при подтверждении/отказе сотрудников при закреплении оборудования"
+              checked={deviceSnapshot}
+              disabled={deviceSnapSaving}
+              onChange={toggleDeviceSnapshot}
+            />
+            <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2, marginLeft: 30 }}>
+              При включении настройки система будет добавлять слепок устройства пользователя в принятие или отказ сотрудника при закреплении за ним имущества. Слепок устанавливается только в том случае, если сотрудник сам подтверждает/отклоняет закрепление за ним оборудования, для этого требуется связанный с сотрудником пользователь. При включении настройки убедитесь что у вас есть разрешение от сотрудника на сбор и обработку ПДн.
             </div>
           </div>
 

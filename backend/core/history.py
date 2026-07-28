@@ -53,7 +53,7 @@ def _created_lines(record, field_specs):
     return lines
 
 
-def build_history_rows(instance, field_specs, *, movement_fields=(), movement_events=(), created_extra_lines=None, m2m_specs=None):
+def build_history_rows(instance, field_specs, *, movement_fields=(), movement_events=(), created_extra_lines=None, m2m_specs=None, acceptance_for=None):
     """Строки истории базового объекта (новые сверху).
 
     movement_fields — поля, чьи изменения считаются движением (напр. employee).
@@ -127,12 +127,18 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
                 continue
             fmt = spec.get("format", _fmt_text)
             category = "movement" if field in movement_fields else "change"
-            rows.append({
+            row = {
                 "date": date, "author": author, "kind": "changed", "category": category,
                 "label": spec["label"], "old": fmt(change.old), "new": fmt(change.new),
                 "secret": False,
                 "comment": reason if (category == "movement" and reason) else None,
-            })
+            }
+            # B32: подшить статус акцепта к движению закрепления за сотрудником.
+            if acceptance_for is not None and category == "movement" and change.new:
+                texts = acceptance_for(field, change.new, date)
+                if texts:
+                    row["acceptance"] = texts
+            rows.append(row)
 
         # Изменения M2M-наборов (здания/помещения/места пропуска). Пропускаем
         # переходы внутри «окна создания» — они уже отражены в «Объект создан».
