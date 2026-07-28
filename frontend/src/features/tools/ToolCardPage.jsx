@@ -4,6 +4,7 @@ import { usePermissions } from '../../app/usePermissions.js'
 import { nameInitials } from '../../shared/employeeName.js'
 import { AcceptanceOverlay } from '../../shared/AcceptanceIcon.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
+import { TruncatedText } from '../../shared/TruncatedText.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
 import { QuantityMoveModal } from './QuantityMoveModal.jsx'
@@ -231,9 +232,9 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove, onTransfer })
             <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10 }}>
               <LeadIconCircle name="warehouse" size={46} iconSize={20} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.place_name}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.place_location}</div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 1 }}>{a.quantity} шт.</div>
+                <TruncatedText style={{ fontSize: 15, fontWeight: 600 }}>{a.place_name}</TruncatedText>
+                <TruncatedText style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>{a.place_location}</TruncatedText>
+                <div style={{ fontSize: 13, fontWeight: 600, marginTop: 1 }}>{a.quantity} шт.</div>
               </div>
             </div>
           ))}
@@ -241,8 +242,8 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove, onTransfer })
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10 }}>
               <LeadIconCircle name="blocks" size={46} iconSize={20} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Без склада</div>
-                <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 1 }}>{tool.free_unplaced} шт.</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-muted)' }}>Без склада</div>
+                <div style={{ fontSize: 13, fontWeight: 600, marginTop: 1 }}>{tool.free_unplaced} шт.</div>
               </div>
             </div>
           ) : null}
@@ -349,22 +350,22 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
                 <AcceptanceOverlay status={a.acceptance_status} size={18} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <TruncatedText style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
                   {a.quantity} шт. {a.kind === 'workplace' ? 'на рабочем месте' : 'за сотрудником'}
-                </div>
+                </TruncatedText>
                 {a.kind === 'workplace' ? (
-                  <div style={{ fontSize: 15, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.place_name}</div>
+                  <TruncatedText style={{ fontSize: 15, fontWeight: 600 }}>{a.place_name}</TruncatedText>
                 ) : (
-                  <Link to={`/employees/${a.employee}`} style={{ display: 'block', fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {a.employee_name}
-                  </Link>
+                  <TruncatedText style={{ fontSize: 15, fontWeight: 600 }}>
+                    <Link to={`/employees/${a.employee}`} style={{ color: 'var(--color-text-primary)' }}>{a.employee_name}</Link>
+                  </TruncatedText>
                 )}
-                <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <TruncatedText style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>
                   {a.kind === 'workplace' ? a.place_location : (a.position || '—')}
-                </div>
+                </TruncatedText>
               </div>
               {canManage ? (
-                <button type="button" title="Открепить" onClick={() => openUnassign(a)} style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <button type="button" title="Открепить" onClick={() => openUnassign(a)} style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: 'var(--color-surface)', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 1px var(--color-border)' }}>
                   <Icon name="x" size={16} strokeWidth={2} />
                 </button>
               ) : null}

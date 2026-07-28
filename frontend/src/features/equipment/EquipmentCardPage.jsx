@@ -357,7 +357,7 @@ export function EquipmentCardPage() {
                         onConfirm: () => onDetachLicense(lic.id),
                       })
                     }
-                    style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: 'var(--color-surface)', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 1px var(--color-border)' }}
                   >
                     <Icon name="x" size={16} strokeWidth={2} />
                   </button>
@@ -400,7 +400,7 @@ export function EquipmentCardPage() {
                     type="button"
                     title="Открепить"
                     onClick={() => setDetachSim(sim)}
-                    style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: 'var(--color-surface)', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 0 0 1px var(--color-border)' }}
                   >
                     <Icon name="x" size={16} strokeWidth={2} />
                   </button>
