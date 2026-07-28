@@ -8,6 +8,7 @@ import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, Checkbox, EmptyState, FilterModal, Icon, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 import { EmployeeNameCell } from '../../shared/EmployeeNameCell.jsx'
+import { TruncatedText } from '../../shared/TruncatedText.jsx'
 import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
 import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
 import { csvParam } from '../../shared/filterParams.js'
@@ -280,14 +281,14 @@ export function SimListPage() {
                       <EmployeeNameCell name={row.employee_name} position={row.position} department={row.department} status={row.acceptance_status} />
                     ) : row.equipment_detail ? (
                       <div style={{ minWidth: 0 }}>
-                        <div className="ele-clamp-2">{row.equipment_detail.type_and_model}</div>
+                        <TruncatedText singleLine={false} className="ele-clamp-2">{row.equipment_detail.type_and_model}</TruncatedText>
                         <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.equipment_detail.inventory_number}</div>
                       </div>
                     ) : row.sim_type === 'esim' ? (
                       <span style={{ color: 'var(--color-text-placeholder)' }}>На хранении у оператора</span>
                     ) : row.storage_place_detail ? (
                       <>
-                        <div className="ele-clamp-2">На складе: {row.storage_place_detail.name}</div>
+                        <TruncatedText singleLine={false} className="ele-clamp-2">На складе: {row.storage_place_detail.name}</TruncatedText>
                         <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {row.storage_place_detail.building_name} — {row.storage_place_detail.room_name}
                         </div>

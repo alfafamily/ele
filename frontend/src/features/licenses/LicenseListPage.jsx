@@ -8,6 +8,7 @@ import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterModal, Icon, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 import { EquipmentMultiPicker } from '../../shared/EquipmentMultiPicker.jsx'
+import { TruncatedText } from '../../shared/TruncatedText.jsx'
 import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
 import { TypeRequisiteFilter } from '../../shared/TypeRequisiteFilter.jsx'
 import { csvParam, reqParams } from '../../shared/filterParams.js'
@@ -246,7 +247,7 @@ export function LicenseListPage() {
               <TableRow columns={columns}>
                 {/* B18: наименование = Тип лицензии; ниже — вид (программная/аппаратная) */}
                 <div style={{ minWidth: 0 }}>
-                  <div className="ele-clamp-2" style={{ fontWeight: 600 }}>{row.license_type_name}</div>
+                  <TruncatedText singleLine={false} className="ele-clamp-2" style={{ fontWeight: 600 }}>{row.license_type_name}</TruncatedText>
                   <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>{KIND_LABEL[row.license_type_kind] || ''}</div>
                 </div>
                 {tab === 'active' ? (
@@ -255,12 +256,12 @@ export function LicenseListPage() {
                   <div style={{ minWidth: 0 }}>
                     {row.equipment_detail ? (
                       <>
-                        <div className="ele-clamp-2">{row.equipment_detail.type_and_model}</div>
+                        <TruncatedText singleLine={false} className="ele-clamp-2">{row.equipment_detail.type_and_model}</TruncatedText>
                         <div style={{ font: '500 12px var(--font-mono)', color: 'var(--color-text-placeholder)', marginTop: 2 }}>{row.equipment_detail.inventory_number}</div>
                       </>
                     ) : row.storage_place_detail ? (
                       <>
-                        <div className="ele-clamp-2">На складе: {row.storage_place_detail.name}</div>
+                        <TruncatedText singleLine={false} className="ele-clamp-2">На складе: {row.storage_place_detail.name}</TruncatedText>
                         <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {row.storage_place_detail.building_name} — {row.storage_place_detail.room_name}
                         </div>
