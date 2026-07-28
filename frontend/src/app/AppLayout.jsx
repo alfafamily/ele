@@ -139,7 +139,7 @@ export function AppLayout() {
           </button>
         </div>
 
-        <NavLink to="/profile" className="ele-rail__user" onClick={(e) => e.currentTarget.blur()}>
+        <NavLink to="/profile" className={({ isActive }) => `ele-rail__user${isActive ? ' ele-rail__user--active' : ''}`} onClick={(e) => e.currentTarget.blur()}>
           <span className="ele-rail__avatar" style={{ overflow: 'hidden' }}>
             {user.employee?.avatar ? (
               <img src={user.employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

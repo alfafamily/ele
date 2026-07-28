@@ -234,7 +234,7 @@ export function EquipmentCardPage() {
                       return (
                         <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <span title={ic.title} style={{ flex: 'none' }}>
-                            <LeadIconCircle name={ic.icon} color={ic.color} />
+                            <LeadIconCircle name={ic.icon} color={ic.color} size={46} iconSize={20} />
                           </span>
                           <div style={{ minWidth: 0 }}>
                             <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600 }}>{r.name}</div>
@@ -327,7 +327,7 @@ export function EquipmentCardPage() {
           </div>
           {(equipment.licenses || []).map((lic) => (
             <div key={lic.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <LeadIconCircle name={lic.license_type_kind === 'hardware' ? 'cpu' : 'scroll-text'} />
+              <LeadIconCircle name={lic.license_type_kind === 'hardware' ? 'cpu' : 'scroll-text'} size={46} iconSize={20} />
               {perms.canManageLicenses ? (
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Link to={`/licenses/${lic.id}`}>
@@ -384,8 +384,8 @@ export function EquipmentCardPage() {
             </span>
           </div>
           {(equipment.sim_cards || []).map((sim) => (
-            <div key={sim.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10, marginBottom: 8 }}>
-              <Icon name="radio-tower" size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+            <div key={sim.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <LeadIconCircle name="radio-tower" size={46} iconSize={20} />
               <Link to={`/sim-cards/${sim.id}`} style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ font: '600 13.5px var(--font-mono)', color: 'var(--color-text-primary)' }}>{sim.phone_number}</div>
                 <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{sim.sim_type_display}</div>

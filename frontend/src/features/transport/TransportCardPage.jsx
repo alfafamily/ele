@@ -231,7 +231,7 @@ export function TransportCardPage() {
                         return (
                           <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <span title={ic.title} style={{ flex: 'none' }}>
-                              <LeadIconCircle name={ic.icon} color={ic.color} />
+                              <LeadIconCircle name={ic.icon} color={ic.color} size={46} iconSize={20} />
                             </span>
                             <div style={{ minWidth: 0 }}>
                               <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600 }}>{r.name}</div>
@@ -409,8 +409,8 @@ function PassesBlock({ passes, canManage, onAttach, onDetach }) {
           {passes.map((p) => {
             const buildings = (p.buildings || []).map((b) => b.name).join(', ')
             return (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                <Icon name="key-square" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none', marginTop: 1 }} />
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <LeadIconCircle name="key-square" size={46} iconSize={20} />
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <Link to={`/passes/${p.id}`} style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>
                     Пропуск № {p.account_number && p.account_number.trim() ? p.account_number : 'б/н'}
