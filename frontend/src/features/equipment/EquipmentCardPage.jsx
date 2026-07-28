@@ -4,8 +4,9 @@ import { apiPatch } from '../../shared/api/client'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { canMaintainType } from '../../shared/permissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
-import { nameInitials } from '../../shared/employeeName.js'
-import { AcceptanceOverlay } from '../../shared/AcceptanceIcon.jsx'
+import { AvatarCircle } from '../../shared/AvatarCircle.jsx'
+import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
+import { PlacementRow } from '../../shared/PlacementRow.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { AttachLicenseModal } from './AttachLicenseModal.jsx'
@@ -259,55 +260,27 @@ export function EquipmentCardPage() {
 
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Размещение</div>
           {equipment.employee ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ position: 'relative', flex: 'none' }}>
-                <span style={{ width: 46, height: 46, display: 'flex', borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
-                  {equipment.employee_avatar ? (
-                    <img src={equipment.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    nameInitials(equipment.employee_name)
-                  )}
-                </span>
-                <AcceptanceOverlay status={equipment.acceptance_status} size={18} />
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>За сотрудником</div>
-                <Link className="ele-clamp-2" to={`/employees/${equipment.employee}`} style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                  {equipment.employee_name}
-                </Link>
-                <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>{equipment.department || '—'}</div>
-              </div>
-            </div>
+            <PlacementRow
+              circle={<AvatarCircle avatar={equipment.employee_avatar} name={equipment.employee_name} size={46} status={equipment.acceptance_status} overlaySize={18} />}
+              label="За сотрудником"
+              title={<Link to={`/employees/${equipment.employee}`} style={{ color: 'var(--color-text-primary)' }}>{equipment.employee_name}</Link>}
+              sub={equipment.department || '—'}
+            />
           ) : equipment.place_detail ? (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ width: 46, height: 46, flex: 'none', borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon
-                    name={equipment.place_detail.place_type === 'storage' ? 'warehouse' : 'briefcase'}
-                    size={20}
-                    strokeWidth={2}
-                    style={{ color: 'var(--color-text-muted)' }}
-                  />
-                </span>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
-                    {equipment.place_detail.place_type === 'storage' ? 'На складе' : 'На рабочем месте'}
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 600 }}>{equipment.place_detail.name}</div>
-                  <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>
-                    {equipment.place_detail.building_name} — {equipment.place_detail.room_name}
-                  </div>
-                </div>
-              </div>
+              <PlacementRow
+                circle={<LeadIconCircle name={equipment.place_detail.place_type === 'storage' ? 'warehouse' : 'briefcase'} size={46} iconSize={20} />}
+                label={equipment.place_detail.place_type === 'storage' ? 'На складе' : 'На рабочем месте'}
+                title={equipment.place_detail.name}
+                sub={`${equipment.place_detail.building_name} — ${equipment.place_detail.room_name}`}
+              />
               {equipment.place_detail.employees?.length ? (
                 <div style={{ marginTop: 12 }}>
                   <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 6 }}>Сотрудники рабочего места</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {equipment.place_detail.employees.map((e) => (
                       <Link key={e.id} to={`/employees/${e.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: 'var(--color-text-primary)' }}>
-                        <span style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>
-                          {nameInitials(e.name)}
-                        </span>
+                        <AvatarCircle name={e.name} size={28} />
                         {e.name}
                       </Link>
                     ))}
@@ -316,7 +289,11 @@ export function EquipmentCardPage() {
               ) : null}
             </>
           ) : (
-            <div style={{ fontSize: 15, color: 'var(--color-text-placeholder)' }}>Не размещено</div>
+            <PlacementRow
+              circle={<LeadIconCircle name="warehouse" size={46} iconSize={20} />}
+              label="На складе"
+              title="Без склада"
+            />
           )}
           {!equipment.is_written_off ? (
             <Can perm="canManageEquipment">

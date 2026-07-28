@@ -293,7 +293,7 @@ export function SimListPage() {
                         </div>
                       </>
                     ) : (
-                      <span style={{ color: 'var(--color-text-placeholder)' }}>На хранении</span>
+                      <div className="ele-clamp-2">На складе: Без склада</div>
                     )}
                   </div>
                 ) : (

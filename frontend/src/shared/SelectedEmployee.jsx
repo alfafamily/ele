@@ -7,7 +7,7 @@ export function SelectedEmployee({ employee, onClear }) {
   const subtitle = [employee.position, employee.department].filter(Boolean).join(' · ')
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
-      <span style={{ width: 30, height: 30, flex: 'none', borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, overflow: 'hidden' }}>
+      <span style={{ width: 30, height: 30, flex: 'none', borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, overflow: 'hidden' }}>
         {employee.avatar ? (
           <img src={employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
