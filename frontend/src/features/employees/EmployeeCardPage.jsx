@@ -165,8 +165,9 @@ export function EmployeeCardPage() {
                 height: 54,
                 flex: 'none',
                 borderRadius: '50%',
-                background: 'var(--color-fill-active-tint)',
-                color: 'var(--color-text-muted)',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                color: 'var(--color-text-secondary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -292,7 +293,7 @@ export function EmployeeCardPage() {
                   </div>
                 </div>
                 {wp.equipment?.length || wp.tools?.length ? (
-                  <div style={{ marginTop: 8, paddingLeft: 28, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>На этом рабочем месте</div>
                     {(wp.equipment || []).map((eq) => (
                       <Link key={`e${eq.id}`} to={`/equipment/${eq.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-primary)' }}>

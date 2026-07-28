@@ -59,14 +59,18 @@ export function ToolTransferModal({ tool, storages, unplacedFree = 0, onClose, o
             label="Со склада"
             required={!noneAllowed}
             value={fromId}
-            onChange={setFromId}
+            onChange={(v) => {
+              setFromId(v)
+              // Нельзя перемещать в тот же склад — сбрасываем приёмник при совпадении.
+              if (v && String(v) === String(toId)) setToId('')
+            }}
             freeMap={freeMap}
             restrictToStock
             showQuantity
             allowNone={noneAllowed}
             noneQty={unplacedFree}
           />
-          <StoragePicker label="На склад" required value={toId} onChange={setToId} />
+          <StoragePicker label="На склад" required value={toId} onChange={setToId} excludeIds={fromId ? [fromId] : undefined} />
           <Input
             label="Количество"
             required

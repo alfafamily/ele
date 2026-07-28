@@ -356,11 +356,12 @@ class LicenseMiniSerializer(serializers.ModelSerializer):
     фронте всё равно маскируется за «глазиком»."""
 
     license_type_name = serializers.CharField(source="license_type.name", read_only=True)
+    license_type_kind = serializers.CharField(source="license_type.kind", read_only=True)
     key = serializers.SerializerMethodField()
 
     class Meta:
         model = License
-        fields = ["id", "name", "license_type_name", "key"]
+        fields = ["id", "name", "license_type_name", "license_type_kind", "key"]
 
     def get_key(self, obj):
         if not self.context.get("include_key"):

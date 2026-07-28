@@ -27,7 +27,11 @@ export function PlaceSelect({
   showQuantity = false,
   allowNone = false,
   noneQty,
+  excludeIds,
 }) {
+  // Места, недоступные для выбора (напр. склад-источник в перемещении — его
+  // нельзя выбрать как приёмник). Сравнение по строке id.
+  const excludeSet = useMemo(() => new Set((excludeIds || []).filter((v) => v != null).map(String)), [excludeIds])
   const [places, setPlaces] = useState(null)
   const [query, setQuery] = useState('')
   // Выбор «Без склада» неотличим от «не выбрано» по value (''), поэтому храним
@@ -54,9 +58,10 @@ export function PlaceSelect({
   const list = useMemo(() => {
     const q = query.trim().toLowerCase()
     return (places || [])
+      .filter((p) => !excludeSet.has(String(p.id)))
       .filter((p) => (restrictToStock ? (freeMap[String(p.id)] || 0) > 0 : true))
       .filter((p) => !q || [p.name, p.building_name, p.room_name].some((v) => (v || '').toLowerCase().includes(q)))
-  }, [places, query, restrictToStock, freeMap])
+  }, [places, query, restrictToStock, freeMap, excludeSet])
 
   const selectedPlace = (places || []).find((p) => String(p.id) === String(value))
   const collapsed = !editing && (Boolean(value) || noneChosen)

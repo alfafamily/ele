@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Banner, Button, Icon, Modal } from '../../shared/ui'
+import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { getParkingSpots, setTransportParking } from './transportApi.js'
 
 // Закрепление транспорта за парковкой. Единый список выбора: первым пунктом —
@@ -107,7 +108,6 @@ function SpotPicker({ spots, loading, allowDriver, onSelect }) {
             транспортом закреплён сотрудник (адрес относится к нему). */}
         {allowDriver ? (
           <PickerRow
-            icon="map-pin"
             title="На адресе сотрудника"
             subtitle="Авто не паркуется на территории"
             first
@@ -124,7 +124,6 @@ function SpotPicker({ spots, loading, allowDriver, onSelect }) {
           visible.map((s, i) => (
             <PickerRow
               key={s.id}
-              icon="square-parking"
               title={s.name}
               subtitle={[s.building_name, s.room_name].filter(Boolean).join(' — ')}
               first={i === 0 && !allowDriver}
@@ -137,7 +136,7 @@ function SpotPicker({ spots, loading, allowDriver, onSelect }) {
   )
 }
 
-function PickerRow({ icon, title, subtitle, onClick, first }) {
+function PickerRow({ title, subtitle, onClick, first }) {
   return (
     <button
       type="button"
@@ -148,9 +147,6 @@ function PickerRow({ icon, title, subtitle, onClick, first }) {
         background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
       }}
     >
-      <span style={{ flex: 'none', width: 30, height: 30, borderRadius: 8, background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Icon name={icon} size={17} strokeWidth={2} />
-      </span>
       <span style={{ minWidth: 0 }}>
         <div style={{ fontSize: 13.5, fontWeight: 600 }}>{title}</div>
         {subtitle ? <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>{subtitle}</div> : null}
@@ -169,9 +165,7 @@ function SelectedRow({ selected, onClear }) {
     : [selected.building_name, selected.room_name].filter(Boolean).join(' — ')
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
-      <span style={{ width: 30, height: 30, flex: 'none', borderRadius: 8, background: 'var(--color-fill-active-tint)', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Icon name={icon} size={17} strokeWidth={2} />
-      </span>
+      <LeadIconCircle name={icon} size={30} iconSize={16} />
       <span style={{ minWidth: 0, flex: 1 }}>
         <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
         <span style={{ display: 'block', fontSize: 11.5, color: 'var(--color-text-placeholder)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subtitle}</span>
