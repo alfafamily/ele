@@ -226,8 +226,8 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove, onTransfer })
         <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>Свободно по складам</div>
           {storages.map((a) => (
-            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: 'var(--color-fill-input)', borderRadius: 8 }}>
-              <LeadIconCircle name="warehouse" size={30} iconSize={15} />
+            <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10 }}>
+              <LeadIconCircle name="warehouse" size={46} iconSize={20} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{a.place_name}</div>
                 <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>{a.place_location}</div>
@@ -236,8 +236,8 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove, onTransfer })
             </div>
           ))}
           {tool.free_unplaced > 0 ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: 'var(--color-fill-input)', borderRadius: 8 }}>
-              <LeadIconCircle name="blocks" size={30} iconSize={15} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10 }}>
+              <LeadIconCircle name="blocks" size={46} iconSize={20} />
               <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: 'var(--color-text-muted)' }}>Без склада</div>
               <div style={{ fontSize: 13, fontWeight: 600 }}>{tool.free_unplaced} шт.</div>
             </div>
@@ -330,19 +330,19 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {visibleAllocations.map((a) => (
-            <div key={a.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
+            <div key={a.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ position: 'relative', flex: 'none' }}>
-                <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, overflow: 'hidden' }}>
+                <span style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
                   {a.kind === 'workplace' ? (
-                    <Icon name="briefcase" size={16} strokeWidth={2} />
+                    <Icon name="briefcase" size={20} strokeWidth={2} style={{ color: 'var(--color-text-muted)' }} />
                   ) : a.employee_avatar ? (
                     <img src={a.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     nameInitials(a.employee_name)
                   )}
                 </span>
-                <AcceptanceOverlay status={a.acceptance_status} size={15} />
+                <AcceptanceOverlay status={a.acceptance_status} size={18} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 {a.kind === 'workplace' ? (
@@ -367,7 +367,7 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
                   <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)' }}>Сотрудники рабочего места</div>
                   {a.place_employees.map((e) => (
                     <Link key={e.id} to={`/employees/${e.id}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--color-text-primary)' }}>
-                      <span style={{ width: 24, height: 24, flex: 'none', borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 600 }}>
+                      <span style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600 }}>
                         {nameInitials(e.name)}
                       </span>
                       {e.name}

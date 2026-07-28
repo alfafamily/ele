@@ -190,7 +190,8 @@
   white-space: nowrap;
 }
 
-.ele-rail__user:hover {
+.ele-rail__user:hover,
+.ele-rail__user--active {
   background: var(--color-fill-active-tint);
 }
 
@@ -199,8 +200,9 @@
   height: 34px;
   flex: none;
   border-radius: 50%;
-  background: var(--color-fill-active-tint);
-  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -556,16 +558,20 @@
   position: relative;
 }
 
+/* Восклицательный треугольник наложен на шестерёнку в правом нижнем углу,
+   в пределах габарита иконки (высота/ширина не растут). Белый круг-подложка
+   отделяет его от штрихов шестерёнки. */
 .ele-nav-warning {
   position: absolute;
-  top: -5px;
-  right: -6px;
+  right: -1px;
+  bottom: -1px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--color-warning);
   background: var(--color-surface, #fff);
   border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--color-surface, #fff);
   line-height: 0;
   pointer-events: none;
 }
