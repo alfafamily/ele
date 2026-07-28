@@ -325,15 +325,12 @@ export function BackupTab() {
               ))}
             </Select>
           </div>
-          <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 12, lineHeight: 1.5 }}>
-            Время указывается в выбранном часовом поясе. По умолчанию — пояс вашего устройства.
-            {autoTime ? (
-              <>
-                {' '}Копии будут создаваться в <b style={{ color: 'var(--color-text-muted)' }}>{autoTime}</b> по зоне{' '}
-                <b style={{ color: 'var(--color-text-muted)' }}>{autoTz}</b>.
-              </>
-            ) : null}
-          </div>
+          {autoTime ? (
+            <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 12, lineHeight: 1.5 }}>
+              Копии будут создаваться в <b style={{ color: 'var(--color-text-muted)' }}>{autoTime}</b> по зоне{' '}
+              <b style={{ color: 'var(--color-text-muted)' }}>{autoTz}</b>.
+            </div>
+          ) : null}
           <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 10, marginBottom: 20, lineHeight: 1.5 }}>
             Шифрование автоматических копий задаётся переменной <b style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>BACKUP_PASSPHRASE</b> в .env сервера
             (при пустом значении авто-копии не шифруются) — пароль в блоке создания резервной копии применяется только к ручному экспорту.
