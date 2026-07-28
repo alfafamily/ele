@@ -110,6 +110,9 @@
 }
 
 .ele-history__date {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font: 500 12px var(--font-mono);
   color: var(--color-text-placeholder);
   white-space: nowrap;
