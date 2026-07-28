@@ -16,6 +16,17 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.27.1] — 2026-07-28
+
+### Исправлено
+- В блоках «Ожидают вашего решения» (Профиль) и «Ожидает решения сотрудника»
+  (карточка сотрудника) SIM-карты и пропуска/ключи теперь показываются теми же
+  полями, что и в списках закреплённого имущества (номер + тип/оператор у SIM;
+  «Пропуск (типы)» / «Ключ» + учётный номер у средств доступа) — раньше номер
+  дублировался в двух строках.
+- На странице «Операции закрепления» в окне «Фильтры» высота списка сотрудников
+  выровнена с блоком статусов слева.
+
 ## [1.27.0] — 2026-07-28
 
 ### Добавлено
@@ -1588,7 +1599,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.27.0...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.27.1...HEAD
+[1.27.1]: https://github.com/alfafamily/ele/compare/v1.27.0...v1.27.1
 [1.27.0]: https://github.com/alfafamily/ele/compare/v1.26.0...v1.27.0
 [1.26.0]: https://github.com/alfafamily/ele/compare/v1.25.2...v1.26.0
 [1.25.2]: https://github.com/alfafamily/ele/compare/v1.25.1...v1.25.2
