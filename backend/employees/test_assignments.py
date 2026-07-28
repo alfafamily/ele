@@ -148,6 +148,31 @@ class TransportTests(AssignmentBaseTests):
         self.assertIsNone(tr.employee_id)
 
 
+class HistoryAcceptanceTests(AssignmentBaseTests):
+    def test_created_assigned_equipment_shows_acceptance_in_created_row(self):
+        emp = _emp()
+        self.client.force_authenticate(self.admin)
+        resp = self.client.post("/api/equipment/", {
+            "inventory_number": "PC-H1", "equipment_type": self.eq_type.id, "employee": emp.id,
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        eq_id = resp.data["id"]
+        h = self.client.get(f"/api/equipment/{eq_id}/history/").json()
+        created = next(r for r in h if r["kind"] == "created")
+        self.assertEqual(created.get("acceptance"), ["Заочно закреплено за сотрудником"])
+
+    def test_tool_movement_shows_acceptance(self):
+        emp = _emp()
+        tool = Tool.objects.create(name="Дрель", quantity=5)
+        ToolAllocation.objects.create(tool=tool, place=self.storage, quantity=5)
+        self.client.force_authenticate(self.admin)
+        self.client.post(f"/api/tools/{tool.id}/assign-units/",
+                         {"mode": "mobile", "employee": emp.id, "quantity": 2, "from_place": self.storage.id})
+        h = self.client.get(f"/api/tools/{tool.id}/history/").json()
+        assign_row = next(r for r in h if r.get("acceptance"))
+        self.assertIn("Заочно закреплено за сотрудником", assign_row["acceptance"])
+
+
 class ToolTests(AssignmentBaseTests):
     def test_tool_assign_and_unassign_episode(self):
         emp = _emp()

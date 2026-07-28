@@ -91,11 +91,18 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
                 lines = lines + [
                     ln for ln in created_extra_lines if ln["value"] not in _EMPTY_CREATED_VALUES
                 ]
-            rows.append({
+            created_row = {
                 "date": date, "author": author, "kind": "created", "category": "movement",
                 "label": "Объект создан", "old": None, "new": None, "secret": False,
                 "comment": reason or None, "lines": lines,
-            })
+            }
+            # B32: объект создан сразу за сотрудником — подшить статус акцепта.
+            emp_id = getattr(record, "employee_id", None)
+            if acceptance_for is not None and emp_id:
+                texts = acceptance_for("employee", emp_id, date)
+                if texts:
+                    created_row["acceptance"] = texts
+            rows.append(created_row)
             continue
 
         older = history[i + 1] if i + 1 < len(history) else None

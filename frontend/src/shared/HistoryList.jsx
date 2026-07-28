@@ -75,6 +75,12 @@ function HistoryEventRow({ row }) {
           </ul>
         ) : null}
         {row.comment ? <div className="ele-history__comment">Комментарий: {row.comment}</div> : null}
+        {/* B32: статус акцепта под движением закрепления (создание / раздача инструмента). */}
+        {row.acceptance?.length
+          ? row.acceptance.map((t, j) => (
+              <div key={j} className="ele-history__acceptance">{t}</div>
+            ))
+          : null}
       </div>
     </div>
   )

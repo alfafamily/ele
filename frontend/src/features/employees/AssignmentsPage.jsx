@@ -72,7 +72,10 @@ export function AssignmentsPage() {
             <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, flexWrap: 'wrap' }}>
               <Icon name={KIND_ICON[a.object_kind] || 'tag'} size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
               <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.object_label || a.object_kind_display}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {a.object_label || a.object_kind_display}
+                  {a.object_kind === 'tool' && a.return_quantity ? ` · ${a.return_quantity} шт.` : ''}
+                </div>
                 <Link to={`/employees/${a.employee_id}`} style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>{a.employee_name}</Link>
               </div>
               <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', flex: 'none' }}>{fmtDate(a.assigned_at)}</div>
