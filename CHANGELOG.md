@@ -16,6 +16,17 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.26.0] — 2026-07-28
+
+### Добавлено
+- **Часовой пояс расписания автокопий.** Время автоматического резервного
+  копирования теперь задаётся в выбранном часовом поясе, а не по UTC. По
+  умолчанию подставляется часовой пояс устройства администратора
+  (определяется автоматически), при необходимости зону можно сменить из
+  полного списка. Сервер исполняет расписание в этой зоне с учётом переходов
+  на летнее/зимнее время. Существующие расписания продолжают работать без
+  изменений — сохранённое ранее время трактуется как UTC.
+
 ## [1.25.2] — 2026-07-27
 
 ### Исправлено
@@ -1531,7 +1542,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.25.2...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.26.0...HEAD
+[1.26.0]: https://github.com/alfafamily/ele/compare/v1.25.2...v1.26.0
 [1.25.2]: https://github.com/alfafamily/ele/compare/v1.25.1...v1.25.2
 [1.25.1]: https://github.com/alfafamily/ele/compare/v1.25.0...v1.25.1
 [1.25.0]: https://github.com/alfafamily/ele/compare/v1.24.0...v1.25.0
