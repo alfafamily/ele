@@ -116,9 +116,8 @@ class DecisionTests(AssignmentBaseTests):
         self.client.post(f"/api/assignments/{a.id}/reject/")
         self.client.force_authenticate(self.admin)
         h = self.client.get(f"/api/equipment/{eq.id}/history/").json()
-        # Ровно одна запись-движение закрепления (assign), без строк отката
-        # («Не закреплено» как new и повторного «Размещение»).
-        emp_moves = [r for r in h if r["category"] == "movement" and r.get("label") == "Закреплённый сотрудник"]
+        # Ровно одна запись-движение закрепления (assign), без строк отката.
+        emp_moves = [r for r in h if r.get("title") == "Закрепление за сотрудником"]
         self.assertEqual(len(emp_moves), 1)
         self.assertEqual(emp_moves[0]["new"], str(self.emp))
         self.assertEqual(emp_moves[0]["acceptance"], [{
@@ -187,7 +186,7 @@ class HistoryAcceptanceTests(AssignmentBaseTests):
         # Порядок: «Объект создан» — самая нижняя (старая) запись.
         self.assertEqual(h[-1]["kind"], "created")
         # Отдельная запись-движение закрепления со статусом акцепта.
-        mv = next(r for r in h if r["category"] == "movement" and r.get("label") == "Закреплённый сотрудник")
+        mv = next(r for r in h if r.get("title") == "Закрепление за сотрудником")
         self.assertEqual(mv["new"], str(emp))
         self.assertEqual(mv.get("acceptance"),
                          [{"text": "Заочно закреплено за сотрудником", "tone": "absentia"}])
@@ -225,6 +224,33 @@ class HistoryAcceptanceTests(AssignmentBaseTests):
         self.assertEqual(len(assigns), 1)
         self.assertEqual(len(unassigns), 0)  # возврат-по-отказу скрыт
         self.assertEqual(assigns[0]["acceptance"][0]["tone"], "rejected")
+
+
+class PlacementCollapseTests(AssignmentBaseTests):
+    def test_unassign_employee_to_place_is_single_row(self):
+        # Создаём на складе, закрепляем за сотрудником, затем открепляем на склад.
+        eq = self._equip(place=self.storage)
+        self._assign(eq, _emp(last="Иванов"))
+        self.client.force_authenticate(self.admin)
+        self.client.post(f"/api/equipment/{eq.id}/unassign/", {"place": self.storage.id})
+        h = self.client.get(f"/api/equipment/{eq.id}/history/").json()
+        # Верхняя запись — открепление сотрудника на место, ОДНОЙ строкой.
+        top = h[0]
+        self.assertEqual(top["title"], "Размещение на место")
+        self.assertIn("Иванов", top["old"])
+        self.assertIn(self.storage.name, top["new"])
+        # Нет отдельной строки «Размещение: Не размещено → …» с прежним форматом.
+        self.assertFalse(any(r.get("label") == "Размещение" and r.get("title") is None
+                             and r["category"] == "movement" for r in h))
+
+    def test_assign_from_place_titled_zakreplenie(self):
+        eq = self._equip(place=self.storage)
+        self._assign(eq, _emp(last="Петров"))
+        h = self.client.get(f"/api/equipment/{eq.id}/history/").json()
+        top = h[0]
+        self.assertEqual(top["title"], "Закрепление за сотрудником")
+        self.assertIn(self.storage.name, top["old"])
+        self.assertIn("Петров", top["new"])
 
 
 class ToolTests(AssignmentBaseTests):

@@ -39,6 +39,37 @@ def _raw_field(record, field):
     return getattr(record, field, None)
 
 
+def _holder(record, fields):
+    """Текущий «держатель» из группы взаимоисключающих полей размещения
+    (сотрудник/место/склад/оборудование): первое непустое поле. Возвращает
+    (имя_поля, значение) или (None, None), если объект нигде не размещён."""
+    for f in fields:
+        val = _raw_field(record, f)
+        if val:
+            return f, val
+    return None, None
+
+
+def _placement_row(placement_group, field_specs, *, date, author, old_field, old_val,
+                   new_field, new_val, reason, acceptance_for):
+    """Одна запись-движение «было → стало» для смены держателя (сотрудник↔место).
+    Заголовок (title) зависит от нового держателя; при закреплении за сотрудником
+    подшивается статус акцепта."""
+    old_disp = field_specs[old_field]["format"](old_val) if old_field and old_field in field_specs else "—"
+    new_disp = field_specs[new_field]["format"](new_val) if new_field and new_field in field_specs else "—"
+    title = placement_group["titles"].get(new_field) or placement_group.get("empty_title", "Открепление")
+    row = {
+        "date": date, "author": author, "kind": "changed", "category": "movement",
+        "title": title, "label": title, "old": old_disp, "new": new_disp,
+        "secret": False, "comment": reason or None,
+    }
+    if acceptance_for is not None and new_field == "employee" and new_val:
+        texts = acceptance_for("employee", new_val, date)
+        if texts:
+            row["acceptance"] = texts
+    return row
+
+
 def _created_lines(record, field_specs):
     """Строки «поле: значение» для записи создания — только заполненные поля."""
     lines = []
@@ -53,7 +84,7 @@ def _created_lines(record, field_specs):
     return lines
 
 
-def build_history_rows(instance, field_specs, *, movement_fields=(), movement_events=(), created_extra_lines=None, m2m_specs=None, acceptance_for=None):
+def build_history_rows(instance, field_specs, *, movement_fields=(), movement_events=(), created_extra_lines=None, m2m_specs=None, acceptance_for=None, placement_group=None):
     """Строки истории базового объекта (новые сверху).
 
     movement_fields — поля, чьи изменения считаются движением (напр. employee).
@@ -99,24 +130,33 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
             # Порядок эмиссии: сначала движения, потом «Объект создан» — у них
             # одинаковый timestamp, и стабильная сортировка (новые сверху) оставит
             # «Объект создан» В САМОМ НИЗУ (сначала объект создали, потом закрепили).
-            for field in movement_fields:
-                raw = _raw_field(record, field)
-                if not raw:
-                    continue
-                spec = field_specs.get(field)
-                if not spec:
-                    continue
-                fmt = spec.get("format", _fmt_text)
-                mv = {
-                    "date": date, "author": author, "kind": "changed", "category": "movement",
-                    "label": spec["label"], "old": fmt(None), "new": fmt(raw),
-                    "secret": False, "comment": None,
-                }
-                if acceptance_for is not None and field == "employee":
-                    texts = acceptance_for("employee", raw, date)
-                    if texts:
-                        mv["acceptance"] = texts
-                rows.append(mv)
+            if placement_group:
+                nf, nv = _holder(record, placement_group["fields"])
+                if nf:
+                    rows.append(_placement_row(
+                        placement_group, field_specs, date=date, author=author,
+                        old_field=None, old_val=None, new_field=nf, new_val=nv,
+                        reason=None, acceptance_for=acceptance_for,
+                    ))
+            else:
+                for field in movement_fields:
+                    raw = _raw_field(record, field)
+                    if not raw:
+                        continue
+                    spec = field_specs.get(field)
+                    if not spec:
+                        continue
+                    fmt = spec.get("format", _fmt_text)
+                    mv = {
+                        "date": date, "author": author, "kind": "changed", "category": "movement",
+                        "label": spec["label"], "old": fmt(None), "new": fmt(raw),
+                        "secret": False, "comment": None,
+                    }
+                    if acceptance_for is not None and field == "employee":
+                        texts = acceptance_for("employee", raw, date)
+                        if texts:
+                            mv["acceptance"] = texts
+                    rows.append(mv)
             rows.append({
                 "date": date, "author": author, "kind": "created", "category": "movement",
                 "label": "Объект создан", "old": None, "new": None, "secret": False,
@@ -144,6 +184,23 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
                     "comment": reason or None,
                 })
                 consumed |= set(ev.get("consume", [ev["trigger"]]))
+
+        # B32: смена держателя в группе взаимоисключающих полей размещения
+        # (сотрудник↔место/склад/оборудование) — ОДНОЙ записью «было → стало»
+        # вместо двух («открепили сотрудника» + «разместили на место»). Не трогаем,
+        # если поля группы уже поглощены событием (списание/утилизация).
+        if placement_group:
+            gfields = placement_group["fields"]
+            if any(f in changes for f in gfields) and not (set(gfields) & consumed):
+                of, ov = _holder(older, gfields)
+                nf, nv = _holder(record, gfields)
+                if (of, ov) != (nf, nv):
+                    rows.append(_placement_row(
+                        placement_group, field_specs, date=date, author=author,
+                        old_field=of, old_val=ov, new_field=nf, new_val=nv,
+                        reason=reason, acceptance_for=acceptance_for,
+                    ))
+                consumed |= set(gfields)
 
         for field, change in changes.items():
             if field in consumed:
