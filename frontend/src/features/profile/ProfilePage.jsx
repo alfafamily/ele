@@ -326,7 +326,7 @@ export function ProfilePage() {
 
         {employee ? (
           <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданное оборудование</div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданное мне оборудование</div>
             {shownEquipment.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено оборудования.</div>
             ) : (
@@ -345,7 +345,7 @@ export function ProfilePage() {
 
         {employee ? (
           <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданный транспорт</div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданный мне транспорт</div>
             {shownTransport.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплён транспорт.</div>
             ) : (
@@ -369,7 +369,7 @@ export function ProfilePage() {
 
         {employee ? (
           <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданный инструмент</div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданный мне инструмент</div>
             {shownTools.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено инструментов.</div>
             ) : (
@@ -388,7 +388,7 @@ export function ProfilePage() {
 
         {employee ? (
           <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданные SIM</div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданные мне SIM</div>
             {shownSims.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено SIM-карт.</div>
             ) : (
@@ -404,7 +404,7 @@ export function ProfilePage() {
 
         {employee ? (
           <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданные средства доступа</div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданные мне средства доступа</div>
             {shownPasses.length === 0 ? (
               <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено средств доступа.</div>
             ) : (
