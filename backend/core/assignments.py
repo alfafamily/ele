@@ -40,37 +40,47 @@ def object_kind_of(obj):
     raise TypeError(f"Объект {obj!r} не поддерживает закрепление за сотрудником")
 
 
-def pass_access_label(obj):
-    """Подпись ключа/пропуска без учётного номера — по объекту доступа (зеркало
-    `KeyTarget`/`PassInfo` на фронте). Ключ: «Ключ · Место (Здание — Помещение)»
-    (у ключа ровно один объект: место / помещение / здание целиком). Пропуск:
-    «Пропуск (типы) · Здание, Здание». Если объектов доступа нет — запасной
-    порядковый номер, чтобы объекты всё же различались."""
+def pass_label(obj):
+    """Подпись ключа/пропуска — те же данные, что в списке Средств доступа: тип +
+    объекты доступа (+ учётный номер, если он есть). Единый вид независимо от
+    наличия номера, чтобы объекты различались между собой (порядковый «#N» сам по
+    себе ничего не значит). Ключ: «Ключ · Место (Здание — Помещение)» (у ключа
+    ровно один объект: место / помещение / здание целиком). Пропуск: «Пропуск
+    (типы) · Здание, Здание». Зеркало `KeyTarget`/`PassInfo` на фронте."""
     from employees.models import AccessPass
 
     is_key = obj.object_type == AccessPass.ObjectType.KEY
     if is_key:
+        head, access = "Ключ", None
         building = obj.buildings.first()
-        if building is None:
-            return f"Ключ #{obj.pk}"
-        place = obj.places.first()
-        if place is not None:
-            scope = f"{building.name} — {place.room.name}" if place.room_id else building.name
-            return f"Ключ · {place.name} ({scope})"
-        room = obj.rooms.first()
-        if room is not None:
-            return f"Ключ · {room.name} ({building.name})"
-        return f"Ключ · {building.name}"  # всё здание
+        if building is not None:
+            place = obj.places.first()
+            room = obj.rooms.first()
+            if place is not None:
+                scope = f"{building.name} — {place.room.name}" if place.room_id else building.name
+                access = f"{place.name} ({scope})"
+            elif room is not None:
+                access = f"{room.name} ({building.name})"
+            else:
+                access = building.name  # всё здание
+    else:
+        types = ", ".join(
+            t for t in ("Личный авто" if obj.type_vehicle else None,
+                        "Пеший" if obj.type_pedestrian else None) if t
+        )
+        head = f"Пропуск ({types})" if types else "Пропуск"
+        buildings = [b.name for b in obj.buildings.all()]
+        access = ", ".join(buildings) if buildings else None
 
-    types = ", ".join(
-        t for t in ("Личный авто" if obj.type_vehicle else None,
-                    "Пеший" if obj.type_pedestrian else None) if t
-    )
-    head = f"Пропуск ({types})" if types else "Пропуск"
-    buildings = [b.name for b in obj.buildings.all()]
-    if buildings:
-        return f"{head} · {', '.join(buildings)}"
-    return f"Пропуск #{obj.pk}"
+    parts = [head]
+    if access:
+        parts.append(access)
+    if obj.account_number:
+        parts.append(f"№ {obj.account_number}")
+    # Ни объектов доступа, ни номера — добавляем порядковый, чтобы всё же различать.
+    if access is None and not obj.account_number:
+        parts.append(f"#{obj.pk}")
+    return " · ".join(parts)
 
 
 def object_label(obj):
@@ -99,12 +109,9 @@ def object_label(obj):
     if isinstance(obj, SimCard):
         return obj.phone_number
     if isinstance(obj, AccessPass):
-        if obj.account_number:
-            return obj.account_number
-        # Без учётного номера «Ключ #N» / «Пропуск #N» ничего не значат — вместо
-        # порядкового номера показываем объект доступа (от чего ключ/пропуск),
-        # как на карточке сотрудника, чтобы различать объекты между собой.
-        return pass_access_label(obj)
+        # Единый вид: тип + объекты доступа (+ номер, если есть) — как в списке
+        # Средств доступа; «Ключ #N» / «Пропуск #N» сами по себе ничего не значат.
+        return pass_label(obj)
     if isinstance(obj, Tool):
         return obj.name
     return str(obj)
