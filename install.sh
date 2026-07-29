@@ -302,7 +302,10 @@ done
 # если ключи уже есть — пропускаем (не перегенерируем, иначе слетят подписки).
 if ! grep -q '^VAPID_PRIVATE_KEY=' .env; then
   info "Генерирую VAPID-ключи для push-уведомлений…"
-  VAPID_OUT="$(docker compose -f docker-compose.prod.yml exec -T backend python manage.py generate_vapid_keys 2>/dev/null | grep -E '^VAPID_(PUBLIC|PRIVATE)_KEY=')"
+  # Одноразовый контейнер из уже собранного образа: не зависит от готовности
+  # (миграций) основного backend, как это было бы с `exec`. --no-deps не поднимает
+  # postgres (команде БД не нужна), --entrypoint python пропускает миграции.
+  VAPID_OUT="$(docker compose -f docker-compose.prod.yml run --rm --no-deps -T --entrypoint python backend manage.py generate_vapid_keys 2>/dev/null | grep -E '^VAPID_(PUBLIC|PRIVATE)_KEY=')"
   if printf '%s' "$VAPID_OUT" | grep -q '^VAPID_PRIVATE_KEY='; then
     { echo ""; echo "# Web Push (B44) — сгенерировано install.sh"; printf '%s\n' "$VAPID_OUT"; } >> .env
     # Перечитать .env процессами backend/cron (в них идёт отправка push).
