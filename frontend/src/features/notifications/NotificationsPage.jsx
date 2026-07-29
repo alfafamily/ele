@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button, Card, Checkbox, Spinner } from '../../shared/ui'
 import { getPreferences, getVapidKey, patchPreference } from './notificationsApi.js'
-import { currentSubscription, disablePush, enablePush, permissionDenied, pushSupported } from './push.js'
+import { currentSubscription, disablePush, enablePush, permissionDenied, pushUnavailableReason } from './push.js'
 import { TypeScopeModal } from './TypeScopeModal.jsx'
 
 // Подпись кнопки области типов: «Получать по всем типам», если по всем доступным
@@ -122,10 +122,12 @@ export function NotificationsPage() {
     )
   }
 
-  const pushBlocked = !pushSupported() || !vapid.configured
+  const reason = pushUnavailableReason()
+  const pushBlocked = reason !== '' || !vapid.configured
   let pushHint = ''
-  if (!pushSupported()) pushHint = 'Этот браузер не поддерживает push-уведомления.'
-  else if (!vapid.configured) pushHint = 'Push-уведомления не настроены администратором.'
+  if (reason === 'insecure') pushHint = 'Сервис ELE в вашей компании работает по http-протоколу. Push-уведомления недоступны.'
+  else if (reason === 'unsupported') pushHint = 'Этот браузер не поддерживает push-уведомления.'
+  else if (!vapid.configured) pushHint = 'Push-уведомления недоступны на сервере.'
   else if (permissionDenied()) pushHint = 'Уведомления запрещены в настройках браузера — разрешите их для этого сайта.'
 
   return (
