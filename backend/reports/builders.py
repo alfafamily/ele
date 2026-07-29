@@ -11,7 +11,7 @@ from employees.models import AccessPass, SimCard
 from equipment.models import Equipment
 from licenses.models import License
 from locations.models import Building, Place
-from tools.models import ToolAllocation
+from tools.models import Tool, ToolAllocation
 from transport.models import Transport
 
 
@@ -209,7 +209,10 @@ def build_employees_report(*, employee_id=None):
     """Список сотрудников: закреплённое имущество (оборудование+SIM/лицензии,
     инструменты, SIM за сотрудником, пропуска/ключи, транспорт) + рабочие места
     сотрудника с имуществом, стоящим на них."""
-    from employees.models import Employee
+    from django.contrib.contenttypes.models import ContentType
+
+    from core.assignments import annotate_acceptance
+    from employees.models import Employee, EmployeeAssignment
 
     employees = Employee.objects.all().order_by("last_name", "first_name")
     if employee_id:
@@ -217,44 +220,66 @@ def build_employees_report(*, employee_id=None):
     emp_list = list(employees)
     emp_ids = [e.id for e in emp_list]
 
+    # B32: статус акцепта закрепления за сотрудником (pending/in_absentia/accepted)
+    # — иконка у каждого закреплённого объекта. Для объектов-экземпляров (оборуд.,
+    # SIM, пропуск, транспорт) берём через annotate_acceptance (по открытому
+    # EmployeeAssignment). Для инструментов (кол-во, эпизоды по (tool, emp)) —
+    # отдельная карта с приоритетом pending > in_absentia > accepted.
+    def _with_acceptance(item, status):
+        item["acceptance_status"] = status
+        return item
+
     # Оборудование за сотрудниками.
     eq_by_emp = {}
     for eq in (
-        Equipment.objects.filter(employee_id__in=emp_ids, is_written_off=False)
-        .select_related("equipment_type").prefetch_related(*_EQ_PREFETCH)
+        annotate_acceptance(
+            Equipment.objects.filter(employee_id__in=emp_ids, is_written_off=False), Equipment
+        ).select_related("equipment_type").prefetch_related(*_EQ_PREFETCH)
     ):
-        eq_by_emp.setdefault(eq.employee_id, []).append(_equipment_item(eq))
+        eq_by_emp.setdefault(eq.employee_id, []).append(_with_acceptance(_equipment_item(eq), eq.acceptance_status))
 
-    # Инструменты за сотрудниками.
+    # Инструменты за сотрудниками (акцепт — карта по (tool, employee)).
+    tool_ct = ContentType.objects.get_for_model(Tool)
+    _prio = {"pending": 3, "in_absentia": 2, "accepted": 1}
+    tool_accept = {}
+    for a in EmployeeAssignment.objects.filter(
+        content_type=tool_ct, employee_id__in=emp_ids, closed_at__isnull=True
+    ):
+        key = (a.object_id, a.employee_id)
+        if key not in tool_accept or _prio.get(a.status, 0) > _prio.get(tool_accept[key], 0):
+            tool_accept[key] = a.status
     tools_by_emp = {}
     for alloc in (
         ToolAllocation.objects.filter(employee_id__in=emp_ids, tool__is_written_off=False)
         .select_related("tool")
     ):
-        tools_by_emp.setdefault(alloc.employee_id, []).append(_tool_item(alloc))
+        status = tool_accept.get((alloc.tool_id, alloc.employee_id))
+        tools_by_emp.setdefault(alloc.employee_id, []).append(_with_acceptance(_tool_item(alloc), status))
 
     # SIM за сотрудником (напрямую, не в оборудовании).
     sim_by_emp = {}
-    for s in SimCard.objects.filter(employee_id__in=emp_ids, is_utilized=False):
-        sim_by_emp.setdefault(s.employee_id, []).append(_sim_item(s))
+    for s in annotate_acceptance(SimCard.objects.filter(employee_id__in=emp_ids, is_utilized=False), SimCard):
+        sim_by_emp.setdefault(s.employee_id, []).append(_with_acceptance(_sim_item(s), s.acceptance_status))
 
     # Пропуска/ключи за сотрудником.
     pass_by_emp = {}
-    for ap in AccessPass.objects.filter(employee_id__in=emp_ids, is_utilized=False):
+    for ap in annotate_acceptance(AccessPass.objects.filter(employee_id__in=emp_ids, is_utilized=False), AccessPass):
         pass_by_emp.setdefault(ap.employee_id, []).append({
             "id": ap.id,
             "kind": ap.object_type,
             "kind_display": ap.get_object_type_display(),
             "account_number": ap.account_number,
+            "acceptance_status": ap.acceptance_status,
         })
 
     # Транспорт за сотрудником.
     tr_by_emp = {}
     for t in (
-        Transport.objects.filter(employee_id__in=emp_ids, is_written_off=False)
-        .select_related("transport_type").prefetch_related("field_values__field")
+        annotate_acceptance(
+            Transport.objects.filter(employee_id__in=emp_ids, is_written_off=False), Transport
+        ).select_related("transport_type").prefetch_related("field_values__field")
     ):
-        tr_by_emp.setdefault(t.employee_id, []).append(_transport_item(t))
+        tr_by_emp.setdefault(t.employee_id, []).append(_with_acceptance(_transport_item(t), t.acceptance_status))
 
     # Рабочие места сотрудников (place_type=workplace, где сотрудник закреплён) +
     # имущество на них.

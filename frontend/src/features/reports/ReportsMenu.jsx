@@ -33,10 +33,10 @@ export function ReportsMenu({ items }) {
         aria-haspopup="menu"
         aria-expanded={open}
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, fontWeight: 600,
-          background: 'var(--color-surface)', color: 'var(--color-text-secondary)', borderRadius: 10,
-          padding: '9px 14px', boxShadow: 'inset 0 0 0 1px var(--color-border)', border: 'none',
-          fontFamily: 'inherit', cursor: 'pointer', height: 40,
+          display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600,
+          background: 'var(--color-surface)', color: 'var(--color-text-secondary)', borderRadius: 'var(--radius-control)',
+          padding: '0 16px', boxShadow: 'inset 0 0 0 1px var(--color-border)', border: 'none',
+          fontFamily: 'inherit', cursor: 'pointer', height: 'var(--control-height)',
         }}
       >
         <Icon name="chart-column" size={17} strokeWidth={2} />

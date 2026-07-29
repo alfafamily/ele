@@ -2,18 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { EmptyState, Icon, Select, Spinner } from '../../shared/ui'
 import { getEmployeesReport } from './reportsApi.js'
 import {
-  EmployeePropertyBlock, ExpandCard, FilterRow, PropertyBlock, ReportShell,
+  AcceptanceLegend, EmployeePropertyBlock, ExpandCard, FilterRow, PropertyBlock, ReportShell, SectionHead,
 } from './reportsShared.jsx'
 import { countLabel } from './reportsUtils.js'
 
-// B45. Отчёт по имуществу у сотрудников: закреплённое имущество + рабочие места
-// сотрудника с имуществом на них. Фильтр — по сотруднику. Показываются все
-// сотрудники (в т.ч. без имущества).
-const GROUP_LABEL = {
-  fontSize: 11, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase',
-  color: 'var(--color-text-placeholder)', margin: '10px 0 6px',
-}
-
+// B45. Отчёт по имуществу у сотрудников: закреплённое имущество (с иконкой
+// статуса акцепта B32) + рабочие места сотрудника с имуществом на них. Фильтр —
+// по сотруднику. Показываются все сотрудники (в т.ч. без имущества).
 export function EmployeesReportPage() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
@@ -32,11 +27,14 @@ export function EmployeesReportPage() {
   )
 
   const filters = (
-    <FilterRow>
-      <Select label="Сотрудник" placeholder="Все" value={employeeId} onChange={setEmployeeId} className="ele-report-filter">
-        {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-      </Select>
-    </FilterRow>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <FilterRow>
+        <Select label="Сотрудник" placeholder="Все" value={employeeId} onChange={setEmployeeId} className="ele-report-filter">
+          {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+        </Select>
+      </FilterRow>
+      <AcceptanceLegend />
+    </div>
   )
 
   let body
@@ -58,23 +56,23 @@ export function EmployeesReportPage() {
           summary={countLabel(total, ['объект', 'объекта', 'объектов'])}
           empty={total === 0}
         >
-          <div style={GROUP_LABEL}>Закреплённое имущество</div>
+          <SectionHead first>Закреплённое имущество</SectionHead>
           <EmployeePropertyBlock emp={e} />
           {e.workplaces.length ? (
             <>
-              <div style={GROUP_LABEL}>Рабочие места</div>
-              {e.workplaces.map((w) => (
-                <div key={w.id} style={{ marginBottom: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 600 }}>
-                    <Icon name="briefcase" size={14} strokeWidth={2} style={{ color: 'var(--color-text-muted)' }} />
-                    {w.name}
-                    <span style={{ fontWeight: 400, color: 'var(--color-text-placeholder)' }}>· {w.building_name} — {w.room_name}</span>
-                  </div>
-                  <div style={{ paddingLeft: 22 }}>
+              <SectionHead>Рабочие места</SectionHead>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {e.workplaces.map((w) => (
+                  <div key={w.id} style={{ background: 'var(--color-fill-input)', borderRadius: 10, padding: '10px 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 600, marginBottom: 2 }}>
+                      <Icon name="briefcase" size={14} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+                      {w.name}
+                      <span style={{ fontWeight: 400, color: 'var(--color-text-placeholder)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>· {w.building_name} — {w.room_name}</span>
+                    </div>
                     <PropertyBlock equipment={w.equipment} tools={w.tools} />
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </>
           ) : null}
         </ExpandCard>

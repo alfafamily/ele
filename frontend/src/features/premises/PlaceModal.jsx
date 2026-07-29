@@ -98,7 +98,7 @@ export function PlaceModal({ room, place, onClose, onDone }) {
           <>
             <Select label="Тип места" required value={placeType} onChange={setPlaceType} error={fieldErrors.place_type}>
               <option value="workplace">Рабочее место</option>
-              <option value="common">МОП</option>
+              <option value="common">Место общего пользования</option>
               <option value="storage">Место хранения</option>
             </Select>
             {placeType === 'workplace' ? (

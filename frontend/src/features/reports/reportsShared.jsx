@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { AcceptanceIcon } from '../../shared/AcceptanceIcon.jsx'
 import { BackButton, Icon } from '../../shared/ui'
 import './reports.css'
 
@@ -65,26 +66,40 @@ export function ExpandCard({ icon, iconTitle, title, subtitle, summary, empty, c
 
 // --- Списки объектов --------------------------------------------------------
 
-function Line({ icon, children }) {
+// Категория имущества: подпись слева, объекты справа (двухколоночно; на узком
+// экране подпись встаёт над списком — см. reports.css).
+function CategoryRow({ label, children }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 13.5 }}>
-      <Icon name={icon} size={14} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
-      <span style={{ minWidth: 0 }}>{children}</span>
+    <div className="ele-report-cat">
+      <div className="ele-report-cat__label">{label}</div>
+      <div className="ele-report-cat__items">{children}</div>
     </div>
   )
 }
 
-function EquipmentLine({ eq }) {
+// status — статус акцепта закрепления (B32): иконка справа от объекта.
+function Line({ icon, status, children }) {
   return (
-    <div style={{ padding: '4px 0' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
+      <Icon name={icon} size={14} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+      <span style={{ minWidth: 0, flex: 1 }}>{children}</span>
+      {status ? <AcceptanceIcon status={status} size={14} /> : null}
+    </div>
+  )
+}
+
+function EquipmentLine({ eq, acceptance }) {
+  return (
+    <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
         <Icon name="cpu" size={14} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
-        <span style={{ minWidth: 0 }}>
+        <span style={{ minWidth: 0, flex: 1 }}>
           <b style={{ fontWeight: 600 }}>{eq.type_and_model}</b> <span style={MUTED}>№ {eq.inventory_number}</span>
         </span>
+        {acceptance ? <AcceptanceIcon status={acceptance} size={14} /> : null}
       </div>
       {eq.sim?.length || eq.licenses?.length ? (
-        <div style={{ paddingLeft: 22 }}>
+        <div style={{ paddingLeft: 22, marginTop: 2 }}>
           {eq.sim.map((s) => (
             <Line key={`s${s.id}`} icon="radio-tower">
               {s.phone_number} <span style={MUTED}>· {s.sim_type}{s.operator ? ` · ${s.operator}` : ''}</span>
@@ -108,18 +123,14 @@ export function PropertyBlock({ equipment, tools }) {
   return (
     <div>
       {equipment.length ? (
-        <>
-          <div style={GROUP_LABEL}>Оборудование</div>
+        <CategoryRow label="Оборудование">
           {equipment.map((eq) => <EquipmentLine key={eq.id} eq={eq} />)}
-        </>
+        </CategoryRow>
       ) : null}
       {tools.length ? (
-        <>
-          <div style={GROUP_LABEL}>Инструменты</div>
-          {tools.map((t) => (
-            <Line key={t.id} icon="hammer">{t.name} <span style={MUTED}>× {t.quantity}</span></Line>
-          ))}
-        </>
+        <CategoryRow label="Инструменты">
+          {tools.map((t) => <Line key={t.id} icon="hammer">{t.name} <span style={MUTED}>× {t.quantity}</span></Line>)}
+        </CategoryRow>
       ) : null}
     </div>
   )
@@ -127,41 +138,36 @@ export function PropertyBlock({ equipment, tools }) {
 
 // Блок имущества, закреплённого напрямую за сотрудником: оборудование (с
 // вложенными SIM/лицензиями), инструменты, SIM за сотрудником, пропуска/ключи,
-// транспорт.
+// транспорт. У каждого объекта — иконка статуса акцепта (B32).
 export function EmployeePropertyBlock({ emp }) {
   const empty = !emp.equipment.length && !emp.tools.length && !emp.sim.length && !emp.passes.length && !emp.transport.length
   if (empty) return <div style={{ fontSize: 13, ...MUTED, padding: '4px 0' }}>Имущество не закреплено.</div>
   return (
     <div>
       {emp.equipment.length ? (
-        <>
-          <div style={GROUP_LABEL}>Оборудование</div>
-          {emp.equipment.map((eq) => <EquipmentLine key={eq.id} eq={eq} />)}
-        </>
+        <CategoryRow label="Оборудование">
+          {emp.equipment.map((eq) => <EquipmentLine key={eq.id} eq={eq} acceptance={eq.acceptance_status} />)}
+        </CategoryRow>
       ) : null}
       {emp.tools.length ? (
-        <>
-          <div style={GROUP_LABEL}>Инструменты</div>
-          {emp.tools.map((t) => <Line key={t.id} icon="hammer">{t.name} <span style={MUTED}>× {t.quantity}</span></Line>)}
-        </>
+        <CategoryRow label="Инструменты">
+          {emp.tools.map((t) => <Line key={t.id} icon="hammer" status={t.acceptance_status}>{t.name} <span style={MUTED}>× {t.quantity}</span></Line>)}
+        </CategoryRow>
       ) : null}
       {emp.sim.length ? (
-        <>
-          <div style={GROUP_LABEL}>SIM</div>
-          {emp.sim.map((s) => <Line key={s.id} icon="radio-tower">{s.phone_number} <span style={MUTED}>· {s.sim_type}{s.operator ? ` · ${s.operator}` : ''}</span></Line>)}
-        </>
+        <CategoryRow label="SIM">
+          {emp.sim.map((s) => <Line key={s.id} icon="radio-tower" status={s.acceptance_status}>{s.phone_number} <span style={MUTED}>· {s.sim_type}{s.operator ? ` · ${s.operator}` : ''}</span></Line>)}
+        </CategoryRow>
       ) : null}
       {emp.passes.length ? (
-        <>
-          <div style={GROUP_LABEL}>Пропуска и ключи</div>
-          {emp.passes.map((p) => <Line key={p.id} icon="key-round">{p.kind_display}{p.account_number ? <span style={MUTED}> · {p.account_number}</span> : null}</Line>)}
-        </>
+        <CategoryRow label="Пропуска и ключи">
+          {emp.passes.map((p) => <Line key={p.id} icon="key-round" status={p.acceptance_status}>{p.kind_display}{p.account_number ? <span style={MUTED}> · {p.account_number}</span> : null}</Line>)}
+        </CategoryRow>
       ) : null}
       {emp.transport.length ? (
-        <>
-          <div style={GROUP_LABEL}>Транспорт</div>
-          {emp.transport.map((t) => <Line key={t.id} icon="car"><b style={{ fontWeight: 600 }}>{t.type_and_model}</b> <span style={MUTED}>{[t.plate, `№ ${t.inventory_number}`].filter(Boolean).join(' · ')}</span></Line>)}
-        </>
+        <CategoryRow label="Транспорт">
+          {emp.transport.map((t) => <Line key={t.id} icon="car" status={t.acceptance_status}><b style={{ fontWeight: 600 }}>{t.type_and_model}</b> <span style={MUTED}>{[t.plate, `№ ${t.inventory_number}`].filter(Boolean).join(' · ')}</span></Line>)}
+        </CategoryRow>
       ) : null}
     </div>
   )
@@ -182,6 +188,35 @@ export function EmployeeChips({ employees }) {
         ))}
       </div>
     </>
+  )
+}
+
+// Заголовок секции внутри раскрытой карточки сотрудника («Закреплённое
+// имущество» / «Рабочие места»).
+export function SectionHead({ children, first }) {
+  return (
+    <div style={{ fontSize: 13, fontWeight: 700, margin: first ? '2px 0 6px' : '16px 0 6px' }}>
+      {children}
+    </div>
+  )
+}
+
+// Легенда статусов акцепта (B32) — над отчётом по сотрудникам.
+export function AcceptanceLegend() {
+  const items = [
+    { status: 'accepted', label: 'Подтверждено' },
+    { status: 'pending', label: 'Ожидает подтверждения' },
+    { status: 'in_absentia', label: 'Заочно' },
+  ]
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center' }}>
+      {items.map((it) => (
+        <span key={it.status} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, ...MUTED }}>
+          <AcceptanceIcon status={it.status} size={14} />
+          {it.label}
+        </span>
+      ))}
+    </div>
   )
 }
 

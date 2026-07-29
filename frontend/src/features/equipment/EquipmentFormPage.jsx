@@ -130,7 +130,13 @@ export function EquipmentFormPage() {
         payload.employee = placementEmployee.id
       } else {
         if (!placementPlaceId) {
-          setError(placementMode === 'stationary' ? 'Выберите рабочее место.' : 'Выберите место хранения.')
+          setError(
+            placementMode === 'stationary'
+              ? 'Выберите рабочее место.'
+              : placementMode === 'common'
+                ? 'Выберите МОП.'
+                : 'Выберите место хранения.',
+          )
           setSubmitting(false)
           return
         }
@@ -298,7 +304,8 @@ export function EquipmentFormPage() {
                 <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
                   {[
                     { value: 'mobile', label: 'За сотрудником' },
-                    { value: 'stationary', label: 'Рабочее место / МОП' },
+                    { value: 'stationary', label: 'Рабочее место' },
+                    { value: 'common', label: 'МОП' },
                     { value: 'storage', label: 'На складе' },
                   ].map((m) => (
                     <button
@@ -334,7 +341,8 @@ export function EquipmentFormPage() {
                 )
               ) : (
                 <PlaceSelect
-                  placeType={placementMode === 'stationary' ? ['workplace', 'common'] : 'storage'}
+                  placeType={placementMode === 'stationary' ? 'workplace' : placementMode === 'common' ? 'common' : 'storage'}
+                  label={null}
                   required
                   value={placementPlaceId}
                   onChange={setPlacementPlaceId}

@@ -182,9 +182,18 @@ class ReportsContentTests(APITestCase, ReportsDataMixin):
         self.assertEqual(len(places["М-2"]["transport"]), 1)
 
     def test_employees_report(self):
+        # B32: статус акцепта закрепления оборудования за сотрудником.
+        from django.contrib.contenttypes.models import ContentType
+
+        from employees.models import EmployeeAssignment
+        EmployeeAssignment.objects.create(
+            content_type=ContentType.objects.get_for_model(Equipment), object_id=self.emp_eq.id,
+            object_kind="equipment", employee=self.emp, status="pending",
+        )
         resp = self.client.get("/api/reports/employees/")
         self.assertEqual(resp.status_code, 200)
         emp = next(e for e in resp.data["employees"] if e["id"] == self.emp.id)
+        self.assertEqual(emp["equipment"][0]["acceptance_status"], "pending")
         # Оборудование за сотрудником с вложенными SIM и лицензией.
         self.assertEqual(len(emp["equipment"]), 1)
         self.assertEqual(len(emp["equipment"][0]["sim"]), 1)
