@@ -60,7 +60,7 @@
       <hr class="divider">
 
       <div class="footer-note">
-        {% block footer_note %}Это автоматическое письмо от системы учёта ELE ({{ company_name }}). Отвечать на него не нужно.{% endblock %}
+        {% block footer_note %}Это автоматическое письмо от системы учёта ELE{% if has_company_name %} ({{ company_name }}){% endif %}. Отвечать на него не нужно.{% endblock %}
       </div>
     </div>
   </div>

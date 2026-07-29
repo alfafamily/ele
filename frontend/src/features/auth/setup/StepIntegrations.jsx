@@ -70,7 +70,7 @@ export function StepIntegrations({ admin, company, onBack, onDone }) {
     setEmailStatus('sending')
     setEmailError(null)
     try {
-      await apiPost('/api/setup/test-email/', { email: admin.email })
+      await apiPost('/api/setup/test-email/', { email: admin.email, company_name: company.name })
       setEmailStatus('sent')
     } catch (err) {
       setEmailStatus('idle')

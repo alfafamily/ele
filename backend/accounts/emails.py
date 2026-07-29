@@ -26,11 +26,14 @@ _SUBJECTS = {
 def _company_name() -> str:
     from company.models import Company
 
-    return Company.load().name or "ELE"
+    return (Company.load().name or "").strip()
 
 
 def _send(kind: str, template: str, to: list[str], context: dict):
-    context = {"company_name": _company_name(), **context}
+    # Реальное имя компании подставляем в скобках подвала только когда оно задано;
+    # для темы/тела остаётся запасное «ELE» (напр. до заведения компании).
+    name = _company_name()
+    context = {"company_name": name or "ELE", "has_company_name": bool(name), **context}
     subject = _SUBJECTS[kind].format(**context)
     html_body = render_to_string(f"email/{template}", context)
     message = EmailMultiAlternatives(subject, html_to_plain_text(html_body), settings.DEFAULT_FROM_EMAIL, to)

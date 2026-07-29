@@ -116,6 +116,7 @@ class SetupCompleteSerializer(serializers.Serializer):
 
 class TestEmailRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
+    company_name = serializers.CharField(required=False, allow_blank=True, default="")
 
 
 class VerifyEmailCodeSerializer(serializers.Serializer):

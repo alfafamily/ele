@@ -171,9 +171,10 @@ class TestEmailView(APIView):
         serializer = TestEmailRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
+        company_name = serializer.validated_data.get("company_name", "")
         code = generate_code()
         try:
-            send_test_code_email(email, code)
+            send_test_code_email(email, code, company_name=company_name)
         except Exception:
             return Response(
                 {"detail": "Не удалось отправить письмо — проверьте настройки SMTP в .env."}, status=400
