@@ -810,6 +810,7 @@ export function SystemTab() {
             ) : smtpStatus === 'sent' || smtpStatus === 'checking' ? (
               <>
                 <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 10 }}>Код отправлен на {smtpEmail}</div>
+                {/* Кнопка помощи — в том же ряду (переносится только при нехватке места). */}
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
                   <div style={{ width: 160 }}>
                     <Input label="Код из письма" value={smtpCode} onChange={(e) => setSmtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" />
@@ -820,12 +821,9 @@ export function SystemTab() {
                   <Button type="button" variant="secondary" onClick={sendSmtp}>
                     Отправить ещё раз
                   </Button>
-                </div>
-                {smtpError ? <div style={{ marginTop: 10 }}><CheckResult result={{ ok: false, msg: smtpError }} /></div> : null}
-                {/* Кнопка помощи — только после запуска проверки. */}
-                <div style={{ marginTop: 12 }}>
                   <HelpButton label="Письма нет" onClick={() => setHelp({ title: 'Письмо с кодом не пришло', items: EMAIL_HELP })} />
                 </div>
+                {smtpError ? <div style={{ marginTop: 10 }}><CheckResult result={{ ok: false, msg: smtpError }} /></div> : null}
               </>
             ) : (
               <>
@@ -833,14 +831,10 @@ export function SystemTab() {
                   <Button type="button" variant="secondary" loading={smtpStatus === 'sending'} onClick={sendSmtp}>
                     Выполнить проверку
                   </Button>
+                  {/* Помощь показываем только если проверка запускалась и была ошибка. */}
+                  {smtpError ? <HelpButton label="Письма нет" onClick={() => setHelp({ title: 'Письмо с кодом не пришло', items: EMAIL_HELP })} /> : null}
                   {smtpError ? <CheckResult result={{ ok: false, msg: smtpError }} /> : null}
                 </div>
-                {/* Помощь показываем, только если проверка запускалась и была ошибка. */}
-                {smtpError ? (
-                  <div style={{ marginTop: 12 }}>
-                    <HelpButton label="Письма нет" onClick={() => setHelp({ title: 'Письмо с кодом не пришло', items: EMAIL_HELP })} />
-                  </div>
-                ) : null}
               </>
             )
           ) : null}
@@ -851,7 +845,7 @@ export function SystemTab() {
           <div style={sectionTitle}>Проверка Push-уведомлений</div>
           <div style={sectionHint}>
             {status.push_configured
-              ? 'Отправим push с кодом на это устройство и попросим ввести код'
+              ? 'Отправим push с кодом на ваши устройства и попросим ввести код'
               : 'Параметры VAPID не заданы в .env, отправка push-уведомлений невозможна'}
           </div>
           {status.push_configured ? (
@@ -870,11 +864,9 @@ export function SystemTab() {
                   <Button type="button" variant="secondary" onClick={sendPush}>
                     Отправить ещё раз
                   </Button>
-                </div>
-                {pushError ? <div style={{ marginTop: 10 }}><CheckResult result={{ ok: false, msg: pushError }} /></div> : null}
-                <div style={{ marginTop: 12 }}>
                   <HelpButton label="Push'a нет" onClick={() => setHelp({ title: 'Push с кодом не пришёл', items: PUSH_HELP })} />
                 </div>
+                {pushError ? <div style={{ marginTop: 10 }}><CheckResult result={{ ok: false, msg: pushError }} /></div> : null}
               </>
             ) : pushBlocked ? (
               // Push недоступен на устройстве (http / браузер / запрет) — подсказка
@@ -886,13 +878,9 @@ export function SystemTab() {
                   <Button type="button" variant="secondary" loading={pushStatus === 'sending'} onClick={sendPush}>
                     Выполнить проверку
                   </Button>
+                  {pushError ? <HelpButton label="Push'a нет" onClick={() => setHelp({ title: 'Push с кодом не пришёл', items: PUSH_HELP })} /> : null}
                   {pushError ? <CheckResult result={{ ok: false, msg: pushError }} /> : null}
                 </div>
-                {pushError ? (
-                  <div style={{ marginTop: 12 }}>
-                    <HelpButton label="Push'a нет" onClick={() => setHelp({ title: 'Push с кодом не пришёл', items: PUSH_HELP })} />
-                  </div>
-                ) : null}
               </>
             )
           ) : null}
