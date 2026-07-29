@@ -125,6 +125,21 @@ else
   # Первого администратора и компанию создаёт Setup Wizard в браузере при первом
   # заходе — в install.sh учётку админа не заводим.
   ask DEFAULT_FROM_EMAIL "Адрес отправителя писем" "ELE <no-reply@${EMAIL_HOST_DEFAULT}>"
+
+  # Push-уведомления: контакт отправителя (VAPID_SUBJECT). Требуется push-
+  # сервисами; Apple (iPhone/iPad, Safari-PWA) СТРОГО валидирует его и отклоняет
+  # невалидные значения — тогда push на мобильных НЕ работает. По умолчанию берём
+  # адрес инстанса (валидный https-URI на домене). Спрашиваем только в HTTPS-режиме
+  # (в локальном HTTP-режиме push недоступен — нет защищённого контекста).
+  VAPID_SUBJECT=""
+  if [ -n "$SITE_ADDRESS" ]; then
+    info "— Push-уведомления —"
+    info "Для работы push на мобильных (iPhone/iPad, Safari-PWA) нужен валидный контакт отправителя."
+    info "Enter — использовать адрес инстанса (${SITE_URL_VAL}); либо укажите mailto с реальным доменом."
+    warn "Без валидного значения push на мобильных устройствах не гарантируется."
+    ask VAPID_SUBJECT "Контакт отправителя push (VAPID_SUBJECT)" ""
+  fi
+
   POSTGRES_PASSWORD="$(rand 32 24)"
 
   info "— Почта (SMTP) — Enter, чтобы пропустить (письма отправляться не будут) —"
@@ -220,6 +235,10 @@ YANDEX_SMARTCAPTCHA_SECRET_KEY=${YANDEX_SMARTCAPTCHA_SECRET_KEY}
 YANDEX_ID_CLIENT_ID=${YANDEX_ID_CLIENT_ID}
 YANDEX_ID_CLIENT_SECRET=${YANDEX_ID_CLIENT_SECRET}
 EOF
+  # VAPID_SUBJECT пишем ТОЛЬКО если пользователь указал явно (пустая строка
+  # VAPID_SUBJECT= обнулила бы значение и сломала push на Apple). Иначе —
+  # переменной нет, и backend берёт дефолт = SITE_URL (валидный https-URI).
+  [ -n "$VAPID_SUBJECT" ] && printf 'VAPID_SUBJECT=%s\n' "$VAPID_SUBJECT" >> .env
   chmod 600 .env
   info ".env создан в ${TARGET_DIR}/.env (права 600). Изменить значения позже: отредактируйте файл и выполните 'docker compose -f docker-compose.prod.yml up -d'."
 fi
