@@ -1,3 +1,4 @@
+import re
 from unittest.mock import patch
 
 from django.core import mail
@@ -195,7 +196,7 @@ class SetupWizardEmailVerificationTests(APITestCase):
         resp = self.client.post("/api/setup/test-email/", {"email": "admin@alpha.family"}, format="json")
         self.assertEqual(resp.status_code, 200, resp.data)
         self.assertEqual(len(mail.outbox), 1)
-        code = mail.outbox[0].subject.split(": ")[-1]
+        code = re.search(r"\d{6}", mail.outbox[0].body).group()
         self.assertEqual(len(code), 6)
 
         resp = self.client.post("/api/setup/verify-email/", {"code": "000000"}, format="json")
@@ -213,7 +214,7 @@ class SetupWizardEmailVerificationTests(APITestCase):
 
     def test_verified_email_must_match_admin_email(self):
         resp = self.client.post("/api/setup/test-email/", {"email": "someone-else@alpha.family"}, format="json")
-        code = mail.outbox[0].subject.split(": ")[-1]
+        code = re.search(r"\d{6}", mail.outbox[0].body).group()
         self.client.post("/api/setup/verify-email/", {"code": code}, format="json")
 
         payload = {
