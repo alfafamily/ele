@@ -64,6 +64,7 @@ export function QuantityMoveModal({
     if (target === 'both') {
       if (mode === 'mobile' && !employee) return setError('Выберите сотрудника.')
       if (mode === 'stationary' && !placeId) return setError('Выберите рабочее место.')
+      if (mode === 'common' && !placeId) return setError('Выберите МОП.')
     }
     // Склад проверяем ДО лимита: без выбранного склада-источника лимит равен 0,
     // иначе пользователь видел бы «Доступно не больше 0» вместо понятной причины.
@@ -75,7 +76,11 @@ export function QuantityMoveModal({
       await onSubmit({
         quantity: qty,
         comment: comment.trim(),
-        mode: fixed ? mode : target === 'both' ? mode : undefined,
+        // Рабочее место и МОП — стационарно (mode=stationary на бэке).
+        mode: (() => {
+          const m = fixed ? mode : target === 'both' ? mode : undefined
+          return m === 'common' ? 'stationary' : m
+        })(),
         employeeId: employee?.id,
         placeId: placeId || fixed?.id,
         storagePlaceId,
@@ -97,7 +102,8 @@ export function QuantityMoveModal({
           <div style={{ display: 'flex', gap: 8 }}>
             {[
               { value: 'mobile', label: 'Сотруднику' },
-              { value: 'stationary', label: 'На рабочее место' },
+              { value: 'stationary', label: 'Рабочее место' },
+              { value: 'common', label: 'МОП' },
             ].map((m) => (
               <button
                 key={m.value}
@@ -145,8 +151,8 @@ export function QuantityMoveModal({
           <SelectedEmployee employee={employee} onClear={() => setEmployee(null)} />
         ) : null}
 
-        {target === 'both' && mode === 'stationary' ? (
-          <PlaceSelect placeType={['workplace', 'common']} required value={placeId} onChange={setPlaceId} />
+        {target === 'both' && (mode === 'stationary' || mode === 'common') ? (
+          <PlaceSelect placeType={mode === 'common' ? 'common' : 'workplace'} label={null} required value={placeId} onChange={setPlaceId} />
         ) : null}
 
         {!needEmployeePick ? (

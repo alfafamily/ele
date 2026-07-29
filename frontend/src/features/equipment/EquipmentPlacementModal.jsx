@@ -5,12 +5,16 @@ import { Banner, Button, Input, Modal, PlaceSelect } from '../../shared/ui'
 import { assignEquipment, unassignEquipment } from './equipmentApi.js'
 
 // Размещение единицы оборудования (B8): за сотрудником (мобильно), на рабочем
-// месте (стационарно) или на складе (свободно). Одна модалка на все переходы.
+// месте / в МОП (стационарно, B45) или на складе (свободно). Одна модалка на
+// все переходы. Рабочее место и МОП — отдельные вкладки, но оба стационарны
+// (mode=stationary на бэке), просто с разным типом мест в списке.
 const MODES = [
   { value: 'mobile', label: 'За сотрудником' },
-  { value: 'stationary', label: 'Рабочее место / МОП' },
+  { value: 'workplace', label: 'Рабочее место' },
+  { value: 'common', label: 'МОП' },
   { value: 'storage', label: 'На складе' },
 ]
+const PLACE_TYPE = { workplace: 'workplace', common: 'common', storage: 'storage' }
 
 export function EquipmentPlacementModal({ equipment, onClose, onDone }) {
   const [mode, setMode] = useState('mobile')
@@ -29,8 +33,9 @@ export function EquipmentPlacementModal({ equipment, onClose, onDone }) {
       if (mode === 'storage') {
         await unassignEquipment(equipment.id, placeId, comment.trim())
       } else {
+        // Рабочее место и МОП — стационарное размещение (одинаковый режим на бэке).
         await assignEquipment(equipment.id, {
-          mode,
+          mode: mode === 'mobile' ? 'mobile' : 'stationary',
           employeeId: employee?.id,
           placeId,
           comment: comment.trim(),
@@ -83,7 +88,8 @@ export function EquipmentPlacementModal({ equipment, onClose, onDone }) {
           )
         ) : (
           <PlaceSelect
-            placeType={mode === 'stationary' ? ['workplace', 'common'] : 'storage'}
+            placeType={PLACE_TYPE[mode]}
+            label={null}
             required
             value={placeId}
             onChange={setPlaceId}
