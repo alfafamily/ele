@@ -65,6 +65,7 @@ class Command(BaseCommand):
                     notify_maintenance(
                         getattr(plan, obj_attr), _STATUS_KIND[status],
                         date=plan.next_planned_date,
+                        regulation_name=plan.regulation.name,
                     )
                     state.notified_status = status
                     state.save(update_fields=["notified_status", "updated_at"])
