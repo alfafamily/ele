@@ -32,6 +32,7 @@ export function FilePreviewModal({ files, file, startIndex = 0, onClose }) {
   const list = files && files.length ? files : file ? [file] : []
   const [idx, setIdx] = useState(startIndex)
   const [renderError, setRenderError] = useState(false)
+  const [renderErrorMsg, setRenderErrorMsg] = useState('')
 
   const clampedIdx = Math.min(list.length - 1, Math.max(0, idx))
   const current = list[clampedIdx]
@@ -45,6 +46,7 @@ export function FilePreviewModal({ files, file, startIndex = 0, onClose }) {
   // При переключении файла сбрасываем ошибку рендера предыдущего.
   useEffect(() => {
     setRenderError(false)
+    setRenderErrorMsg('')
   }, [clampedIdx])
 
   useEffect(() => {
@@ -98,7 +100,7 @@ export function FilePreviewModal({ files, file, startIndex = 0, onClose }) {
             // умеют показывать PDF во встроенном <iframe>, поэтому от iframe ушли.
             // PDF отдаётся с Content-Type: application/pdf (+nosniff в проде),
             // исполняемого html/js в нём быть не может — stored XSS исключён.
-            <PdfView url={current.url} onError={() => setRenderError(true)} />
+            <PdfView url={current.url} onError={(e) => { setRenderError(true); setRenderErrorMsg(e ? String(e.message || e) : '') }} />
           ) : kind === 'text' ? (
             // Текстовый файл может реально оказаться text/html — sandbox=""
             // (изолированный opaque origin без разрешения скриптов) нейтрализует
@@ -113,6 +115,11 @@ export function FilePreviewModal({ files, file, startIndex = 0, onClose }) {
               <div className="ele-filepreview__fallback-text">
                 Этот тип файла нельзя показать в браузере. Скачайте файл, чтобы открыть его в подходящей программе.
               </div>
+              {renderErrorMsg ? (
+                <div style={{ fontSize: 11, color: 'var(--color-text-placeholder)', marginTop: 8, wordBreak: 'break-word', maxWidth: 320 }}>
+                  {renderErrorMsg}
+                </div>
+              ) : null}
               <a
                 className="ele-filepreview__fallback-btn"
                 href={current.url}

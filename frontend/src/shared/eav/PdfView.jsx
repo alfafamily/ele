@@ -63,8 +63,10 @@ export function PdfView({ url, onError }) {
           await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise
         }
         if (!cancelled) setLoading(false)
-      } catch {
-        if (!cancelled) onError?.()
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('PdfView render failed:', e)
+        if (!cancelled) onError?.(e)
       }
     })()
 
