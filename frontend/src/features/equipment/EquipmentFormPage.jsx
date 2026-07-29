@@ -317,6 +317,10 @@ export function EquipmentFormPage() {
                       }}
                       style={{
                         flex: 1,
+                        minWidth: 0,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
                         padding: '8px 6px',
                         fontSize: 12.5,
                         fontWeight: 600,
