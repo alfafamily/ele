@@ -31,10 +31,6 @@ const CARD = {
   background: 'var(--color-surface)', borderRadius: 14, boxShadow: 'inset 0 0 0 1px var(--color-border)',
 }
 const MUTED = { color: 'var(--color-text-placeholder)' }
-const GROUP_LABEL = {
-  fontSize: 11, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase',
-  color: 'var(--color-text-placeholder)', margin: '10px 0 6px',
-}
 
 // --- Заголовок раскрывающейся карточки --------------------------------------
 
@@ -77,13 +73,14 @@ function CategoryRow({ label, children }) {
   )
 }
 
-// status — статус акцепта закрепления (B32): иконка справа от объекта.
+// status — статус акцепта закрепления (B32): иконка СРАЗУ после объекта (чтобы
+// читалась связка объект↔статус, а не терялась у правого края).
 function Line({ icon, status, children }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5 }}>
       <Icon name={icon} size={14} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
-      <span style={{ minWidth: 0, flex: 1 }}>{children}</span>
-      {status ? <AcceptanceIcon status={status} size={14} /> : null}
+      <span style={{ minWidth: 0 }}>{children}</span>
+      {status ? <AcceptanceIcon status={status} size={14} style={{ marginLeft: 1 }} /> : null}
     </div>
   )
 }
@@ -91,12 +88,12 @@ function Line({ icon, status, children }) {
 function EquipmentLine({ eq, acceptance }) {
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5 }}>
         <Icon name="cpu" size={14} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
-        <span style={{ minWidth: 0, flex: 1 }}>
+        <span style={{ minWidth: 0 }}>
           <b style={{ fontWeight: 600 }}>{eq.type_and_model}</b> <span style={MUTED}>№ {eq.inventory_number}</span>
         </span>
-        {acceptance ? <AcceptanceIcon status={acceptance} size={14} /> : null}
+        {acceptance ? <AcceptanceIcon status={acceptance} size={14} style={{ marginLeft: 1 }} /> : null}
       </div>
       {eq.sim?.length || eq.licenses?.length ? (
         <div style={{ paddingLeft: 22, marginTop: 2 }}>
@@ -173,21 +170,59 @@ export function EmployeePropertyBlock({ emp }) {
   )
 }
 
-// Чипы сотрудников (за рабочим местом).
-export function EmployeeChips({ employees }) {
-  if (!employees.length) return null
+// Тело места в отчётах по местам: единый стиль CategoryRow — сотрудники (только
+// для рабочих мест) + оборудование (с вложенными SIM/лицензиями) + инструменты.
+export function PlaceBody({ employees = [], equipment, tools, withEmployees }) {
+  const hasEmployees = withEmployees && employees.length > 0
+  if (!hasEmployees && !equipment.length && !tools.length) {
+    return <div style={{ fontSize: 13, ...MUTED, padding: '4px 0' }}>Ничего не закреплено.</div>
+  }
   return (
-    <>
-      <div style={GROUP_LABEL}>Сотрудники</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
-        {employees.map((e) => (
-          <span key={e.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '4px 10px', borderRadius: 999, background: 'var(--color-fill-input)' }}>
-            <Icon name="user" size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)' }} />
-            {e.name}{e.position ? <span style={MUTED}>· {e.position}</span> : null}
-          </span>
-        ))}
-      </div>
-    </>
+    <div>
+      {hasEmployees ? (
+        <CategoryRow label="Сотрудники">
+          {employees.map((e) => (
+            <Line key={e.id} icon="user">{e.name}{e.position ? <span style={MUTED}> · {e.position}</span> : null}</Line>
+          ))}
+        </CategoryRow>
+      ) : null}
+      {equipment.length ? (
+        <CategoryRow label="Оборудование">
+          {equipment.map((eq) => <EquipmentLine key={eq.id} eq={eq} />)}
+        </CategoryRow>
+      ) : null}
+      {tools.length ? (
+        <CategoryRow label="Инструменты">
+          {tools.map((t) => <Line key={t.id} icon="hammer">{t.name} <span style={MUTED}>× {t.quantity}</span></Line>)}
+        </CategoryRow>
+      ) : null}
+    </div>
+  )
+}
+
+// Рабочие места сотрудника (в отчёте по сотрудникам) — тем же CategoryRow: слева
+// название места + адрес, справа его имущество. Единый стиль с «Закреплённым
+// имуществом», без отдельных подложек.
+export function WorkplaceBlock({ workplaces }) {
+  return (
+    <div>
+      {workplaces.map((w) => {
+        const label = (
+          <>
+            <span style={{ display: 'block', color: 'var(--color-text-primary)', fontWeight: 600 }}>{w.name}</span>
+            <span style={{ display: 'block' }}>{w.building_name} — {w.room_name}</span>
+          </>
+        )
+        const empty = !w.equipment.length && !w.tools.length
+        return (
+          <CategoryRow key={w.id} label={label}>
+            {empty ? <div style={{ fontSize: 13, ...MUTED }}>Имущество не размещено.</div> : null}
+            {w.equipment.map((eq) => <EquipmentLine key={eq.id} eq={eq} />)}
+            {w.tools.map((t) => <Line key={`t${t.id}`} icon="hammer">{t.name} <span style={MUTED}>× {t.quantity}</span></Line>)}
+          </CategoryRow>
+        )
+      })}
+    </div>
   )
 }
 

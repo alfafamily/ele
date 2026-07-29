@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { EmptyState, Icon, Select, Spinner } from '../../shared/ui'
 import { getEmployeesReport } from './reportsApi.js'
 import {
-  AcceptanceLegend, EmployeePropertyBlock, ExpandCard, FilterRow, PropertyBlock, ReportShell, SectionHead,
+  AcceptanceLegend, EmployeePropertyBlock, ExpandCard, FilterRow, ReportShell, SectionHead, WorkplaceBlock,
 } from './reportsShared.jsx'
 import { countLabel } from './reportsUtils.js'
 
@@ -61,18 +61,7 @@ export function EmployeesReportPage() {
           {e.workplaces.length ? (
             <>
               <SectionHead>Рабочие места</SectionHead>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {e.workplaces.map((w) => (
-                  <div key={w.id} style={{ background: 'var(--color-fill-input)', borderRadius: 10, padding: '10px 12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 600, marginBottom: 2 }}>
-                      <Icon name="briefcase" size={14} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
-                      {w.name}
-                      <span style={{ fontWeight: 400, color: 'var(--color-text-placeholder)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>· {w.building_name} — {w.room_name}</span>
-                    </div>
-                    <PropertyBlock equipment={w.equipment} tools={w.tools} />
-                  </div>
-                ))}
-              </div>
+              <WorkplaceBlock workplaces={e.workplaces} />
             </>
           ) : null}
         </ExpandCard>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { EmptyState, Icon, Select, Spinner } from '../../shared/ui'
 import { getPlacesReport } from './reportsApi.js'
 import {
-  BuildingHead, EmployeeChips, ExpandCard, FilterRow, PropertyBlock, ReportShell, RoomHead,
+  BuildingHead, ExpandCard, FilterRow, PlaceBody, ReportShell, RoomHead,
 } from './reportsShared.jsx'
 import { countLabel } from './reportsUtils.js'
 
@@ -97,8 +97,12 @@ export function PlacesReportPage({ kind }) {
                   summary={countLabel(propCount, ['объект', 'объекта', 'объектов'])}
                   empty={empty}
                 >
-                  {meta.withEmployees ? <EmployeeChips employees={p.employees || []} /> : null}
-                  <PropertyBlock equipment={p.equipment} tools={p.tools} />
+                  <PlaceBody
+                    employees={p.employees || []}
+                    equipment={p.equipment}
+                    tools={p.tools}
+                    withEmployees={meta.withEmployees}
+                  />
                 </ExpandCard>
               )
             })}
