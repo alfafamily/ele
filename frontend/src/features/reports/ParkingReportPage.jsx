@@ -92,7 +92,7 @@ export function ParkingReportPage() {
                   {tr ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: 13.5 }}>
                       <Icon name="car" size={14} strokeWidth={2} style={{ color: 'var(--color-text-muted)' }} />
-                      <span><b style={{ fontWeight: 600 }}>{tr.type_and_model}</b> <span style={{ color: 'var(--color-text-placeholder)' }}>{[tr.plate, `№ ${tr.inventory_number}`].filter(Boolean).join(' · ')}</span></span>
+                      <span>{tr.type_and_model} <span style={{ color: 'var(--color-text-placeholder)' }}>{[tr.plate, `№ ${tr.inventory_number}`].filter(Boolean).join(' · ')}</span></span>
                     </div>
                   ) : null}
                   {empty ? <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', padding: '4px 0' }}>Место свободно.</div> : null}

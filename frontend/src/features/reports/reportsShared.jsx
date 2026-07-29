@@ -73,14 +73,24 @@ function CategoryRow({ label, children }) {
   )
 }
 
-// status — статус акцепта закрепления (B32): иконка СРАЗУ после объекта (чтобы
-// читалась связка объект↔статус, а не терялась у правого края).
+// Ведущий слот статуса акцепта (B32): иконка ПЕРЕД иконкой объекта. Слот
+// резервируется, только если проп статуса передан (даже null — контекст акцепта),
+// чтобы иконки объектов выравнивались; в отчётах по местам статуса нет — слота нет.
+function StatusSlot({ status }) {
+  if (status === undefined) return null
+  return (
+    <span style={{ width: 15, flex: 'none', display: 'inline-flex', justifyContent: 'center' }}>
+      {status ? <AcceptanceIcon status={status} size={14} /> : null}
+    </span>
+  )
+}
+
 function Line({ icon, status, children }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5 }}>
+      <StatusSlot status={status} />
       <Icon name={icon} size={14} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
       <span style={{ minWidth: 0 }}>{children}</span>
-      {status ? <AcceptanceIcon status={status} size={14} style={{ marginLeft: 1 }} /> : null}
     </div>
   )
 }
@@ -89,11 +99,11 @@ function EquipmentLine({ eq, acceptance }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5 }}>
+        <StatusSlot status={acceptance} />
         <Icon name="cpu" size={14} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
         <span style={{ minWidth: 0 }}>
-          <b style={{ fontWeight: 600 }}>{eq.type_and_model}</b> <span style={MUTED}>№ {eq.inventory_number}</span>
+          {eq.type_and_model} <span style={MUTED}>№ {eq.inventory_number}</span>
         </span>
-        {acceptance ? <AcceptanceIcon status={acceptance} size={14} style={{ marginLeft: 1 }} /> : null}
       </div>
       {eq.sim?.length || eq.licenses?.length ? (
         <div style={{ paddingLeft: 22, marginTop: 2 }}>
@@ -163,7 +173,7 @@ export function EmployeePropertyBlock({ emp }) {
       ) : null}
       {emp.transport.length ? (
         <CategoryRow label="Транспорт">
-          {emp.transport.map((t) => <Line key={t.id} icon="car" status={t.acceptance_status}><b style={{ fontWeight: 600 }}>{t.type_and_model}</b> <span style={MUTED}>{[t.plate, `№ ${t.inventory_number}`].filter(Boolean).join(' · ')}</span></Line>)}
+          {emp.transport.map((t) => <Line key={t.id} icon="car" status={t.acceptance_status}>{t.type_and_model} <span style={MUTED}>{[t.plate, `№ ${t.inventory_number}`].filter(Boolean).join(' · ')}</span></Line>)}
         </CategoryRow>
       ) : null}
     </div>
