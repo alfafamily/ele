@@ -153,6 +153,18 @@ export function AppLayout() {
           </span>
         </NavLink>
 
+        {/* B44. «Уведомления» — сразу под блоком пользователя, доступно всем ролям. */}
+        <NavLink
+          to="/notifications"
+          onClick={(e) => e.currentTarget.blur()}
+          className={({ isActive }) => `ele-rail__item${isActive ? ' ele-rail__item--active' : ''}`}
+        >
+          <span className="ele-rail__item-icon">
+            <Icon name="bell" size={22} strokeWidth={1.7} />
+          </span>
+          <span className="ele-rail__label">Уведомления</span>
+        </NavLink>
+
         <nav className="ele-rail__nav">
           {topSections.map(({ key, to, label, icon: Icon }) => (
             <NavLink

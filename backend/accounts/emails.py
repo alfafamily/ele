@@ -20,6 +20,10 @@ _SUBJECTS = {
     "password_reset": "Восстановление пароля — ELE",
     "email_change_confirm": "Подтвердите новый email — ELE",
     "assignment_pending": "Подтвердите получение — {company_name}",
+    # B44. Уведомления о ТО (дублируются в push).
+    "maintenance_due": "Приближается плановое ТО — {company_name}",
+    "maintenance_overdue": "Просрочено ТО — {company_name}",
+    "maintenance_performed": "Проведено ТО — {company_name}",
 }
 
 
@@ -78,6 +82,16 @@ def send_assignment_pending(user, assignment):
     try:
         _send("assignment_pending", "assignment_pending.html", [user.email],
               {"cta_url": cta_url, "object_label": label})
+    except Exception:
+        pass
+
+
+def send_maintenance_email(user, *, kind: str, template: str, object_label: str, date_str: str, cta_url: str):
+    """B44. Письмо о ТО (подходит/просрочено/проведено). Сбои отправки гасим —
+    рассылка одного получателя не должна ронять цикл/операцию проведения."""
+    try:
+        _send(kind, template, [user.email],
+              {"cta_url": cta_url, "object_label": object_label, "date_str": date_str})
     except Exception:
         pass
 

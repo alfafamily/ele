@@ -512,6 +512,14 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
                 plan.next_planned_date = next_date
                 plan.save(update_fields=["next_planned_date"])
 
+        # B44. Уведомление «Выполненное ТО» (admin/accountant, кроме исполнителя).
+        from accounts.notifications import notify_maintenance
+        from accounts.models import NotificationKind
+
+        notify_maintenance(
+            equipment, NotificationKind.MAINTENANCE_PERFORMED,
+            date=timezone.localdate(), exclude_user=request.user,
+        )
         return Response(EquipmentSerializer(equipment, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=["get", "post"], url_path="regulations", permission_classes=[RegulationAccessPermission])

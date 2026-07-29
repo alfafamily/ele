@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from . import views
+from . import notification_views, views
 
 router = DefaultRouter()
 router.register("users", views.UserViewSet, basename="user")
@@ -26,4 +26,9 @@ urlpatterns = [
     # Литерал должен идти раньше роутера — иначе users/<pk>/ маршрут router'а
     # перехватит "users/invite/", приняв "invite" за pk.
     path("users/invite/", views.InviteView.as_view(), name="users-invite"),
+    # B44. Уведомления: Web Push-подписки и настройки каналов.
+    path("notifications/push/vapid-key/", notification_views.VapidKeyView.as_view(), name="notifications-vapid-key"),
+    path("notifications/push/subscribe/", notification_views.PushSubscribeView.as_view(), name="notifications-push-subscribe"),
+    path("notifications/push/unsubscribe/", notification_views.PushUnsubscribeView.as_view(), name="notifications-push-unsubscribe"),
+    path("notifications/preferences/", notification_views.PreferencesView.as_view(), name="notifications-preferences"),
 ] + router.urls

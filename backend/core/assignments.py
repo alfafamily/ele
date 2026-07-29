@@ -472,13 +472,14 @@ def capture_device_snapshot(request):
 # ——— уведомление ——————————————————————————————————————————————————————————————
 
 def _notify_pending(a):
-    """Письмо сотруднику-пользователю о новой выдаче, требующей подтверждения."""
+    """B44. Уведомление сотруднику-пользователю о новой выдаче, требующей
+    подтверждения: письмо + дублирующий push (по настройкам получателя)."""
     try:
         user = a.employee.user
     except Exception:
         return
     if not user or not user.email:
         return
-    from accounts.emails import send_assignment_pending
+    from accounts.notifications import notify_assignment_pending
 
-    send_assignment_pending(user, a)
+    notify_assignment_pending(user, a)

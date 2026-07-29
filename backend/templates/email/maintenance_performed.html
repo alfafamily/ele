@@ -1,0 +1,8 @@
+{% extends "email/base.html" %}
+{% block subject %}Проведено ТО — {{ company_name }}{% endblock %}
+{% block preheader %}Проведено техобслуживание{% endblock %}
+{% block heading %}Проведено ТО{% endblock %}
+{% block body %}
+По объекту <b>{{ object_label }}</b> проведено техобслуживание{% if date_str %} {{ date_str }}{% endif %}. Открыть карточку с историей ТО можно по кнопке ниже.
+{% endblock %}
+{% block cta_text %}Открыть карточку{% endblock %}

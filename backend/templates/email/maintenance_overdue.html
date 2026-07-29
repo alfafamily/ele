@@ -1,0 +1,8 @@
+{% extends "email/base.html" %}
+{% block subject %}Просрочено ТО — {{ company_name }}{% endblock %}
+{% block preheader %}Просрочено плановое техобслуживание{% endblock %}
+{% block heading %}Просрочено ТО{% endblock %}
+{% block body %}
+По объекту <b>{{ object_label }}</b> просрочено плановое техобслуживание{% if date_str %} (с {{ date_str }}){% endif %}. Проведите ТО как можно скорее.
+{% endblock %}
+{% block cta_text %}Открыть карточку{% endblock %}
