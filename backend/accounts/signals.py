@@ -15,7 +15,9 @@ from .models import User
 
 
 @receiver(pre_save, sender=User)
-def _stash_old_employee(sender, instance, **kwargs):
+def _stash_old_employee(sender, instance, raw=False, **kwargs):
+    if raw:
+        return
     if instance.pk:
         instance._old_employee_id = (
             sender.objects.filter(pk=instance.pk).values_list("employee_id", flat=True).first()
@@ -25,7 +27,13 @@ def _stash_old_employee(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=User)
-def _relink_on_employee_change(sender, instance, created, **kwargs):
+def _relink_on_employee_change(sender, instance, created, raw=False, **kwargs):
+    # raw=True — загрузка фикстур (loaddata при restore_backup). Связанный
+    # Employee в этот момент может быть ещё не загружен, а обращение к
+    # instance.employee упадёт Employee.DoesNotExist; пересчёт эпизодов на
+    # сырой загрузке не нужен (данные восстанавливаются как есть).
+    if raw:
+        return
     old = getattr(instance, "_old_employee_id", None)
     if instance.employee_id and instance.employee_id != old:
         from core.assignments import relink_in_absentia
