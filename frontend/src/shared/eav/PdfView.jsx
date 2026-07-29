@@ -26,8 +26,10 @@ export function PdfView({ url, onError }) {
     ;(async () => {
       try {
         const pdfjsLib = await import('pdfjs-dist')
-        // Воркер — через Vite `?worker` (компилируется в .js с полифиллом внутри;
-        // ?url отдавал .mjs без полифилла и с зависимостью от MIME статики).
+        // Воркер — через Vite `?worker` (компилируется в отдельный .js-чанк с
+        // полифиллом внутри). Прежний вариант `?url` + workerSrc грузил воркер
+        // как модуль .mjs по URL (new Worker(url,{type:'module'})) и не открывался
+        // на мобильных браузерах; `?worker` инстанцирует воркер надёжно.
         // Создаём один раз и переиспользуем как workerPort.
         if (!pdfWorkerPort) {
           const PdfWorker = (await import('./pdfWorker.js?worker')).default
