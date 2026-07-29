@@ -277,8 +277,13 @@ export function BuildingHead({ name }) {
 
 export function RoomHead({ name, floor }) {
   return (
-    <div style={{ fontSize: 12.5, fontWeight: 600, ...MUTED, margin: '10px 0 6px', paddingLeft: 2 }}>
-      {name}{floor ? ` · этаж ${floor}` : ''}
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 7, margin: '12px 0 8px', paddingBottom: 6,
+      borderBottom: '1px solid var(--color-border)',
+    }}>
+      <Icon name="map-pin" size={14} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} />
+      <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-secondary)' }}>{name}</span>
+      {floor ? <span style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>· этаж {floor}</span> : null}
     </div>
   )
 }
