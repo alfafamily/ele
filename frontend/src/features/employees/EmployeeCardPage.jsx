@@ -149,7 +149,10 @@ export function EmployeeCardPage() {
                 height: 54,
                 flex: 'none',
                 borderRadius: '50%',
-                background: 'var(--color-fill-active-tint)',
+                // Шапка карточки — на серой подложке страницы, поэтому заглушка
+                // белая с обводкой (иначе серый кружок на сером плохо различим).
+                background: 'var(--color-surface)',
+                boxShadow: 'inset 0 0 0 1px var(--color-border)',
                 color: 'var(--color-text-secondary)',
                 display: 'flex',
                 alignItems: 'center',

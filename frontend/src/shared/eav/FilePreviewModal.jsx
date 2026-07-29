@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from '../ui/Icon/Icon.jsx'
+import { PdfView } from './PdfView.jsx'
 import './FilePreviewModal.css'
 
 // Определяем, можно ли показать файл во встроенном просмотрщике, по MIME-типу
@@ -92,12 +93,12 @@ export function FilePreviewModal({ files, file, startIndex = 0, onClose }) {
           {kind === 'image' ? (
             <img src={current.url} alt={current.original_filename} onError={() => setRenderError(true)} />
           ) : kind === 'pdf' ? (
-            // PDF отдаётся с Content-Type: application/pdf (+X-Content-Type-Options:
-            // nosniff в проде, infra/Caddyfile), поэтому исполняемого html/js тут
-            // быть не может — stored XSS невозможен. sandbox="" НЕ ставим: он
-            // ломает встроенный PDF-просмотрщик Chrome («Эта страница была
-            // заблокирована браузером Chrome»).
-            <iframe src={current.url} title={current.original_filename} onError={() => setRenderError(true)} />
+            // PDF рендерим через PDF.js на <canvas> (PdfView) — единообразно на
+            // десктопе и мобильных. Мобильные браузеры (Android/Chrome/Яндекс) не
+            // умеют показывать PDF во встроенном <iframe>, поэтому от iframe ушли.
+            // PDF отдаётся с Content-Type: application/pdf (+nosniff в проде),
+            // исполняемого html/js в нём быть не может — stored XSS исключён.
+            <PdfView url={current.url} onError={() => setRenderError(true)} />
           ) : kind === 'text' ? (
             // Текстовый файл может реально оказаться text/html — sandbox=""
             // (изолированный opaque origin без разрешения скриптов) нейтрализует

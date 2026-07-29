@@ -242,14 +242,6 @@ export function EmployeeDuplicatesTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 720 }}>
-      <div>
-        <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Возможные дубли сотрудников</div>
-        <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
-          Работающие сотрудники с одинаковыми Фамилией и Именем, среди которых есть запись без учётной
-          записи. Объедините дубли или отметьте, что это не дубль.
-        </div>
-      </div>
-
       {error ? <Banner variant="error">{error}</Banner> : null}
 
       {active.length === 0 && dismissed.length === 0 ? (

@@ -238,16 +238,18 @@ export function ProfilePage() {
 
         <Card>
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Данные учётной записи</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 28px' }}>
+          {/* На мобилке — одна колонка: узкая ячейка 1fr не вмещала кнопку
+              «Сменить пароль» и та вылезала за границы блока. */}
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px 28px' }}>
             <div>
               <Field label="Email" value={user.email} />
-              <Button variant="secondary" style={{ marginTop: 16 }} onClick={() => setShowChangeEmail(true)}>
+              <Button variant="secondary" style={{ marginTop: 16, width: isMobile ? '100%' : undefined }} onClick={() => setShowChangeEmail(true)}>
                 Сменить email
               </Button>
             </div>
             <div>
               <Field label="Роль" value={roleLabel(user.role)} />
-              <Button variant="secondary" style={{ marginTop: 16 }} onClick={() => setShowChangePassword(true)}>
+              <Button variant="secondary" style={{ marginTop: 16, width: isMobile ? '100%' : undefined }} onClick={() => setShowChangePassword(true)}>
                 Сменить пароль
               </Button>
             </div>

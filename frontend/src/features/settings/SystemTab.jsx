@@ -35,28 +35,16 @@ const EMAIL_HELP = [
   'Убедитесь, что в .env заданы и верны EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD.',
   'Проверьте, что адрес отправителя (DEFAULT_FROM_EMAIL) разрешён на почтовом сервере.',
   'Убедитесь, что исходящий порт SMTP не блокируется файрволом сервера.',
-  'Некоторые провайдеры требуют отдельный «пароль приложения» вместо обычного.',
+  'Некоторые почтовые провайдеры требуют отдельный «пароль приложения» вместо обычного.',
 ]
 const PUSH_HELP = [
-  'Включите push на этом устройстве в разделе «Уведомления».',
+  'Включите push\'и на проверяемом устройстве в разделе «Уведомления».',
   'Разрешите уведомления для сайта в браузере (значок настроек сайта в адресной строке).',
+  'Проверьте, что push\'и не заблокированы в настройках устройства для браузера или PWA-приложения.',
   'На iPhone/iPad push работают только в приложении, добавленном на экран «Домой» через Safari.',
   'Проверьте, что в .env заданы VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY и VAPID_SUBJECT (валидный https:// или mailto:).',
   'Убедитесь, что у сервера есть доступ к push-сервисам (web.push.apple.com, fcm.googleapis.com).',
 ]
-
-// Ссылка-кнопка «Письма нет» / «Push'a нет» — открывает список рекомендаций.
-function HelpLink({ label, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{ padding: 0, border: 'none', background: 'none', color: 'var(--color-brand-accent)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}
-    >
-      {label}
-    </button>
-  )
-}
 
 const sectionTitle = { fontSize: 15, fontWeight: 600, marginBottom: 4 }
 const sectionHint = { fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 14 }
@@ -83,6 +71,27 @@ function CheckResult({ result }) {
       <StatusDot ok={result.ok} />
       {!result.ok && result.msg ? <span style={{ color: 'var(--color-error)', fontSize: 13 }}>{result.msg}</span> : null}
     </span>
+  )
+}
+
+// Единый индикатор успешной проверки для всех блоков: при успехе кнопки/поля
+// проверки скрываются, вместо них — зелёная галочка и подпись.
+function CheckSuccess() {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+      <StatusDot ok />
+      <span style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Проверка выполнена успешно</span>
+    </span>
+  )
+}
+
+// Кнопка «Письма нет» / «Push'a нет» — открывает список рекомендаций. Показывается
+// только после запуска проверки (не в исходном состоянии блока).
+function HelpButton({ label, onClick }) {
+  return (
+    <Button type="button" variant="secondary" onClick={onClick}>
+      {label}
+    </Button>
   )
 }
 
@@ -580,10 +589,16 @@ export function SystemTab() {
           {space?.app ? <SpaceInfo info={space.app} /> : null}
 
           <div style={{ ...checkRow, marginTop: 12 }}>
-            <Button type="button" variant="secondary" loading={storageTesting} onClick={runStorageTest}>
-              Проверить подключение
-            </Button>
-            <CheckResult result={storageResult} />
+            {storageResult?.ok ? (
+              <CheckSuccess />
+            ) : (
+              <>
+                <Button type="button" variant="secondary" loading={storageTesting} onClick={runStorageTest}>
+                  Проверить подключение
+                </Button>
+                {storageResult && !storageResult.ok ? <CheckResult result={storageResult} /> : null}
+              </>
+            )}
           </div>
 
           {/* Настраиваемый лимит размера загружаемого файла (реквизиты, план
@@ -638,10 +653,16 @@ export function SystemTab() {
                 <SpaceInfo info={space.backup_s3} />
               ) : null}
               <div style={{ ...checkRow, marginTop: 12 }}>
-                <Button type="button" variant="secondary" loading={s3Testing} onClick={runSecondaryS3Test}>
-                  Проверить подключение
-                </Button>
-                <CheckResult result={s3Result} />
+                {s3Result?.ok ? (
+                  <CheckSuccess />
+                ) : (
+                  <>
+                    <Button type="button" variant="secondary" loading={s3Testing} onClick={runSecondaryS3Test}>
+                      Проверить подключение
+                    </Button>
+                    {s3Result && !s3Result.ok ? <CheckResult result={s3Result} /> : null}
+                  </>
+                )}
               </div>
             </>
           ) : (
@@ -783,7 +804,10 @@ export function SystemTab() {
               : 'Параметры SMTP не заданы в .env, отправка писем невозможна'}
           </div>
           {status.email_configured ? (
-            smtpStatus === 'sent' || smtpStatus === 'checking' ? (
+            smtpStatus === 'ok' ? (
+              // Успех — только зелёная галочка с подписью, без кнопок/полей.
+              <CheckSuccess />
+            ) : smtpStatus === 'sent' || smtpStatus === 'checking' ? (
               <>
                 <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 10 }}>Код отправлен на {smtpEmail}</div>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
@@ -798,27 +822,23 @@ export function SystemTab() {
                   </Button>
                 </div>
                 {smtpError ? <div style={{ marginTop: 10 }}><CheckResult result={{ ok: false, msg: smtpError }} /></div> : null}
+                {/* Кнопка помощи — только после запуска проверки. */}
                 <div style={{ marginTop: 12 }}>
-                  <HelpLink label="Письма нет" onClick={() => setHelp({ title: 'Письмо с кодом не пришло', items: EMAIL_HELP })} />
+                  <HelpButton label="Письма нет" onClick={() => setHelp({ title: 'Письмо с кодом не пришло', items: EMAIL_HELP })} />
                 </div>
               </>
             ) : (
               <>
                 <div style={checkRow}>
-                  {smtpStatus === 'ok' ? (
-                    <CheckResult result={{ ok: true }} />
-                  ) : (
-                    <>
-                      <Button type="button" variant="secondary" loading={smtpStatus === 'sending'} onClick={sendSmtp}>
-                        Выполнить проверку
-                      </Button>
-                      {smtpError ? <CheckResult result={{ ok: false, msg: smtpError }} /> : null}
-                    </>
-                  )}
+                  <Button type="button" variant="secondary" loading={smtpStatus === 'sending'} onClick={sendSmtp}>
+                    Выполнить проверку
+                  </Button>
+                  {smtpError ? <CheckResult result={{ ok: false, msg: smtpError }} /> : null}
                 </div>
-                {smtpStatus !== 'ok' ? (
+                {/* Помощь показываем, только если проверка запускалась и была ошибка. */}
+                {smtpError ? (
                   <div style={{ marginTop: 12 }}>
-                    <HelpLink label="Письма нет" onClick={() => setHelp({ title: 'Письмо с кодом не пришло', items: EMAIL_HELP })} />
+                    <HelpButton label="Письма нет" onClick={() => setHelp({ title: 'Письмо с кодом не пришло', items: EMAIL_HELP })} />
                   </div>
                 ) : null}
               </>
@@ -835,7 +855,9 @@ export function SystemTab() {
               : 'Параметры VAPID не заданы в .env, отправка push-уведомлений невозможна'}
           </div>
           {status.push_configured ? (
-            pushStatus === 'sent' || pushStatus === 'checking' ? (
+            pushStatus === 'ok' ? (
+              <CheckSuccess />
+            ) : pushStatus === 'sent' || pushStatus === 'checking' ? (
               <>
                 <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 10 }}>Код отправлен на это устройство</div>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
@@ -851,33 +873,24 @@ export function SystemTab() {
                 </div>
                 {pushError ? <div style={{ marginTop: 10 }}><CheckResult result={{ ok: false, msg: pushError }} /></div> : null}
                 <div style={{ marginTop: 12 }}>
-                  <HelpLink label="Push'a нет" onClick={() => setHelp({ title: 'Push с кодом не пришёл', items: PUSH_HELP })} />
+                  <HelpButton label="Push'a нет" onClick={() => setHelp({ title: 'Push с кодом не пришёл', items: PUSH_HELP })} />
                 </div>
               </>
             ) : pushBlocked ? (
-              <>
-                <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>{pushHint}</div>
-                <div style={{ marginTop: 12 }}>
-                  <HelpLink label="Push'a нет" onClick={() => setHelp({ title: 'Push с кодом не пришёл', items: PUSH_HELP })} />
-                </div>
-              </>
+              // Push недоступен на устройстве (http / браузер / запрет) — подсказка
+              // без кнопки проверки (её нажать нельзя).
+              <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>{pushHint}</div>
             ) : (
               <>
                 <div style={checkRow}>
-                  {pushStatus === 'ok' ? (
-                    <CheckResult result={{ ok: true }} />
-                  ) : (
-                    <>
-                      <Button type="button" variant="secondary" loading={pushStatus === 'sending'} onClick={sendPush}>
-                        Выполнить проверку
-                      </Button>
-                      {pushError ? <CheckResult result={{ ok: false, msg: pushError }} /> : null}
-                    </>
-                  )}
+                  <Button type="button" variant="secondary" loading={pushStatus === 'sending'} onClick={sendPush}>
+                    Выполнить проверку
+                  </Button>
+                  {pushError ? <CheckResult result={{ ok: false, msg: pushError }} /> : null}
                 </div>
-                {pushStatus !== 'ok' ? (
+                {pushError ? (
                   <div style={{ marginTop: 12 }}>
-                    <HelpLink label="Push'a нет" onClick={() => setHelp({ title: 'Push с кодом не пришёл', items: PUSH_HELP })} />
+                    <HelpButton label="Push'a нет" onClick={() => setHelp({ title: 'Push с кодом не пришёл', items: PUSH_HELP })} />
                   </div>
                 ) : null}
               </>
@@ -899,12 +912,16 @@ export function SystemTab() {
                 : 'Параметры ЯндексOAuth не заданы в .env, использование ЯндексID невозможно'}
             </div>
             {status.yandex_id_configured ? (
-              <div style={checkRow}>
-                <Button type="button" variant="secondary" loading={yandexChecking} onClick={runYandexCheck}>
-                  Выполнить проверку
-                </Button>
-                <CheckResult result={yandexResult} />
-              </div>
+              yandexResult?.ok ? (
+                <CheckSuccess />
+              ) : (
+                <div style={checkRow}>
+                  <Button type="button" variant="secondary" loading={yandexChecking} onClick={runYandexCheck}>
+                    Выполнить проверку
+                  </Button>
+                  {yandexResult && !yandexResult.ok ? <CheckResult result={yandexResult} /> : null}
+                </div>
+              )
             ) : null}
           </Card>
 
@@ -917,7 +934,9 @@ export function SystemTab() {
                 : 'Параметры Яндекс SmartCaptcha не заданы в .env, использование Яндекс SmartCaptcha невозможно'}
             </div>
             {status.captcha_configured ? (
-              captchaOpen ? (
+              captchaResult?.ok ? (
+                <CheckSuccess />
+              ) : captchaOpen ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <SmartCaptcha siteKey={status.captcha_site_key} onToken={onCaptchaToken} />
                   {captchaChecking ? <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Проверяем…</div> : null}
@@ -927,7 +946,7 @@ export function SystemTab() {
                   <Button type="button" variant="secondary" onClick={() => { setCaptchaResult(null); setCaptchaOpen(true) }}>
                     Выполнить проверку
                   </Button>
-                  <CheckResult result={captchaResult} />
+                  {captchaResult && !captchaResult.ok ? <CheckResult result={captchaResult} /> : null}
                 </div>
               )
             ) : null}
