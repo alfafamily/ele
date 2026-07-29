@@ -272,7 +272,7 @@ class CompanySmtpCheckTests(APITestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, [self.admin.email])
 
-        code = mail.outbox[0].subject.split(": ")[-1]
+        code = re.search(r"\d{6}", mail.outbox[0].body).group()
         self.assertEqual(self.client.post("/api/company/verify-email/", {"code": "000000"}, format="json").status_code, 400)
         resp = self.client.post("/api/company/verify-email/", {"code": code}, format="json")
         self.assertEqual(resp.status_code, 200, resp.data)
