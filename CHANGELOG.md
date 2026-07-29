@@ -16,6 +16,16 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.28.2] — 2026-07-29
+
+### Изменено
+- `install.sh`: запрос `VAPID_SUBJECT` при установке стал самодостаточным —
+  показывает значение по умолчанию в `[скобках]` и пример прямо в строке запроса.
+  По умолчанию подставляется `https://<домен второго уровня>` инстанса (например,
+  для `ele-rr.revator.ru` → `https://revator.ru`); пример — `mailto:admin@<домен
+  второго уровня>`. Раньше строка запроса не показывала ни значение по умолчанию,
+  ни пример.
+
 ## [1.28.1] — 2026-07-29
 
 ### Исправлено
@@ -1666,7 +1676,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.28.1...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.28.2...HEAD
+[1.28.2]: https://github.com/alfafamily/ele/compare/v1.28.1...v1.28.2
 [1.28.1]: https://github.com/alfafamily/ele/compare/v1.28.0...v1.28.1
 [1.28.0]: https://github.com/alfafamily/ele/compare/v1.27.3...v1.28.0
 [1.27.3]: https://github.com/alfafamily/ele/compare/v1.27.2...v1.27.3

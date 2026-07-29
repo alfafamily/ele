@@ -133,12 +133,16 @@ else
   # (в локальном HTTP-режиме push недоступен — нет защищённого контекста).
   VAPID_SUBJECT=""
   if [ -n "$SITE_ADDRESS" ]; then
+    # Домен второго уровня хоста (revator.ru из ele-rr.revator.ru) — простая
+    # эвристика «последние две метки» (без Public Suffix List; при многосоставных
+    # TLD вроде .co.uk может быть неточной — значение правится вручную/на Enter).
+    # Используем в дефолте (https://<L2>) и в примере (mailto:admin@<L2>).
+    VAPID_L2="$(printf '%s' "$SITE_ADDRESS" | awk -F. 'NF>=2{print $(NF-1)"."$NF; next}{print}')"
     info "— Push-уведомления —"
-    info "Для работы push на мобильных (iPhone/iPad, Safari-PWA) нужен валидный контакт отправителя."
-    info "Enter — использовать адрес инстанса (${SITE_URL_VAL}); либо укажите mailto с реальным доменом."
-    info "Пример валидного значения: mailto:admin@company.com  или  https://ele.company.com"
+    info "Для push на мобильных (iPhone/iPad, Safari-PWA) нужен валидный контакт отправителя: mailto: с реальным доменом или https://."
     warn "Без валидного значения push на мобильных устройствах не гарантируется."
-    ask VAPID_SUBJECT "Контакт отправителя push (VAPID_SUBJECT)" ""
+    # Дефолт (в [скобках], подставляется на Enter) = https://<домен второго уровня>.
+    ask VAPID_SUBJECT "Контакт отправителя push (Enter — домен второго уровня; пример: mailto:admin@${VAPID_L2})" "https://${VAPID_L2}"
   fi
 
   POSTGRES_PASSWORD="$(rand 32 24)"
