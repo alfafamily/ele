@@ -153,11 +153,15 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ELE <no-reply@ele.local>
 # (письма продолжают работать, кнопка включения push на устройстве недоступна).
 # Ключи задаёт администратор в .env (backend в .env не пишет). Генерация пары —
 # `python manage.py generate_vapid_keys` (см. accounts/management).
-# VAPID_SUBJECT — контакт администратора (mailto:… или https://…), требуется
-# спецификацией Web Push как «кто отправитель».
+# VAPID_SUBJECT — контакт отправителя (mailto:… или https://…), требуется
+# спецификацией Web Push. ВАЖНО: Apple (web.push.apple.com для iOS/Safari-PWA)
+# строго валидирует этот claim и отклоняет невалидные значения (напр. mailto с
+# несуществующим доменом .local) ответом 403 BadJwtToken — push на iPhone не
+# доходит. Поэтому по умолчанию берём адрес самого инстанса (SITE_URL) — это
+# всегда валидный https-URI на проде; переопределить можно через .env.
 VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
 VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", default="")
-VAPID_SUBJECT = env("VAPID_SUBJECT", default="mailto:admin@ele.local")
+VAPID_SUBJECT = env("VAPID_SUBJECT", default=SITE_URL)
 
 # Таймаут бездействия сессии — 24 часа : SAVE_EVERY_REQUEST
 # продлевает cookie при активности, т.е. это именно idle-таймаут, а не
