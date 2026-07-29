@@ -136,6 +136,7 @@ else
     info "— Push-уведомления —"
     info "Для работы push на мобильных (iPhone/iPad, Safari-PWA) нужен валидный контакт отправителя."
     info "Enter — использовать адрес инстанса (${SITE_URL_VAL}); либо укажите mailto с реальным доменом."
+    info "Пример валидного значения: mailto:admin@company.com  или  https://ele.company.com"
     warn "Без валидного значения push на мобильных устройствах не гарантируется."
     ask VAPID_SUBJECT "Контакт отправителя push (VAPID_SUBJECT)" ""
   fi
