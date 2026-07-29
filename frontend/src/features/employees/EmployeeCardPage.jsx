@@ -684,7 +684,7 @@ function ParkingSpotRow({ spot }) {
   return (
     <div style={{ padding: '11px 13px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-        <Icon name="square-parking" size={18} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none', marginTop: 1 }} />
+        <LeadIconCircle name="square-parking" />
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 13.5, fontWeight: 600 }}>{spot.name}</div>
           <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{spot.location}</div>
