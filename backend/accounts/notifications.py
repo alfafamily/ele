@@ -161,17 +161,22 @@ _PUSH_TITLE = {
 }
 
 
-def _push_body(kind, label, date_str):
+def _push_body(kind, label, date_str, reg_name):
+    reg = f" «{reg_name}»" if reg_name else ""
     if kind == Kind.MAINTENANCE_DUE:
-        return f"{label}: приближается плановое ТО" + (f" ({date_str})." if date_str else ".")
+        return f"{label}: приближается плановое ТО{reg}" + (f" ({date_str})." if date_str else ".")
     if kind == Kind.MAINTENANCE_OVERDUE:
-        return f"{label}: ТО просрочено" + (f" с {date_str}." if date_str else ".")
-    return f"{label}: проведено ТО" + (f" {date_str}." if date_str else ".")
+        return f"{label}: просрочено плановое ТО{reg}" + (f" (с {date_str})." if date_str else ".")
+    # проведено: с названием регламента или «внеплановое», если регламента нет
+    body = f"{label}: проведено ТО{reg}" if reg_name else f"{label}: проведено внеплановое ТО"
+    return body + (f" {date_str}." if date_str else ".")
 
 
-def notify_maintenance(obj, kind, *, date=None, exclude_user=None):
+def notify_maintenance(obj, kind, *, date=None, exclude_user=None, regulation_name=""):
     """Разослать ТО-уведомление (подходит/просрочено/проведено) по объекту
-    (Equipment или Transport) всем подходящим получателям."""
+    (Equipment или Transport) всем подходящим получателям. regulation_name —
+    название регламента ТО (для проведённого — из снимка записи; для
+    подходит/просрочено — из плана; пусто = внеплановое/без регламента)."""
     from core.assignments import object_label
     from equipment.models import Equipment
     from transport.models import Transport
@@ -192,7 +197,7 @@ def notify_maintenance(obj, kind, *, date=None, exclude_user=None):
 
     email_kind, template = _MAINT_EMAIL[kind]
     push_title = _PUSH_TITLE[kind]
-    push_body = _push_body(kind, full_label, date_str)
+    push_body = _push_body(kind, full_label, date_str, regulation_name)
 
     for user, email_on, push_on in recipients_for_maintenance(kind, domain, type_id, exclude_user):
         if email_on:
@@ -201,6 +206,7 @@ def notify_maintenance(obj, kind, *, date=None, exclude_user=None):
             send_maintenance_email(
                 user, kind=email_kind, template=template,
                 object_label=full_label, date_str=date_str, cta_url=cta_url,
+                regulation_name=regulation_name,
             )
         if push_on:
             send_to_user(user, {

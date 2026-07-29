@@ -3,6 +3,6 @@
 {% block preheader %}Просрочено плановое техобслуживание{% endblock %}
 {% block heading %}Просрочено ТО{% endblock %}
 {% block body %}
-По объекту <b>{{ object_label }}</b> просрочено плановое техобслуживание{% if date_str %} (с {{ date_str }}){% endif %}. Проведите ТО как можно скорее.
+По объекту <b>{{ object_label }}</b> просрочено плановое техобслуживание{% if regulation_name %} по регламенту «<b>{{ regulation_name }}</b>»{% endif %}{% if date_str %} (с {{ date_str }}){% endif %}. Проведите ТО как можно скорее.
 {% endblock %}
 {% block cta_text %}Открыть карточку{% endblock %}

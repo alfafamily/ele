@@ -3,6 +3,6 @@
 {% block preheader %}Проведено техобслуживание{% endblock %}
 {% block heading %}Проведено ТО{% endblock %}
 {% block body %}
-По объекту <b>{{ object_label }}</b> проведено техобслуживание{% if date_str %} {{ date_str }}{% endif %}. Открыть карточку с историей ТО можно по кнопке ниже.
+По объекту <b>{{ object_label }}</b> проведено {% if regulation_name %}ТО по регламенту «<b>{{ regulation_name }}</b>»{% else %}внеплановое ТО{% endif %}{% if date_str %} {{ date_str }}{% endif %}. Открыть карточку с историей ТО можно по кнопке ниже.
 {% endblock %}
 {% block cta_text %}Открыть карточку{% endblock %}

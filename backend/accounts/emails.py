@@ -86,12 +86,13 @@ def send_assignment_pending(user, assignment):
         pass
 
 
-def send_maintenance_email(user, *, kind: str, template: str, object_label: str, date_str: str, cta_url: str):
+def send_maintenance_email(user, *, kind: str, template: str, object_label: str, date_str: str, cta_url: str, regulation_name: str = ""):
     """B44. Письмо о ТО (подходит/просрочено/проведено). Сбои отправки гасим —
     рассылка одного получателя не должна ронять цикл/операцию проведения."""
     try:
         _send(kind, template, [user.email],
-              {"cta_url": cta_url, "object_label": object_label, "date_str": date_str})
+              {"cta_url": cta_url, "object_label": object_label, "date_str": date_str,
+               "regulation_name": regulation_name})
     except Exception:
         pass
 

@@ -531,6 +531,7 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         notify_maintenance(
             transport, NotificationKind.MAINTENANCE_PERFORMED,
             date=timezone.localdate(), exclude_user=request.user,
+            regulation_name=record.regulation_name,
         )
         return Response(TransportSerializer(transport, context=self.get_serializer_context()).data)
 
