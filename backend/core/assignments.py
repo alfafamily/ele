@@ -40,6 +40,39 @@ def object_kind_of(obj):
     raise TypeError(f"Объект {obj!r} не поддерживает закрепление за сотрудником")
 
 
+def pass_access_label(obj):
+    """Подпись ключа/пропуска без учётного номера — по объекту доступа (зеркало
+    `KeyTarget`/`PassInfo` на фронте). Ключ: «Ключ · Место (Здание — Помещение)»
+    (у ключа ровно один объект: место / помещение / здание целиком). Пропуск:
+    «Пропуск (типы) · Здание, Здание». Если объектов доступа нет — запасной
+    порядковый номер, чтобы объекты всё же различались."""
+    from employees.models import AccessPass
+
+    is_key = obj.object_type == AccessPass.ObjectType.KEY
+    if is_key:
+        building = obj.buildings.first()
+        if building is None:
+            return f"Ключ #{obj.pk}"
+        place = obj.places.first()
+        if place is not None:
+            scope = f"{building.name} — {place.room.name}" if place.room_id else building.name
+            return f"Ключ · {place.name} ({scope})"
+        room = obj.rooms.first()
+        if room is not None:
+            return f"Ключ · {room.name} ({building.name})"
+        return f"Ключ · {building.name}"  # всё здание
+
+    types = ", ".join(
+        t for t in ("Личный авто" if obj.type_vehicle else None,
+                    "Пеший" if obj.type_pedestrian else None) if t
+    )
+    head = f"Пропуск ({types})" if types else "Пропуск"
+    buildings = [b.name for b in obj.buildings.all()]
+    if buildings:
+        return f"{head} · {', '.join(buildings)}"
+    return f"Пропуск #{obj.pk}"
+
+
 def object_label(obj):
     """Как объект выводится на странице своего списка (для текстов истории/отказа)."""
     from employees.models import AccessPass, SimCard
@@ -68,7 +101,10 @@ def object_label(obj):
     if isinstance(obj, AccessPass):
         if obj.account_number:
             return obj.account_number
-        return f"Ключ #{obj.pk}" if obj.object_type == AccessPass.ObjectType.KEY else f"Пропуск #{obj.pk}"
+        # Без учётного номера «Ключ #N» / «Пропуск #N» ничего не значат — вместо
+        # порядкового номера показываем объект доступа (от чего ключ/пропуск),
+        # как на карточке сотрудника, чтобы различать объекты между собой.
+        return pass_access_label(obj)
     if isinstance(obj, Tool):
         return obj.name
     return str(obj)
