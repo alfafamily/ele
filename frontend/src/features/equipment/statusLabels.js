@@ -5,6 +5,14 @@ export const EQUIPMENT_STATUS_LABEL = {
 }
 export const EQUIPMENT_STATUS_VARIANT = { assigned: 'assigned', stationary: 'assigned', free: 'free' }
 
+// B45. Метка размещения по типу места (для карточки/списка, где известен
+// конкретный place_type): склад / рабочее место / МОП.
+export const PLACEMENT_LOCATION_LABEL = {
+  storage: 'На складе',
+  workplace: 'На рабочем месте',
+  common: 'МОП',
+}
+
 // B13+. Статус одного плана ТО (по регламенту). null — не контролируется
 // (регламент «по потребности», отменён или ещё нет активных регламентов).
 export const MAINTENANCE_STATUS_LABEL = {

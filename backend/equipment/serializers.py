@@ -227,7 +227,7 @@ class EquipmentSerializer(serializers.ModelSerializer):
         # free — свободно (на складе либо legacy без места).
         if obj.employee_id:
             return "assigned"
-        if obj.place_id and obj.place.place_type == "workplace":
+        if obj.place_id and obj.place.place_type in ("workplace", "common"):
             return "stationary"
         return "free"
 

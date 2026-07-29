@@ -29,6 +29,9 @@ class ToolAllocationSerializer(serializers.ModelSerializer):
     department = serializers.SerializerMethodField()
     position = serializers.SerializerMethodField()
     place_name = serializers.SerializerMethodField()
+    # B45: конкретный тип места (workplace/common/storage) — чтобы карточка
+    # отличала МОП от рабочего места (у обоих target_kind == "workplace").
+    place_type = serializers.CharField(source="place.place_type", read_only=True, default=None)
     place_location = serializers.SerializerMethodField()
     place_employees = serializers.SerializerMethodField()
     acceptance_status = serializers.SerializerMethodField()
@@ -37,7 +40,7 @@ class ToolAllocationSerializer(serializers.ModelSerializer):
         model = ToolAllocation
         fields = [
             "id", "kind", "employee", "employee_name", "employee_avatar", "department", "position",
-            "place", "place_name", "place_location", "place_employees", "quantity",
+            "place", "place_name", "place_type", "place_location", "place_employees", "quantity",
             "acceptance_status",
         ]
 

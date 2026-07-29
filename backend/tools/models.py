@@ -91,10 +91,11 @@ class ToolAllocation(models.Model):
 
     @property
     def target_kind(self):
-        # employee — мобильно; workplace — стационарно; storage — свободно на складе.
+        # employee — мобильно; workplace — стационарно (рабочее место или МОП,
+        # B45); storage — свободно на складе.
         if self.employee_id:
             return "employee"
-        if self.place and self.place.place_type == "workplace":
+        if self.place and self.place.place_type in ("workplace", "common"):
             return "workplace"
         return "storage"
 

@@ -17,7 +17,10 @@ import { EquipmentPlacementModal } from './EquipmentPlacementModal.jsx'
 import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
 import { EquipmentRegulationsSection } from './EquipmentRegulationsSection.jsx'
 import { getEquipment, getEquipmentHistoryPath, getEquipmentRegulations } from './equipmentApi.js'
-import { EQUIPMENT_STATUS_LABEL, planStatusIcon } from './statusLabels.js'
+import { EQUIPMENT_STATUS_LABEL, PLACEMENT_LOCATION_LABEL, planStatusIcon } from './statusLabels.js'
+
+// B45. Иконка по типу места на карточке размещения.
+const PLACE_ICON = { storage: 'warehouse', workplace: 'briefcase', common: 'coffee' }
 import { WriteOffModal } from './WriteOffModal.jsx'
 
 function formatShortDate(iso) {
@@ -131,7 +134,7 @@ export function EquipmentCardPage() {
             <div className="ele-field-grid">
               <Field label="Учётный номер" value={equipment.inventory_number} mono />
               <Field label="Тип оборудования" value={equipment.equipment_type_name} />
-              <Field label="Статус" value={equipment.is_written_off ? 'Списано' : EQUIPMENT_STATUS_LABEL[equipment.status]} />
+              <Field label="Статус" value={equipment.is_written_off ? 'Списано' : equipment.place_detail?.place_type === 'common' ? 'МОП' : EQUIPMENT_STATUS_LABEL[equipment.status]} />
             </div>
           </Card>
 
@@ -273,8 +276,8 @@ export function EquipmentCardPage() {
           ) : equipment.place_detail ? (
             <>
               <PlacementRow
-                circle={<LeadIconCircle name={equipment.place_detail.place_type === 'storage' ? 'warehouse' : 'briefcase'} size={46} iconSize={20} />}
-                label={equipment.place_detail.place_type === 'storage' ? 'На складе' : 'На рабочем месте'}
+                circle={<LeadIconCircle name={PLACE_ICON[equipment.place_detail.place_type] || 'briefcase'} size={46} iconSize={20} />}
+                label={PLACEMENT_LOCATION_LABEL[equipment.place_detail.place_type] || 'На рабочем месте'}
                 title={equipment.place_detail.name}
                 sub={`${equipment.place_detail.building_name} — ${equipment.place_detail.room_name}`}
               />

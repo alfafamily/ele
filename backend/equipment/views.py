@@ -682,8 +682,7 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             p = Place.objects.select_related("room__building").filter(pk=v).first()
             if not p:
                 return "—"
-            kind = "Рабочее место" if p.place_type == Place.PlaceType.WORKPLACE else "Место хранения"
-            return f"{kind} «{p.name}» ({p.room.building.name} — {p.room.name})"
+            return f"{p.get_place_type_display()} «{p.name}» ({p.room.building.name} — {p.room.name})"
 
         field_specs = {
             "inventory_number": {"label": "Учётный номер"},

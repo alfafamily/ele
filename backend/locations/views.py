@@ -111,10 +111,11 @@ class PlaceViewSet(_NoDeleteViewSet):
             "employees__avatar", "transport__transport_type"
         )
         # Плоский список мест для пикеров размещения: ?place_type=storage|workplace|
-        # parking_spot, ?active=1 — только не архивные.
+        # common|parking_spot, ?active=1 — только не архивные.
         place_type = self.request.query_params.get("place_type")
         if place_type in (
-            Place.PlaceType.STORAGE, Place.PlaceType.WORKPLACE, Place.PlaceType.PARKING_SPOT
+            Place.PlaceType.STORAGE, Place.PlaceType.WORKPLACE,
+            Place.PlaceType.COMMON, Place.PlaceType.PARKING_SPOT,
         ):
             qs = qs.filter(place_type=place_type)
         if self.request.query_params.get("active") in ("1", "true"):

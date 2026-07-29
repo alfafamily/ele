@@ -103,9 +103,10 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         return qty, None
 
     def _assigned_units(self, tool):
-        # Закреплено = сумма размещений за сотрудниками и рабочими местами.
+        # Закреплено = сумма размещений за сотрудниками и стационарных мест
+        # (рабочие места и МОП, B45).
         s = tool.allocations.filter(
-            Q(employee__isnull=False) | Q(place__place_type="workplace")
+            Q(employee__isnull=False) | Q(place__place_type__in=("workplace", "common"))
         ).aggregate(s=Sum("quantity"))["s"]
         return s or 0
 
@@ -330,7 +331,7 @@ class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         # частей; свободный складской остаток просто уходит вместе с карточкой.
         from core.assignments import close_tool_episodes
 
-        for alloc in list(tool.allocations.filter(Q(employee__isnull=False) | Q(place__place_type="workplace"))):
+        for alloc in list(tool.allocations.filter(Q(employee__isnull=False) | Q(place__place_type__in=("workplace", "common")))):
             self._record_movement(
                 tool, ToolMovement.Kind.UNASSIGN, alloc.quantity, request.user, comment,
                 employee=alloc.employee, place=alloc.place,

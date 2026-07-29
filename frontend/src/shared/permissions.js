@@ -91,6 +91,8 @@ export function computePermissions(user) {
     // (Наблюдателю бэкенд их не отдаёт, здесь скрываем «глазик»).
     canRevealSecrets: isStaff,
     canViewSettings: isAdmin,
+    // B45: отчёты по местам/сотрудникам — Администратор / Ответственный за учёт.
+    canViewReports: isStaff,
   }
 }
 

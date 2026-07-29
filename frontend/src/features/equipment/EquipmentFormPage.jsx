@@ -298,7 +298,7 @@ export function EquipmentFormPage() {
                 <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
                   {[
                     { value: 'mobile', label: 'За сотрудником' },
-                    { value: 'stationary', label: 'На рабочем месте' },
+                    { value: 'stationary', label: 'Рабочее место / МОП' },
                     { value: 'storage', label: 'На складе' },
                   ].map((m) => (
                     <button
@@ -334,7 +334,7 @@ export function EquipmentFormPage() {
                 )
               ) : (
                 <PlaceSelect
-                  placeType={placementMode === 'stationary' ? 'workplace' : 'storage'}
+                  placeType={placementMode === 'stationary' ? ['workplace', 'common'] : 'storage'}
                   required
                   value={placementPlaceId}
                   onChange={setPlacementPlaceId}
