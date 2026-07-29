@@ -48,12 +48,16 @@ class EligibilityTests(APITestCase):
         auto = mk("auto@e.com", User.Role.AUTOMECHANIC)
         emp = mk("emp@e.com", User.Role.EMPLOYEE)
 
-        self.assertEqual(eligible_kinds(admin), {K.ASSIGNMENT_PENDING, K.MAINTENANCE_DUE, K.MAINTENANCE_OVERDUE, K.MAINTENANCE_PERFORMED})
-        self.assertEqual(eligible_kinds(acc), {K.ASSIGNMENT_PENDING, K.MAINTENANCE_PERFORMED})
+        self.assertEqual(eligible_kinds(admin), {K.ASSIGNMENT_PENDING, K.ASSIGNMENT_REJECTED, K.MAINTENANCE_DUE, K.MAINTENANCE_OVERDUE, K.MAINTENANCE_PERFORMED})
+        self.assertEqual(eligible_kinds(acc), {K.ASSIGNMENT_PENDING, K.ASSIGNMENT_REJECTED, K.MAINTENANCE_PERFORMED})
         self.assertIn(K.MAINTENANCE_DUE, eligible_kinds(acc_m))
         self.assertEqual(eligible_kinds(mech), {K.ASSIGNMENT_PENDING, K.MAINTENANCE_DUE, K.MAINTENANCE_OVERDUE})
         self.assertEqual(eligible_kinds(auto), {K.ASSIGNMENT_PENDING, K.MAINTENANCE_DUE, K.MAINTENANCE_OVERDUE})
         self.assertEqual(eligible_kinds(emp), {K.ASSIGNMENT_PENDING})
+        # Отказ от закрепления — только admin и accountant.
+        self.assertIn(K.ASSIGNMENT_REJECTED, eligible_kinds(acc))
+        self.assertNotIn(K.ASSIGNMENT_REJECTED, eligible_kinds(mech))
+        self.assertNotIn(K.ASSIGNMENT_REJECTED, eligible_kinds(emp))
 
     def test_domains_and_configurable(self):
         admin = mk("a@e.com", User.Role.ADMIN)
@@ -83,7 +87,7 @@ class PreferencesApiTests(APITestCase):
         self.client.force_authenticate(self.admin)
         data = self.client.get("/api/notifications/preferences/").data
         kinds = [it["kind"] for it in data["items"]]
-        self.assertEqual(kinds, ["assignment_pending", "maintenance_due", "maintenance_overdue", "maintenance_performed"])
+        self.assertEqual(kinds, ["assignment_pending", "assignment_rejected", "maintenance_due", "maintenance_overdue", "maintenance_performed"])
         due = next(it for it in data["items"] if it["kind"] == "maintenance_due")
         self.assertTrue(due["configurable_types"])
         self.assertEqual(due["domains"], ["equipment", "transport"])

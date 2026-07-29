@@ -1,0 +1,8 @@
+{% extends "email/base.html" %}
+{% block subject %}Отказ от закрепления имущества — {{ company_name }}{% endblock %}
+{% block preheader %}Сотрудник отказался принять закреплённое имущество{% endblock %}
+{% block heading %}Сотрудник отказался от закрепления{% endblock %}
+{% block body %}
+Сотрудник <b>{{ employee_name }}</b> отказался принять закреплённое имущество <b>{{ object_label }}</b>.{% if reason %} Причина: {{ reason }}.{% endif %} Имущество возвращено на прежнее место. Открыть операции закрепления можно по кнопке ниже.
+{% endblock %}
+{% block cta_text %}Открыть операции закрепления{% endblock %}

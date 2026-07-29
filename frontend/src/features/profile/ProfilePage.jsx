@@ -207,7 +207,7 @@ export function ProfilePage() {
             ) : null}
           </div>
           {employee ? <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onAvatarSelected} /> : null}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8 }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: isMobile ? 8 : 3 }}>
             <div style={{ fontSize: 20, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</div>
             {isMobile ? (
               // B44. Мобильная версия: почта скрыта, кнопки «Уведомления» и «Выход»
@@ -222,31 +222,18 @@ export function ProfilePage() {
                 </button>
               </div>
             ) : (
-              // Десктоп — как было: почта (логин) + ссылка «Выйти из системы».
-              <>
-                <div style={{ fontSize: 13.5, color: 'var(--color-text-placeholder)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</div>
-                <button
-                  type="button"
-                  onClick={logout}
-                  style={{
-                    marginTop: 8,
-                    padding: 0,
-                    border: 'none',
-                    background: 'none',
-                    color: 'var(--color-error)',
-                    fontSize: 13.5,
-                    fontWeight: 600,
-                    fontFamily: 'inherit',
-                    textDecoration: 'underline',
-                    cursor: 'pointer',
-                    alignSelf: 'flex-start',
-                  }}
-                >
-                  Выйти из системы
-                </button>
-              </>
+              // Десктоп: почта (логин) под ФИО — обе строки укладываются в высоту
+              // аватара и центрируются по нему.
+              <div style={{ fontSize: 13.5, color: 'var(--color-text-placeholder)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</div>
             )}
           </div>
+          {/* Десктоп: «Выйти из системы» — кнопкой у правого края, по центру
+              шапки по вертикали (не выпирает за границы аватара). */}
+          {!isMobile ? (
+            <button type="button" onClick={logout} style={{ ...logoutBtnStyle, flex: 'none' }}>
+              Выйти из системы
+            </button>
+          ) : null}
         </Card>
 
         <Card>

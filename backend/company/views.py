@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.captcha import is_captcha_enabled, verify_captcha
+from accounts.push import push_configured, send_to_user
 from accounts.yandex_oauth import is_yandex_id_enabled
 from core.permissions import IsAdmin, IsAdminOrAccountant
 from core.utils.client_ip import get_client_ip
@@ -42,6 +43,7 @@ _SESSION_STORAGE_VERIFIED = "setup_storage_verified"
 _SESSION_EMAIL_VERIFIED = "setup_email_verified"  # подтверждённый email (строка) или отсутствует
 _SESSION_EMAIL_PENDING = "setup_email_pending"  # {"email", "code", "sent_at"}
 _SESSION_SMTP_TEST_PENDING = "company_smtp_test_pending"  # проверка SMTP из Настроек → Компания
+_SESSION_PUSH_TEST_PENDING = "company_push_test_pending"  # проверка Push из Настроек → Системные
 _SESSION_CAPTCHA_VERIFIED = "setup_captcha_verified"
 _SESSION_YANDEX_VERIFIED = "setup_yandex_verified"
 
@@ -253,6 +255,59 @@ class CompanyVerifyEmailView(APIView):
         return Response({"detail": "SMTP работает — письмо доставлено."})
 
 
+class CompanyTestPushView(APIView):
+    """Настройки → Системные → «Проверка Push-уведомлений». Шлёт push с кодом на
+    устройства текущего администратора; подтверждение кода в CompanyVerifyPushView
+    доказывает, что push реально доходит. Только Администратор.
+
+    Если ни одно устройство не подписано (push не включён на этом устройстве) —
+    доставлять некуда: возвращаем 400 с подсказкой включить push."""
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request):
+        if not push_configured():
+            return Response({"detail": "VAPID не настроен в .env."}, status=400)
+        code = generate_code()
+        delivered = send_to_user(request.user, {
+            "title": "Проверка Push-уведомлений",
+            "body": f"Код проверки: {code}",
+            "url": "/settings",
+            "tag": "push-check",
+        })
+        if delivered == 0:
+            return Response(
+                {"detail": "Push не доставлен: на этом устройстве не включены push-уведомления. "
+                           "Включите их в разделе «Уведомления» и повторите проверку."},
+                status=400,
+            )
+        request.session[_SESSION_PUSH_TEST_PENDING] = {
+            "code": code,
+            "sent_at": timezone.now().isoformat(),
+        }
+        return Response({"detail": "Push с кодом отправлен на это устройство.", "delivered": delivered})
+
+
+class CompanyVerifyPushView(APIView):
+    """Подтверждение кода из push проверки (см. CompanyTestPushView)."""
+
+    permission_classes = [IsAdmin]
+
+    def post(self, request):
+        serializer = VerifyEmailCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        pending = request.session.get(_SESSION_PUSH_TEST_PENDING)
+        if not pending:
+            return Response({"detail": "Сначала отправьте проверочный push."}, status=400)
+        sent_at = datetime.fromisoformat(pending["sent_at"])
+        if timezone.now() - sent_at > timedelta(seconds=CODE_TTL_SECONDS):
+            return Response({"detail": "Код устарел, отправьте push заново."}, status=400)
+        if serializer.validated_data["code"] != pending["code"]:
+            return Response({"detail": "Неверный код."}, status=400)
+        request.session.pop(_SESSION_PUSH_TEST_PENDING, None)
+        return Response({"detail": "Push работает — уведомление доставлено."})
+
+
 class UpdateInfoView(APIView):
     """Настройки → Обновление: текущая версия инстанса + проверка последней в
     публичном репозитории. Само обновление выполняется на сервере (git pull +
@@ -293,6 +348,7 @@ class SystemStatusView(APIView):
                 "s3_configured": _s3_env_configured(),
                 "s3_bucket": settings.S3_BUCKET or None,
                 "email_configured": settings.EMAIL_CONFIGURED,
+                "push_configured": push_configured(),
                 "yandex_id_configured": is_yandex_id_enabled(),
                 "captcha_configured": is_captcha_enabled(),
                 "captcha_site_key": settings.YANDEX_SMARTCAPTCHA_SITE_KEY or None,

@@ -119,6 +119,35 @@ class DecisionTests(AssignmentBaseTests):
         self.assertIsNone(eq.employee_id)
         self.assertEqual(eq.place_id, self.storage.id)  # вернулось на прежний склад
 
+    def test_reject_notifies_assigner(self):
+        # Отказ сотрудника → письмо тому, кто выполнял закрепление (admin).
+        eq = self._equip(place=self.storage)
+        self._assign(eq, self.emp)  # admin закрепляет; worker связан с сотрудником
+        a = open_assignment(eq)
+        mail.outbox.clear()  # убираем письмо о закреплении, оставляем только отказ
+        self.client.force_authenticate(self.user)
+        self.client.post(f"/api/assignments/{a.id}/reject/", {"comment": "не подходит"})
+        self.assertEqual(len(mail.outbox), 1)
+        msg = mail.outbox[0]
+        self.assertIn(self.admin.email, msg.to)
+        self.assertIn("Отказ", msg.subject)
+        self.assertIn(str(self.emp), msg.body)
+
+    def test_reject_no_notification_when_assigner_disabled(self):
+        from accounts.models import NotificationKind, NotificationPreference
+
+        NotificationPreference.objects.create(
+            user=self.admin, kind=NotificationKind.ASSIGNMENT_REJECTED,
+            email_enabled=False, push_enabled=False,
+        )
+        eq = self._equip(place=self.storage)
+        self._assign(eq, self.emp)
+        a = open_assignment(eq)
+        mail.outbox.clear()
+        self.client.force_authenticate(self.user)
+        self.client.post(f"/api/assignments/{a.id}/reject/", {"comment": "не подходит"})
+        self.assertEqual(len(mail.outbox), 0)
+
     def test_reassign_after_reject_shows_new_pending(self):
         # assign → reject → assign снова: новая запись закрепления должна появиться
         # (регресс: skip_history рвал diff-цепочку, и повтор не отражался).

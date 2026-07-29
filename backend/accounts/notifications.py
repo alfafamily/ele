@@ -42,7 +42,7 @@ def eligible_kinds(user) -> set:
     if eq_maintainer(user) or tr_maintainer(user):
         kinds |= {Kind.MAINTENANCE_DUE, Kind.MAINTENANCE_OVERDUE}
     if user.role in (Role.ADMIN, Role.ACCOUNTANT):
-        kinds.add(Kind.MAINTENANCE_PERFORMED)
+        kinds |= {Kind.ASSIGNMENT_REJECTED, Kind.MAINTENANCE_PERFORMED}
     return kinds
 
 
@@ -237,4 +237,41 @@ def notify_assignment_pending(user, assignment):
             "body": f"За вами закрепили: {label}. Подтвердите получение в профиле.",
             "url": "/profile",
             "tag": f"assignment:{assignment.id}",
+        })
+
+
+def notify_assignment_rejected(assignment):
+    """Событие: сотрудник отказался от закрепления. Уведомляем того, кто выполнял
+    операцию закрепления (`assigned_by`), если он admin/accountant и подписан на
+    этот вид. Доступно только admin и accountant (у прочих ролей вид недоступен)."""
+    user = assignment.assigned_by
+    if user is None or not user.is_active:
+        return
+    if Kind.ASSIGNMENT_REJECTED not in eligible_kinds(user):
+        return
+    # Отказ фиксирует сам сотрудник — если он же выдавал (самовыдача), отдельного
+    # уведомления «самому себе» не шлём (самовыдача и так сразу принимается).
+    if assignment.decided_by_id and assignment.decided_by_id == user.id:
+        return
+
+    from core.assignments import object_label
+
+    try:
+        label = object_label(assignment.content_object) if assignment.content_object is not None else "имущество"
+    except Exception:
+        label = "имущество"
+    employee_name = str(assignment.employee) if assignment.employee_id else "Сотрудник"
+    reason = (assignment.decision_comment or "").strip()
+
+    email_on, push_on = _channels(_pref(user, Kind.ASSIGNMENT_REJECTED))
+    if email_on and user.email:
+        from .emails import send_assignment_rejected
+
+        send_assignment_rejected(user, assignment, label=label, employee_name=employee_name, reason=reason)
+    if push_on:
+        send_to_user(user, {
+            "title": "Отказ от закрепления",
+            "body": f"{employee_name} отказался: {label}",
+            "url": "/employees/assignments",
+            "tag": f"assignment-rejected:{assignment.id}",
         })

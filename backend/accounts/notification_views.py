@@ -15,12 +15,14 @@ from .push import push_configured
 # Порядок и подписи строк таблицы «Уведомления» (согласовано B44).
 _KIND_ORDER = [
     NotificationKind.ASSIGNMENT_PENDING,
+    NotificationKind.ASSIGNMENT_REJECTED,
     NotificationKind.MAINTENANCE_DUE,
     NotificationKind.MAINTENANCE_OVERDUE,
     NotificationKind.MAINTENANCE_PERFORMED,
 ]
 _KIND_LABELS = {
     NotificationKind.ASSIGNMENT_PENDING: "Уведомление о закреплении нового имущества",
+    NotificationKind.ASSIGNMENT_REJECTED: "Уведомление об отказе сотрудника от закрепления имущества",
     NotificationKind.MAINTENANCE_DUE: "Уведомление о «подходящем» ТО",
     NotificationKind.MAINTENANCE_OVERDUE: "Уведомление о просроченном (не выполненном) ТО",
     NotificationKind.MAINTENANCE_PERFORMED: "Уведомление о выполненном ТО",

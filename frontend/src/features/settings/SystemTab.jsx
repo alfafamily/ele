@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { SmartCaptcha } from '../auth/SmartCaptcha.jsx'
+import { getVapidKey } from '../notifications/notificationsApi.js'
+import { currentSubscription, enablePush, isIOS, permissionDenied, pushUnavailableReason } from '../notifications/push.js'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
-import { Banner, Button, Card, Checkbox, Icon, Input, Spinner } from '../../shared/ui'
+import { Banner, Button, Card, Checkbox, Icon, Input, Modal, Spinner } from '../../shared/ui'
 import { formatBytes } from '../../shared/format.js'
 import { FieldView, fieldError, FIELD_W, IconBtn, InlineField } from './inlineFields.jsx'
 import { IpAllowlistEditor } from './IpAllowlistEditor.jsx'
@@ -14,14 +16,46 @@ import {
   getStorageSpace,
   getSystemStatus,
   retryStorageMigration,
+  sendPushTestCode,
   sendSmtpTestCode,
   testSecondaryS3,
   testStorage,
   updateBackupSettings,
   updateCompanySettings,
   updateStorageMode,
+  verifyPushTestCode,
   verifySmtpTestCode,
 } from './settingsApi.js'
+
+// Рекомендации при неполучении письма/push — открываются кнопками «Письма нет»/
+// «Push'a нет» рядом с проверками (согласовано с пользователем).
+const EMAIL_HELP = [
+  'Проверьте папку «Спам» / «Нежелательная почта».',
+  'Убедитесь, что в .env заданы и верны EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD.',
+  'Проверьте, что адрес отправителя (DEFAULT_FROM_EMAIL) разрешён на почтовом сервере.',
+  'Убедитесь, что исходящий порт SMTP не блокируется файрволом сервера.',
+  'Некоторые провайдеры требуют отдельный «пароль приложения» вместо обычного.',
+]
+const PUSH_HELP = [
+  'Включите push на этом устройстве в разделе «Уведомления».',
+  'Разрешите уведомления для сайта в браузере (значок настроек сайта в адресной строке).',
+  'На iPhone/iPad push работают только в приложении, добавленном на экран «Домой» через Safari.',
+  'Проверьте, что в .env заданы VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY и VAPID_SUBJECT (валидный https:// или mailto:).',
+  'Убедитесь, что у сервера есть доступ к push-сервисам (web.push.apple.com, fcm.googleapis.com).',
+]
+
+// Ссылка-кнопка «Письма нет» / «Push'a нет» — открывает список рекомендаций.
+function HelpLink({ label, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{ padding: 0, border: 'none', background: 'none', color: 'var(--color-brand-accent)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}
+    >
+      {label}
+    </button>
+  )
+}
 
 const sectionTitle = { fontSize: 15, fontWeight: 600, marginBottom: 4 }
 const sectionHint = { fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 14 }
@@ -126,6 +160,14 @@ export function SystemTab() {
   const [smtpCode, setSmtpCode] = useState('')
   const [smtpEmail, setSmtpEmail] = useState('')
   const [smtpError, setSmtpError] = useState(null)
+
+  // Push (проверка по образцу SMTP: код прилетает в push на текущее устройство)
+  const [pushStatus, setPushStatus] = useState('idle') // idle|sending|sent|checking|ok
+  const [pushCode, setPushCode] = useState('')
+  const [pushError, setPushError] = useState(null)
+
+  // Рекомендации «Письма нет» / «Push'a нет»: { title, items } или null
+  const [help, setHelp] = useState(null)
 
   // Яндекс ID
   const [yandexResult, setYandexResult] = useState(null) // { ok, msg }
@@ -394,6 +436,38 @@ export function SystemTab() {
     }
   }
 
+  const sendPush = async () => {
+    setPushStatus('sending')
+    setPushError(null)
+    try {
+      // Код прилетает в push, поэтому текущее устройство должно быть подписано —
+      // если ещё нет, сначала включаем push (запрос разрешения браузера).
+      const sub = await currentSubscription()
+      if (!sub) {
+        const key = await getVapidKey()
+        await enablePush(key.public_key)
+      }
+      await sendPushTestCode()
+      setPushCode('')
+      setPushStatus('sent')
+    } catch (err) {
+      setPushStatus('idle')
+      setPushError(err.detail || err.message || 'Не удалось отправить push. Проверьте настройки VAPID в .env.')
+    }
+  }
+
+  const verifyPush = async () => {
+    setPushStatus('checking')
+    setPushError(null)
+    try {
+      await verifyPushTestCode(pushCode)
+      setPushStatus('ok')
+    } catch (err) {
+      setPushStatus('sent')
+      setPushError(err.detail || 'Неверный код.')
+    }
+  }
+
   const runYandexCheck = async () => {
     setYandexChecking(true)
     setYandexResult(null)
@@ -420,6 +494,18 @@ export function SystemTab() {
       setCaptchaOpen(false)
     }
   }
+
+  // Доступность push на этом устройстве (для блока проверки Push): http/браузер
+  // без поддержки/запрет уведомлений/нет VAPID — вместо кнопки показываем подсказку.
+  const pushReason = pushUnavailableReason()
+  const pushDenied = permissionDenied()
+  const pushBlocked = pushReason !== '' || !status.push_configured || pushDenied
+  let pushHint = ''
+  if (pushReason === 'insecure') pushHint = 'Сервис ELE работает по http-протоколу — push-уведомления недоступны.'
+  else if (pushReason === 'unsupported') pushHint = isIOS()
+    ? 'На iPhone/iPad push работают только в приложении, добавленном на экран «Домой» через Safari.'
+    : 'Этот браузер не поддерживает push-уведомления.'
+  else if (pushDenied) pushHint = 'Уведомления заблокированы для этого сайта в браузере — разрешите их в настройках сайта и обновите страницу.'
 
   return (
     <div>
@@ -652,8 +738,11 @@ export function SystemTab() {
         </Card>
         </div>
 
+        {/* Проверка почты (SMTP) слева + проверка Push справа; на мобиле — друг
+            под другом. */}
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16 }}>
         {/* Проверка почты (SMTP) */}
-        <Card>
+        <Card style={{ flex: 1, minWidth: 0 }}>
           <div style={sectionTitle}>Проверка почты (SMTP)</div>
           <div style={sectionHint}>
             {status.email_configured
@@ -676,23 +765,93 @@ export function SystemTab() {
                   </Button>
                 </div>
                 {smtpError ? <div style={{ marginTop: 10 }}><CheckResult result={{ ok: false, msg: smtpError }} /></div> : null}
+                <div style={{ marginTop: 12 }}>
+                  <HelpLink label="Письма нет" onClick={() => setHelp({ title: 'Письмо с кодом не пришло', items: EMAIL_HELP })} />
+                </div>
               </>
             ) : (
-              <div style={checkRow}>
-                {smtpStatus === 'ok' ? (
-                  <CheckResult result={{ ok: true }} />
-                ) : (
-                  <>
-                    <Button type="button" variant="secondary" loading={smtpStatus === 'sending'} onClick={sendSmtp}>
-                      Выполнить проверку
-                    </Button>
-                    {smtpError ? <CheckResult result={{ ok: false, msg: smtpError }} /> : null}
-                  </>
-                )}
-              </div>
+              <>
+                <div style={checkRow}>
+                  {smtpStatus === 'ok' ? (
+                    <CheckResult result={{ ok: true }} />
+                  ) : (
+                    <>
+                      <Button type="button" variant="secondary" loading={smtpStatus === 'sending'} onClick={sendSmtp}>
+                        Выполнить проверку
+                      </Button>
+                      {smtpError ? <CheckResult result={{ ok: false, msg: smtpError }} /> : null}
+                    </>
+                  )}
+                </div>
+                {smtpStatus !== 'ok' ? (
+                  <div style={{ marginTop: 12 }}>
+                    <HelpLink label="Письма нет" onClick={() => setHelp({ title: 'Письмо с кодом не пришло', items: EMAIL_HELP })} />
+                  </div>
+                ) : null}
+              </>
             )
           ) : null}
         </Card>
+
+        {/* Проверка Push-уведомлений — код прилетает push'ом на это устройство */}
+        <Card style={{ flex: 1, minWidth: 0 }}>
+          <div style={sectionTitle}>Проверка Push-уведомлений</div>
+          <div style={sectionHint}>
+            {status.push_configured
+              ? 'Отправим push с кодом на это устройство и попросим ввести код'
+              : 'Параметры VAPID не заданы в .env, отправка push-уведомлений невозможна'}
+          </div>
+          {status.push_configured ? (
+            pushStatus === 'sent' || pushStatus === 'checking' ? (
+              <>
+                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 10 }}>Код отправлен на это устройство</div>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={{ width: 160 }}>
+                    <Input label="Код из push" value={pushCode} onChange={(e) => setPushCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" />
+                  </div>
+                  <Button type="button" loading={pushStatus === 'checking'} disabled={pushCode.length !== 6} onClick={verifyPush}>
+                    Подтвердить
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={sendPush}>
+                    Отправить ещё раз
+                  </Button>
+                </div>
+                {pushError ? <div style={{ marginTop: 10 }}><CheckResult result={{ ok: false, msg: pushError }} /></div> : null}
+                <div style={{ marginTop: 12 }}>
+                  <HelpLink label="Push'a нет" onClick={() => setHelp({ title: 'Push с кодом не пришёл', items: PUSH_HELP })} />
+                </div>
+              </>
+            ) : pushBlocked ? (
+              <>
+                <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>{pushHint}</div>
+                <div style={{ marginTop: 12 }}>
+                  <HelpLink label="Push'a нет" onClick={() => setHelp({ title: 'Push с кодом не пришёл', items: PUSH_HELP })} />
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={checkRow}>
+                  {pushStatus === 'ok' ? (
+                    <CheckResult result={{ ok: true }} />
+                  ) : (
+                    <>
+                      <Button type="button" variant="secondary" loading={pushStatus === 'sending'} onClick={sendPush}>
+                        Выполнить проверку
+                      </Button>
+                      {pushError ? <CheckResult result={{ ok: false, msg: pushError }} /> : null}
+                    </>
+                  )}
+                </div>
+                {pushStatus !== 'ok' ? (
+                  <div style={{ marginTop: 12 }}>
+                    <HelpLink label="Push'a нет" onClick={() => setHelp({ title: 'Push с кодом не пришёл', items: PUSH_HELP })} />
+                  </div>
+                ) : null}
+              </>
+            )
+          ) : null}
+        </Card>
+        </div>
 
         {/* Проверки Яндекс ID и SmartCaptcha — в ряд на десктопе (align-items:
             stretch по умолчанию → обе карточки равной высоты по большей),
@@ -742,6 +901,20 @@ export function SystemTab() {
           </Card>
         </div>
       </div>
+
+      {/* Рекомендации при неполучении письма/push */}
+      <Modal open={!!help} onClose={() => setHelp(null)} title={help?.title}>
+        <div style={{ padding: '4px 20px 20px' }}>
+          <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 12 }}>
+            Проверьте следующее:
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {(help?.items || []).map((line, i) => (
+              <li key={i} style={{ fontSize: 13.5, lineHeight: 1.45 }}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      </Modal>
     </div>
   )
 }

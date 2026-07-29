@@ -126,6 +126,8 @@ class NotificationKind(models.TextChoices):
 
     Доступность видов по ролям (проверяется в accounts.notifications):
       - ASSIGNMENT_PENDING — все роли (дублирует письмо о закреплении, B32);
+      - ASSIGNMENT_REJECTED — admin и accountant (получателем является тот, кто
+        выполнял закрепление); приходит при отказе сотрудника от закрепления;
       - MAINTENANCE_DUE / MAINTENANCE_OVERDUE — admin; accountant с
         can_maintain (оборуд.) и/или can_maintain_transport (транспорт);
         maintenance (оборуд.); automechanic (транспорт);
@@ -135,6 +137,7 @@ class NotificationKind(models.TextChoices):
     """
 
     ASSIGNMENT_PENDING = "assignment_pending", "Закрепление нового имущества"
+    ASSIGNMENT_REJECTED = "assignment_rejected", "Отказ от закрепления имущества"
     MAINTENANCE_DUE = "maintenance_due", "Подходящее ТО"
     MAINTENANCE_OVERDUE = "maintenance_overdue", "Просроченное ТО"
     MAINTENANCE_PERFORMED = "maintenance_performed", "Выполненное ТО"

@@ -20,6 +20,7 @@ _SUBJECTS = {
     "password_reset": "Восстановление пароля — ELE",
     "email_change_confirm": "Подтвердите новый email — ELE",
     "assignment_pending": "Подтвердите получение — {company_name}",
+    "assignment_rejected": "Отказ от закрепления имущества — {company_name}",
     # B44. Уведомления о ТО (дублируются в push).
     "maintenance_due": "Приближается плановое ТО — {company_name}",
     "maintenance_overdue": "Просрочено ТО — {company_name}",
@@ -82,6 +83,17 @@ def send_assignment_pending(user, assignment):
     try:
         _send("assignment_pending", "assignment_pending.html", [user.email],
               {"cta_url": cta_url, "object_label": label})
+    except Exception:
+        pass
+
+
+def send_assignment_rejected(user, assignment, *, label: str, employee_name: str, reason: str = ""):
+    """Уведомление тому, кто выполнял закрепление, об отказе сотрудника принять
+    имущество. Сбои отправки не должны ломать операцию отказа — гасим исключения."""
+    cta_url = f"{settings.SITE_URL}/employees/assignments"
+    try:
+        _send("assignment_rejected", "assignment_rejected.html", [user.email],
+              {"cta_url": cta_url, "object_label": label, "employee_name": employee_name, "reason": reason})
     except Exception:
         pass
 

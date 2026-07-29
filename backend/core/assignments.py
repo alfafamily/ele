@@ -353,6 +353,13 @@ def reject_assignment(a, request):
     a.closed_at = timezone.now()
     a.save(update_fields=["status", "decided_by", "decided_at", "decision_comment", "device_snapshot", "closed_at"])
     _rollback_object(a, request)
+    # Уведомляем того, кто выполнял закрепление (сбой уведомления не должен ломать отказ).
+    try:
+        from accounts.notifications import notify_assignment_rejected
+
+        notify_assignment_rejected(a)
+    except Exception:
+        pass
     return a
 
 

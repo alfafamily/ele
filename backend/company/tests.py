@@ -284,6 +284,49 @@ class CompanySmtpCheckTests(APITestCase):
         self.assertEqual(resp.status_code, 400)
 
 
+@override_settings(VAPID_PUBLIC_KEY="pub", VAPID_PRIVATE_KEY="priv", VAPID_SUBJECT="mailto:a@e.com")
+class CompanyPushCheckTests(APITestCase):
+    """Настройки → Системные → «Проверка Push-уведомлений»: код уходит push'ом на
+    устройства администратора, подтверждение кода доказывает доставку."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+
+    def test_requires_admin(self):
+        worker = User.objects.create_user(email="worker@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=worker)
+        self.assertEqual(self.client.post("/api/company/test-push/").status_code, 403)
+
+    def test_sends_code_and_verifies(self):
+        self.client.force_authenticate(user=self.admin)
+        sent = {}
+
+        def fake_send(user, payload):
+            sent["code"] = re.search(r"\d{6}", payload["body"]).group()
+            return 1
+
+        with patch("company.views.send_to_user", side_effect=fake_send):
+            resp = self.client.post("/api/company/test-push/")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["delivered"], 1)
+
+        self.assertEqual(self.client.post("/api/company/verify-push/", {"code": "000000"}, format="json").status_code, 400)
+        resp = self.client.post("/api/company/verify-push/", {"code": sent["code"]}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+
+    def test_no_subscription_returns_400(self):
+        self.client.force_authenticate(user=self.admin)
+        with patch("company.views.send_to_user", return_value=0):
+            resp = self.client.post("/api/company/test-push/")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_blocked_when_vapid_not_configured(self):
+        self.client.force_authenticate(user=self.admin)
+        with override_settings(VAPID_PUBLIC_KEY="", VAPID_PRIVATE_KEY=""):
+            resp = self.client.post("/api/company/test-push/")
+        self.assertEqual(resp.status_code, 400)
+
+
 class SystemSettingsPageTests(APITestCase):
     """Настройки → Системные: статус конфигурации и точечные проверки."""
 

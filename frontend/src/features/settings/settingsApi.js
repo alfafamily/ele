@@ -22,6 +22,9 @@ export const inviteUser = (payload) => apiPost('/api/users/invite/', payload)
 export const sendSmtpTestCode = () => apiPost('/api/company/test-email/')
 export const verifySmtpTestCode = (code) => apiPost('/api/company/verify-email/', { code })
 
+export const sendPushTestCode = () => apiPost('/api/company/test-push/')
+export const verifyPushTestCode = (code) => apiPost('/api/company/verify-push/', { code })
+
 export const getSystemStatus = () => apiGet('/api/company/system-status/')
 export const getUpdateInfo = () => apiGet('/api/company/update-info/')
 export const testStorage = () => apiPost('/api/company/storage-test/')
