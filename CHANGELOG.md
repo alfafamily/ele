@@ -16,6 +16,16 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.28.1] — 2026-07-29
+
+### Исправлено
+- `install.sh`: генерация VAPID-ключей для push выполняется одноразовым
+  контейнером (`docker compose run --rm --no-deps --entrypoint python`) вместо
+  `exec` в основной backend. `exec` сразу после `up -d` мог не отдать вывод, пока
+  контейнер доинициализируется (миграции), и ключи не дописывались в `.env`
+  (push оставался выключенным до ручной генерации). На уже развёрнутые инстансы
+  не влияет — ключи можно догенерировать той же командой и вписать в `.env`.
+
 ## [1.28.0] — 2026-07-29
 
 ### Добавлено
@@ -1656,7 +1666,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.28.0...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.28.1...HEAD
+[1.28.1]: https://github.com/alfafamily/ele/compare/v1.28.0...v1.28.1
 [1.28.0]: https://github.com/alfafamily/ele/compare/v1.27.3...v1.28.0
 [1.27.3]: https://github.com/alfafamily/ele/compare/v1.27.2...v1.27.3
 [1.27.2]: https://github.com/alfafamily/ele/compare/v1.27.1...v1.27.2
