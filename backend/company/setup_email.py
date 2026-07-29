@@ -25,7 +25,7 @@ def send_test_code_email(to_email: str, code: str, company_name: str | None = No
     context = {"code": code, "company_name": name or "ELE", "has_company_name": bool(name)}
     html_body = render_to_string("email/setup_test_code.html", context)
     message = EmailMultiAlternatives(
-        f"Код подтверждения: {code}",
+        "Код подтверждения для проверки SMTP",
         html_to_plain_text(html_body),
         settings.DEFAULT_FROM_EMAIL,
         [to_email],
