@@ -51,6 +51,20 @@ class StatusTests(AssignmentBaseTests):
         self.assertEqual(a.status, EmployeeAssignment.Status.PENDING)
         self.assertEqual(len(mail.outbox), 1)
 
+    def test_self_assignment_auto_accepted(self):
+        # Выдача самому себе (актор связан с целевым сотрудником) — сразу принято,
+        # без ожидания акцепта и без письма/push.
+        emp = _emp()
+        self.admin.employee = emp
+        self.admin.save()
+        eq = self._equip(place=self.storage)
+        self._assign(eq, emp)
+        a = open_assignment(eq)
+        self.assertEqual(a.status, EmployeeAssignment.Status.ACCEPTED)
+        self.assertEqual(a.decided_by_id, self.admin.id)
+        self.assertIsNotNone(a.decided_at)
+        self.assertEqual(len(mail.outbox), 0)
+
     def test_stationary_creates_no_episode(self):
         wp = Place.objects.create(room=self.r, name="РМ-1", place_type=Place.PlaceType.WORKPLACE)
         eq = self._equip(place=self.storage)

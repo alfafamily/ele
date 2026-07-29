@@ -7,6 +7,7 @@ import { HelpIcon, MenuIcon, SettingsIcon } from './navIcons.jsx'
 import { roleLabel } from '../shared/roles.js'
 import { nameInitials } from '../shared/employeeName.js'
 import { Icon } from '../shared/ui'
+import { PushPromptModal } from '../features/notifications/PushPromptModal.jsx'
 import './AppLayout.css'
 
 // Маркер-предупреждение (треугольник) поверх иконки «Настройки». Один общий
@@ -280,6 +281,9 @@ export function AppLayout() {
           ))}
         </div>
       </nav>
+
+      {/* B44. Разовое предложение включить push после входа. */}
+      <PushPromptModal />
     </div>
   )
 }

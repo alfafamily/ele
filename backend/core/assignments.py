@@ -231,11 +231,18 @@ def open_assignment(obj):
 
 # ——— создание / закрытие ——————————————————————————————————————————————————————
 
-def _initial_status(employee):
+def _initial_status(employee, by_user=None):
     from employees.models import EmployeeAssignment
 
-    has_user = hasattr(employee, "user")
-    return EmployeeAssignment.Status.PENDING if has_user else EmployeeAssignment.Status.IN_ABSENTIA
+    S = EmployeeAssignment.Status
+    if not hasattr(employee, "user"):
+        return S.IN_ABSENTIA
+    # Само-выдача: сотрудник связан с тем же пользователем, кто закрепляет —
+    # подтверждение не требуется (человек выдаёт сам себе, тем самым уже
+    # подтверждая получение), закрепление сразу принято.
+    if getattr(by_user, "is_authenticated", False) and employee.user.id == by_user.id:
+        return S.ACCEPTED
+    return S.PENDING
 
 
 def create_assignment(obj, employee, by_user, *, return_place=None, return_quantity=None,
@@ -250,12 +257,18 @@ def create_assignment(obj, employee, by_user, *, return_place=None, return_quant
 
     if close_prior:
         close_open_assignment(obj)
-    status = _initial_status(employee)
+    status = _initial_status(employee, by_user)
+    # Само-выдача сразу принята — проставляем «кто/когда решил» (=тот, кто выдал),
+    # чтобы в истории закрепление отображалось финальным (подтверждено).
+    self_accepted = status == EmployeeAssignment.Status.ACCEPTED
+    when = assigned_at or timezone.now()
     a = EmployeeAssignment.objects.create(
         content_type=_ct_for(obj), object_id=obj.pk, object_kind=object_kind_of(obj),
         employee=employee, status=status,
         assigned_by=by_user if getattr(by_user, "is_authenticated", False) else None,
-        assigned_at=assigned_at or timezone.now(),
+        assigned_at=when,
+        decided_by=by_user if self_accepted else None,
+        decided_at=when if self_accepted else None,
         return_place=return_place, return_quantity=return_quantity,
     )
     if notify and status == EmployeeAssignment.Status.PENDING:
