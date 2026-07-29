@@ -115,3 +115,118 @@ class User(AbstractBaseUser, PermissionsMixin):
         elif not self.is_superuser:
             self.is_staff = False
         super().save(*args, **kwargs)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# B44. Уведомления: почта + Web Push.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class NotificationKind(models.TextChoices):
+    """Виды уведомлений (единый источник ключей для prefs, диспетчера и API).
+
+    Доступность видов по ролям (проверяется в accounts.notifications):
+      - ASSIGNMENT_PENDING — все роли (дублирует письмо о закреплении, B32);
+      - MAINTENANCE_DUE / MAINTENANCE_OVERDUE — admin; accountant с
+        can_maintain (оборуд.) и/или can_maintain_transport (транспорт);
+        maintenance (оборуд.); automechanic (транспорт);
+      - MAINTENANCE_PERFORMED — admin и любой accountant.
+    Область типов (equipment_*/transport_*) применима только к видам ТО и
+    настраивается admin/accountant; для механиков берётся их область ТО.
+    """
+
+    ASSIGNMENT_PENDING = "assignment_pending", "Закрепление нового имущества"
+    MAINTENANCE_DUE = "maintenance_due", "Подходящее ТО"
+    MAINTENANCE_OVERDUE = "maintenance_overdue", "Просроченное ТО"
+    MAINTENANCE_PERFORMED = "maintenance_performed", "Выполненное ТО"
+
+
+class NotificationPreference(models.Model):
+    """Настройка каналов уведомлений пользователя по одному виду.
+
+    Отсутствие строки трактуется как «всё включено, все типы» — дефолт B44
+    (у всех существующих и новых пользователей почта и push включены по всем
+    доступным видам и всем типам). Строка создаётся при первом изменении
+    настройки через раздел «Уведомления».
+    """
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notification_prefs")
+    kind = models.CharField("Вид уведомления", max_length=32, choices=NotificationKind.choices)
+    email_enabled = models.BooleanField("Почта", default=True)
+    push_enabled = models.BooleanField("Push", default=True)
+    # Область типов (только виды ТО, настраивают admin/accountant). Два
+    # независимых блока «Все / Только некоторые» — по образцу maintenance_*
+    # флагов роли. True — включая типы, созданные в будущем; False — только
+    # выбранные в M2M.
+    equipment_all_types = models.BooleanField("Все типы оборудования", default=True)
+    transport_all_types = models.BooleanField("Все типы транспорта", default=True)
+    equipment_types = models.ManyToManyField(
+        "equipment.EquipmentType", verbose_name="Типы оборудования", blank=True,
+        related_name="notification_prefs",
+    )
+    transport_types = models.ManyToManyField(
+        "transport.TransportType", verbose_name="Типы транспорта", blank=True,
+        related_name="notification_prefs",
+    )
+
+    class Meta:
+        verbose_name = "Настройка уведомлений"
+        verbose_name_plural = "Настройки уведомлений"
+        constraints = [
+            models.UniqueConstraint(fields=["user", "kind"], name="uniq_notif_pref_user_kind"),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id}:{self.kind}"
+
+
+class PushSubscription(models.Model):
+    """Web Push-подписка одного устройства/браузера пользователя.
+
+    Push включается отдельно на каждом устройстве (браузер/PWA), поэтому у
+    пользователя может быть несколько подписок. Настройки же каналов
+    (NotificationPreference) — общие, не зависят от устройства.
+    """
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="push_subscriptions")
+    # endpoint push-сервиса длинный (может превышать 200 символов) — TextField.
+    endpoint = models.TextField("Endpoint", unique=True)
+    p256dh = models.CharField("Ключ p256dh", max_length=255)
+    auth = models.CharField("Ключ auth", max_length=255)
+    user_agent = models.CharField("User-Agent", max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Push-подписка"
+        verbose_name_plural = "Push-подписки"
+
+    def __str__(self):
+        return f"{self.user_id}:{self.endpoint[:40]}"
+
+
+class MaintenanceReminderState(models.Model):
+    """Дедуп напоминаний о ТО (подходит/просрочено) по одному плану.
+
+    Планировщик крутится часто (сервис cron, раз в минуту), поэтому напоминание
+    по плану шлётся один раз при входе в статус, а не каждый прогон. Когда план
+    выходит из статусов «подходит/просрочено» (например, ТО проведено и дата
+    ушла в будущее) — отметка сбрасывается, и следующий вход снова оповестит.
+    """
+
+    class PlanKind(models.TextChoices):
+        EQUIPMENT = "equipment", "Оборудование"
+        TRANSPORT = "transport", "Транспорт"
+
+    plan_kind = models.CharField(max_length=16, choices=PlanKind.choices)
+    plan_id = models.PositiveIntegerField()
+    # Статус, по которому уже оповестили: "due_soon" | "overdue" | "" (сброшен).
+    notified_status = models.CharField(max_length=16, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["plan_kind", "plan_id"], name="uniq_maint_reminder_plan"),
+        ]
+
+    def __str__(self):
+        return f"{self.plan_kind}:{self.plan_id}:{self.notified_status}"

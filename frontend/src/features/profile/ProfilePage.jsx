@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext.jsx'
 import { roleLabel } from '../../shared/roles.js'
 import { nameInitials } from '../../shared/employeeName.js'
@@ -30,8 +31,37 @@ const avatarMenuItem = {
   whiteSpace: 'nowrap',
 }
 
+// B44. Компактные кнопки в шапке профиля (укладываются в высоту аватара).
+const headerBtnBase = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '7px 14px',
+  borderRadius: 8,
+  fontSize: 13.5,
+  fontWeight: 600,
+  fontFamily: 'inherit',
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+  lineHeight: 1,
+}
+const notifBtnStyle = {
+  ...headerBtnBase,
+  background: 'var(--color-surface)',
+  border: '1px solid var(--color-border)',
+  color: 'var(--color-text-primary)',
+}
+// «Выход»: белая заливка, красная обводка и красный текст.
+const logoutBtnStyle = {
+  ...headerBtnBase,
+  background: '#fff',
+  border: '1px solid var(--color-error)',
+  color: 'var(--color-error)',
+}
+
 export function ProfilePage() {
   const { user, logout, refreshUser } = useAuth()
+  const navigate = useNavigate()
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [showChangeEmail, setShowChangeEmail] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -175,27 +205,19 @@ export function ProfilePage() {
             ) : null}
           </div>
           {employee ? <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onAvatarSelected} /> : null}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8 }}>
             <div style={{ fontSize: 20, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</div>
-            <div style={{ fontSize: 13.5, color: 'var(--color-text-placeholder)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</div>
-            <button
-              type="button"
-              onClick={logout}
-              style={{
-                marginTop: 8,
-                padding: 0,
-                border: 'none',
-                background: 'none',
-                color: 'var(--color-error)',
-                fontSize: 13.5,
-                fontWeight: 600,
-                fontFamily: 'inherit',
-                textDecoration: 'underline',
-                cursor: 'pointer',
-              }}
-            >
-              Выйти из системы
-            </button>
+            {/* B44. Строка кнопок: «Уведомления» → раздел, «Выход» → выход.
+                Высота (ФИО + кнопки) укладывается в высоту аватара (66px). */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={() => navigate('/notifications')} style={notifBtnStyle}>
+                <Icon name="bell" size={15} strokeWidth={2} />
+                Уведомления
+              </button>
+              <button type="button" onClick={logout} style={logoutBtnStyle}>
+                Выход
+              </button>
+            </div>
           </div>
         </Card>
 

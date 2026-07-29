@@ -148,6 +148,17 @@ SITE_URL = env("SITE_URL", default="http://localhost")
 
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ELE <no-reply@ele.local>")
 
+# --- Web Push (B44) ---
+# VAPID-ключи для отправки push-уведомлений. Пусто = push выключен без ошибок
+# (письма продолжают работать, кнопка включения push на устройстве недоступна).
+# Ключи задаёт администратор в .env (backend в .env не пишет). Генерация пары —
+# `python manage.py generate_vapid_keys` (см. accounts/management).
+# VAPID_SUBJECT — контакт администратора (mailto:… или https://…), требуется
+# спецификацией Web Push как «кто отправитель».
+VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
+VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", default="")
+VAPID_SUBJECT = env("VAPID_SUBJECT", default="mailto:admin@ele.local")
+
 # Таймаут бездействия сессии — 24 часа : SAVE_EVERY_REQUEST
 # продлевает cookie при активности, т.е. это именно idle-таймаут, а не
 # абсолютный TTL с момента входа.

@@ -1,0 +1,8 @@
+{% extends "email/base.html" %}
+{% block subject %}Приближается плановое ТО — {{ company_name }}{% endblock %}
+{% block preheader %}Приближается плановое техобслуживание{% endblock %}
+{% block heading %}Приближается плановое ТО{% endblock %}
+{% block body %}
+По объекту <b>{{ object_label }}</b> приближается плановое техобслуживание{% if date_str %} — {{ date_str }}{% endif %}. Откройте карточку, чтобы спланировать проведение.
+{% endblock %}
+{% block cta_text %}Открыть карточку{% endblock %}
