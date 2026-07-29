@@ -86,6 +86,7 @@ class StorageModeReadTests(APITestCase):
         self.assertEqual(resp.data["storage_mode"], "local")
 
 
+@override_settings(ELE_STORAGE_MODE="local")
 class EnvironmentStatusTests(APITestCase):
     def test_nothing_configured_by_default(self):
         resp = self.client.get("/api/setup/environment/")
@@ -101,7 +102,7 @@ class EnvironmentStatusTests(APITestCase):
         self.assertEqual(resp.status_code, 403)
 
 
-@override_settings(EMAIL_CONFIGURED=False)
+@override_settings(EMAIL_CONFIGURED=False, ELE_STORAGE_MODE="local")
 class SetupWizardLocalOnlyTests(APITestCase):
     """local-хранилище + пустые email/captcha/yandex — минимальный путь без
     единой проверки (ничего настроено — мастер не блокирует)."""
@@ -182,7 +183,7 @@ class SetupWizardS3ConnectionTests(APITestCase):
         self.assertEqual(resp.status_code, 201, resp.data)
 
 
-@override_settings(EMAIL_CONFIGURED=True, EMAIL_HOST="smtp.internal")
+@override_settings(EMAIL_CONFIGURED=True, EMAIL_HOST="smtp.internal", ELE_STORAGE_MODE="local")
 class SetupWizardEmailVerificationTests(APITestCase):
     def test_complete_blocked_without_email_verification(self):
         payload = {
@@ -225,7 +226,7 @@ class SetupWizardEmailVerificationTests(APITestCase):
         self.assertEqual(resp.status_code, 400)
 
 
-@override_settings(YANDEX_SMARTCAPTCHA_SITE_KEY="site", YANDEX_SMARTCAPTCHA_SECRET_KEY="secret", EMAIL_CONFIGURED=False)
+@override_settings(YANDEX_SMARTCAPTCHA_SITE_KEY="site", YANDEX_SMARTCAPTCHA_SECRET_KEY="secret", EMAIL_CONFIGURED=False, ELE_STORAGE_MODE="local")
 class SetupWizardCaptchaCheckTests(APITestCase):
     @patch("company.views.check_smartcaptcha_reachable", return_value=False)
     def test_unreachable_captcha_blocks_complete(self, mock_check):
