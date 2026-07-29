@@ -797,9 +797,12 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         file_objs = request.FILES.getlist("file")
         if not file_objs:
             return Response({"detail": "Файл не передан."}, status=400)
+        from company.limits import max_upload_bytes, max_upload_mb
+
+        limit, limit_mb = max_upload_bytes(), max_upload_mb()
         for f in file_objs:
-            if f.size > 20 * 1024 * 1024:
-                return Response({"detail": f"Файл «{f.name}» больше 20 МБ."}, status=400)
+            if f.size > limit:
+                return Response({"detail": f"Файл «{f.name}» больше {limit_mb} МБ."}, status=400)
 
         field_value, created = TransportFieldValue.objects.get_or_create(transport=transport, field=field)
         if field.allow_multiple:

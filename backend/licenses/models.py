@@ -155,7 +155,7 @@ class LicenseFieldValue(models.Model):
     value_bool = models.BooleanField(null=True, blank=True)
     value_int = models.IntegerField(null=True, blank=True)
     value_float = models.FloatField(null=True, blank=True)
-    # Не более 20 МБ — валидация в сериализаторе. FK на StoredFile (Фаза 5).
+    # Лимит размера — Company.max_upload_mb (проверяется во вьюхе). FK на StoredFile (Фаза 5).
     value_file = models.ForeignKey(
         "storage.StoredFile", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )

@@ -76,6 +76,26 @@ class CompanySettingsTests(APITestCase):
         self.assertEqual(resp.status_code, 200, resp.data)
         self.assertEqual(Company.load().storage_mode, Company.StorageMode.LOCAL)
 
+    def test_max_upload_mb_default_and_update(self):
+        self.assertEqual(Company.load().max_upload_mb, 20)  # дефолт
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.patch("/api/company/settings/", {"max_upload_mb": 100}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(Company.load().max_upload_mb, 100)
+
+    def test_max_upload_mb_rejects_below_one(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.patch("/api/company/settings/", {"max_upload_mb": 0}, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_max_upload_mb_exposed_to_all_roles(self):
+        # /api/company/ (Brief) виден любой роли — зоны загрузки берут лимит оттуда.
+        worker = User.objects.create_user(email="w2@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=worker)
+        resp = self.client.get("/api/company/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["max_upload_mb"], 20)
+
 
 class StorageModeReadTests(APITestCase):
     def test_get_returns_current_mode(self):

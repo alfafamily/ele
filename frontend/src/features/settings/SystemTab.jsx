@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { SmartCaptcha } from '../auth/SmartCaptcha.jsx'
+import { useRefreshCompany } from '../../app/CompanyContext'
 import { getVapidKey } from '../notifications/notificationsApi.js'
 import { currentSubscription, enablePush, isIOS, permissionDenied, pushUnavailableReason } from '../notifications/push.js'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
@@ -114,8 +115,12 @@ function SpaceInfo({ info }) {
 
 export function SystemTab() {
   const isMobile = useMediaQuery('(max-width: 768px)')
+  const refreshCompany = useRefreshCompany()
   const [status, setStatus] = useState(null) // system-status: флаги конфигурации из .env
   const [loadError, setLoadError] = useState(null)
+  // Максимальный размер загружаемого файла (МБ) — влияет на зоны загрузки всего
+  // приложения через CompanyContext.
+  const [maxUploadMb, setMaxUploadMb] = useState(20)
 
   // Домен и IP — inline-редактирование каждого поля отдельно, без общей кнопки
   // «Сохранить»: каждое действие сразу пишется в company/settings.
@@ -185,6 +190,7 @@ export function SystemTab() {
         setStorageMode(st.storage_mode)
         setDomain(company.domain || '')
         setOpenRegistration(company.open_registration !== false)
+        setMaxUploadMb(company.max_upload_mb ?? 20)
         setIpList(normalizeIps(company.ip_allowlist))
         setAdminAccessEnabled(company.admin_access_enabled === true)
         setAdminIps(normalizeIps(company.admin_access_ips))
@@ -304,6 +310,19 @@ export function SystemTab() {
     try {
       const u = await updateCompanySettings({ domain: val })
       setDomain(u.domain || '')
+    } catch (err) {
+      return fieldError(err)
+    }
+  }
+
+  const saveMaxUpload = async (val) => {
+    const n = parseInt(val, 10)
+    if (!Number.isFinite(n) || n < 1) return 'Укажите целое число не меньше 1.'
+    try {
+      const u = await updateCompanySettings({ max_upload_mb: n })
+      setMaxUploadMb(u.max_upload_mb)
+      // Обновляем CompanyContext — зоны загрузки во всём приложении берут лимит оттуда.
+      refreshCompany?.()
     } catch (err) {
       return fieldError(err)
     }
@@ -565,6 +584,20 @@ export function SystemTab() {
               Проверить подключение
             </Button>
             <CheckResult result={storageResult} />
+          </div>
+
+          {/* Настраиваемый лимит размера загружаемого файла (реквизиты, план
+              помещения). Аватары и лого — свой фиксированный лимит. */}
+          <div style={{ marginTop: 20, borderTop: '1px solid var(--color-border)', paddingTop: 16 }}>
+            <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 10 }}>
+              Ограничение размера одного загружаемого файла. Не распространяется на аватары и логотип.
+            </div>
+            <InlineField
+              label="Максимальный размер файла (МБ)"
+              value={String(maxUploadMb)}
+              placeholder="20"
+              onSave={saveMaxUpload}
+            />
           </div>
         </Card>
 

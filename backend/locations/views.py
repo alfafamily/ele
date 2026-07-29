@@ -77,8 +77,10 @@ class RoomViewSet(_NoDeleteViewSet):
         ct = (getattr(file_obj, "content_type", "") or "").lower()
         if not (ct == "application/pdf" or ct.startswith("image/")):
             return Response({"detail": "Допустимы PDF или изображение."}, status=400)
-        if file_obj.size > 20 * 1024 * 1024:
-            return Response({"detail": "Файл больше 20 МБ."}, status=400)
+        from company.limits import max_upload_bytes, max_upload_mb
+
+        if file_obj.size > max_upload_bytes():
+            return Response({"detail": f"Файл больше {max_upload_mb()} МБ."}, status=400)
         old = room.plan_file
         room.plan_file = store_uploaded_file(file_obj, "locations/plans")
         room.save(update_fields=["plan_file"])

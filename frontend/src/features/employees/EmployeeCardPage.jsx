@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useNavigationType, useParams } from 'react-router-dom'
 import { unassignEquipment } from '../equipment/equipmentApi.js'
 import { unassignTransport } from '../transport/transportApi.js'
 import { unassignUnits as unassignToolUnits } from '../tools/toolsApi.js'
 import { AssignToolModal } from '../tools/AssignToolModal.jsx'
 import { DetachToStorageModal } from './DetachToStorageModal.jsx'
-import { Can, usePermissions } from '../../app/usePermissions.js'
+import { Can } from '../../app/usePermissions.js'
 import { PlanLink } from '../../shared/PlanLink.jsx'
 import { TransportParkingLine } from '../../shared/TransportParkingLine.jsx'
 import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner, StatusPill, Table, TabBar, TableRow } from '../../shared/ui'
@@ -14,7 +14,7 @@ import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { nameInitials } from '../../shared/employeeName.js'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
-import { getEmployee, getEmployeeAssignments, getEmployeeIssuedArchive, restoreEmployee, uploadEmployeeAvatar } from './employeesApi.js'
+import { getEmployee, getEmployeeAssignments, getEmployeeIssuedArchive, restoreEmployee } from './employeesApi.js'
 import { AttachOrCreateModal } from './AttachOrCreateModal.jsx'
 import { PassInfo } from './PassInfo.jsx'
 import { PassDisposeModal } from './PassDisposeModal.jsx'
@@ -31,7 +31,6 @@ const PEND_ICON = { equipment: 'tag', sim: 'radio-tower', pass: 'key-square', to
 export function EmployeeCardPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const perms = usePermissions()
   const isMobile = useMediaQuery('(max-width: 768px)')
   // При возврате «назад» (POP) с карточки объекта — восстанавливаем активную
   // вкладку и позицию прокрутки (например, из «Архива» к нужной строке).
@@ -59,8 +58,6 @@ export function EmployeeCardPage() {
   const [confirm, setConfirm] = useState(null)
   // Открепление на склад: { kind: 'equipment'|'tool', obj }.
   const [detach, setDetach] = useState(null)
-  const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const fileInputRef = useRef(null)
 
   const load = useCallback(() => {
     getEmployee(id).then(setEmployee)
@@ -112,19 +109,6 @@ export function EmployeeCardPage() {
   // Маршрут детальной страницы объекта по виду (для клика в блоке ожидания).
   const OBJ_ROUTE = { equipment: 'equipment', tool: 'tools', sim: 'sim-cards', pass: 'passes', transport: 'transport' }
 
-  const onAvatarSelected = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploadingAvatar(true)
-    try {
-      await uploadEmployeeAvatar(employee.id, file)
-      load()
-    } finally {
-      setUploadingAvatar(false)
-      e.target.value = ''
-    }
-  }
-
   // Открепление оборудования на склад (место хранения обязательно, B8).
   const onDetachEquipment = async (equipmentId, storagePlaceId) => {
     await unassignEquipment(equipmentId, storagePlaceId)
@@ -174,17 +158,10 @@ export function EmployeeCardPage() {
                 fontWeight: 600,
                 overflow: 'hidden',
                 position: 'relative',
-                cursor: perms.canManageEmployees ? 'pointer' : 'default',
               }}
-              onClick={() => perms.canManageEmployees && fileInputRef.current?.click()}
-              title={perms.canManageEmployees ? 'Изменить фото' : undefined}
             >
               {employee.avatar ? <img src={employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : nameInitials(employee.full_name)}
-              {uploadingAvatar ? <Spinner size={20} /> : null}
             </span>
-            {perms.canManageEmployees ? (
-              <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onAvatarSelected} />
-            ) : null}
             <div style={{ minWidth: 0 }}>
               {/* Должность/отдел в заголовке не дублируем — они в «Данных сотрудника».
                   На мобилке фамилия и имя — на отдельных строках, каждая обрезается

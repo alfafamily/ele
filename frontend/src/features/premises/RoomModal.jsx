@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Banner, Button, Checkbox, Input, Modal } from '../../shared/ui'
+import { useCompany } from '../../app/CompanyContext'
 import { createRoom, deleteRoomPlan, updateRoom, uploadRoomPlan } from './premisesApi.js'
 
 // Создание/редактирование Помещения/зоны внутри здания. Тип выбирается сверху:
@@ -20,6 +21,7 @@ export function RoomModal({ buildingId, room, onClose, onDone }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
+  const maxMb = useCompany()?.max_upload_mb ?? 20
 
   const isFloorParking = kind === 'room' && floorParking
   const parkingType = kind === 'adjacent' ? 'adjacent' : isFloorParking ? 'floor' : ''
@@ -32,8 +34,8 @@ export function RoomModal({ buildingId, room, onClose, onDone }) {
     const f = (e.target.files || [])[0]
     e.target.value = ''
     if (!f) return
-    if (f.size > 20 * 1024 * 1024) {
-      setError(`Файл «${f.name}» больше 20 МБ.`)
+    if (f.size > maxMb * 1024 * 1024) {
+      setError(`Файл «${f.name}» больше ${maxMb} МБ.`)
       return
     }
     setError(null)
@@ -131,6 +133,7 @@ export function RoomModal({ buildingId, room, onClose, onDone }) {
 
         {isParking ? (
           <PlanField
+            maxMb={maxMb}
             planFile={pendingFile ? { original_filename: pendingFile.name, size: pendingFile.size } : planFile}
             onPick={pickFile}
             onRemove={() => {
@@ -187,7 +190,7 @@ function Segmented({ value, onChange, options, disabled }) {
 
 // План парковки — один файл (PDF/изображение). Показывает выбранный/загруженный
 // файл со ссылкой (если уже на сервере) и кнопкой удаления, иначе — зону выбора.
-function PlanField({ planFile, onPick, onRemove }) {
+function PlanField({ planFile, onPick, onRemove, maxMb = 20 }) {
   return (
     <div>
       <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 6 }}>План парковки</div>
@@ -228,7 +231,7 @@ function PlanField({ planFile, onPick, onRemove }) {
           <input type="file" accept="application/pdf,image/*" onChange={onPick} style={{ display: 'none' }} />
           <b>Выберите файл</b>
           <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 3 }}>
-            PDF или изображение, до 20 МБ
+            PDF или изображение, до {maxMb} МБ
           </div>
         </label>
       )}

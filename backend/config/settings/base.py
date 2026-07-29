@@ -118,9 +118,11 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# Явный запас над крупнейшим разрешённым файлом (реквизит типа "файл",
-# 20 МБ —) — Django-дефолт 2.5 МБ формально не режет файловые
-# части multipart-формы, но лучше не полагаться на этот нюанс парсера.
+# Лимит размера загружаемого файла настраивается администратором
+# (Company.max_upload_mb) и стеком не ограничен: Django не считает файловые
+# части multipart против DATA_UPLOAD_MAX_MEMORY_SIZE, а файлы больше
+# FILE_UPLOAD_MAX_MEMORY_SIZE стримятся во временный файл на диск (не в память),
+# поэтому крупные загрузки проходят независимо от этих порогов.
 DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024
 

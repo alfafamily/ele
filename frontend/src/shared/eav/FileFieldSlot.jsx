@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { apiDelete, apiPost } from '../api/client'
+import { useCompany } from '../../app/CompanyContext'
 import './FileFieldSlot.css'
 
 // Файловый реквизит в форме — грузится сразу по выбору файла
@@ -22,6 +23,9 @@ import './FileFieldSlot.css'
 export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFilePath, onChange, disabled, deferred }) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
+  // Лимит размера файла настраивается администратором (Настройки → Системные →
+  // Хранилище приложения); дефолт 20 МБ на случай отсутствия данных компании.
+  const maxMb = useCompany()?.max_upload_mb ?? 20
 
   const displayFiles = [
     ...(fv?.value_file ? [{ key: 'single', file: fv.value_file, single: true }] : []),
@@ -64,9 +68,9 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
   const handleFile = async (e) => {
     const selected = Array.from(e.target.files || [])
     if (!selected.length) return
-    const tooBig = selected.find((f) => f.size > 20 * 1024 * 1024)
+    const tooBig = selected.find((f) => f.size > maxMb * 1024 * 1024)
     if (tooBig) {
-      setError(`Файл «${tooBig.name}» больше 20 МБ.`)
+      setError(`Файл «${tooBig.name}» больше ${maxMb} МБ.`)
       e.target.value = ''
       return
     }
@@ -160,7 +164,7 @@ export function FileFieldSlot({ field, fv, multiple, uploadPath, makeDeleteFileP
             <b>{uploading ? 'Загрузка…' : multiple ? 'Добавить файл' : 'Выберите файл'}</b>
             {!uploading ? ' или перетяните в эту область' : ''}
           </div>
-          <div className="ele-file-slot__hint">максимальный размер 20 МБ</div>
+          <div className="ele-file-slot__hint">максимальный размер {maxMb} МБ</div>
         </div>
       ) : null}
 

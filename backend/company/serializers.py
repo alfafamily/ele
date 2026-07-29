@@ -39,7 +39,9 @@ class CompanyBriefSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Company
-        fields = ["name", "logo"]
+        # max_upload_mb нужен всем ролям — зоны загрузки файлов (реквизиты, план
+        # помещения) показывают лимит и проверяют размер на клиенте.
+        fields = ["name", "logo", "max_upload_mb"]
 
 
 class CompanySettingsSerializer(serializers.ModelSerializer):
@@ -54,10 +56,19 @@ class CompanySettingsSerializer(serializers.ModelSerializer):
             "name", "inn", "domain", "ip_allowlist", "open_registration",
             "device_snapshot_enabled",
             "admin_access_enabled", "admin_access_ips",
+            "max_upload_mb",
         ]
 
     def validate_ip_allowlist(self, value):
         return clean_ip_allowlist(value)
+
+    def validate_max_upload_mb(self, value):
+        # Нижняя граница — 1 МБ (0 запретил бы любую загрузку); верхнюю не
+        # ограничиваем — стек (Caddy без лимита тела, Django стримит файлы на
+        # диск) её не накладывает.
+        if value < 1:
+            raise serializers.ValidationError("Укажите не меньше 1 МБ.")
+        return value
 
     def validate_admin_access_ips(self, value):
         return clean_ip_allowlist(value)
