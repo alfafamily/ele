@@ -275,6 +275,25 @@ until docker compose -f docker-compose.prod.yml up -d --build; do
   attempt=$((attempt + 1))
 done
 
+# --- 5a. VAPID-ключи для push-уведомлений (B44) -----------------------------
+# Push требует пары VAPID-ключей (приватный — секрет, хранится только в .env).
+# Генерируем их автоматически уже собранным backend-образом и дописываем в .env,
+# чтобы новый инстанс получил push «из коробки» без ручных шагов. Идемпотентно:
+# если ключи уже есть — пропускаем (не перегенерируем, иначе слетят подписки).
+if ! grep -q '^VAPID_PRIVATE_KEY=' .env; then
+  info "Генерирую VAPID-ключи для push-уведомлений…"
+  VAPID_OUT="$(docker compose -f docker-compose.prod.yml exec -T backend python manage.py generate_vapid_keys 2>/dev/null | grep -E '^VAPID_(PUBLIC|PRIVATE)_KEY=')"
+  if printf '%s' "$VAPID_OUT" | grep -q '^VAPID_PRIVATE_KEY='; then
+    { echo ""; echo "# Web Push (B44) — сгенерировано install.sh"; printf '%s\n' "$VAPID_OUT"; } >> .env
+    # Перечитать .env процессами backend/cron (в них идёт отправка push).
+    docker compose -f docker-compose.prod.yml up -d backend cron >/dev/null 2>&1 || true
+    info "VAPID-ключи добавлены в .env — push-уведомления включены."
+  else
+    warn "Не удалось сгенерировать VAPID-ключи — push будет недоступен."
+    warn "Сгенерируйте позже: docker compose -f docker-compose.prod.yml exec backend python manage.py generate_vapid_keys — и впишите обе строки в .env, затем 'up -d'."
+  fi
+fi
+
 # SITE_URL уже содержит схему (https://домен или http://IP) — используем его,
 # чтобы сообщение было корректным в обоих режимах.
 APP_URL="$(grep -E '^SITE_URL=' .env | cut -d= -f2-)"

@@ -12,6 +12,16 @@ export function pushSupported() {
   )
 }
 
+// Причина недоступности push (для подписи под кнопкой). Различаем http (сервис
+// работает по незащищённому протоколу — API push браузер не отдаёт) и реально
+// неподдерживающий браузер (защищённый контекст, но нужных API нет).
+// '' — push доступен.
+export function pushUnavailableReason() {
+  if (typeof window !== 'undefined' && window.isSecureContext === false) return 'insecure'
+  if (!pushSupported()) return 'unsupported'
+  return ''
+}
+
 export function permissionDenied() {
   return pushSupported() && Notification.permission === 'denied'
 }
