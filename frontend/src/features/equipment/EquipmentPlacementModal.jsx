@@ -8,7 +8,7 @@ import { assignEquipment, unassignEquipment } from './equipmentApi.js'
 // месте (стационарно) или на складе (свободно). Одна модалка на все переходы.
 const MODES = [
   { value: 'mobile', label: 'За сотрудником' },
-  { value: 'stationary', label: 'На рабочем месте' },
+  { value: 'stationary', label: 'Рабочее место / МОП' },
   { value: 'storage', label: 'На складе' },
 ]
 
@@ -83,7 +83,7 @@ export function EquipmentPlacementModal({ equipment, onClose, onDone }) {
           )
         ) : (
           <PlaceSelect
-            placeType={mode === 'stationary' ? 'workplace' : 'storage'}
+            placeType={mode === 'stationary' ? ['workplace', 'common'] : 'storage'}
             required
             value={placeId}
             onChange={setPlaceId}

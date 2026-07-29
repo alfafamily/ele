@@ -146,7 +146,7 @@ export function QuantityMoveModal({
         ) : null}
 
         {target === 'both' && mode === 'stationary' ? (
-          <PlaceSelect placeType="workplace" required value={placeId} onChange={setPlaceId} />
+          <PlaceSelect placeType={['workplace', 'common']} required value={placeId} onChange={setPlaceId} />
         ) : null}
 
         {!needEmployeePick ? (

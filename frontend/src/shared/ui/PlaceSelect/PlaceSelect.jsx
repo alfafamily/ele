@@ -11,7 +11,11 @@ import { LeadIconCircle } from '../../LeadIconCircle.jsx'
 //   restrictToStock — показывать только места с остатком (freeMap[id] > 0);
 //   allowNone      — вариант «Без склада (общий свободный остаток)»;
 //   noneQty        — количество для варианта «Без склада» (если showQuantity).
-const DEFAULT_LABEL = { storage: 'Место хранения', workplace: 'Рабочее место' }
+const DEFAULT_LABEL = { storage: 'Место хранения', workplace: 'Рабочее место', common: 'МОП' }
+// B45: типы места — метки и иконки. Для стационарного размещения передаётся
+// массив ['workplace', 'common'] — тогда в подписи строки показываем тип места.
+const TYPE_LABEL = { workplace: 'Рабочее место', common: 'МОП', storage: 'Место хранения' }
+const TYPE_ICON = { workplace: 'briefcase', common: 'coffee', storage: 'warehouse' }
 const LIST_MAX_HEIGHT = 216 // ≈ 4 строки
 
 export function PlaceSelect({
@@ -32,6 +36,9 @@ export function PlaceSelect({
   // Места, недоступные для выбора (напр. склад-источник в перемещении — его
   // нельзя выбрать как приёмник). Сравнение по строке id.
   const excludeSet = useMemo(() => new Set((excludeIds || []).filter((v) => v != null).map(String)), [excludeIds])
+  // Тип может быть строкой ('storage') или массивом (['workplace','common']).
+  const types = useMemo(() => (Array.isArray(placeType) ? placeType : [placeType]), [placeType])
+  const multiType = types.length > 1
   const [places, setPlaces] = useState(null)
   const [query, setQuery] = useState('')
   // Выбор «Без склада» неотличим от «не выбрано» по value (''), поэтому храним
@@ -42,13 +49,17 @@ export function PlaceSelect({
 
   useEffect(() => {
     let alive = true
-    apiGet(`/api/places/?place_type=${placeType}&active=1`)
-      .then((data) => alive && setPlaces(Array.isArray(data) ? data : data.results || []))
-      .catch(() => alive && setPlaces([]))
+    Promise.all(
+      types.map((t) =>
+        apiGet(`/api/places/?place_type=${t}&active=1`)
+          .then((data) => (Array.isArray(data) ? data : data.results || []))
+          .catch(() => []),
+      ),
+    ).then((results) => alive && setPlaces(results.flat()))
     return () => {
       alive = false
     }
-  }, [placeType])
+  }, [types])
 
   // Если место пришло извне (редактирование) — стартуем свёрнутыми.
   useEffect(() => {
@@ -90,6 +101,12 @@ export function PlaceSelect({
       </div>
     ) : null
 
+  // Подпись места: «Здание — Помещение», а при мультитипе — с типом места.
+  const placeLoc = (p) => {
+    const base = `${p.building_name} — ${p.room_name}`
+    return multiType ? `${TYPE_LABEL[p.place_type] || ''} · ${base}` : base
+  }
+
   const meta = (name, location, qty) => (
     <span style={{ minWidth: 0, flex: 1 }}>
       <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
@@ -101,13 +118,14 @@ export function PlaceSelect({
 
   if (collapsed) {
     const name = value ? selectedPlace?.name ?? '…' : 'Без склада'
-    const location = value ? (selectedPlace ? `${selectedPlace.building_name} — ${selectedPlace.room_name}` : '') : 'Общий свободный остаток'
+    const location = value ? (selectedPlace ? placeLoc(selectedPlace) : '') : 'Общий свободный остаток'
     const qty = value ? freeMap[String(value)] : typeof noneQty === 'number' ? noneQty : undefined
+    const collapsedIcon = TYPE_ICON[selectedPlace?.place_type] || TYPE_ICON[types[0]] || 'warehouse'
     return (
       <div>
         {labelNode}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
-          <LeadIconCircle name={placeType === 'workplace' ? 'briefcase' : 'warehouse'} size={30} iconSize={15} tinted />
+          <LeadIconCircle name={collapsedIcon} size={30} iconSize={15} tinted />
           {meta(name, location, qty)}
           {showQuantity && typeof qty === 'number' ? (
             <span style={{ fontSize: 13, fontWeight: 600, flex: 'none', color: 'var(--color-text-muted)' }}>{qty} шт.</span>
@@ -163,7 +181,7 @@ export function PlaceSelect({
           </div>
         ) : (
           list.map((p) => (
-            <div key={p.id}>{row(p.name, `${p.building_name} — ${p.room_name}`, freeMap[String(p.id)], () => choosePlace(p))}</div>
+            <div key={p.id}>{row(p.name, placeLoc(p), freeMap[String(p.id)], () => choosePlace(p))}</div>
           ))
         )}
       </div>

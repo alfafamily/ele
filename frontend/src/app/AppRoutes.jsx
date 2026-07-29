@@ -31,6 +31,9 @@ import { PassListPage } from '../features/passes/PassListPage.jsx'
 import { PassFormPage } from '../features/passes/PassFormPage.jsx'
 import { PassCardPage } from '../features/passes/PassCardPage.jsx'
 import { PremisesPage } from '../features/premises/PremisesPage.jsx'
+import { PlacesReportPage } from '../features/reports/PlacesReportPage.jsx'
+import { ParkingReportPage } from '../features/reports/ParkingReportPage.jsx'
+import { EmployeesReportPage } from '../features/reports/EmployeesReportPage.jsx'
 import { TypesEditorPage } from '../features/types/TypesEditorPage.jsx'
 import { SettingsPage } from '../features/settings/SettingsPage.jsx'
 import { ConfirmEmailChangePage } from '../features/profile/ConfirmEmailChangePage.jsx'
@@ -377,6 +380,12 @@ export function AppRoutes() {
             </RequireViewer>
           }
         />
+        {/* B45: отчёты (Администратор / Ответственный за учёт). */}
+        <Route path="/premises/reports/workplaces" element={<RequireStaff><PlacesReportPage kind="workplace" /></RequireStaff>} />
+        <Route path="/premises/reports/common" element={<RequireStaff><PlacesReportPage kind="common" /></RequireStaff>} />
+        <Route path="/premises/reports/storage" element={<RequireStaff><PlacesReportPage kind="storage" /></RequireStaff>} />
+        <Route path="/premises/reports/parking" element={<RequireStaff><ParkingReportPage /></RequireStaff>} />
+        <Route path="/employees/reports/property" element={<RequireStaff><EmployeesReportPage /></RequireStaff>} />
         <Route
           path="/settings"
           element={

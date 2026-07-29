@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { PlanLink } from '../../shared/PlanLink.jsx'
 import { ActionMenu, Badge, Banner, Button, Icon, Modal, SearchInput, Spinner } from '../../shared/ui'
+import { ReportsMenu } from '../reports/ReportsMenu.jsx'
 import { BuildingModal } from './BuildingModal.jsx'
 import { PlaceModal } from './PlaceModal.jsx'
 import { RoomModal } from './RoomModal.jsx'
@@ -144,15 +145,25 @@ export function PremisesPage() {
         <h1 style={{ fontSize: 'var(--font-size-h1)', fontWeight: 600, letterSpacing: 'var(--font-h1-letter-spacing)', margin: 0 }}>
           Помещения
         </h1>
-        <Can perm="canManagePremises">
-          <div className="ele-page-head__actions">
+        <div className="ele-page-head__actions">
+          <Can perm="canViewReports">
+            <ReportsMenu
+              items={[
+                { label: 'Отчёт по рабочим местам', to: '/premises/reports/workplaces' },
+                { label: 'Отчёт по местам общего пользования', to: '/premises/reports/common' },
+                { label: 'Отчёт по местам хранения', to: '/premises/reports/storage' },
+                { label: 'Отчёт по парковкам', to: '/premises/reports/parking' },
+              ]}
+            />
+          </Can>
+          <Can perm="canManagePremises">
             <Button onClick={() => setBuildingModal('new')} title="Новое здание" aria-label="Новое здание">
               <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />
               <span className="ele-only-desktop">Новое здание</span>
               <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
             </Button>
-          </div>
-        </Can>
+          </Can>
+        </div>
       </div>
 
       {error ? (
@@ -480,10 +491,11 @@ function PlaceChip({ place, canManage, onEdit, onArchive, onUnarchive }) {
       ]
 
   const isParkingSpot = place.place_type === 'parking_spot'
+  const isCommon = place.place_type === 'common'
   const icon =
-    place.place_type === 'storage' ? 'warehouse' : isParkingSpot ? 'car' : 'briefcase'
+    place.place_type === 'storage' ? 'warehouse' : isParkingSpot ? 'car' : isCommon ? 'coffee' : 'briefcase'
   const iconTitle =
-    place.place_type === 'storage' ? 'Место хранения' : isParkingSpot ? 'Парковочное место' : 'Рабочее место'
+    place.place_type === 'storage' ? 'Место хранения' : isParkingSpot ? 'Парковочное место' : isCommon ? 'МОП' : 'Рабочее место'
   // Число закреплённых объектов: рабочее место — сотрудники; парковочное — либо
   // личные авто (сотрудники), либо транспорт компании.
   const attachedCount = isParkingSpot

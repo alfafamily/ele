@@ -14,7 +14,7 @@ import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
 import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
 import { TypeRequisiteFilter } from '../../shared/TypeRequisiteFilter.jsx'
 import { csvParam, reqParams } from '../../shared/filterParams.js'
-import { maintenanceRowIndicators } from './statusLabels.js'
+import { PLACEMENT_LOCATION_LABEL, maintenanceRowIndicators } from './statusLabels.js'
 
 const CACHE_KEY = 'equipment-list'
 
@@ -292,7 +292,7 @@ export function EquipmentListPage() {
                     ) : row.place_detail ? (
                       <>
                         <TruncatedText singleLine={false} className="ele-clamp-2">
-                          {row.place_detail.place_type === 'workplace' ? 'На рабочем месте' : 'На складе'}: {row.place_detail.name}
+                          {PLACEMENT_LOCATION_LABEL[row.place_detail.place_type] || 'На складе'}: {row.place_detail.name}
                         </TruncatedText>
                         <TruncatedText style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>
                           {row.place_detail.building_name} — {row.place_detail.room_name}

@@ -8,6 +8,7 @@ import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { nameInitials } from '../../shared/employeeName.js'
+import { ReportsMenu } from '../reports/ReportsMenu.jsx'
 import { Button, EmptyState, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 
 const CACHE_KEY = 'employee-list'
@@ -87,8 +88,11 @@ export function EmployeeListPage() {
         <h1 style={{ fontSize: 'var(--font-size-h1)', fontWeight: 600, letterSpacing: 'var(--font-h1-letter-spacing)' }}>
           Сотрудники
         </h1>
-        <Can perm="canManageEmployees">
-          <div className="ele-page-head__actions" style={{ display: 'flex', gap: 8 }}>
+        <div className="ele-page-head__actions" style={{ display: 'flex', gap: 8 }}>
+          <Can perm="canViewReports">
+            <ReportsMenu items={[{ label: 'Отчёт по имуществу у сотрудников', to: '/employees/reports/property' }]} />
+          </Can>
+          <Can perm="canManageEmployees">
             <Link to="/employees/assignments">
               <Button variant="secondary" title="Операции закрепления" aria-label="Операции закрепления">
                 <Icon className="ele-only-desktop" name="circle-check" size={18} strokeWidth={2.2} />
@@ -103,8 +107,8 @@ export function EmployeeListPage() {
                 <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
               </Button>
             </Link>
-          </div>
-        </Can>
+          </Can>
+        </div>
       </div>
 
       <div className="ele-list-controls">

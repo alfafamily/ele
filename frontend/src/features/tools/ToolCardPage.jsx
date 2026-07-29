@@ -340,7 +340,7 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
               <div style={{ position: 'relative', flex: 'none' }}>
                 <span style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
                   {a.kind === 'workplace' ? (
-                    <Icon name="briefcase" size={20} strokeWidth={2} style={{ color: 'var(--color-text-secondary)' }} />
+                    <Icon name={a.place_type === 'common' ? 'coffee' : 'briefcase'} size={20} strokeWidth={2} style={{ color: 'var(--color-text-secondary)' }} />
                   ) : a.employee_avatar ? (
                     <img src={a.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
@@ -351,7 +351,7 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <TruncatedText style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
-                  {a.quantity} шт. {a.kind === 'workplace' ? 'на рабочем месте' : 'за сотрудником'}
+                  {a.quantity} шт. {a.kind === 'workplace' ? (a.place_type === 'common' ? 'в МОП' : 'на рабочем месте') : 'за сотрудником'}
                 </TruncatedText>
                 {a.kind === 'workplace' ? (
                   <TruncatedText style={{ fontSize: 15, fontWeight: 600 }}>{a.place_name}</TruncatedText>
