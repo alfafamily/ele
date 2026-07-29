@@ -2,6 +2,20 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiGet } from '../api/client'
 import { readListCache, writeListCache } from '../listCache'
 
+// DRF отдаёт next/previous абсолютными URL по схеме запроса. За HTTPS-прокси без
+// проброса X-Forwarded-Proto бэкенд может сгенерить их по http — на https-странице
+// это mixed content и запрос блокируется (ломается подгрузка по скроллу). Сводим
+// ссылку к тому же origin, что и страница: путь+query остаются, схема/хост — свои.
+function sameOrigin(url) {
+  if (!url) return url
+  try {
+    const u = new URL(url, window.location.origin)
+    return u.pathname + u.search
+  } catch {
+    return url
+  }
+}
+
 // Переиспользуемый хук бесконечной подгрузки под курсорную пагинацию DRF:
 // next/previous — уже готовые URL, не offset, поэтому loadMore() просто
 // дёргает next напрямую, не пересчитывает страницу сам.
@@ -66,7 +80,7 @@ export function useCursorList(basePath, params = {}, { cacheKey, restore = true 
       const data = await apiGet(buildInitialUrl())
       if (requestId !== requestIdRef.current) return
       setItems(data.results)
-      nextRef.current = data.next
+      nextRef.current = sameOrigin(data.next)
     } catch (err) {
       if (requestId !== requestIdRef.current) return
       setError(err)
@@ -89,7 +103,7 @@ export function useCursorList(basePath, params = {}, { cacheKey, restore = true 
         const data = await apiGet(url)
         if (requestId !== requestIdRef.current) return
         acc.push(...data.results)
-        next = data.next
+        next = sameOrigin(data.next)
         url = next
       } while (next && acc.length < restoredCountRef.current)
       if (requestId !== requestIdRef.current) return
@@ -124,7 +138,7 @@ export function useCursorList(basePath, params = {}, { cacheKey, restore = true 
     try {
       const data = await apiGet(nextRef.current)
       setItems((prev) => [...prev, ...data.results])
-      nextRef.current = data.next
+      nextRef.current = sameOrigin(data.next)
     } catch (err) {
       setError(err)
     } finally {
