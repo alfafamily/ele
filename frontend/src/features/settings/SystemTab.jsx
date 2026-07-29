@@ -813,7 +813,7 @@ export function SystemTab() {
                 {/* Кнопка помощи — в том же ряду (переносится только при нехватке места). */}
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
                   <div style={{ width: 160 }}>
-                    <Input label="Код из письма" value={smtpCode} onChange={(e) => setSmtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" />
+                    <Input className="ele-field--fixed" value={smtpCode} onChange={(e) => setSmtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="Код из письма" />
                   </div>
                   <Button type="button" loading={smtpStatus === 'checking'} disabled={smtpCode.length !== 6} onClick={verifySmtp}>
                     Подтвердить
@@ -856,7 +856,7 @@ export function SystemTab() {
                 <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 10 }}>Код отправлен на это устройство</div>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
                   <div style={{ width: 160 }}>
-                    <Input label="Код из push" value={pushCode} onChange={(e) => setPushCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" />
+                    <Input className="ele-field--fixed" value={pushCode} onChange={(e) => setPushCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="Код из push" />
                   </div>
                   <Button type="button" loading={pushStatus === 'checking'} disabled={pushCode.length !== 6} onClick={verifyPush}>
                     Подтвердить
