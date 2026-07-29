@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button, Card, Checkbox, Spinner } from '../../shared/ui'
 import { getPreferences, getVapidKey, patchPreference } from './notificationsApi.js'
-import { currentSubscription, disablePush, enablePush, permissionDenied, pushUnavailableReason } from './push.js'
+import { currentSubscription, disablePush, enablePush, isIOS, permissionDenied, pushUnavailableReason } from './push.js'
 import { TypeScopeModal } from './TypeScopeModal.jsx'
 
 // Подпись кнопки области типов: «Получать по всем типам», если по всем доступным
@@ -123,12 +123,15 @@ export function NotificationsPage() {
   }
 
   const reason = pushUnavailableReason()
-  const pushBlocked = reason !== '' || !vapid.configured
+  const denied = permissionDenied()
+  const pushBlocked = reason !== '' || !vapid.configured || denied
   let pushHint = ''
   if (reason === 'insecure') pushHint = 'Сервис ELE в вашей компании работает по http-протоколу. Push-уведомления недоступны.'
-  else if (reason === 'unsupported') pushHint = 'Этот браузер не поддерживает push-уведомления.'
+  else if (reason === 'unsupported') pushHint = isIOS()
+    ? 'На iPhone/iPad push-уведомления работают только в установленном приложении: откройте сайт в Safari → «Поделиться» → «На экран „Домой"», затем откройте ELE с домашнего экрана и включите push.'
+    : 'Этот браузер не поддерживает push-уведомления.'
   else if (!vapid.configured) pushHint = 'Push-уведомления недоступны на сервере.'
-  else if (permissionDenied()) pushHint = 'Уведомления запрещены в настройках браузера — разрешите их для этого сайта.'
+  else if (denied) pushHint = 'Уведомления заблокированы для этого сайта в браузере. Чтобы разрешить: нажмите значок настроек сайта слева в адресной строке (замок/ползунки) → «Уведомления» → «Разрешить», затем обновите страницу и включите push снова.'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

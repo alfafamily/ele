@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext.jsx'
+import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { roleLabel } from '../../shared/roles.js'
 import { nameInitials } from '../../shared/employeeName.js'
 import { PlanLink } from '../../shared/PlanLink.jsx'
@@ -62,6 +63,7 @@ const logoutBtnStyle = {
 export function ProfilePage() {
   const { user, logout, refreshUser } = useAuth()
   const navigate = useNavigate()
+  const isMobile = useMediaQuery('(max-width: 768px)')
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [showChangeEmail, setShowChangeEmail] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
@@ -207,17 +209,43 @@ export function ProfilePage() {
           {employee ? <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onAvatarSelected} /> : null}
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8 }}>
             <div style={{ fontSize: 20, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</div>
-            {/* B44. Строка кнопок: «Уведомления» → раздел, «Выход» → выход.
-                Высота (ФИО + кнопки) укладывается в высоту аватара (66px). */}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={() => navigate('/notifications')} style={notifBtnStyle}>
-                <Icon name="bell" size={15} strokeWidth={2} />
-                Уведомления
-              </button>
-              <button type="button" onClick={logout} style={logoutBtnStyle}>
-                Выход
-              </button>
-            </div>
+            {isMobile ? (
+              // B44. Мобильная версия: почта скрыта, кнопки «Уведомления» и «Выход»
+              // в ряд (высота ФИО + кнопки укладывается в высоту аватара 66px).
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" onClick={() => navigate('/notifications')} style={notifBtnStyle}>
+                  <Icon name="bell" size={15} strokeWidth={2} />
+                  Уведомления
+                </button>
+                <button type="button" onClick={logout} style={logoutBtnStyle}>
+                  Выход
+                </button>
+              </div>
+            ) : (
+              // Десктоп — как было: почта (логин) + ссылка «Выйти из системы».
+              <>
+                <div style={{ fontSize: 13.5, color: 'var(--color-text-placeholder)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</div>
+                <button
+                  type="button"
+                  onClick={logout}
+                  style={{
+                    marginTop: 8,
+                    padding: 0,
+                    border: 'none',
+                    background: 'none',
+                    color: 'var(--color-error)',
+                    fontSize: 13.5,
+                    fontWeight: 600,
+                    fontFamily: 'inherit',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  Выйти из системы
+                </button>
+              </>
+            )}
           </div>
         </Card>
 

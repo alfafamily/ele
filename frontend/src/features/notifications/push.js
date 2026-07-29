@@ -26,6 +26,17 @@ export function permissionDenied() {
   return pushSupported() && Notification.permission === 'denied'
 }
 
+// iOS/iPadOS: все браузеры на WebKit, Web Push в обычной вкладке недоступен —
+// только из установленного на «Домой» приложения (через Safari). Определяем,
+// чтобы дать точную подсказку вместо сухого «браузер не поддерживает».
+export function isIOS() {
+  if (typeof navigator === 'undefined') return false
+  return (
+    /iP(hone|ad|od)/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) // iPadOS 13+
+  )
+}
+
 // applicationServerKey ожидает Uint8Array — конвертируем base64url-ключ VAPID.
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
