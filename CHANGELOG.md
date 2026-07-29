@@ -16,6 +16,18 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.30.1] — 2026-07-29
+
+### Исправлено
+- **PDF-просмотрщик не открывался на части мобильных устройств** (iPhone на iOS
+  до 17.4, старые Android-браузеры/Яндекс) — библиотека рендеринга требует
+  `Promise.withResolvers`, которого нет в этих браузерах. Добавлен полифилл (в
+  главном потоке и в фоновом обработчике), просмотрщик снова открывает PDF на
+  всех устройствах. Регресс версии 1.30.0.
+- **Профиль на мобильных: блок «Данные учётной записи»** переработан — сначала
+  поля (Email, Роль), затем кнопки «Сменить email»/«Сменить пароль» на всю
+  ширину; убрано чередование «поле — кнопка» и переполнение блока.
+
 ## [1.30.0] — 2026-07-29
 
 ### Добавлено
@@ -1735,7 +1747,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.30.0...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.30.1...HEAD
+[1.30.1]: https://github.com/alfafamily/ele/compare/v1.30.0...v1.30.1
 [1.30.0]: https://github.com/alfafamily/ele/compare/v1.29.0...v1.30.0
 [1.29.0]: https://github.com/alfafamily/ele/compare/v1.28.2...v1.29.0
 [1.28.2]: https://github.com/alfafamily/ele/compare/v1.28.1...v1.28.2

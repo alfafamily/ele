@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Spinner } from '../ui/Spinner/Spinner.jsx'
+// Полифилл до pdfjs (главный поток) — старые мобильные браузеры без
+// Promise.withResolvers иначе роняют pdfjs v4.
+import './withResolversPolyfill.js'
+
+// Единый воркер pdfjs на все документы (переиспользуется между открытиями PDF).
+let pdfWorkerPort = null
 
 // Инлайн-рендер PDF через PDF.js (Mozilla). Библиотека и её worker грузятся
 // ЛЕНИВО (dynamic import) — только при первом открытии PDF, отдельными чанками,
@@ -20,11 +26,14 @@ export function PdfView({ url, onError }) {
     ;(async () => {
       try {
         const pdfjsLib = await import('pdfjs-dist')
-        // Worker подключаем один раз; ?url отдаёт путь к отдельному чанку.
-        if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-          const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default
-          pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
+        // Воркер — через Vite `?worker` (компилируется в .js с полифиллом внутри;
+        // ?url отдавал .mjs без полифилла и с зависимостью от MIME статики).
+        // Создаём один раз и переиспользуем как workerPort.
+        if (!pdfWorkerPort) {
+          const PdfWorker = (await import('./pdfWorker.js?worker')).default
+          pdfWorkerPort = new PdfWorker()
         }
+        pdfjsLib.GlobalWorkerOptions.workerPort = pdfWorkerPort
         const task = pdfjsLib.getDocument({ url })
         const pdf = await task.promise
         if (cancelled) { pdf.destroy?.(); return }
