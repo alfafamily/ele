@@ -59,6 +59,15 @@ const logoutBtnStyle = {
   border: '1px solid var(--color-error)',
   color: 'var(--color-error)',
 }
+// «Выход» иконкой (log-out) — квадратная кнопка с красной обводкой.
+const logoutIconBtnStyle = {
+  ...logoutBtnStyle,
+  padding: 0,
+  width: 40,
+  height: 40,
+  justifyContent: 'center',
+  flex: 'none',
+}
 
 export function ProfilePage() {
   const { user, logout, refreshUser } = useAuth()
@@ -207,68 +216,51 @@ export function ProfilePage() {
             ) : null}
           </div>
           {employee ? <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onAvatarSelected} /> : null}
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: isMobile ? 8 : 3 }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8 }}>
             <div style={{ fontSize: 20, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName}</div>
             {isMobile ? (
-              // B44. Мобильная версия: почта скрыта, кнопки «Уведомления» и «Выход»
-              // в ряд (высота ФИО + кнопки укладывается в высоту аватара 66px).
+              // Мобилка: под ФИО — выход иконкой слева, «Уведомления» справа на
+              // всю доступную ширину.
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" onClick={() => navigate('/notifications')} style={notifBtnStyle}>
+                <button type="button" onClick={logout} style={logoutIconBtnStyle} aria-label="Выйти из системы" title="Выйти из системы">
+                  <Icon name="log-out" size={18} strokeWidth={2} />
+                </button>
+                <button type="button" onClick={() => navigate('/notifications')} style={{ ...notifBtnStyle, flex: 1, justifyContent: 'center' }}>
                   <Icon name="bell" size={15} strokeWidth={2} />
                   Уведомления
                 </button>
-                <button type="button" onClick={logout} style={logoutBtnStyle}>
-                  Выход
-                </button>
               </div>
-            ) : (
-              // Десктоп: почта (логин) под ФИО — обе строки укладываются в высоту
-              // аватара и центрируются по нему.
-              <div style={{ fontSize: 13.5, color: 'var(--color-text-placeholder)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</div>
-            )}
+            ) : null}
           </div>
-          {/* Десктоп: «Выйти из системы» — кнопкой у правого края, по центру
-              шапки по вертикали (не выпирает за границы аватара). */}
+          {/* Десктоп: ФИО одной строкой (слева), выход иконкой в конце строки,
+              по центру по вертикали относительно аватара. */}
           {!isMobile ? (
-            <button type="button" onClick={logout} style={{ ...logoutBtnStyle, flex: 'none' }}>
-              Выйти из системы
+            <button type="button" onClick={logout} style={logoutIconBtnStyle} aria-label="Выйти из системы" title="Выйти из системы">
+              <Icon name="log-out" size={18} strokeWidth={2} />
             </button>
           ) : null}
         </Card>
 
         <Card>
           <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Данные учётной записи</div>
-          {isMobile ? (
-            // Мобилка: сначала поля, затем кнопки на всю ширину — без чередования
-            // «текст-кнопка» и без переполнения узкой колонки кнопкой.
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <Field label="Email" value={user.email} />
-              <Field label="Роль" value={roleLabel(user.role)} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 2 }}>
-                <Button variant="secondary" style={{ width: '100%' }} onClick={() => setShowChangeEmail(true)}>
-                  Сменить email
-                </Button>
-                <Button variant="secondary" style={{ width: '100%' }} onClick={() => setShowChangePassword(true)}>
-                  Сменить пароль
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 28px' }}>
-              <div>
-                <Field label="Email" value={user.email} />
-                <Button variant="secondary" style={{ marginTop: 16 }} onClick={() => setShowChangeEmail(true)}>
-                  Сменить email
-                </Button>
-              </div>
-              <div>
-                <Field label="Роль" value={roleLabel(user.role)} />
-                <Button variant="secondary" style={{ marginTop: 16 }} onClick={() => setShowChangePassword(true)}>
-                  Сменить пароль
-                </Button>
-              </div>
-            </div>
-          )}
+          {/* Две строки: сверху поля (Email, Роль), снизу кнопки — 2×2 сетка.
+              На десктопе кнопки текстом, на мобилке — только иконками. */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: isMobile ? '16px 12px' : '16px 28px', alignItems: 'end' }}>
+            <Field label="Email" value={user.email} />
+            <Field label="Роль" value={roleLabel(user.role)} />
+            <Button variant="secondary" style={{ width: '100%' }} onClick={() => setShowChangeEmail(true)}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="refresh-ccw" size={16} strokeWidth={2} />
+                E-mail
+              </span>
+            </Button>
+            <Button variant="secondary" style={{ width: '100%' }} onClick={() => setShowChangePassword(true)}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="refresh-ccw" size={16} strokeWidth={2} />
+                Пароль
+              </span>
+            </Button>
+          </div>
         </Card>
 
         {employee ? (

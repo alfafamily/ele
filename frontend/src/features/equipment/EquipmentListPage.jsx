@@ -10,6 +10,7 @@ import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterModal, Icon, MultiSelectList, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 import { EmployeeNameCell } from '../../shared/EmployeeNameCell.jsx'
 import { TruncatedText } from '../../shared/TruncatedText.jsx'
+import { Tooltip } from '../../shared/Tooltip.jsx'
 import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
 import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
 import { TypeRequisiteFilter } from '../../shared/TypeRequisiteFilter.jsx'
@@ -272,13 +273,13 @@ export function EquipmentListPage() {
                       fullStatus: canMaintainType(perms, row.equipment_type) || perms.isObserver,
                       manageOnly: perms.canManageMaintenance,
                     }).map((ind, i) => (
-                      <span
+                      <Tooltip
                         key={i}
-                        title={ind.title}
-                        style={{ display: 'inline-flex', verticalAlign: '-0.15em', marginRight: 4, color: ind.color }}
+                        label={ind.title}
+                        style={{ verticalAlign: '-0.15em', marginRight: 4, color: ind.color }}
                       >
                         <Icon name={ind.icon} size={14} strokeWidth={2} />
-                      </span>
+                      </Tooltip>
                     ))}
                     {row.type_and_model}
                   </TruncatedText>

@@ -35,6 +35,16 @@ export function planStatusIcon(status) {
   return { icon: 'wrench', color, title: MAINTENANCE_STATUS_LABEL[status] || 'ТО' }
 }
 
+// Тексты СВОДНЫХ ТО-индикаторов (агрегат по экземпляру — в списках/карточках,
+// подсказка на цветном ключе). Отдельно от MAINTENANCE_STATUS_LABEL — тот
+// описывает один план, а здесь речь про все регламенты объекта.
+const MAINTENANCE_SUMMARY_TITLE = {
+  scheduled: 'Все ТО запланированы',
+  due_soon: 'Подходит срок выполнения ТО',
+  overdue: 'Есть не выполненные регламенты ТО с просроченной датой',
+}
+const MAINTENANCE_UNPLANNED_TITLE = 'Есть регламент ТО без установленной даты выполнения'
+
 // B13+. Сводная индикация по экземпляру (maintenance_summary с бэкенда):
 // {critical, has_unplanned, enabled} → массив иконок {icon,color,title}.
 //  · есть регламент без даты — серый wrench (всегда идёт первым);
@@ -43,13 +53,13 @@ export function maintenanceIndicators(summary) {
   if (!summary || !summary.enabled) return []
   const out = []
   if (summary.has_unplanned) {
-    out.push({ icon: 'wrench', color: MAINTENANCE_STATUS_COLOR.not_planned, title: 'Есть регламент без даты ТО' })
+    out.push({ icon: 'wrench', color: MAINTENANCE_STATUS_COLOR.not_planned, title: MAINTENANCE_UNPLANNED_TITLE })
   }
   if (summary.critical) {
     out.push({
       icon: 'wrench',
       color: MAINTENANCE_STATUS_COLOR[summary.critical],
-      title: MAINTENANCE_STATUS_LABEL[summary.critical],
+      title: MAINTENANCE_SUMMARY_TITLE[summary.critical] || MAINTENANCE_STATUS_LABEL[summary.critical],
     })
   }
   return out
@@ -66,7 +76,7 @@ export function maintenanceRowIndicators(summary, { fullStatus, manageOnly }) {
   if (!summary || !summary.enabled) return []
   if (fullStatus) return maintenanceIndicators(summary)
   if (manageOnly && summary.has_unplanned) {
-    return [{ icon: 'wrench', color: MAINTENANCE_STATUS_COLOR.not_planned, title: 'Есть регламент без даты ТО' }]
+    return [{ icon: 'wrench', color: MAINTENANCE_STATUS_COLOR.not_planned, title: MAINTENANCE_UNPLANNED_TITLE }]
   }
   return []
 }

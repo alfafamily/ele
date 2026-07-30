@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { PlanLink } from '../../shared/PlanLink.jsx'
 import { ActionMenu, Badge, Banner, Button, Icon, Modal, SearchInput, Spinner } from '../../shared/ui'
+import { Tooltip } from '../../shared/Tooltip.jsx'
 import { ReportsMenu } from '../reports/ReportsMenu.jsx'
 import { BuildingModal } from './BuildingModal.jsx'
 import { PlaceModal } from './PlaceModal.jsx'
@@ -517,7 +518,7 @@ function PlaceChip({ place, canManage, onEdit, onArchive, onUnarchive }) {
           opacity: archived ? 0.55 : 1, textDecoration: archived ? 'line-through' : 'none',
         }}
       >
-        <Icon name={icon} size={13} strokeWidth={2} title={iconTitle} style={{ color: 'var(--color-text-muted)' }} />
+        <Tooltip label={iconTitle} style={{ flex: 'none' }}><Icon name={icon} size={13} strokeWidth={2} style={{ color: 'var(--color-text-muted)' }} /></Tooltip>
         {place.requires_pass ? (
           <Icon name="key-round" size={13} strokeWidth={2} title="Требуется ключ/пропуск" style={{ color: 'var(--color-text-muted)' }} />
         ) : null}

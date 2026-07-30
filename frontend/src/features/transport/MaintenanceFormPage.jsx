@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Banner, BackButton, Button, Card, DatePicker, FormActions, Icon, Input, SearchInput, Select, Spinner } from '../../shared/ui'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
+import { Tooltip } from '../../shared/Tooltip.jsx'
 import { getTransport, getTransportRegulations, performMaintenance, mileageUnitLabel } from './transportApi.js'
 import { regulationPeriodLabel } from '../types/TypesEditorPage.jsx'
 import { planStatusIcon } from './statusLabels.js'
@@ -185,9 +186,9 @@ export function MaintenanceFormPage() {
                 const ic = r.on_demand ? { icon: 'wrench', color: 'var(--color-text-muted)', title: 'По потребности' } : planStatusIcon(r.status)
                 return (
                   <button key={r.id} type="button" onClick={() => choose(r)} style={pickerRowStyle}>
-                    <span title={ic.title} style={{ flex: 'none' }}>
+                    <Tooltip label={ic.title} style={{ flex: 'none' }}>
                       <LeadIconCircle name={ic.icon} color={ic.color} />
-                    </span>
+                    </Tooltip>
                     <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                       <div className="ele-clamp-2" style={{ fontSize: 14, fontWeight: 600 }}>{r.name}</div>
                       <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AcceptanceIcon } from '../../shared/AcceptanceIcon.jsx'
 import { BackButton, Icon } from '../../shared/ui'
+import { Tooltip } from '../../shared/Tooltip.jsx'
 import './reports.css'
 
 // Общие презентационные части отчётов B45.
@@ -48,7 +49,7 @@ export function ExpandCard({ icon, iconTitle, title, subtitle, summary, empty, c
       >
         <Icon name={open ? 'chevron-right' : 'chevron-right'} size={16} strokeWidth={2.4}
           style={{ color: 'var(--color-text-placeholder)', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s', flex: 'none' }} />
-        {icon ? <Icon name={icon} size={16} strokeWidth={2} title={iconTitle} style={{ color: 'var(--color-text-muted)', flex: 'none' }} /> : null}
+        {icon ? <Tooltip label={iconTitle} style={{ flex: 'none' }}><Icon name={icon} size={16} strokeWidth={2} style={{ color: 'var(--color-text-muted)', flex: 'none' }} /></Tooltip> : null}
         <span style={{ flex: 1, minWidth: 0 }}>
           <span style={{ display: 'block', fontSize: 14.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
           {subtitle ? <span style={{ display: 'block', fontSize: 12, ...MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subtitle}</span> : null}

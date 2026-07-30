@@ -10,6 +10,7 @@ import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterModal, Icon, MultiSelectList, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 import { EmployeeNameCell } from '../../shared/EmployeeNameCell.jsx'
 import { TruncatedText } from '../../shared/TruncatedText.jsx'
+import { Tooltip } from '../../shared/Tooltip.jsx'
 import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
 import { TypeRequisiteFilter } from '../../shared/TypeRequisiteFilter.jsx'
 import { csvParam, reqParams } from '../../shared/filterParams.js'
@@ -238,13 +239,13 @@ export function TransportListPage() {
                         2 строки, дальше многоточие (ele-clamp-2). */}
                     <TruncatedText singleLine={false} className="ele-clamp-2" style={{ fontWeight: 500, lineHeight: 1.3 }} text={row.type_and_model}>
                       {(showTo ? maintenanceIndicators(row.maintenance_summary) : []).map((ind, i) => (
-                        <span
+                        <Tooltip
                           key={i}
-                          title={ind.title}
-                          style={{ display: 'inline-flex', verticalAlign: '-0.15em', marginRight: 4, color: ind.color }}
+                          label={ind.title}
+                          style={{ verticalAlign: '-0.15em', marginRight: 4, color: ind.color }}
                         >
                           <Icon name={ind.icon} size={14} strokeWidth={2} />
-                        </span>
+                        </Tooltip>
                       ))}
                       {row.type_and_model}
                     </TruncatedText>

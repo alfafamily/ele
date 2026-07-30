@@ -5,6 +5,7 @@ import { canMaintainTransportType, historyMode } from '../../shared/permissions.
 import { FieldValueDisplay } from '../../shared/eav'
 import { AvatarCircle } from '../../shared/AvatarCircle.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
+import { Tooltip } from '../../shared/Tooltip.jsx'
 import { PlacementRow } from '../../shared/PlacementRow.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { PlanLink } from '../../shared/PlanLink.jsx'
@@ -233,9 +234,9 @@ export function TransportCardPage() {
                         const ic = planStatusIcon(r.status)
                         return (
                           <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span title={ic.title} style={{ flex: 'none' }}>
+                            <Tooltip label={ic.title} style={{ flex: 'none' }}>
                               <LeadIconCircle name={ic.icon} color={ic.color} size={46} iconSize={20} />
-                            </span>
+                            </Tooltip>
                             <div style={{ minWidth: 0 }}>
                               <div className="ele-clamp-2" style={{ fontSize: 13.5, fontWeight: 600 }}>{r.name}</div>
                               <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>

@@ -1,15 +1,16 @@
 import { Icon } from './ui'
+import { Tooltip } from './Tooltip.jsx'
 
 // B32. Статус акцепта закрепления — единый набор иконок (списки, карточки
 // объектов, подраздел «Операции закрепления», история). Ключи — и статусы
 // объекта (in_absentia/pending/accepted/rejected), и «тоны» истории
 // (absentia/pending/accepted/rejected).
 const ACCEPTANCE_CFG = {
-  in_absentia: { icon: 'circle-check', color: 'var(--color-warning)', label: 'Заочно' },
-  absentia: { icon: 'circle-check', color: 'var(--color-warning)', label: 'Заочно' },
-  pending: { icon: 'clock', color: 'var(--color-text-placeholder)', label: 'Ожидает подтверждения' },
-  accepted: { icon: 'circle-check', color: 'var(--color-success)', label: 'Подтверждено' },
-  rejected: { icon: 'circle-x', color: 'var(--color-error)', label: 'Отклонено' },
+  in_absentia: { icon: 'circle-check', color: 'var(--color-warning)', label: 'Закреплено заочно' },
+  absentia: { icon: 'circle-check', color: 'var(--color-warning)', label: 'Закреплено заочно' },
+  pending: { icon: 'clock', color: 'var(--color-text-placeholder)', label: 'Ожидает подтверждения от сотрудника' },
+  accepted: { icon: 'circle-check', color: 'var(--color-success)', label: 'Закрепление подтверждено сотрудником' },
+  rejected: { icon: 'circle-x', color: 'var(--color-error)', label: 'Сотрудник отклонил закрепление' },
   cancelled: { icon: 'circle-x', color: 'var(--color-error)', label: 'Передача отменена ответственным' },
 }
 
@@ -19,18 +20,9 @@ export function AcceptanceIcon({ status, size = 15, style, inline = false }) {
   const c = ACCEPTANCE_CFG[status]
   if (!c) return null
   return (
-    <Icon
-      name={c.icon}
-      size={size}
-      strokeWidth={2}
-      title={c.label}
-      style={{
-        color: c.color,
-        flex: 'none',
-        ...(inline ? { verticalAlign: '-3px', marginRight: 5 } : {}),
-        ...style,
-      }}
-    />
+    <Tooltip label={c.label} style={inline ? { verticalAlign: '-3px', marginRight: 5 } : undefined}>
+      <Icon name={c.icon} size={size} strokeWidth={2} style={{ color: c.color, flex: 'none', ...style }} />
+    </Tooltip>
   )
 }
 

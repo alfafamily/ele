@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ActionMenu, Badge, Button, ConfirmModal, Icon, InlineCalendar, Modal } from '../../shared/ui'
+import { Tooltip } from '../../shared/Tooltip.jsx'
 import { regulationPeriodLabel } from '../types/TypesEditorPage.jsx'
 import {
   archiveEquipmentRegulation,
@@ -152,9 +153,9 @@ export function EquipmentRegulationsSection({ equipment, regulations, canManage,
                       <div key={reg.id} style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--color-fill-input)', borderRadius: 10, padding: '10px 12px' }}>
                         {/* Содержимое приглушается у отменённых; кнопка действия — нет. */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, opacity: inactive ? 0.55 : 1 }}>
-                          <span style={{ flex: 'none', width: 20, display: 'flex', justifyContent: 'center', color: ic.color }} title={ic.title || ''}>
+                          <Tooltip label={ic.title || ''} style={{ flex: 'none', width: 20, display: 'flex', justifyContent: 'center', color: ic.color }}>
                             <Icon name={ic.icon} size={17} strokeWidth={2} />
-                          </span>
+                          </Tooltip>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {/* Плашки — перед названием; название обрезается до 2 строк. */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 3 }}>
