@@ -31,7 +31,7 @@ function ReqFieldControl({ field, value, onChange, valuesBase }) {
   return <RequisiteAutocompleteChips value={value} onChange={onChange} valuesUrl={`${valuesBase}?field=${field.id}`} numeric={numeric} />
 }
 
-export function TypeRequisiteFilter({ endpoint, valuesBase, label = 'Тип', types, onTypesChange, req, onReqChange, excludeLockedFields = false, filterKind }) {
+export function TypeRequisiteFilter({ endpoint, valuesBase, label = 'Вид', types, onTypesChange, req, onReqChange, excludeLockedFields = false, filterKind }) {
   const [allTypes, setAllTypes] = useState(null)
   const kindActive = filterKind && filterKind !== 'all'
 

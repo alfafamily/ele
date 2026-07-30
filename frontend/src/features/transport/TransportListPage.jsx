@@ -118,8 +118,8 @@ export function TransportListPage() {
         <Can perm="canManageTransport">
           <div className="ele-page-head__actions">
             <Link to="/transport-types">
-              <Button variant="secondary" title="Настроить типы" aria-label="Настроить типы">
-                <span className="ele-only-desktop">Настроить типы</span>
+              <Button variant="secondary" title="Настроить виды" aria-label="Настроить виды">
+                <span className="ele-only-desktop">Настроить виды</span>
                 <Icon className="ele-only-mobile" name="columns-3-cog" size={20} strokeWidth={1.9} />
               </Button>
             </Link>
@@ -168,7 +168,7 @@ export function TransportListPage() {
                       <TypeRequisiteFilter
                         endpoint="/api/transport-types/"
                         valuesBase="/api/transport/field-values/"
-                        label="Тип транспорта"
+                        label="Вид транспорта"
                         types={draft.types}
                         onTypesChange={(t) => set({ types: t })}
                         req={draft.req}

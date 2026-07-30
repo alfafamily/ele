@@ -344,7 +344,7 @@ export function PassFormPage() {
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>Тип объекта</div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>Вид средства</div>
                   <Segmented
                     value={objectType}
                     onChange={changeObjectType}

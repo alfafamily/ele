@@ -1,48 +1,28 @@
 import { useState } from 'react'
-import { Banner, Button, Input, Modal, PlaceSelect } from '../../shared/ui'
-import { detachPass, utilizePass } from './employeesApi.js'
+import { Banner, Button, Input, Modal } from '../../shared/ui'
+import { utilizePass } from './employeesApi.js'
 
-// Открепление/утилизация средства доступа (пропуск или ключ). Если объект
-// закреплён за сотрудником — три варианта: открепить (деактивировать),
-// утилизировать (выбросить), передать арендодателю. Если уже свободен —
-// только два варианта утилизации. Комментарий (необязательный, многострочный)
-// доступен для вариантов утилизации и попадает в историю движений.
+// Утилизация средства доступа (пропуск или ключ) — терминальное действие: либо
+// выбросить (утилизировать), либо передать арендодателю. Открепление
+// размещённого средства вынесено отдельной операцией в блок «Размещение».
+// Комментарий (необязательный, многострочный) попадает в историю движений.
+const OPTIONS = [
+  { value: 'utilized', label: 'Утилизировать', hint: 'Выбросить. Необратимо, уйдёт во вкладку «Утилизировано».' },
+  { value: 'handed', label: 'Передать арендодателю', hint: 'Отдан арендодателю. Необратимо, уйдёт во вкладку «Утилизировано».' },
+]
+
 export function PassDisposeModal({ pass, onClose, onDone }) {
-  // Закреплён за сотрудником или (B34) за транспортом — в обоих случаях можно
-  // открепить (на склад) либо утилизировать/передать арендодателю.
-  const attached = Boolean(pass.employee) || Boolean(pass.transport)
-  const kind = pass.object_type === 'key' ? 'Ключ' : 'Пропуск'
-
-  const OPTIONS = attached
-    ? [
-        { value: 'detach', label: 'Деактивировать', hint: 'Открепить — станет неиспользуемым, можно выдать снова.' },
-        { value: 'utilized', label: 'Утилизировать', hint: 'Выбросить. Необратимо, уйдёт во вкладку «Утилизировано».' },
-        { value: 'handed', label: 'Передать арендодателю', hint: 'Отдан арендодателю. Необратимо, уйдёт во вкладку «Утилизировано».' },
-      ]
-    : [
-        { value: 'utilized', label: 'Утилизировать', hint: 'Выбросить. Необратимо, уйдёт во вкладку «Утилизировано».' },
-        { value: 'handed', label: 'Передать арендодателю', hint: 'Отдан арендодателю. Необратимо, уйдёт во вкладку «Утилизировано».' },
-      ]
-
+  const kind = pass.object_type === 'key' ? 'ключ' : 'пропуск'
   const [choice, setChoice] = useState(OPTIONS[0].value)
   const [comment, setComment] = useState('')
-  const [storagePlaceId, setStoragePlaceId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
 
-  const isUtilize = choice === 'utilized' || choice === 'handed'
-
   const submit = async () => {
-    if (choice === 'detach' && !storagePlaceId) {
-      setError('Выберите место хранения.')
-      return
-    }
     setSubmitting(true)
     setError(null)
     try {
-      const saved = choice === 'detach'
-        ? await detachPass(pass.id, Number(storagePlaceId))
-        : await utilizePass(pass.id, choice, comment.trim() || undefined)
+      const saved = await utilizePass(pass.id, choice, comment.trim() || undefined)
       onDone(saved)
     } catch (err) {
       setError(err.detail || 'Не удалось выполнить действие.')
@@ -52,7 +32,7 @@ export function PassDisposeModal({ pass, onClose, onDone }) {
   }
 
   return (
-    <Modal open onClose={onClose} title={attached ? `Что сделать с ${kind === 'Ключ' ? 'ключом' : 'пропуском'}?` : `Утилизировать ${kind === 'Ключ' ? 'ключ' : 'пропуск'}?`}>
+    <Modal open onClose={onClose} title={`Утилизировать ${kind}?`}>
       {error ? <Banner variant="error">{error}</Banner> : null}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '4px 0 16px' }}>
         {OPTIONS.map((opt) => (
@@ -69,27 +49,19 @@ export function PassDisposeModal({ pass, onClose, onDone }) {
         ))}
       </div>
 
-      {choice === 'detach' ? (
-        <div style={{ marginBottom: 18 }}>
-          <PlaceSelect placeType="storage" required value={storagePlaceId} onChange={setStoragePlaceId} />
-        </div>
-      ) : null}
-
-      {isUtilize ? (
-        <div style={{ marginBottom: 18 }}>
-          <Input
-            label="Комментарий (необязательно)"
-            multiline
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Например: утилизировано по акту №…"
-          />
-        </div>
-      ) : null}
+      <div style={{ marginBottom: 18 }}>
+        <Input
+          label="Комментарий (необязательно)"
+          multiline
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Например: утилизировано по акту №…"
+        />
+      </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <Button variant={isUtilize ? 'danger-solid' : 'primary'} fullWidth loading={submitting} onClick={submit}>
-          {choice === 'detach' ? 'Открепить' : 'Утилизировать'}
+        <Button variant="danger-solid" fullWidth loading={submitting} onClick={submit}>
+          Утилизировать
         </Button>
         <Button variant="secondary" fullWidth onClick={onClose}>Отмена</Button>
       </div>

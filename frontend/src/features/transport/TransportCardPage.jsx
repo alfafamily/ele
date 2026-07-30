@@ -13,10 +13,10 @@ import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } fro
 import { AssignEmployeeModal } from './AssignEmployeeModal.jsx'
 import { ParkingAssignModal } from './ParkingAssignModal.jsx'
 import { TransportPassAttachModal } from './TransportPassAttachModal.jsx'
-import { PassDisposeModal } from '../employees/PassDisposeModal.jsx'
+import { PassDetachModal } from '../employees/PassDetachModal.jsx'
 import { TransportRegulationsSection } from './TransportRegulationsSection.jsx'
 import { getTransport, getTransportHistoryPath, getTransportRegulations, mileageUnitLabel, setTransportParking, unassignTransport } from './transportApi.js'
-import { TRANSPORT_STATUS_LABEL, planStatusIcon } from './statusLabels.js'
+import { planStatusIcon } from './statusLabels.js'
 import { WriteOffModal } from './WriteOffModal.jsx'
 
 function formatShortDate(iso) {
@@ -43,7 +43,7 @@ export function TransportCardPage() {
   const [showAssign, setShowAssign] = useState(false)
   const [showParking, setShowParking] = useState(false)
   const [showPassAttach, setShowPassAttach] = useState(false)
-  const [disposePass, setDisposePass] = useState(null)
+  const [detachPass, setDetachPass] = useState(null)
   const [historyKey, setHistoryKey] = useState(0)
   const [confirm, setConfirm] = useState(null)
 
@@ -132,9 +132,8 @@ export function TransportCardPage() {
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div className="ele-field-grid">
               <Field label="Учётный номер" value={transport.inventory_number} mono />
-              <Field label="Тип транспорта" value={transport.transport_type_name} />
+              <Field label="Вид транспорта" value={transport.transport_type_name} />
               {transport.type_gibdd_registration ? <Field label="Гос.номер" value={transport.plate} mono /> : null}
-              <Field label="Статус" value={transport.is_written_off ? 'Списано' : TRANSPORT_STATUS_LABEL[transport.status]} />
               <Field
                 label={`Последний пробег, ${unitLabel}`}
                 value={
@@ -149,14 +148,19 @@ export function TransportCardPage() {
 
           {(() => {
             const byOrder = (a, b) => a.field_order - b.field_order
-            const paramValues = transport.field_values.filter((fv) => fv.value_type !== 'file').sort(byOrder)
+            // Гос.номер — залоченный базовый реквизит, уже показан в «Основной
+            // информации» через transport.plate; исключаем из «Параметров», чтобы
+            // не дублировать. «Модель» оставляем (в «Основной информации» её нет).
+            const paramValues = transport.field_values
+              .filter((fv) => fv.value_type !== 'file' && fv.name !== 'Гос.номер')
+              .sort(byOrder)
             const fileValues = transport.field_values.filter((fv) => fv.value_type === 'file').sort(byOrder)
             return (
               <>
                 <Card>
                   <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Параметры транспорта</div>
                   {paramValues.length === 0 ? (
-                    <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>У этого Типа нет реквизитов.</div>
+                    <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>У этого Вида нет реквизитов.</div>
                   ) : (
                     <div className="ele-field-grid">
                       {paramValues.map((fv) => (
@@ -329,7 +333,7 @@ export function TransportCardPage() {
               passes={transport.passes || []}
               canManage={perms.canManageTransport}
               onAttach={() => setShowPassAttach(true)}
-              onDetach={(p) => setDisposePass(p)}
+              onDetach={(p) => setDetachPass(p)}
             />
           </Card>
         ) : null}
@@ -386,12 +390,12 @@ export function TransportCardPage() {
           onCreateNew={() => navigate(`/passes/new?transport=${transport.id}`)}
         />
       ) : null}
-      {disposePass ? (
-        <PassDisposeModal
-          pass={disposePass}
-          onClose={() => setDisposePass(null)}
+      {detachPass ? (
+        <PassDetachModal
+          pass={detachPass}
+          onClose={() => setDetachPass(null)}
           onDone={() => {
-            setDisposePass(null)
+            setDetachPass(null)
             load()
           }}
         />
@@ -401,8 +405,8 @@ export function TransportCardPage() {
 }
 
 // Блок «Пропуска» на карточке транспорта (B34): транспортные пропуска,
-// закреплённые за этой единицей. Открепление — на склад/утилизация через
-// PassDisposeModal. Кнопка «Закрепить пропуск» открывает подбор/создание.
+// закреплённые за этой единицей. Открепление — на склад через PassDetachModal.
+// Кнопка «Закрепить пропуск» открывает подбор/создание.
 function PassesBlock({ passes, canManage, onAttach, onDetach }) {
   return (
     <div>

@@ -7,7 +7,7 @@ BASE_FIELD_PLATE = "Гос.номер"
 
 
 class TransportType(models.Model):
-    """Тип транспорта — классификатор, задающий набор реквизитов (B3).
+    """Вид транспорта — классификатор, задающий набор реквизитов (B3).
 
     В отличие от Оборудования, ТО для транспорта включено всегда (флага нет).
     У каждого типа два свойства, задаваемые при создании и неизменяемые:
@@ -30,8 +30,8 @@ class TransportType(models.Model):
     gibdd_registration = models.BooleanField("Регистрация в ГИБДД", default=True)
 
     class Meta:
-        verbose_name = "Тип транспорта"
-        verbose_name_plural = "Типы транспорта"
+        verbose_name = "Вид транспорта"
+        verbose_name_plural = "Виды транспорта"
         ordering = ["name"]
 
     def __str__(self):
@@ -69,7 +69,7 @@ class TransportType(models.Model):
 
 
 class TransportTypeField(models.Model):
-    """Реквизит типа транспорта — EAV-схема значений, см. TransportFieldValue."""
+    """Реквизит вида транспорта — EAV-схема значений, см. TransportFieldValue."""
 
     class ValueType(models.TextChoices):
         BOOL = "bool", "Булево"
@@ -91,7 +91,7 @@ class TransportTypeField(models.Model):
     order = models.IntegerField("Порядок", default=0)
 
     class Meta:
-        verbose_name = "Реквизит типа транспорта"
+        verbose_name = "Реквизит вида транспорта"
         verbose_name_plural = "Реквизиты типа транспорта"
         ordering = ["order", "id"]
 
@@ -135,7 +135,7 @@ class Transport(models.Model):
     written_off_at = models.DateTimeField("Дата списания", null=True, blank=True)
     # PROTECT: удаление Типа с привязанными объектами запрещено на уровне БД.
     transport_type = models.ForeignKey(
-        TransportType, verbose_name="Тип транспорта", on_delete=models.PROTECT, related_name="transport",
+        TransportType, verbose_name="Вид транспорта", on_delete=models.PROTECT, related_name="transport",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     history = HistoricalRecords()

@@ -245,7 +245,7 @@ class AccessPass(models.Model):
     # доступ ограничен ровно одним объектом (одно здание ИЛИ одно помещение),
     # без Названия; остальная механика — как у пропуска.
     object_type = models.CharField(
-        "Тип объекта", max_length=8, choices=ObjectType.choices, default=ObjectType.PASS
+        "Вид средства", max_length=8, choices=ObjectType.choices, default=ObjectType.PASS
     )
     # Вид пропуска (B34): персональный (за сотрудником) или транспортный (за
     # единицей транспорта). Для ключей всегда «персональный» и не используется.

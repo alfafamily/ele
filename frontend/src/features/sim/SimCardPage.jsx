@@ -8,6 +8,7 @@ import { HistoryList } from '../../shared/HistoryList.jsx'
 import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
 import { getSimCard, getSimHistoryPath } from '../employees/employeesApi.js'
 import { SimDisposeModal } from '../employees/SimDisposeModal.jsx'
+import { SimDetachModal } from '../employees/SimDetachModal.jsx'
 import { SimAttachModal } from './SimAttachModal.jsx'
 
 export function SimCardPage() {
@@ -18,6 +19,7 @@ export function SimCardPage() {
   const [loadError, setLoadError] = useState(false)
   const [attachMode, setAttachMode] = useState(null) // 'employee' | 'equipment' | null → открывает модалку
   const [disposeModal, setDisposeModal] = useState(false)
+  const [detachModal, setDetachModal] = useState(false)
   const [historyKey, setHistoryKey] = useState(0)
 
   const load = useCallback(() => {
@@ -43,20 +45,13 @@ export function SimCardPage() {
     return <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner /></div>
   }
 
-  const statusText = sim.is_utilized ? 'Утилизирована' : sim.is_deactivated ? 'Не используется' : 'Активна'
-
-  const isPlaced = Boolean(sim.employee || sim.equipment)
-
-  // Размещённая → открепить/утилизировать; свободная → редактировать/утилизировать;
-  // утилизированная → без действий (терминальный статус, удаления из системы нет).
+  // Верхняя кнопка — только утилизация (как у прочих объектов имущества);
+  // открепление вынесено отдельной операцией в блок «Размещение».
+  // Утилизированная → без действий (терминальный статус, удаления из системы нет).
   const actions = []
   if (perms.canManageEmployees && !sim.is_utilized) {
     actions.push({ label: 'Редактировать', onClick: () => navigate(`/sim-cards/${sim.id}/edit`) })
-    if (isPlaced) {
-      actions.push({ label: 'Открепить', danger: true, onClick: () => setDisposeModal(true) })
-    } else {
-      actions.push({ label: 'Утилизировать', danger: true, onClick: () => setDisposeModal(true) })
-    }
+    actions.push({ label: 'Утилизировать', danger: true, onClick: () => setDisposeModal(true) })
   }
 
   return (
@@ -93,7 +88,6 @@ export function SimCardPage() {
               <Field label="Тип" value={sim.sim_type_display} />
               <Field label="Оператор" value={sim.network_operator} />
               <Field label="Поставщик услуг связи" value={sim.provider} />
-              <Field label="Статус" value={statusText} />
             </div>
           </Card>
         </div>
@@ -112,7 +106,7 @@ export function SimCardPage() {
                 sub={sim.position || '—'}
               />
               <Can perm="canManageEmployees">
-                <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>
+                <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDetachModal(true)}>Открепить</Button>
               </Can>
             </>
           ) : sim.equipment ? (
@@ -124,7 +118,7 @@ export function SimCardPage() {
                 sub={sim.equipment_detail?.inventory_number || undefined}
               />
               <Can perm="canManageEmployees">
-                <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>
+                <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDetachModal(true)}>Открепить</Button>
               </Can>
             </>
           ) : (
@@ -167,6 +161,16 @@ export function SimCardPage() {
           onClose={() => setDisposeModal(false)}
           onDone={() => {
             setDisposeModal(false)
+            load()
+          }}
+        />
+      ) : null}
+      {detachModal ? (
+        <SimDetachModal
+          sim={sim}
+          onClose={() => setDetachModal(false)}
+          onDone={() => {
+            setDetachModal(false)
             load()
           }}
         />

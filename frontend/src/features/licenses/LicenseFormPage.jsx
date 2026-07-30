@@ -69,7 +69,7 @@ export function LicenseFormPage() {
 
   const selectedType = types.find((t) => String(t.id) === String(typeId))
   const typeFields = selectedType?.fields || []
-  // B18: при редактировании тип можно сменить только на тип того же вида
+  // B18: при редактировании вид можно сменить только на вид того же типа
   // (программный↔программный, аппаратный↔аппаратный).
   const lockedKind = isEdit ? license?.license_type_kind : null
 
@@ -159,10 +159,10 @@ export function LicenseFormPage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Select label="Тип лицензии" required placeholder="Выберите тип" value={typeId} onChange={handleTypeChange}>
+              <Select label="Вид лицензии" required placeholder="Выберите вид" value={typeId} onChange={handleTypeChange}>
                 {types
                   .filter((t) => !t.is_archived || String(t.id) === String(typeId))
-                  // При редактировании — только типы того же вида.
+                  // При редактировании — только виды того же типа.
                   .filter((t) => !lockedKind || t.kind === lockedKind)
                   .map((t) => (
                     <option key={t.id} value={t.id}>
@@ -172,7 +172,7 @@ export function LicenseFormPage() {
               </Select>
               {lockedKind ? (
                 <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
-                  Сменить тип можно только на тип того же вида ({lockedKind === 'hardware' ? 'аппаратный' : 'программный'}).
+                  Сменить вид можно только на вид того же типа ({lockedKind === 'hardware' ? 'аппаратный' : 'программный'}).
                 </div>
               ) : null}
             </div>

@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Banner, Button, Checkbox, Input, Modal } from '../../shared/ui'
 
-// Редактирование Типа. Для лицензий меняется только наименование
-// (заголовок «Переименовать тип»). Для оборудования дополнительно
+// Редактирование Вида. Для лицензий меняется только наименование
+// (заголовок «Переименовать вид»). Для оборудования дополнительно
 // переключаются флаги «Установка SIM/E-SIM» (B17) и «Проведение ТО» (B13) —
-// заголовок «Редактирование типа оборудования». Реквизиты и привязанные
+// заголовок «Редактирование вида оборудования». Реквизиты и привязанные
 // объекты не затрагиваются.
 export function RenameTypeModal({ type, domain, onClose, onSave }) {
   const isEquipment = domain === 'equipment'
@@ -41,14 +41,14 @@ export function RenameTypeModal({ type, domain, onClose, onSave }) {
       }
       await onSave(payload)
     } catch (err) {
-      setError(err.errors ? Object.values(err.errors).flat().join(' ') : err.detail || 'Не удалось сохранить тип.')
+      setError(err.errors ? Object.values(err.errors).flat().join(' ') : err.detail || 'Не удалось сохранить вид.')
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <Modal open onClose={onClose} title={isEquipment || isTransport ? `Редактирование типа ${isTransport ? 'транспорта' : 'оборудования'}` : 'Переименовать тип'}>
+    <Modal open onClose={onClose} title={isEquipment || isTransport ? `Редактирование вида ${isTransport ? 'транспорта' : 'оборудования'}` : 'Переименовать вид'}>
       {error ? <Banner variant="error">{error}</Banner> : null}
       <Input label="Наименование" required autoFocus value={name} onChange={(e) => setName(e.target.value)} />
 
@@ -83,13 +83,13 @@ export function RenameTypeModal({ type, domain, onClose, onSave }) {
           <div>
             <Checkbox label="В оборудование можно устанавливать SIM/E-SIM" checked={allowsSim} onChange={setAllowsSim} />
             <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2, marginLeft: 30 }}>
-              Разрешает установку SIM/E-SIM в оборудование этого типа.
+              Разрешает установку SIM/E-SIM в оборудование этого вида.
             </div>
           </div>
           <div>
             <Checkbox label="К оборудованию можно привязывать лицензии" checked={allowsLicense} onChange={setAllowsLicense} />
             <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2, marginLeft: 30 }}>
-              Разрешает привязку лицензий к оборудованию этого типа (блок «Установленные лицензии»).
+              Разрешает привязку лицензий к оборудованию этого вида (блок «Установленные лицензии»).
             </div>
           </div>
           <div>

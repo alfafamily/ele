@@ -6,7 +6,7 @@ import { EquipmentPicker } from '../../shared/EquipmentPicker.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
-import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
+import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Segmented, Spinner } from '../../shared/ui'
 import {
   createSimCard,
   getSimCard,
@@ -152,10 +152,15 @@ export function SimFormPage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Select label="Тип" value={simType} onChange={setSimType} error={fieldErrors.sim_type}>
-                <option value="sim">SIM</option>
-                <option value="esim">E-SIM</option>
-              </Select>
+              <Segmented
+                label="Тип"
+                value={simType}
+                onChange={setSimType}
+                options={[
+                  { value: 'sim', label: 'SIM' },
+                  { value: 'esim', label: 'E-SIM' },
+                ]}
+              />
               <Input
                 label="Номер телефона"
                 required

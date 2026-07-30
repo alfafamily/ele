@@ -187,7 +187,7 @@ export function PassListPage() {
                   main: (
                     <>
                     <div>
-                      <div className="ele-filter-section__title">Тип средства</div>
+                      <div className="ele-filter-section__title">Вид средства</div>
                       <RadioPills options={OBJECT_TYPE_FILTERS} value={draft.objectType} onChange={(v) => set({ objectType: v })} />
                     </div>
                     <PassAccessFilter

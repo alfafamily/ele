@@ -131,8 +131,8 @@ export function LicenseListPage() {
         <Can perm="canManageLicenses">
           <div className="ele-page-head__actions">
             <Link to="/license-types">
-              <Button variant="secondary" title="Настроить типы" aria-label="Настроить типы">
-                <span className="ele-only-desktop">Настроить типы</span>
+              <Button variant="secondary" title="Настроить виды" aria-label="Настроить виды">
+                <span className="ele-only-desktop">Настроить виды</span>
                 <Icon className="ele-only-mobile" name="columns-3-cog" size={20} strokeWidth={1.9} />
               </Button>
             </Link>
@@ -169,13 +169,13 @@ export function LicenseListPage() {
                   main: (
                     <>
                       <div>
-                        <div className="ele-filter-section__title">Вид</div>
+                        <div className="ele-filter-section__title">Тип</div>
                         <RadioPills options={KIND_FILTERS} value={draft.kind} onChange={(v) => set({ kind: v })} />
                       </div>
                       <TypeRequisiteFilter
                         endpoint="/api/license-types/"
                         valuesBase="/api/licenses/field-values/"
-                        label="Тип лицензии"
+                        label="Вид лицензии"
                         types={draft.types}
                         onTypesChange={(t) => set({ types: t })}
                         req={draft.req}
@@ -245,7 +245,7 @@ export function LicenseListPage() {
           {items.map((row) => (
             <Link key={row.id} to={`/licenses/${row.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
               <TableRow columns={columns}>
-                {/* B18: наименование = Тип лицензии; ниже — вид (программная/аппаратная) */}
+                {/* B18: наименование = Вид лицензии; ниже — тип (программная/аппаратная) */}
                 <div style={{ minWidth: 0 }}>
                   <TruncatedText singleLine={false} className="ele-clamp-2" style={{ fontWeight: 600 }}>{row.license_type_name}</TruncatedText>
                   <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>{KIND_LABEL[row.license_type_kind] || ''}</div>

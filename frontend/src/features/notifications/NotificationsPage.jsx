@@ -23,7 +23,7 @@ function scopeLabel(item, eqTypes, trTypes) {
       all = false
     }
   }
-  return all ? 'Получать по всем типам' : `Получать по ${n} типам`
+  return all ? 'Получать по всем видам' : `Получать по ${n} видам`
 }
 
 const rowStyle = {

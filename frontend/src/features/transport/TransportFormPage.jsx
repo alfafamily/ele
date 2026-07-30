@@ -180,7 +180,7 @@ export function TransportFormPage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Select label="Тип транспорта" required placeholder="Выберите тип" value={typeId} onChange={handleTypeChange}>
+              <Select label="Вид транспорта" required placeholder="Выберите вид" value={typeId} onChange={handleTypeChange}>
                 {types
                   .filter((t) => !t.is_archived || String(t.id) === String(typeId))
                   .map((t) => (

@@ -4,11 +4,11 @@ from simple_history.models import HistoricalRecords
 
 
 class LicenseType(models.Model):
-    """Тип лицензии — классификатор реквизитов, не используется как имя объекта.
+    """Вид лицензии — классификатор реквизитов, не используется как имя объекта.
 
-    B18: у каждого Типа есть «вид» — программный или аппаратный (kind). Прежние
-    базовые типы «Программная»/«Аппаратная» упразднены как захардкоженные: теперь
-    вид — свойство любого пользовательского Типа. При создании Типа автоматически
+    B18: у каждого Вида есть «тип» — программный или аппаратный (kind). Прежние
+    базовые виды «Программная»/«Аппаратная» упразднены как захардкоженные: теперь
+    тип — свойство любого пользовательского Вида. При создании Вида автоматически
     сеется зафиксированный (is_locked) обязательный ключевой реквизит: «Номер/ключ»
     для программного, «Номер/ID/Serial токена» — для аппаратного.
     """
@@ -18,15 +18,15 @@ class LicenseType(models.Model):
         HARDWARE = "hardware", "Аппаратная"
 
     name = models.CharField("Наименование", max_length=255)
-    kind = models.CharField("Вид", max_length=10, choices=Kind.choices, default=Kind.SOFTWARE)
+    kind = models.CharField("Тип", max_length=10, choices=Kind.choices, default=Kind.SOFTWARE)
     is_archived = models.BooleanField("Архивный", default=False)
     # Legacy-флаг прежних базовых типов. Новые типы всегда is_locked=False;
     # оставлен ради обратной совместимости истории миграций.
     is_locked = models.BooleanField(default=False)
 
     class Meta:
-        verbose_name = "Тип лицензии"
-        verbose_name_plural = "Типы лицензий"
+        verbose_name = "Вид лицензии"
+        verbose_name_plural = "Виды лицензий"
         ordering = ["name"]
 
     def __str__(self):
@@ -47,7 +47,7 @@ class LicenseType(models.Model):
 
     def delete(self, *args, **kwargs):
         if self.is_locked:
-            raise ProtectedError("Базовый Тип лицензии нельзя удалить.", {self})
+            raise ProtectedError("Базовый Вид лицензии нельзя удалить.", {self})
         super().delete(*args, **kwargs)
 
 
@@ -132,7 +132,7 @@ class License(models.Model):
     retired_at = models.DateTimeField("Дата утилизации", null=True, blank=True)
     # PROTECT: удаление Типа с привязанными объектами запрещено.
     license_type = models.ForeignKey(
-        LicenseType, verbose_name="Тип лицензии", on_delete=models.PROTECT, related_name="licenses",
+        LicenseType, verbose_name="Вид лицензии", on_delete=models.PROTECT, related_name="licenses",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     history = HistoricalRecords()

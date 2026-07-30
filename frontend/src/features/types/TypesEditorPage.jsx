@@ -23,7 +23,7 @@ function objectsPlural(n) {
 
 function deleteBlockedNote(n) {
   const verb = n % 10 === 1 && n % 100 !== 11 ? 'Создан' : 'Создано'
-  return `Удаление невозможно. ${verb} ${n} ${objectsPlural(n)} с этим типом`
+  return `Удаление невозможно. ${verb} ${n} ${objectsPlural(n)} с этим видом`
 }
 
 // Общий редактор Типов оборудования/лицензий — оба домена
@@ -188,13 +188,13 @@ export function TypesEditorPage({ domain, title }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <BackButton />
           <h1 style={{ fontSize: 'var(--font-size-h1)', fontWeight: 600, letterSpacing: 'var(--font-h1-letter-spacing)', margin: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            Типы {title}
+            Виды {title}
           </h1>
         </div>
         <div className="ele-page-head__actions">
-          <Button onClick={() => setShowNewType(true)} title="Новый тип" aria-label="Новый тип">
+          <Button onClick={() => setShowNewType(true)} title="Новый вид" aria-label="Новый вид">
             <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />
-            <span className="ele-only-desktop">Новый тип</span>
+            <span className="ele-only-desktop">Новый вид</span>
             <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
           </Button>
         </div>
@@ -209,7 +209,7 @@ export function TypesEditorPage({ domain, title }) {
         <div style={{ background: 'var(--color-surface)', borderRadius: 16, padding: 10, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 8px 8px' }}>
             <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--color-text-placeholder)' }}>
-              Типы
+              Виды
             </span>
             {hasArchived ? (
               <button type="button" onClick={() => setShowArchived((v) => !v)} style={toggleBtnStyle}>
@@ -222,7 +222,7 @@ export function TypesEditorPage({ domain, title }) {
           </div>
           {visibleTypes.length === 0 ? (
             <div style={{ fontSize: 13, color: 'var(--color-text-muted)', padding: '8px 10px' }}>
-              {q ? 'Ничего не найдено' : 'Типы пока не созданы'}
+              {q ? 'Ничего не найдено' : 'Виды пока не созданы'}
             </div>
           ) : null}
           {visibleTypes.map((t) => (
@@ -302,7 +302,7 @@ export function TypesEditorPage({ domain, title }) {
               </div>
             ) : null}
 
-            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Реквизиты типа</div>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Реквизиты вида</div>
             <Button variant="secondary" fullWidth style={{ marginBottom: 12 }} onClick={() => setFieldModal('new')}>
               <Icon name="plus" size={18} strokeWidth={2.2} />
               Добавить реквизит
@@ -381,7 +381,7 @@ export function TypesEditorPage({ domain, title }) {
                 (ТО всегда), только для тех, кто управляет ТО домена. */}
             {typeHasMaintenance(selected) && canManageDomainMaintenance ? (
               <div style={{ marginTop: 28 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Регламенты ТО</div>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Регламенты ТО вида</div>
                 <Button variant="secondary" fullWidth style={{ marginBottom: 12 }} onClick={() => setRegModal('new')}>
                   <Icon name="plus" size={18} strokeWidth={2.2} />
                   Добавить регламент
@@ -466,7 +466,7 @@ export function TypesEditorPage({ domain, title }) {
       {deleteFieldTarget ? (
         <ConfirmModal
           title="Удалить реквизит?"
-          message={`Реквизит «${deleteFieldTarget.name}» будет удалён у Типа. Значения этого реквизита во всех объектах этого Типа будут удалены безвозвратно.`}
+          message={`Реквизит «${deleteFieldTarget.name}» будет удалён у Вида. Значения этого реквизита во всех объектах этого Вида будут удалены безвозвратно.`}
           confirmLabel="Удалить"
           onConfirm={deleteField}
           onClose={() => setDeleteFieldTarget(null)}
@@ -509,7 +509,7 @@ export function TypesEditorPage({ domain, title }) {
       {archiveReg ? (
         <ConfirmModal
           title="Отменить регламент?"
-          message={`Регламент «${archiveReg.name}» будет отменён (в архив) для всего ${domain === 'transport' ? 'транспорта' : 'оборудования'} этого типа. Плановые даты ТО по нему обнулятся; вернуть регламент можно позже.`}
+          message={`Регламент «${archiveReg.name}» будет отменён (в архив) для всего ${domain === 'transport' ? 'транспорта' : 'оборудования'} этого вида. Плановые даты ТО по нему обнулятся; вернуть регламент можно позже.`}
           confirmLabel="Отменить"
           onConfirm={async () => {
             await toggleRegArchive(archiveReg, true)

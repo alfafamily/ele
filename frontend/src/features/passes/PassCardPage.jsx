@@ -9,6 +9,7 @@ import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../share
 import { getPass, getPassHistoryPath } from '../employees/employeesApi.js'
 import { KeyTarget } from '../../shared/keyTarget.jsx'
 import { PassDisposeModal } from '../employees/PassDisposeModal.jsx'
+import { PassDetachModal } from '../employees/PassDetachModal.jsx'
 import { PassAttachModal } from './PassAttachModal.jsx'
 
 export function PassCardPage() {
@@ -19,6 +20,7 @@ export function PassCardPage() {
   const [loadError, setLoadError] = useState(false)
   const [showAttach, setShowAttach] = useState(false)
   const [disposeModal, setDisposeModal] = useState(false)
+  const [detachModal, setDetachModal] = useState(false)
   const [historyKey, setHistoryKey] = useState(0)
 
   const load = useCallback(() => {
@@ -52,21 +54,14 @@ export function PassCardPage() {
   const types = [pass.type_vehicle && 'Личный авто', pass.type_pedestrian && 'Пеший'].filter(Boolean).join(', ')
   const rooms = pass.rooms || []
   const places = pass.places || []
-  const statusText = pass.is_utilized
-    ? (pass.utilization_reason_display ? `Утилизирован (${pass.utilization_reason_display})` : 'Утилизирован')
-    : pass.is_deactivated ? 'Не используется' : 'Активен'
 
-  // Наборы действий: активный → открепить (с выбором утилизации); свободный →
-  // редактировать/утилизировать; утилизированный → без действий (терминальный
-  // статус, удаления из системы нет — только утилизация).
+  // Верхняя кнопка — только утилизация (как у прочих объектов имущества);
+  // открепление вынесено отдельной операцией в блок «Размещение».
+  // Утилизированный → без действий (терминальный статус, удаления из системы нет).
   const actions = []
   if (perms.canManageEmployees && !pass.is_utilized) {
     actions.push({ label: 'Редактировать', onClick: () => navigate(`/passes/${pass.id}/edit`) })
-    if (pass.employee || pass.transport) {
-      actions.push({ label: 'Открепить', danger: true, onClick: () => setDisposeModal(true) })
-    } else {
-      actions.push({ label: 'Утилизировать', danger: true, onClick: () => setDisposeModal(true) })
-    }
+    actions.push({ label: 'Утилизировать', danger: true, onClick: () => setDisposeModal(true) })
   }
 
   return (
@@ -99,11 +94,10 @@ export function PassCardPage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div className="ele-field-grid">
-              <Field label="Тип объекта" value={pass.object_type_display || (isKey ? 'Ключ' : 'Пропуск СКУД')} />
+              <Field label="Вид средства" value={pass.object_type_display || (isKey ? 'Ключ' : 'Пропуск СКУД')} />
               {!isKey ? <Field label="Вид пропуска" value={pass.pass_kind_display || (isTransportPass ? 'Транспортный' : 'Персональный')} /> : null}
               <Field label="Учётный номер" value={pass.account_number} mono />
               {!isKey && !isTransportPass ? <Field label="Тип пропуска" value={types} /> : null}
-              <Field label="Статус" value={statusText} />
             </div>
           </Card>
 
@@ -147,7 +141,7 @@ export function PassCardPage() {
                 sub={pass.position || '—'}
               />
               <Can perm="canManageEmployees">
-                <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>
+                <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDetachModal(true)}>Открепить</Button>
               </Can>
             </>
           ) : pass.transport ? (
@@ -158,7 +152,7 @@ export function PassCardPage() {
                 title={<Link to={`/transport/${pass.transport}`} style={{ color: 'var(--color-text-primary)' }}>{pass.transport_detail ? pass.transport_detail.type_and_model : 'Транспорт'}</Link>}
               />
               <Can perm="canManageEmployees">
-                <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDisposeModal(true)}>Открепить</Button>
+                <Button variant="secondary" fullWidth style={{ marginTop: 14 }} onClick={() => setDetachModal(true)}>Открепить</Button>
               </Can>
             </>
           ) : (
@@ -198,6 +192,16 @@ export function PassCardPage() {
           onClose={() => setDisposeModal(false)}
           onDone={() => {
             setDisposeModal(false)
+            load()
+          }}
+        />
+      ) : null}
+      {detachModal ? (
+        <PassDetachModal
+          pass={pass}
+          onClose={() => setDetachModal(false)}
+          onDone={() => {
+            setDetachModal(false)
             load()
           }}
         />

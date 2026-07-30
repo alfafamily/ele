@@ -132,7 +132,13 @@ export function AppLayout() {
           <button
             type="button"
             className="ele-rail__pin"
-            onClick={toggleRailPinned}
+            // После открепления снимаем фокус с кнопки: иначе rail держится
+            // раскрытым через :focus-within, пока фокус на кнопке, и не
+            // сворачивается при уходе курсора (только по клику вне меню).
+            onClick={(e) => {
+              toggleRailPinned()
+              e.currentTarget.blur()
+            }}
             aria-label={railPinned ? 'Открепить меню' : 'Закрепить меню'}
             aria-pressed={railPinned}
           >

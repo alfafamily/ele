@@ -18,7 +18,7 @@ import { EquipmentPlacementModal } from './EquipmentPlacementModal.jsx'
 import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
 import { EquipmentRegulationsSection } from './EquipmentRegulationsSection.jsx'
 import { getEquipment, getEquipmentHistoryPath, getEquipmentRegulations } from './equipmentApi.js'
-import { EQUIPMENT_STATUS_LABEL, PLACEMENT_LOCATION_LABEL, planStatusIcon } from './statusLabels.js'
+import { PLACEMENT_LOCATION_LABEL, planStatusIcon } from './statusLabels.js'
 
 // B45. Иконка по типу места на карточке размещения.
 const PLACE_ICON = { storage: 'warehouse', workplace: 'briefcase', common: 'coffee' }
@@ -134,8 +134,7 @@ export function EquipmentCardPage() {
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div className="ele-field-grid">
               <Field label="Учётный номер" value={equipment.inventory_number} mono />
-              <Field label="Тип оборудования" value={equipment.equipment_type_name} />
-              <Field label="Статус" value={equipment.is_written_off ? 'Списано' : equipment.place_detail?.place_type === 'common' ? 'МОП' : EQUIPMENT_STATUS_LABEL[equipment.status]} />
+              <Field label="Вид оборудования" value={equipment.equipment_type_name} />
             </div>
           </Card>
 
@@ -150,7 +149,7 @@ export function EquipmentCardPage() {
                 <Card>
                   <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Параметры оборудования</div>
                   {paramValues.length === 0 ? (
-                    <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>У этого Типа нет реквизитов.</div>
+                    <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>У этого Вида нет реквизитов.</div>
                   ) : (
                     <div className="ele-field-grid">
                       {paramValues.map((fv) => (

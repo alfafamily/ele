@@ -3,7 +3,7 @@ from simple_history.models import HistoricalRecords
 
 
 class EquipmentType(models.Model):
-    """Тип оборудования — классификатор, задающий набор реквизитов."""
+    """Вид оборудования — классификатор, задающий набор реквизитов."""
 
     name = models.CharField("Наименование", max_length=255)
     is_archived = models.BooleanField("Архивный", default=False)
@@ -20,8 +20,8 @@ class EquipmentType(models.Model):
     maintenance_enabled = models.BooleanField("Проведение ТО", default=False)
 
     class Meta:
-        verbose_name = "Тип оборудования"
-        verbose_name_plural = "Типы оборудования"
+        verbose_name = "Вид оборудования"
+        verbose_name_plural = "Виды оборудования"
         ordering = ["name"]
 
     def __str__(self):
@@ -47,7 +47,7 @@ class EquipmentType(models.Model):
 
 
 class EquipmentTypeField(models.Model):
-    """Реквизит типа оборудования — EAV-схема значений, см. EquipmentFieldValue."""
+    """Реквизит вида оборудования — EAV-схема значений, см. EquipmentFieldValue."""
 
     class ValueType(models.TextChoices):
         BOOL = "bool", "Булево"
@@ -71,7 +71,7 @@ class EquipmentTypeField(models.Model):
     order = models.IntegerField("Порядок", default=0)
 
     class Meta:
-        verbose_name = "Реквизит типа оборудования"
+        verbose_name = "Реквизит вида оборудования"
         verbose_name_plural = "Реквизиты типа оборудования"
         ordering = ["order", "id"]
 
@@ -121,7 +121,7 @@ class Equipment(models.Model):
     # PROTECT: удаление Типа с привязанными объектами запрещено на уровне БД
     # — прикладной код (Фаза 4) превращает ProtectedError в 409.
     equipment_type = models.ForeignKey(
-        EquipmentType, verbose_name="Тип оборудования", on_delete=models.PROTECT, related_name="equipment",
+        EquipmentType, verbose_name="Вид оборудования", on_delete=models.PROTECT, related_name="equipment",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     history = HistoricalRecords()

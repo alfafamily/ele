@@ -17,9 +17,9 @@ import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { getEmployee, getEmployeeAssignments, getEmployeeIssuedArchive, restoreEmployee } from './employeesApi.js'
 import { AttachOrCreateModal } from './AttachOrCreateModal.jsx'
 import { PassInfo } from './PassInfo.jsx'
-import { PassDisposeModal } from './PassDisposeModal.jsx'
+import { PassDetachModal } from './PassDetachModal.jsx'
 import { SimCardInfo } from './SimCardInfo.jsx'
-import { SimDisposeModal } from './SimDisposeModal.jsx'
+import { SimDetachModal } from './SimDetachModal.jsx'
 import { TerminateModal } from './TerminateModal.jsx'
 
 // Стили строк/счётчика/квадратной кнопки в блоках карточки.
@@ -52,8 +52,8 @@ export function EmployeeCardPage() {
   const [transportAttach, setTransportAttach] = useState(false)
   const [toolAssign, setToolAssign] = useState(false)
   // Открепление/утилизация — выбор действия (SimDisposeModal/PassDisposeModal).
-  const [disposeSim, setDisposeSim] = useState(null)
-  const [disposePass, setDisposePass] = useState(null)
+  const [detachSim, setDetachSim] = useState(null)
+  const [detachPass, setDetachPass] = useState(null)
   // Подтверждение открепления: { title, message, onConfirm }.
   const [confirm, setConfirm] = useState(null)
   // Открепление на склад: { kind: 'equipment'|'tool', obj }.
@@ -134,8 +134,8 @@ export function EmployeeCardPage() {
 
   // Открепление из карточки сотрудника — через выбор действия (открепить /
   // утилизировать / передать арендодателю), как и на карточке объекта.
-  const askDetachSim = (sim) => setDisposeSim(sim)
-  const askDetachPass = (pass) => setDisposePass(pass)
+  const askDetachSim = (sim) => setDetachSim(sim)
+  const askDetachPass = (pass) => setDetachPass(pass)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -337,7 +337,7 @@ export function EmployeeCardPage() {
           ) : null}
           {heldEquipment.map((eq) => (
             <div key={eq.id} style={ROW}>
-              <LeadIconCircle name="tag" />
+              <LeadIconCircle name="tag" status={acceptanceOf('equipment', eq.id)} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Link to={`/equipment/${eq.id}`} style={{ display: 'block' }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{eq.type_and_model}</div>
@@ -373,7 +373,7 @@ export function EmployeeCardPage() {
           {heldTransport.map((t) => (
             <div key={t.id} style={{ background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8, padding: '11px 13px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <LeadIconCircle name="car" />
+                <LeadIconCircle name="car" status={acceptanceOf('transport', t.id)} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Link to={`/transport/${t.id}`} style={{ display: 'block' }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{t.type_and_model}</div>
@@ -424,7 +424,7 @@ export function EmployeeCardPage() {
           ) : null}
           {heldTools.map((tool) => (
             <div key={tool.id} style={ROW}>
-              <LeadIconCircle name="hammer" />
+              <LeadIconCircle name="hammer" status={acceptanceOf('tool', tool.id)} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Link to={`/tools/${tool.id}`} style={{ display: 'block' }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text-primary)' }}>{tool.name}</div>
@@ -461,7 +461,7 @@ export function EmployeeCardPage() {
           ) : null}
           {heldSims.map((sim) => (
             <div key={sim.id} style={ROW}>
-              <LeadIconCircle name="radio-tower" />
+              <LeadIconCircle name="radio-tower" status={acceptanceOf('sim', sim.id)} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <SimCardInfo sim={sim} />
               </div>
@@ -492,7 +492,7 @@ export function EmployeeCardPage() {
           ) : null}
           {heldPasses.map((pass) => (
             <div key={pass.id} style={ROW}>
-              <LeadIconCircle name="key-square" />
+              <LeadIconCircle name="key-square" status={acceptanceOf('pass', pass.id)} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <PassInfo pass={pass} />
               </div>
@@ -587,23 +587,23 @@ export function EmployeeCardPage() {
         />
       ) : null}
 
-      {disposeSim ? (
-        <SimDisposeModal
-          sim={disposeSim}
-          onClose={() => setDisposeSim(null)}
+      {detachSim ? (
+        <SimDetachModal
+          sim={detachSim}
+          onClose={() => setDetachSim(null)}
           onDone={() => {
-            setDisposeSim(null)
+            setDetachSim(null)
             load()
           }}
         />
       ) : null}
 
-      {disposePass ? (
-        <PassDisposeModal
-          pass={disposePass}
-          onClose={() => setDisposePass(null)}
+      {detachPass ? (
+        <PassDetachModal
+          pass={detachPass}
+          onClose={() => setDetachPass(null)}
           onDone={() => {
-            setDisposePass(null)
+            setDetachPass(null)
             load()
           }}
         />

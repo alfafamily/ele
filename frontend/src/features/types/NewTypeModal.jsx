@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Banner, Button, Checkbox, Input, Modal } from '../../shared/ui'
 
-// Модалка создания Типа. Доменные поля:
+// Модалка создания Вида имущества. Доменные поля:
 //  · equipment — чекбокс «Установка SIM/E-SIM» (B17);
-//  · license  — выбор вида «Программная/Аппаратная» (B18), обязателен и после
-//    создания не меняется (определяет ключевой реквизит Типа).
+//  · license  — выбор типа «Программная/Аппаратная» (B18), обязателен и после
+//    создания не меняется (определяет ключевой реквизит Вида).
 export function NewTypeModal({ domain, onClose, onCreate }) {
   const [name, setName] = useState('')
   const [allowsSim, setAllowsSim] = useState(false)
@@ -32,20 +32,20 @@ export function NewTypeModal({ domain, onClose, onCreate }) {
           : { allows_sim: allowsSim, allows_license: allowsLicense, maintenance_enabled: maintenanceEnabled }
       await onCreate(name, extra)
     } catch (err) {
-      setError(err.errors ? Object.values(err.errors).flat().join(' ') : err.detail || 'Не удалось создать тип.')
+      setError(err.errors ? Object.values(err.errors).flat().join(' ') : err.detail || 'Не удалось создать вид.')
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <Modal open onClose={onClose} title="Новый тип">
+    <Modal open onClose={onClose} title="Новый вид">
       {error ? <Banner variant="error">{error}</Banner> : null}
       <Input label="Наименование" required autoFocus value={name} onChange={(e) => setName(e.target.value)} />
 
       {isLicense ? (
         <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Вид лицензии</div>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Тип лицензии</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[
               { value: 'software', label: 'Программная', hint: 'Ключевой реквизит — «Номер/ключ».' },
@@ -61,7 +61,7 @@ export function NewTypeModal({ domain, onClose, onCreate }) {
             ))}
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 8 }}>
-            Вид задаётся один раз и не меняется после создания типа.
+            Тип задаётся один раз и не меняется после создания вида.
           </div>
         </div>
       ) : isTransport ? (
@@ -94,13 +94,13 @@ export function NewTypeModal({ domain, onClose, onCreate }) {
           <div>
             <Checkbox label="В оборудование можно устанавливать SIM/E-SIM" checked={allowsSim} onChange={setAllowsSim} />
             <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2, marginLeft: 30 }}>
-              Только в оборудование этого типа можно будет устанавливать SIM/E-SIM.
+              Только в оборудование этого вида можно будет устанавливать SIM/E-SIM.
             </div>
           </div>
           <div>
             <Checkbox label="К оборудованию можно привязывать лицензии" checked={allowsLicense} onChange={setAllowsLicense} />
             <div style={{ fontSize: 11.5, color: 'var(--color-text-placeholder)', marginTop: 2, marginLeft: 30 }}>
-              Только у оборудования этого типа будет блок «Установленные лицензии».
+              Только у оборудования этого вида будет блок «Установленные лицензии».
             </div>
           </div>
           <div>

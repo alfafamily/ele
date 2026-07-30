@@ -10,10 +10,9 @@ import { AttachEquipmentModal } from './AttachEquipmentModal.jsx'
 import { DetachToStorageModal } from '../employees/DetachToStorageModal.jsx'
 import { detachLicenseFromEquipment, getLicense, getLicenseHistoryPath } from './licensesApi.js'
 import { MaskedKeyField } from './MaskedKeyField.jsx'
-import { LICENSE_STATUS_LABEL } from './statusLabels.js'
 import { UtilizeModal } from './UtilizeModal.jsx'
 
-// B18: вид лицензии (Программная/Аппаратная) — свойство её Типа.
+// B18: тип лицензии (Программная/Аппаратная) — свойство её Вида.
 const KIND_LABEL = { software: 'Программная', hardware: 'Аппаратная' }
 
 export function LicenseCardPage() {
@@ -108,9 +107,8 @@ export function LicenseCardPage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
           <div className="ele-field-grid">
-            <Field label="Тип лицензии" value={license.license_type_name} />
-            <Field label="Вид лицензии" value={KIND_LABEL[license.license_type_kind] || '—'} />
-            <Field label="Статус" value={license.is_retired ? 'Утилизирована' : LICENSE_STATUS_LABEL[license.status]} />
+            <Field label="Вид лицензии" value={license.license_type_name} />
+            <Field label="Тип лицензии" value={KIND_LABEL[license.license_type_kind] || '—'} />
           </div>
         </Card>
 
@@ -125,7 +123,7 @@ export function LicenseCardPage() {
               <Card>
                 <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Параметры лицензии</div>
                 {paramValues.length === 0 ? (
-                  <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>У этого Типа нет реквизитов.</div>
+                  <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>У этого Вида нет реквизитов.</div>
                 ) : (
                   <div className="ele-field-grid">
                     {paramValues.map((fv) =>

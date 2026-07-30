@@ -75,11 +75,11 @@ export function FieldFormModal({ field, checkImpact, onClose, onSave }) {
         <p style={{ fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
           {impactCount > 0 ? (
             <>
-              По этому Типу уже есть <b style={{ color: 'var(--color-text-primary)' }}>{impactCount} {impactCount === 1 ? 'объект' : 'объектов'}</b> без
+              По этому Виду уже есть <b style={{ color: 'var(--color-text-primary)' }}>{impactCount} {impactCount === 1 ? 'объект' : 'объектов'}</b> без
               значения «{name}». Обязательность будет применена при следующем редактировании таких объектов (кроме списания/утилизации).
             </>
           ) : (
-            'У всех существующих объектов этого Типа значение уже заполнено.'
+            'У всех существующих объектов этого Вида значение уже заполнено.'
           )}
         </p>
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>

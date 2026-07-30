@@ -131,8 +131,8 @@ export function EquipmentListPage() {
         <Can perm="canManageEquipment">
           <div className="ele-page-head__actions">
             <Link to="/equipment-types">
-              <Button variant="secondary" title="Настроить типы" aria-label="Настроить типы">
-                <span className="ele-only-desktop">Настроить типы</span>
+              <Button variant="secondary" title="Настроить виды" aria-label="Настроить виды">
+                <span className="ele-only-desktop">Настроить виды</span>
                 <Icon className="ele-only-mobile" name="columns-3-cog" size={20} strokeWidth={1.9} />
               </Button>
             </Link>
@@ -181,7 +181,7 @@ export function EquipmentListPage() {
                       <TypeRequisiteFilter
                         endpoint="/api/equipment-types/"
                         valuesBase="/api/equipment/field-values/"
-                        label="Тип оборудования"
+                        label="Вид оборудования"
                         types={draft.types}
                         onTypesChange={(t) => set({ types: t })}
                         req={draft.req}

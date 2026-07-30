@@ -49,17 +49,17 @@ export function MaintenanceTypeScope({ allTypes, typeIds, onChange, domain = 'eq
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>Право выполнять ТО по типам {isTransport ? 'транспорта' : 'оборудования'}</div>
+      <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>Право выполнять ТО по видам {isTransport ? 'транспорта' : 'оборудования'}</div>
       <div style={{ display: 'flex', gap: 20 }}>
-        {radio(true, 'Все типы')}
-        {radio(false, 'Некоторые типы')}
+        {radio(true, 'Все виды')}
+        {radio(false, 'Некоторые виды')}
       </div>
 
       {!allTypes ? (
         types === null ? (
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Загрузка…</div>
         ) : types.length === 0 ? (
-          <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>{isTransport ? 'Типы транспорта пока не созданы.' : 'Нет типов с включённым ТО.'}</div>
+          <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>{isTransport ? 'Виды транспорта пока не созданы.' : 'Нет видов с включённым ТО.'}</div>
         ) : (
           <>
             <input

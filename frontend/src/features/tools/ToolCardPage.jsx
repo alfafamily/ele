@@ -209,7 +209,7 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove, onTransfer })
     })
   const openWriteOff = () =>
     setMoveModal({
-      title: 'Списать единицы',
+      title: 'Списать',
       confirmLabel: 'Списать',
       storage: 'writeoff',
       storageRequired: tool.free_unplaced <= 0,

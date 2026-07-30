@@ -22,7 +22,7 @@ function ScopeBlock({ title, all, onAll, types, selected, onToggle }) {
       {!all ? (
         types.length === 0 ? (
           <div style={{ fontSize: 13.5, color: 'var(--color-text-placeholder)' }}>
-            Типы пока не созданы.
+            Виды пока не созданы.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -88,7 +88,7 @@ export function TypeScopeModal({ open, item, equipmentTypes, transportTypes, onC
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Получать уведомления по типам">
+    <Modal open={open} onClose={onClose} title="Получать уведомления по видам">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         {domains.includes('equipment') ? (
           <ScopeBlock
