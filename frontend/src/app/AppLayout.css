@@ -336,10 +336,18 @@
 
 /* Блок вкладок в строке управления списком выравниваем по высоте поля Поиска и
    кнопки «Фильтры» (--control-height): без этого подложка табов ниже соседей и
-   ряд выглядит неровным на десктопе. */
+   ряд выглядит неровным на десктопе. Плашки внутри тянутся на всю высоту
+   подложки (align-items: stretch) — иначе активная плашка осталась бы низкой, а
+   сверху/снизу зияли бы пустые поля. */
 .ele-list-controls__tabs .ele-tabbar {
   min-height: var(--control-height);
+  align-items: stretch;
+}
+
+.ele-list-controls__tabs .ele-tabbar__item {
+  display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 @media (max-width: 768px) {
