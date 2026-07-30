@@ -334,6 +334,14 @@
   min-width: 0;
 }
 
+/* Блок вкладок в строке управления списком выравниваем по высоте поля Поиска и
+   кнопки «Фильтры» (--control-height): без этого подложка табов ниже соседей и
+   ряд выглядит неровным на десктопе. */
+.ele-list-controls__tabs .ele-tabbar {
+  min-height: var(--control-height);
+  align-items: center;
+}
+
 @media (max-width: 768px) {
   .ele-list-controls {
     flex-wrap: wrap;

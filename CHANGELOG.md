@@ -16,6 +16,17 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.30.3] — 2026-07-30
+
+### Изменено
+- **Имя сотрудника в списках имущества.** «Фамилия Имя» теперь размещаются в одну
+  строку, когда позволяет ширина; если места не хватает — имя переносится на
+  вторую строку, а лишнее скрывается многоточием (не более двух строк). Раньше
+  имя всегда переносилось на отдельную строку.
+- **Ровный ряд управления списками.** Блок вкладок (Активные/Архив…) выровнен по
+  высоте с полем поиска и кнопкой «Фильтры» — ряд на десктопе больше не выглядит
+  неровным.
+
 ## [1.30.2] — 2026-07-30
 
 ### Исправлено
@@ -1765,7 +1776,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.30.2...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.30.3...HEAD
+[1.30.3]: https://github.com/alfafamily/ele/compare/v1.30.2...v1.30.3
 [1.30.2]: https://github.com/alfafamily/ele/compare/v1.30.1...v1.30.2
 [1.30.1]: https://github.com/alfafamily/ele/compare/v1.30.0...v1.30.1
 [1.30.0]: https://github.com/alfafamily/ele/compare/v1.29.0...v1.30.0
