@@ -319,3 +319,39 @@ class StorageSpaceEndpointTests(APITestCase):
         self.assertIn("app", resp.data)
         self.assertEqual(resp.data["app"]["kind"], "local")
         self.assertIsNone(resp.data["backup_s3"])
+
+
+class InlineFileViewTests(APITestCase):
+    """Same-origin прокси файла для PDF-просмотрщика (обход CORS S3-ссылок)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(email="inline@e.com", password="Str0ng!Pass1")
+
+    def _store(self, name, content, ct):
+        return store_uploaded_file(SimpleUploadedFile(name, content, content_type=ct), "test-inline")
+
+    def test_streams_pdf_same_origin(self):
+        sf = self._store("plan.pdf", b"%PDF-1.4 test-bytes", "application/pdf")
+        self.client.force_authenticate(self.user)
+        resp = self.client.get(f"/api/files/{sf.id}/inline/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp["Content-Type"], "application/pdf")
+        self.assertEqual(resp["X-Content-Type-Options"], "nosniff")
+        self.assertNotIn("Content-Security-Policy", resp)  # у PDF sandbox нет
+        self.assertEqual(b"".join(resp.streaming_content), b"%PDF-1.4 test-bytes")
+
+    def test_non_pdf_gets_sandbox(self):
+        sf = self._store("x.html", b"<b>hi</b>", "text/html")
+        self.client.force_authenticate(self.user)
+        resp = self.client.get(f"/api/files/{sf.id}/inline/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp["Content-Security-Policy"], "sandbox")
+
+    def test_requires_auth(self):
+        sf = self._store("plan.pdf", b"%PDF", "application/pdf")
+        resp = self.client.get(f"/api/files/{sf.id}/inline/")
+        self.assertIn(resp.status_code, (401, 403))
+
+    def test_missing_file_404(self):
+        self.client.force_authenticate(self.user)
+        self.assertEqual(self.client.get("/api/files/999999/inline/").status_code, 404)

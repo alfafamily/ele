@@ -16,6 +16,20 @@ function detectKind(file) {
   return 'other'
 }
 
+// PDF.js читает байты через fetch — кросс-доменные ссылки (подписанный URL S3)
+// режет CORS. Если файл на другом origin, грузим его через same-origin прокси
+// бэкенда; локальные /media-ссылки берём напрямую (тот же origin, без прокси).
+function pdfFetchUrl(file) {
+  try {
+    if (new URL(file.url, window.location.href).origin !== window.location.origin) {
+      return `/api/files/${file.id}/inline/`
+    }
+  } catch {
+    // невалидный URL — используем как есть
+  }
+  return file.url
+}
+
 function formatSize(bytes) {
   if (bytes == null) return ''
   if (bytes < 1024) return `${bytes} Б`
@@ -98,7 +112,7 @@ export function FilePreviewModal({ files, file, startIndex = 0, onClose }) {
             // умеют показывать PDF во встроенном <iframe>, поэтому от iframe ушли.
             // PDF отдаётся с Content-Type: application/pdf (+nosniff в проде),
             // исполняемого html/js в нём быть не может — stored XSS исключён.
-            <PdfView url={current.url} onError={() => setRenderError(true)} />
+            <PdfView url={pdfFetchUrl(current)} onError={() => setRenderError(true)} />
           ) : kind === 'text' ? (
             // Текстовый файл может реально оказаться text/html — sandbox=""
             // (изолированный opaque origin без разрешения скриптов) нейтрализует
