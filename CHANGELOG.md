@@ -16,6 +16,14 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.30.4] — 2026-07-30
+
+### Исправлено
+- **Ровный ряд управления списками (доводка 1.30.3).** После выравнивания
+  подложки вкладок по высоте с полем поиска сами плашки (Активное/Списанное и
+  т.п.) оставались низкими, из-за чего сверху и снизу зияли пустые поля. Теперь
+  плашки растягиваются на всю высоту подложки.
+
 ## [1.30.3] — 2026-07-30
 
 ### Изменено
@@ -1776,7 +1784,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.30.3...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.30.4...HEAD
+[1.30.4]: https://github.com/alfafamily/ele/compare/v1.30.3...v1.30.4
 [1.30.3]: https://github.com/alfafamily/ele/compare/v1.30.2...v1.30.3
 [1.30.2]: https://github.com/alfafamily/ele/compare/v1.30.1...v1.30.2
 [1.30.1]: https://github.com/alfafamily/ele/compare/v1.30.0...v1.30.1
