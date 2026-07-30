@@ -154,6 +154,12 @@
   margin-top: 24px;
 }
 
+/* Абзац/список сразу после блока-подраздела — отделяем, чтобы не «слипался». */
+.ele-guide__sub + .ele-guide__p,
+.ele-guide__sub + .ele-guide__list {
+  margin-top: 24px;
+}
+
 .ele-guide__sub-title {
   font-size: 16.5px;
   font-weight: 600;
@@ -207,6 +213,11 @@
   word-break: break-word;
 }
 
+.ele-guide__inline-icon {
+  vertical-align: -3px;
+  margin: 0 2px;
+}
+
 .ele-guide__table-scroll {
   overflow-x: auto;
   margin-bottom: 12px;
@@ -241,7 +252,9 @@
 
 .ele-guide__table th:first-child,
 .ele-guide__table td:first-child {
-  white-space: nowrap;
+  width: 240px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* На мобильном таблица не помещается по ширине, а её горизонтальный скролл
@@ -276,6 +289,7 @@
     white-space: normal;
   }
   .ele-guide__table td:first-child {
+    width: auto;
     white-space: normal;
     font-size: 16.5px;
     font-weight: 600;

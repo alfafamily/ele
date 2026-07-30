@@ -19,7 +19,7 @@ const CACHE_KEY = 'pass-list'
 
 const TABS = [
   { value: 'active', label: 'Активные' },
-  { value: 'utilized', label: 'Утилизировано' },
+  { value: 'utilized', label: 'Утилизированные' },
 ]
 const OBJECT_TYPE_FILTERS = [
   { value: 'all', label: 'Все' },

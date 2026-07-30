@@ -18,7 +18,7 @@ const CACHE_KEY = 'sim-list'
 
 const TABS = [
   { value: 'active', label: 'Активные' },
-  { value: 'utilized', label: 'Утилизировано' },
+  { value: 'utilized', label: 'Утилизированные' },
 ]
 const SIM_TYPE_FILTERS = [
   { value: 'all', label: 'Все' },

@@ -25,8 +25,8 @@ const MAINTENANCE_FILTERS = [
 ]
 
 const TABS = [
-  { value: 'active', label: 'Активное' },
-  { value: 'archive', label: 'Списанное' },
+  { value: 'active', label: 'Активный' },
+  { value: 'archive', label: 'Списанный' },
 ]
 const ASSIGNED_OPTIONS = [
   { value: 'none', label: 'Не важно' },

@@ -33,12 +33,22 @@ function GuideLink({ id, children }) {
   )
 }
 
-// Инлайновое форматирование: **жирный**, {!красный акцент!} и ссылки [текст](#id)
-// внутри строки.
+// Цвета инлайновых иконок в тексте (совпадают со статусами ТО, см. statusLabels.js).
+const GUIDE_ICON_COLORS = {
+  red: 'var(--color-error)',
+  yellow: 'var(--color-warning)',
+  green: 'var(--color-success)',
+  gray: 'var(--color-text-placeholder)',
+}
+
+// Инлайновое форматирование: **жирный**, {!красный акцент!}, иконка {icon:имя:цвет}
+// и ссылки [текст](#id) внутри строки.
 function renderInline(text) {
-  return text.split(/(\*\*[^*]+\*\*|\{![^}]+!\}|\[[^\]]+\]\(#[a-z-]+\))/g).map((part, i) => {
+  return text.split(/(\*\*[^*]+\*\*|\{![^}]+!\}|\{icon:[a-z0-9-]+:[a-z]+\}|\[[^\]]+\]\(#[a-z-]+\))/g).map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>
     if (part.startsWith('{!') && part.endsWith('!}')) return <span key={i} className="ele-guide__danger">{part.slice(2, -2)}</span>
+    const icon = part.match(/^\{icon:([a-z0-9-]+):([a-z]+)\}$/)
+    if (icon) return <Icon key={i} name={icon[1]} size={16} strokeWidth={2} className="ele-guide__inline-icon" style={{ color: GUIDE_ICON_COLORS[icon[2]] || 'var(--color-text-muted)' }} />
     const link = part.match(/^\[([^\]]+)\]\(#([a-z-]+)\)$/)
     if (link) return <GuideLink key={i} id={link[2]}>{link[1]}</GuideLink>
     return part
