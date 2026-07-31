@@ -171,26 +171,6 @@ function EquipmentLine({ eq, acceptance }) {
   )
 }
 
-// Блок «Имущество» места: оборудование (с вложенными SIM/лицензиями) + инструменты.
-export function PropertyBlock({ equipment, tools }) {
-  const empty = !equipment.length && !tools.length
-  if (empty) return <div style={{ fontSize: 13, ...MUTED, padding: '4px 0' }}>Имущество не закреплено.</div>
-  return (
-    <div>
-      {equipment.length ? (
-        <CategoryRow label="Оборудование">
-          {equipment.map((eq) => <EquipmentLine key={eq.id} eq={eq} />)}
-        </CategoryRow>
-      ) : null}
-      {tools.length ? (
-        <CategoryRow label="Инструменты">
-          {tools.map((t) => <Line key={t.id} icon="hammer">{t.name} <span style={MUTED}>× {t.quantity}</span></Line>)}
-        </CategoryRow>
-      ) : null}
-    </div>
-  )
-}
-
 // Блок имущества, закреплённого напрямую за сотрудником: оборудование (с
 // вложенными SIM/лицензиями), инструменты, SIM за сотрудником, пропуска/ключи,
 // транспорт. У каждого объекта — иконка статуса акцепта (B32).

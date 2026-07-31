@@ -20,14 +20,10 @@ export const getEmployeeIssuedArchive = (id) => apiGet(`/api/employees/${id}/iss
 export const getEmployeeAssignments = (id) =>
   apiGet(`/api/assignments/?employee=${id}&open=1`).then((d) => d.results || d)
 
-// B32: контрольный подраздел «Операции закрепления» (admin/accountant).
-export const getAssignments = (params = '') => apiGet(`/api/assignments/${params}`)
-
 // Корпоративные SIM/E-SIM — самостоятельный раздел + привязка из карточки Сотрудника.
 export const getSimCard = (id) => apiGet(`/api/sim-cards/${id}/`)
 export const createSimCard = (payload) => apiPost('/api/sim-cards/', payload)
 export const updateSimCard = (id, payload) => apiPatch(`/api/sim-cards/${id}/`, payload)
-export const deleteSimCard = (id) => apiRequest(`/api/sim-cards/${id}/`, { method: 'DELETE' })
 export const attachSimCard = (id, employeeId) =>
   apiPost(`/api/sim-cards/${id}/attach/`, { mode: 'employee', employee: employeeId })
 export const attachSimToEquipment = (id, equipmentId) =>
@@ -44,7 +40,6 @@ export const getSimProviders = () => apiGet('/api/sim-cards/providers/')
 export const getPass = (id) => apiGet(`/api/access-passes/${id}/`)
 export const createPass = (payload) => apiPost('/api/access-passes/', payload)
 export const updatePass = (id, payload) => apiPatch(`/api/access-passes/${id}/`, payload)
-export const deletePass = (id) => apiRequest(`/api/access-passes/${id}/`, { method: 'DELETE' })
 export const attachPass = (id, employeeId) => apiPost(`/api/access-passes/${id}/attach/`, { employee: employeeId })
 // B34. Закрепить транспортный пропуск за единицей транспорта.
 export const attachPassToTransport = (id, transportId) =>

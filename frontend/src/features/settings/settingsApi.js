@@ -8,7 +8,6 @@ export const uploadCompanyLogo = (file) => {
   return apiRequest('/api/company/logo/', { method: 'POST', body: formData })
 }
 export const deleteCompanyLogo = () => apiDelete('/api/company/logo/')
-export const getStorageMode = () => apiGet('/api/company/storage-mode/')
 export const updateStorageMode = (mode) => apiPatch('/api/company/storage-mode/', { storage_mode: mode })
 export const getStorageMigrationStatus = () => apiGet('/api/company/storage-migration-status/')
 export const retryStorageMigration = () => apiPost('/api/company/storage-migration-retry/')

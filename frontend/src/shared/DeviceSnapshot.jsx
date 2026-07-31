@@ -57,7 +57,7 @@ export function DeviceSnapshotChip({ snapshot }) {
   )
 }
 
-export function DeviceSnapshotModal({ snapshot, onClose }) {
+function DeviceSnapshotModal({ snapshot, onClose }) {
   const rows = snapshotRows(snapshot)
   return (
     <Modal open onClose={onClose} title="Слепок устройства">

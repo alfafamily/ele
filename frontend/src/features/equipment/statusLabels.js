@@ -1,10 +1,3 @@
-export const EQUIPMENT_STATUS_LABEL = {
-  assigned: 'За сотрудником',
-  stationary: 'На рабочем месте',
-  free: 'На складе',
-}
-export const EQUIPMENT_STATUS_VARIANT = { assigned: 'assigned', stationary: 'assigned', free: 'free' }
-
 // B45. Метка размещения по типу места (для карточки/списка, где известен
 // конкретный place_type): склад / рабочее место / МОП.
 export const PLACEMENT_LOCATION_LABEL = {
@@ -15,14 +8,14 @@ export const PLACEMENT_LOCATION_LABEL = {
 
 // B13+. Статус одного плана ТО (по регламенту). null — не контролируется
 // (регламент «по потребности», отменён или ещё нет активных регламентов).
-export const MAINTENANCE_STATUS_LABEL = {
+const MAINTENANCE_STATUS_LABEL = {
   scheduled: 'Запланировано',
   due_soon: 'Подходит дата ТО',
   overdue: 'ТО просрочено',
   not_planned: 'Дата ТО не задана',
 }
 
-export const MAINTENANCE_STATUS_COLOR = {
+const MAINTENANCE_STATUS_COLOR = {
   scheduled: 'var(--color-success)',
   due_soon: 'var(--color-warning)',
   overdue: 'var(--color-error)',

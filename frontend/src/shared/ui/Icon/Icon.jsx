@@ -35,5 +35,3 @@ export function Icon({ name, size = 22, strokeWidth = 1.8, className, style, tit
     />
   )
 }
-
-export default Icon
