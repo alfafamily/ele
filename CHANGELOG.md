@@ -16,6 +16,16 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.31.4] — 2026-07-31
+
+### Изменено
+- **Внутреннее (без изменений в интерфейсе):** чистка мёртвого/мусорного кода.
+  На бэкенде удалены неиспользуемые импорты и локальные присваивания; на
+  фронтенде — мёртвые файлы, экспорты и ре-экспорты. Поведение не менялось.
+- **CI:** добавлены гейты мёртвого кода, чтобы неиспользуемый код и импорты не
+  накапливались, — `ruff` (правила F401/F811/F841) в бэкенд-джобе и `knip` во
+  фронтенд-джобе.
+
 ## [1.31.3] — 2026-07-31
 
 ### Изменено
@@ -1892,7 +1902,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.3...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.4...HEAD
+[1.31.4]: https://github.com/alfafamily/ele/compare/v1.31.3...v1.31.4
 [1.31.3]: https://github.com/alfafamily/ele/compare/v1.31.2...v1.31.3
 [1.31.2]: https://github.com/alfafamily/ele/compare/v1.31.1...v1.31.2
 [1.31.1]: https://github.com/alfafamily/ele/compare/v1.31.0...v1.31.1
