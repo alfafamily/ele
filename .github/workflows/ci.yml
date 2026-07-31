@@ -22,6 +22,10 @@ jobs:
       - run: npm ci
       - name: Lint (oxlint)
         run: npm run lint
+      - name: Dead code (knip)
+        # KNIP_DISABLE_RAW_TRANSFER — oxc-parser в raw-режиме резервирует ~6 ГБ
+        # ArrayBuffer на файл; отключаем ради детерминизма на CI-раннерах.
+        run: KNIP_DISABLE_RAW_TRANSFER=1 npx knip
       - name: Build
         run: npm run build
 
@@ -57,6 +61,8 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements/dev.txt
       - run: pip install -r requirements/dev.txt
+      - name: Dead code (ruff)
+        run: ruff check .
       - name: Django system checks
         run: python manage.py check
       - name: Missing migrations guard
