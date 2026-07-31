@@ -76,6 +76,10 @@ function Block({ block }) {
   switch (block.type) {
     case 'p':
       return <p className="ele-guide__p">{renderInline(block.text)}</p>
+    case 'mheading':
+      // Плашка-заголовок перед таблицей — видна только в мобильной раскладке,
+      // где таблицы разложены в стопку и теряют заголовки колонок (см. CSS).
+      return <div className="ele-guide__mheading">{renderInline(block.text)}</div>
     case 'ul':
       return <List items={block.items} />
     case 'note':
@@ -113,7 +117,7 @@ function Block({ block }) {
     case 'sub':
       return (
         <div className="ele-guide__sub">
-          <div className="ele-guide__sub-title">{block.title}</div>
+          <div className={'ele-guide__sub-title' + (block.plaqueOnMobile ? ' ele-guide__sub-title--plaque' : '')}>{block.title}</div>
           {block.blocks.map((b, i) => (
             <Block key={i} block={b} />
           ))}

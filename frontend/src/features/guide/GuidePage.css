@@ -168,6 +168,12 @@
   margin-bottom: 12px;
 }
 
+/* Плашка-заголовок перед таблицей — только для мобильной раскладки. На десктопе
+   таблицы имеют собственные заголовки колонок, поэтому плашка скрыта. */
+.ele-guide__mheading {
+  display: none;
+}
+
 .ele-guide__note {
   background: var(--color-info-bg);
   border-radius: var(--radius-control);
@@ -263,6 +269,25 @@
 @media (max-width: 768px) {
   .ele-guide__table-scroll {
     overflow-x: visible;
+  }
+  /* Заголовки-плашки, отделяющие «карточки» одной таблицы от другой (заливка
+     как у заголовков таблиц). Плашка перед таблицей и такая же — у подзаголовка
+     «уведомления». */
+  .ele-guide__mheading {
+    display: block;
+    background: var(--color-fill-input);
+    border-radius: var(--radius-control);
+    padding: 9px 12px;
+    margin: 20px 0 12px;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.15px;
+    color: var(--color-text-primary);
+  }
+  .ele-guide__sub-title--plaque {
+    background: var(--color-fill-input);
+    border-radius: var(--radius-control);
+    padding: 9px 12px;
   }
   .ele-guide__table,
   .ele-guide__table tbody,
