@@ -42,11 +42,14 @@ export function EmployeesReportPage() {
           onToggle={toggle}
           search
           chips
+          loading={data === null}
           emptyText="Сотрудников нет"
         />
-        <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 6 }}>
-          Не выбрано — отчёт по всем сотрудникам.
-        </div>
+        {selectedIds.length ? null : (
+          <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 6 }}>
+            Не выбрано — отчёт по всем сотрудникам.
+          </div>
+        )}
       </div>
       <AcceptanceLegend />
     </div>
