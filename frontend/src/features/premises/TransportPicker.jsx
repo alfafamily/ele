@@ -5,12 +5,13 @@ import { getTransportPicker } from './premisesApi.js'
 
 // Подбор Транспорта компании (для закрепления за парковочным местом) — по
 // образцу EmployeePicker: поиск + список результатов, клик выбирает объект.
-export function TransportPicker({ onSelect, excludeIds, purpose }) {
+export function TransportPicker({ onSelect, excludeIds, purpose, error }) {
   const [query, setQuery] = useState('')
   const debounced = useDebouncedValue(query, 250)
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
   const excludeSet = new Set(excludeIds || [])
+  const errorText = Array.isArray(error) ? error[0] : error
 
   useEffect(() => {
     let cancelled = false
@@ -33,7 +34,7 @@ export function TransportPicker({ onSelect, excludeIds, purpose }) {
     <div>
       <div
         style={{
-          height: 40, background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-primary)',
+          height: 40, background: 'var(--color-surface)', boxShadow: `inset 0 0 0 1px ${errorText ? 'var(--color-error)' : 'var(--color-primary)'}`,
           borderRadius: 10, display: 'flex', alignItems: 'center', gap: 9, padding: '0 12px',
         }}
       >
@@ -45,6 +46,7 @@ export function TransportPicker({ onSelect, excludeIds, purpose }) {
           style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13.5, fontFamily: 'inherit' }}
         />
       </div>
+      {errorText ? <div className="ele-field__error-text" style={{ marginTop: 5 }}>{errorText}</div> : null}
       {loading && results.length === 0 ? (
         <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Загрузка…</div>
       ) : visible.length === 0 ? (

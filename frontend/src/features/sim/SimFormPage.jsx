@@ -42,6 +42,7 @@ export function SimFormPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
+  const [placeError, setPlaceError] = useState(null)
 
   useEffect(() => {
     getSimOperators().then(setOperators)
@@ -52,10 +53,10 @@ export function SimFormPage() {
     if (employeeId) apiGet(`/api/employees/${employeeId}/`).then(setPlacementEmployee).catch(() => {})
   }, [employeeId])
 
-  // E-SIM виртуальна — на складе не хранится: если был выбран склад, переключаем
-  // на сотрудника (для E-SIM доступно только закрепление за сотрудником).
+  // E-SIM виртуальна — на складе не хранится: режим «На складе» ей недоступен,
+  // вместо него — «Свободна» (у оператора).
   useEffect(() => {
-    if (simType === 'esim' && placementMode === 'storage') setPlacementMode('employee')
+    if (simType === 'esim' && placementMode === 'storage') setPlacementMode('free')
   }, [simType, placementMode])
 
   useEffect(() => {
@@ -79,15 +80,29 @@ export function SimFormPage() {
 
   const submit = async (e) => {
     e.preventDefault()
-    // Клиентская валидация обязательного номера — понятная ошибка сразу под полем.
-    if (!phoneNumber.trim()) {
-      setFieldErrors({ phone_number: 'Укажите номер телефона.' })
+    // Клиентская валидация обязательных полей — понятная ошибка сразу под полем.
+    const fe = {}
+    if (!phoneNumber.trim()) fe.phone_number = 'Укажите номер телефона.'
+    let placeErr = null
+    if (!isEdit) {
+      if (placementMode === 'employee') {
+        if (!placementEmployee) placeErr = 'Выберите сотрудника.'
+      } else if (placementMode === 'equipment') {
+        if (!placementEquipment) placeErr = 'Выберите оборудование.'
+      } else if (placementMode === 'storage' && !storagePlaceId) {
+        placeErr = 'Укажите место хранения.'
+      }
+      // 'free' (только E-SIM) — свободна: размещение не задаётся.
+    }
+    setFieldErrors(fe)
+    setPlaceError(placeErr)
+    if (Object.keys(fe).length || placeErr) {
       setError(null)
       return
     }
+
     setSubmitting(true)
     setError(null)
-    setFieldErrors({})
     const payload = {
       sim_type: simType,
       phone_number: phoneNumber,
@@ -98,28 +113,13 @@ export function SimFormPage() {
     // (E-SIM — за сотрудником/в оборудовании или свободна, без склада).
     if (!isEdit) {
       if (placementMode === 'employee') {
-        if (placementEmployee) {
-          payload.employee = placementEmployee.id
-        } else if (simType !== 'esim') {
-          setError('Выберите сотрудника, оборудование или место хранения.')
-          setSubmitting(false)
-          return
-        }
+        payload.employee = placementEmployee.id
       } else if (placementMode === 'equipment') {
-        if (!placementEquipment) {
-          setError('Выберите оборудование.')
-          setSubmitting(false)
-          return
-        }
         payload.equipment = placementEquipment.id
-      } else {
-        if (!storagePlaceId) {
-          setError('Укажите место хранения для свободной SIM-карты.')
-          setSubmitting(false)
-          return
-        }
+      } else if (placementMode === 'storage') {
         payload.storage_place = Number(storagePlaceId)
       }
+      // 'free' (E-SIM) — ничего не задаём: карта создаётся свободной.
     }
     if (!isEdit && comment.trim()) payload.comment = comment.trim()
     try {
@@ -220,18 +220,20 @@ export function SimFormPage() {
                 <>
                   <ModeToggle
                     mode={placementMode}
-                    onChange={(m) => { setPlacementMode(m); setStoragePlaceId(''); setPlacementEquipment(null) }}
+                    onChange={(m) => { setPlacementMode(m); setStoragePlaceId(''); setPlacementEquipment(null); setPlaceError(null) }}
                     options={[
                       { value: 'employee', label: 'За сотрудником' },
                       { value: 'equipment', label: 'В оборудовании' },
-                      ...(simType !== 'esim' ? [{ value: 'storage', label: 'На складе' }] : []),
+                      simType === 'esim'
+                        ? { value: 'free', label: 'Свободна' }
+                        : { value: 'storage', label: 'На складе' },
                     ]}
                   />
                   {placementMode === 'employee' ? (
                     placementEmployee ? (
                       <SelectedEmployee employee={placementEmployee} onClear={() => setPlacementEmployee(null)} />
                     ) : (
-                      <EmployeePicker onSelect={setPlacementEmployee} />
+                      <EmployeePicker error={placeError} onSelect={(emp) => { setPlacementEmployee(emp); setPlaceError(null) }} />
                     )
                   ) : placementMode === 'equipment' ? (
                     placementEquipment ? (
@@ -246,11 +248,11 @@ export function SimFormPage() {
                         </button>
                       </div>
                     ) : (
-                      <EquipmentPicker simOnly onSelect={setPlacementEquipment} />
+                      <EquipmentPicker simOnly error={placeError} onSelect={(eq) => { setPlacementEquipment(eq); setPlaceError(null) }} />
                     )
-                  ) : (
-                    <PlaceSelect placeType="storage" label={null} required value={storagePlaceId} onChange={setStoragePlaceId} />
-                  )}
+                  ) : placementMode === 'storage' ? (
+                    <PlaceSelect placeType="storage" label={null} required value={storagePlaceId} onChange={(v) => { setStoragePlaceId(v); setPlaceError(null) }} error={placeError} />
+                  ) : null}
                 </>
               )}
             </Card>

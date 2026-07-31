@@ -60,6 +60,10 @@ export function PassFormPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
+  // Ошибки под полями: placeError — под пикером размещения; accessError — под
+  // набором зданий/помещений/мест (объект доступа).
+  const [placeError, setPlaceError] = useState(null)
+  const [accessError, setAccessError] = useState(null)
   const [genLoading, setGenLoading] = useState(false)
 
   const isKey = objectType === 'key'
@@ -239,9 +243,34 @@ export function PassFormPage() {
 
   const submit = async (e) => {
     e.preventDefault()
+    // Клиентская валидация — понятная ошибка сразу у нужного блока.
+    const accessErr = targetCount === 0
+      ? (isTransport
+          ? 'Отметьте хотя бы одно здание.'
+          : isKey
+            ? 'Отметьте здание, помещение или место.'
+            : 'Отметьте хотя бы одно здание, помещение или место.')
+      : null
+    let placeErr = null
+    if (!isEdit) {
+      if (placementMode === 'employee') {
+        if (!placementEmployee) placeErr = 'Выберите сотрудника.'
+      } else if (placementMode === 'transport') {
+        if (!placementTransport) placeErr = 'Выберите транспорт.'
+      } else if (!storagePlaceId) {
+        placeErr = 'Укажите место хранения.'
+      }
+    }
+    setAccessError(accessErr)
+    setPlaceError(placeErr)
+    setFieldErrors({})
+    if (accessErr || placeErr) {
+      setError(null)
+      return
+    }
+
     setSubmitting(true)
     setError(null)
-    setFieldErrors({})
     // Итоговый набор зданий: «здания целиком» + здания-контейнеры выбранных
     // помещений/мест.
     const roomBuilding = new Map()
@@ -267,30 +296,12 @@ export function PassFormPage() {
       room_ids: isTransport ? [] : [...selRooms],
       place_ids: isTransport ? [] : [...selPlaces],
     }
-    // Размещение при создании: за сотрудником / за транспортом / на складе.
+    // Размещение при создании: за сотрудником / за транспортом / на складе
+    // (обязательность проверена выше — значение всегда задано).
     if (!isEdit) {
-      if (placementMode === 'employee') {
-        if (!placementEmployee) {
-          setError('Выберите сотрудника или место хранения.')
-          setSubmitting(false)
-          return
-        }
-        payload.employee = placementEmployee.id
-      } else if (placementMode === 'transport') {
-        if (!placementTransport) {
-          setError('Выберите транспорт или место хранения.')
-          setSubmitting(false)
-          return
-        }
-        payload.transport = placementTransport.id
-      } else {
-        if (!storagePlaceId) {
-          setError('Укажите место хранения для свободного пропуска/ключа.')
-          setSubmitting(false)
-          return
-        }
-        payload.storage_place = Number(storagePlaceId)
-      }
+      if (placementMode === 'employee') payload.employee = placementEmployee.id
+      else if (placementMode === 'transport') payload.transport = placementTransport.id
+      else payload.storage_place = Number(storagePlaceId)
     }
     if (!isEdit && comment.trim()) payload.comment = comment.trim()
     try {
@@ -519,6 +530,9 @@ export function PassFormPage() {
                   })}
                 </div>
               )}
+              {accessError && targetCount === 0 ? (
+                <div className="ele-field__error-text" style={{ marginTop: 6 }}>{accessError}</div>
+              ) : null}
               {fieldErrors.building_ids ? (
                 <div style={{ fontSize: 12, color: 'var(--color-error)', marginTop: 6 }}>
                   {Array.isArray(fieldErrors.building_ids) ? fieldErrors.building_ids[0] : fieldErrors.building_ids}
@@ -556,7 +570,7 @@ export function PassFormPage() {
                   <>
                     <ModeToggle
                       mode={placementMode}
-                      onChange={(m) => { setPlacementMode(m); setStoragePlaceId('') }}
+                      onChange={(m) => { setPlacementMode(m); setStoragePlaceId(''); setPlaceError(null) }}
                       options={
                         isTransport
                           ? [{ value: 'transport', label: 'За транспортом' }, { value: 'storage', label: 'На складе' }]
@@ -567,16 +581,16 @@ export function PassFormPage() {
                       placementEmployee ? (
                         <SelectedEmployee employee={placementEmployee} onClear={() => setPlacementEmployee(null)} />
                       ) : (
-                        <EmployeePicker onSelect={setPlacementEmployee} />
+                        <EmployeePicker error={placeError} onSelect={(emp) => { setPlacementEmployee(emp); setPlaceError(null) }} />
                       )
                     ) : placementMode === 'transport' ? (
                       placementTransport ? (
                         <SelectedTransport transport={placementTransport} onClear={() => setPlacementTransport(null)} />
                       ) : (
-                        <TransportPicker purpose="pass" onSelect={setPlacementTransport} />
+                        <TransportPicker purpose="pass" error={placeError} onSelect={(t) => { setPlacementTransport(t); setPlaceError(null) }} />
                       )
                     ) : (
-                      <PlaceSelect placeType="storage" label={null} required value={storagePlaceId} onChange={setStoragePlaceId} />
+                      <PlaceSelect placeType="storage" label={null} required value={storagePlaceId} onChange={(v) => { setStoragePlaceId(v); setPlaceError(null) }} error={placeError} />
                     )}
                   </>
                 )}
@@ -605,7 +619,6 @@ export function PassFormPage() {
             onSubmit={submit}
             submitting={submitting}
             submitLabel={isEdit ? 'Сохранить' : 'Создать'}
-            submitDisabled={targetCount === 0}
           />
         ) : null}
       </div>

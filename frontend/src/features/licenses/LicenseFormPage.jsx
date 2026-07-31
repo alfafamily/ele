@@ -94,8 +94,14 @@ export function LicenseFormPage() {
     if (!typeId) fe.license_type = 'Выберите вид лицензии.'
     const ve = requiredValueErrors(typeFields, values)
     let placeErr = null
-    if (!isEdit && placementMode === 'equipment' && !placementEquipment) {
-      placeErr = 'Выберите оборудование.'
+    if (!isEdit) {
+      if (placementMode === 'equipment') {
+        if (!placementEquipment) placeErr = 'Выберите оборудование.'
+      } else if (selectedType?.kind === 'hardware' && !storagePlaceId) {
+        // Физический ключ аппаратной лицензии всегда лежит на складе — место
+        // обязательно (у программной лицензии склада нет).
+        placeErr = 'Укажите место хранения.'
+      }
     }
     setFieldErrors(fe)
     setValueErrors(ve)
@@ -117,7 +123,8 @@ export function LicenseFormPage() {
     if (!isEdit) {
       if (placementMode === 'equipment') {
         payload.equipment = placementEquipment.id
-      } else if (selectedType?.kind === 'hardware' && storagePlaceId) {
+      } else if (selectedType?.kind === 'hardware') {
+        // Обязательность проверена выше — место всегда задано.
         payload.storage_place = Number(storagePlaceId)
       }
     }
@@ -255,7 +262,7 @@ export function LicenseFormPage() {
                 {placementMode === 'equipment'
                   ? 'Лицензия будет привязана к выбранному оборудованию.'
                   : selectedType.kind === 'hardware'
-                    ? 'Свободна. Физический ключ аппаратной лицензии можно положить на склад.'
+                    ? 'Свободна. Укажите место хранения физического ключа аппаратной лицензии.'
                     : 'Свободна — не привязана к оборудованию.'}
               </div>
               <ModeToggle
@@ -282,7 +289,14 @@ export function LicenseFormPage() {
                   <EquipmentPicker licenseOnly error={placeError} onSelect={(eq) => { setPlacementEquipment(eq); setPlaceError(null) }} />
                 )
               ) : selectedType.kind === 'hardware' ? (
-                <PlaceSelect placeType="storage" label={null} value={storagePlaceId} onChange={setStoragePlaceId} />
+                <PlaceSelect
+                  placeType="storage"
+                  label={null}
+                  required
+                  value={storagePlaceId}
+                  onChange={(v) => { setStoragePlaceId(v); setPlaceError(null) }}
+                  error={placeError}
+                />
               ) : null}
             </Card>
           ) : null}
