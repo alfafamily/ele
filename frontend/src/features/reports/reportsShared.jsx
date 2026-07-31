@@ -43,16 +43,10 @@ export function ReportTwoStage({ title, filterTitle, filterHint, filters, childr
       </div>
     )
   }
+  // На экране отчёта стрелка «Назад» возвращает к подбору фильтров.
   return (
     <div>
       <ReportHead title={title} onBack={() => setShown(false)} />
-      <button
-        type="button"
-        onClick={() => setShown(false)}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--color-primary)', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', padding: 0, marginBottom: 14 }}
-      >
-        <Icon name="chevron-left" size={16} strokeWidth={2.2} /> Изменить фильтры
-      </button>
       {children}
     </div>
   )
@@ -285,7 +279,11 @@ export function AcceptanceLegend() {
     { status: 'in_absentia', label: 'Заочно' },
   ]
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center' }}>
+    <div style={{
+      display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center',
+      background: 'var(--color-surface)', borderRadius: 12,
+      boxShadow: 'inset 0 0 0 1px var(--color-border)', padding: '10px 14px',
+    }}>
       {items.map((it) => (
         <span key={it.status} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, ...MUTED }}>
           <AcceptanceIcon status={it.status} size={14} />
