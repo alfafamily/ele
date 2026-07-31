@@ -6,7 +6,7 @@ import { EquipmentPicker } from '../../shared/EquipmentPicker.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
-import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
+import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Spinner, TypeSelect } from '../../shared/ui'
 import { splitApiError } from '../../shared/formErrors.js'
 import { requiredValueErrors } from '../../shared/eav'
 import {
@@ -176,17 +176,19 @@ export function LicenseFormPage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Select label="Вид лицензии" required placeholder="Выберите вид" value={typeId} onChange={handleTypeChange} error={fieldErrors.license_type}>
-                {types
+              <TypeSelect
+                label="Вид лицензии"
+                required
+                icon="scroll-text"
+                placeholder="Поиск вида лицензии"
+                // При редактировании — только виды того же типа (программный/аппаратный).
+                options={types
                   .filter((t) => !t.is_archived || String(t.id) === String(typeId))
-                  // При редактировании — только виды того же типа.
-                  .filter((t) => !lockedKind || t.kind === lockedKind)
-                  .map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-              </Select>
+                  .filter((t) => !lockedKind || t.kind === lockedKind)}
+                value={typeId}
+                onChange={handleTypeChange}
+                error={fieldErrors.license_type}
+              />
               {lockedKind ? (
                 <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)' }}>
                   Сменить вид можно только на вид того же типа ({lockedKind === 'hardware' ? 'аппаратный' : 'программный'}).

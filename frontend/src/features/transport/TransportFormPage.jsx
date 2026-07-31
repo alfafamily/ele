@@ -5,7 +5,7 @@ import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
-import { BackButton, Banner, Card, FormActions, Icon, Input, Select, Spinner } from '../../shared/ui'
+import { BackButton, Banner, Card, FormActions, Icon, Input, Spinner, TypeSelect } from '../../shared/ui'
 import { splitApiError } from '../../shared/formErrors.js'
 import { requiredValueErrors } from '../../shared/eav'
 import {
@@ -195,15 +195,16 @@ export function TransportFormPage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Select label="Вид транспорта" required placeholder="Выберите вид" value={typeId} onChange={handleTypeChange} error={fieldErrors.transport_type}>
-                {types
-                  .filter((t) => !t.is_archived || String(t.id) === String(typeId))
-                  .map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-              </Select>
+              <TypeSelect
+                label="Вид транспорта"
+                required
+                icon="car"
+                placeholder="Поиск вида транспорта"
+                options={types.filter((t) => !t.is_archived || String(t.id) === String(typeId))}
+                value={typeId}
+                onChange={handleTypeChange}
+                error={fieldErrors.transport_type}
+              />
               <Input
                 label="Учётный номер"
                 required
