@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { BackButton, Banner, Button, Card, FormActions, Input, Modal, Spinner } from '../../shared/ui'
+import { splitApiError } from '../../shared/formErrors.js'
 import { createEmployee, getDepartments, getEmployee, updateEmployee } from './employeesApi.js'
 
 export function EmployeeFormPage() {
@@ -46,6 +47,15 @@ export function EmployeeFormPage() {
 
   const submit = async (e, confirmDuplicate = false) => {
     if (e) e.preventDefault()
+    // Клиентская валидация обязательных полей — понятная ошибка сразу под полем.
+    const fe = {}
+    if (!lastName.trim()) fe.last_name = 'Укажите фамилию.'
+    if (!firstName.trim()) fe.first_name = 'Укажите имя.'
+    if (Object.keys(fe).length) {
+      setFieldErrors(fe)
+      setError(null)
+      return
+    }
     setSubmitting(true)
     setError(null)
     setFieldErrors({})
@@ -67,10 +77,10 @@ export function EmployeeFormPage() {
       if (err.status === 409 && err.data?.requires_duplicate_confirmation) {
         // Есть тёзка-работник — показываем подтверждение (не ошибку).
         setDupWarn(err.data)
-      } else if (err.errors) {
-        setFieldErrors(err.errors)
       } else {
-        setError(err.detail || 'Не удалось сохранить сотрудника.')
+        const { fieldErrors: fe, formError } = splitApiError(err)
+        setFieldErrors(fe)
+        setError(formError || 'Не удалось сохранить сотрудника.')
       }
     } finally {
       setSubmitting(false)

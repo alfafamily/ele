@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { Banner, Button, Checkbox, Icon, Input, Modal, RadioPills, Select } from '../../shared/ui'
+import { splitApiError } from '../../shared/formErrors.js'
 import { TransportPicker } from './TransportPicker.jsx'
 import { createPlace, updatePlace } from './premisesApi.js'
 
@@ -27,6 +28,11 @@ export function PlaceModal({ room, place, onClose, onDone }) {
   const [fieldErrors, setFieldErrors] = useState({})
 
   const submit = async () => {
+    if (!name.trim()) {
+      setFieldErrors({ name: 'Укажите название или номер.' })
+      setError(null)
+      return
+    }
     setSubmitting(true)
     setError(null)
     setFieldErrors({})
@@ -51,11 +57,9 @@ export function PlaceModal({ room, place, onClose, onDone }) {
       const saved = isEdit ? await updatePlace(place.id, payload) : await createPlace(payload)
       onDone(saved)
     } catch (err) {
-      if (err.errors) {
-        setFieldErrors(err.errors)
-      } else {
-        setError(err.detail || 'Не удалось сохранить место.')
-      }
+      const { fieldErrors: fe, formError } = splitApiError(err)
+      setFieldErrors(fe)
+      setError(formError || 'Не удалось сохранить место.')
     } finally {
       setSubmitting(false)
     }

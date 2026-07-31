@@ -7,6 +7,7 @@ import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Segmented, Spinner } from '../../shared/ui'
+import { splitApiError } from '../../shared/formErrors.js'
 import {
   createSimCard,
   getSimCard,
@@ -78,6 +79,12 @@ export function SimFormPage() {
 
   const submit = async (e) => {
     e.preventDefault()
+    // Клиентская валидация обязательного номера — понятная ошибка сразу под полем.
+    if (!phoneNumber.trim()) {
+      setFieldErrors({ phone_number: 'Укажите номер телефона.' })
+      setError(null)
+      return
+    }
     setSubmitting(true)
     setError(null)
     setFieldErrors({})
@@ -126,11 +133,9 @@ export function SimFormPage() {
         navigate(employeeId ? `/employees/${employeeId}` : `/sim-cards/${created.id}`, { replace: true })
       }
     } catch (err) {
-      if (err.errors) {
-        setFieldErrors(err.errors)
-      } else {
-        setError(err.detail || 'Не удалось сохранить SIM-карту.')
-      }
+      const { fieldErrors: fe, formError } = splitApiError(err)
+      setFieldErrors(fe)
+      setError(formError || 'Не удалось сохранить SIM-карту.')
     } finally {
       setSubmitting(false)
     }

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Banner, Button, Checkbox, Input, Modal } from '../../shared/ui'
+import { splitApiError } from '../../shared/formErrors.js'
 import { useCompany } from '../../app/CompanyContext'
 import { createRoom, deleteRoomPlan, updateRoom, uploadRoomPlan } from './premisesApi.js'
 
@@ -43,6 +44,15 @@ export function RoomModal({ buildingId, room, onClose, onDone }) {
   }
 
   const submit = async () => {
+    // Клиентская валидация обязательных полей — понятная ошибка сразу под полем.
+    const fe = {}
+    if (!name.trim()) fe.name = 'Укажите название или номер.'
+    if (isFloorParking && !String(floor).trim()) fe.floor = 'Укажите номер этажа.'
+    if (Object.keys(fe).length) {
+      setFieldErrors(fe)
+      setError(null)
+      return
+    }
     setSubmitting(true)
     setError(null)
     setFieldErrors({})
@@ -66,11 +76,9 @@ export function RoomModal({ buildingId, room, onClose, onDone }) {
       }
       onDone(saved)
     } catch (err) {
-      if (err.errors) {
-        setFieldErrors(err.errors)
-      } else {
-        setError(err.detail || 'Не удалось сохранить помещение.')
-      }
+      const { fieldErrors: fe, formError } = splitApiError(err)
+      setFieldErrors(fe)
+      setError(formError || 'Не удалось сохранить помещение.')
     } finally {
       setSubmitting(false)
     }

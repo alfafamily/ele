@@ -5,6 +5,7 @@ import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { BackButton, Banner, Card, FormActions, Input, PlaceSelect, Spinner } from '../../shared/ui'
+import { splitApiError } from '../../shared/formErrors.js'
 import { createTool, getTool, updateTool } from './toolsApi.js'
 
 export function ToolFormPage() {
@@ -25,6 +26,8 @@ export function ToolFormPage() {
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  // Ошибки под конкретными полями: name, place (место хранения), employee_quantity.
+  const [fieldErrors, setFieldErrors] = useState({})
 
   useEffect(() => {
     if (!isEdit) return
@@ -51,6 +54,25 @@ export function ToolFormPage() {
 
   const submit = async (e) => {
     e.preventDefault()
+    // Клиентская валидация обязательных полей — понятная ошибка сразу под полем.
+    const fe = {}
+    if (!name.trim()) fe.name = 'Укажите наименование.'
+    let eqValue = null
+    if (!isEdit && qty > 0) {
+      if (!initialPlace) fe.place = 'Укажите место хранения для начального остатка.'
+      if (employee) {
+        const eq = Number(employeeQty)
+        if (!Number.isInteger(eq) || eq <= 0) fe.employee_quantity = 'Укажите количество для сотрудника.'
+        else if (eq > qty) fe.employee_quantity = 'Нельзя выдать сотруднику больше начального остатка.'
+        else eqValue = eq
+      }
+    }
+    setFieldErrors(fe)
+    if (Object.keys(fe).length) {
+      setError(null)
+      return
+    }
+
     setError(null)
     const payload = {
       name,
@@ -59,23 +81,10 @@ export function ToolFormPage() {
     if (!isEdit) {
       payload.quantity = qty
       if (qty > 0) {
-        if (!initialPlace) {
-          setError('Укажите место хранения для начального остатка.')
-          return
-        }
         payload.place = Number(initialPlace)
         if (employee) {
-          const eq = Number(employeeQty)
-          if (!Number.isInteger(eq) || eq <= 0) {
-            setError('Укажите количество для сотрудника.')
-            return
-          }
-          if (eq > qty) {
-            setError('Нельзя выдать сотруднику больше начального остатка.')
-            return
-          }
           payload.employee = employee.id
-          payload.employee_quantity = eq
+          payload.employee_quantity = eqValue
         }
       }
       if (comment.trim()) payload.comment = comment.trim()
@@ -90,11 +99,9 @@ export function ToolFormPage() {
         navigate(employeeId ? `/employees/${employeeId}` : `/tools/${created.id}`, { replace: true })
       }
     } catch (err) {
-      if (err.errors) {
-        setError(Object.values(err.errors).flat().join(' '))
-      } else {
-        setError(err.detail || 'Не удалось сохранить инструмент.')
-      }
+      const { fieldErrors: fe, formError } = splitApiError(err)
+      setFieldErrors(fe)
+      setError(formError || 'Не удалось сохранить инструмент.')
     } finally {
       setSubmitting(false)
     }
@@ -116,7 +123,14 @@ export function ToolFormPage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Input label="Наименование" required autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+              <Input
+                label="Наименование"
+                required
+                autoFocus
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                error={fieldErrors.name}
+              />
               {!isEdit ? (
                 <>
                   <Input
@@ -128,7 +142,14 @@ export function ToolFormPage() {
                     onChange={(e) => setInitialQuantity(e.target.value)}
                   />
                   {qty > 0 ? (
-                    <PlaceSelect placeType="storage" label="Место хранения (склад)" required value={initialPlace} onChange={setInitialPlace} />
+                    <PlaceSelect
+                      placeType="storage"
+                      label="Место хранения (склад)"
+                      required
+                      value={initialPlace}
+                      onChange={(v) => { setInitialPlace(v); setFieldErrors((prev) => (prev.place ? { ...prev, place: undefined } : prev)) }}
+                      error={fieldErrors.place}
+                    />
                   ) : null}
                 </>
               ) : null}
@@ -152,7 +173,8 @@ export function ToolFormPage() {
                       min="1"
                       max={String(qty)}
                       value={employeeQty}
-                      onChange={(e) => setEmployeeQty(e.target.value)}
+                      onChange={(e) => { setEmployeeQty(e.target.value); setFieldErrors((prev) => (prev.employee_quantity ? { ...prev, employee_quantity: undefined } : prev)) }}
+                      error={fieldErrors.employee_quantity}
                     />
                   </>
                 ) : (

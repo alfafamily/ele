@@ -5,6 +5,7 @@ import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { BackButton, Badge, Banner, Card, FormActions, Icon, Input, PlaceSelect, Spinner } from '../../shared/ui'
+import { splitApiError } from '../../shared/formErrors.js'
 import { getBuildings } from '../premises/premisesApi.js'
 import { TransportPicker } from '../premises/TransportPicker.jsx'
 import { SelectedTransport } from '../../shared/SelectedTransport.jsx'
@@ -309,11 +310,9 @@ export function PassFormPage() {
         navigate(back, { replace: true })
       }
     } catch (err) {
-      if (err.errors) {
-        setFieldErrors(err.errors)
-      } else {
-        setError(err.detail || 'Не удалось сохранить средство доступа.')
-      }
+      const { fieldErrors: fe, formError } = splitApiError(err)
+      setFieldErrors(fe)
+      setError(formError || 'Не удалось сохранить средство доступа.')
     } finally {
       setSubmitting(false)
     }

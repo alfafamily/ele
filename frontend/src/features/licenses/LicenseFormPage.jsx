@@ -7,6 +7,8 @@ import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
 import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
+import { splitApiError } from '../../shared/formErrors.js'
+import { requiredValueErrors } from '../../shared/eav'
 import {
   createLicense,
   deleteLicenseFieldFilePath,
@@ -41,6 +43,10 @@ export function LicenseFormPage() {
   const [storagePlaceId, setStoragePlaceId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  // Ошибки под конкретными полями (см. форму Оборудования).
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [valueErrors, setValueErrors] = useState({})
+  const [placeError, setPlaceError] = useState(null)
 
   useEffect(() => {
     getLicenseTypes().then(setTypes)
@@ -77,10 +83,28 @@ export function LicenseFormPage() {
     setTypeId(newTypeId)
     setValues({})
     setFileValues({})
+    setFieldErrors((prev) => ({ ...prev, license_type: undefined }))
+    setValueErrors({})
   }
 
   const submit = async (e) => {
     e.preventDefault()
+    // Клиентская валидация обязательных полей — понятная ошибка сразу под полем.
+    const fe = {}
+    if (!typeId) fe.license_type = 'Выберите вид лицензии.'
+    const ve = requiredValueErrors(typeFields, values)
+    let placeErr = null
+    if (!isEdit && placementMode === 'equipment' && !placementEquipment) {
+      placeErr = 'Выберите оборудование.'
+    }
+    setFieldErrors(fe)
+    setValueErrors(ve)
+    setPlaceError(placeErr)
+    if (Object.keys(fe).length || Object.keys(ve).length || placeErr) {
+      setError(null)
+      return
+    }
+
     setSubmitting(true)
     setError(null)
     const payload = {
@@ -92,11 +116,6 @@ export function LicenseFormPage() {
     // желанию на складе). При редактировании размещение меняется из карточки.
     if (!isEdit) {
       if (placementMode === 'equipment') {
-        if (!placementEquipment) {
-          setError('Выберите оборудование.')
-          setSubmitting(false)
-          return
-        }
         payload.equipment = placementEquipment.id
       } else if (selectedType?.kind === 'hardware' && storagePlaceId) {
         payload.storage_place = Number(storagePlaceId)
@@ -133,11 +152,9 @@ export function LicenseFormPage() {
         navigate(uploadFailed ? `/licenses/${created.id}/edit` : `/licenses/${created.id}`, { replace: true })
       }
     } catch (err) {
-      if (err.errors) {
-        setError(Object.values(err.errors).flat().join(' '))
-      } else {
-        setError(err.detail || 'Не удалось сохранить лицензию.')
-      }
+      const { fieldErrors: fe, formError } = splitApiError(err, { bannerKeys: ['field_values'] })
+      setFieldErrors(fe)
+      setError(formError || 'Не удалось сохранить лицензию.')
     } finally {
       setSubmitting(false)
     }
@@ -159,7 +176,7 @@ export function LicenseFormPage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Select label="Вид лицензии" required placeholder="Выберите вид" value={typeId} onChange={handleTypeChange}>
+              <Select label="Вид лицензии" required placeholder="Выберите вид" value={typeId} onChange={handleTypeChange} error={fieldErrors.license_type}>
                 {types
                   .filter((t) => !t.is_archived || String(t.id) === String(typeId))
                   // При редактировании — только виды того же типа.
@@ -185,7 +202,16 @@ export function LicenseFormPage() {
                 {typeFields
                   .filter((f) => f.value_type !== 'file')
                   .map((f) => (
-                    <FieldValueInput key={f.id} field={f} value={values[f.id]} onChange={(v) => setValues((prev) => ({ ...prev, [f.id]: v }))} />
+                    <FieldValueInput
+                      key={f.id}
+                      field={f}
+                      value={values[f.id]}
+                      error={valueErrors[f.id]}
+                      onChange={(v) => {
+                        setValues((prev) => ({ ...prev, [f.id]: v }))
+                        setValueErrors((prev) => (prev[f.id] ? { ...prev, [f.id]: undefined } : prev))
+                      }}
+                    />
                   ))}
               </div>
             </Card>
@@ -233,7 +259,7 @@ export function LicenseFormPage() {
               </div>
               <ModeToggle
                 mode={placementMode}
-                onChange={(m) => { setPlacementMode(m); setPlacementEquipment(null); setStoragePlaceId('') }}
+                onChange={(m) => { setPlacementMode(m); setPlacementEquipment(null); setStoragePlaceId(''); setPlaceError(null) }}
                 options={[
                   { value: 'free', label: 'Свободна' },
                   { value: 'equipment', label: 'В оборудовании' },
@@ -252,7 +278,10 @@ export function LicenseFormPage() {
                     </button>
                   </div>
                 ) : (
-                  <EquipmentPicker licenseOnly onSelect={setPlacementEquipment} />
+                  <>
+                    <EquipmentPicker licenseOnly onSelect={(eq) => { setPlacementEquipment(eq); setPlaceError(null) }} />
+                    {placeError ? <div className="ele-field__error-text" style={{ marginTop: 6 }}>{placeError}</div> : null}
+                  </>
                 )
               ) : selectedType.kind === 'hardware' ? (
                 <PlaceSelect placeType="storage" label={null} value={storagePlaceId} onChange={setStoragePlaceId} />

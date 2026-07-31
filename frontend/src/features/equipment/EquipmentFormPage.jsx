@@ -6,6 +6,8 @@ import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Select, Spinner } from '../../shared/ui'
+import { splitApiError } from '../../shared/formErrors.js'
+import { requiredValueErrors } from '../../shared/eav'
 import {
   createEquipment,
   deleteEquipmentFieldFilePath,
@@ -42,6 +44,12 @@ export function EquipmentFormPage() {
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  // Ошибки под конкретными полями: fieldErrors — по имени поля payload'а
+  // (equipment_type, inventory_number), valueErrors — по id реквизита Типа,
+  // placeError — под блоком «Размещение».
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [valueErrors, setValueErrors] = useState({})
+  const [placeError, setPlaceError] = useState(null)
   const [genLoading, setGenLoading] = useState(false)
   // Размещение при создании (B8): мобильно (сотрудник) / стационарно (рабочее
   // место) / склад. Из карточки сотрудника — сразу мобильно за ним.
@@ -106,10 +114,39 @@ export function EquipmentFormPage() {
     setTypeId(newTypeId)
     setValues({})
     setFileValues({})
+    setFieldErrors((prev) => ({ ...prev, equipment_type: undefined }))
+    setValueErrors({})
   }
 
   const submit = async (e) => {
     e.preventDefault()
+    // Клиентская валидация обязательных полей — понятная ошибка сразу под полем,
+    // без «немого» запроса на сервер с сырым ответом DRF.
+    const fe = {}
+    if (!typeId) fe.equipment_type = 'Выберите вид оборудования.'
+    if (!inventoryNumber.trim()) fe.inventory_number = 'Укажите учётный номер.'
+    const ve = requiredValueErrors(typeFields, values)
+    let placeErr = null
+    if (!isEdit) {
+      if (placementMode === 'mobile') {
+        if (!placementEmployee) placeErr = 'Выберите сотрудника для закрепления.'
+      } else if (!placementPlaceId) {
+        placeErr =
+          placementMode === 'stationary'
+            ? 'Выберите рабочее место.'
+            : placementMode === 'common'
+              ? 'Выберите МОП.'
+              : 'Выберите место хранения.'
+      }
+    }
+    setFieldErrors(fe)
+    setValueErrors(ve)
+    setPlaceError(placeErr)
+    if (Object.keys(fe).length || Object.keys(ve).length || placeErr) {
+      setError(null)
+      return
+    }
+
     setSubmitting(true)
     setError(null)
     const payload = {
@@ -121,27 +158,8 @@ export function EquipmentFormPage() {
     if (!isEdit && comment.trim()) payload.comment = comment.trim()
     // Размещение задаём прямо в payload создания (employee XOR place).
     if (!isEdit) {
-      if (placementMode === 'mobile') {
-        if (!placementEmployee) {
-          setError('Выберите сотрудника для закрепления.')
-          setSubmitting(false)
-          return
-        }
-        payload.employee = placementEmployee.id
-      } else {
-        if (!placementPlaceId) {
-          setError(
-            placementMode === 'stationary'
-              ? 'Выберите рабочее место.'
-              : placementMode === 'common'
-                ? 'Выберите МОП.'
-                : 'Выберите место хранения.',
-          )
-          setSubmitting(false)
-          return
-        }
-        payload.place = Number(placementPlaceId)
-      }
+      if (placementMode === 'mobile') payload.employee = placementEmployee.id
+      else payload.place = Number(placementPlaceId)
     }
     try {
       if (isEdit) {
@@ -181,12 +199,11 @@ export function EquipmentFormPage() {
         navigate(target, { replace: true })
       }
     } catch (err) {
-      if (err.errors) {
-        const messages = Object.values(err.errors).flat()
-        setError(messages.join(' '))
-      } else {
-        setError(err.detail || 'Не удалось сохранить оборудование.')
-      }
+      // Ошибки бэка раскладываем под поля; агрегат field_values и общие
+      // (non_field_errors/detail) — в баннер формы.
+      const { fieldErrors: fe, formError } = splitApiError(err, { bannerKeys: ['field_values'] })
+      setFieldErrors(fe)
+      setError(formError || 'Не удалось сохранить оборудование.')
     } finally {
       setSubmitting(false)
     }
@@ -210,7 +227,7 @@ export function EquipmentFormPage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Select label="Вид оборудования" required placeholder="Выберите вид" value={typeId} onChange={handleTypeChange}>
+              <Select label="Вид оборудования" required placeholder="Выберите вид" value={typeId} onChange={handleTypeChange} error={fieldErrors.equipment_type}>
                 {types
                   .filter((t) => !t.is_archived || String(t.id) === String(typeId))
                   .map((t) => (
@@ -226,6 +243,7 @@ export function EquipmentFormPage() {
                 required
                 value={inventoryNumber}
                 onChange={(e) => setInventoryNumber(e.target.value)}
+                error={fieldErrors.inventory_number}
                 style={{ fontFamily: 'var(--font-mono)' }}
                 trailing={!isEdit ? (
                   <button
@@ -254,7 +272,11 @@ export function EquipmentFormPage() {
                       key={f.id}
                       field={f}
                       value={values[f.id]}
-                      onChange={(v) => setValues((prev) => ({ ...prev, [f.id]: v }))}
+                      error={valueErrors[f.id]}
+                      onChange={(v) => {
+                        setValues((prev) => ({ ...prev, [f.id]: v }))
+                        setValueErrors((prev) => (prev[f.id] ? { ...prev, [f.id]: undefined } : prev))
+                      }}
                     />
                   ))}
               </div>
@@ -314,6 +336,7 @@ export function EquipmentFormPage() {
                       onClick={() => {
                         setPlacementMode(m.value)
                         setPlacementPlaceId('')
+                        setPlaceError(null)
                       }}
                       style={{
                         flex: 1,
@@ -341,7 +364,10 @@ export function EquipmentFormPage() {
                 placementEmployee ? (
                   <SelectedEmployee employee={placementEmployee} onClear={employeeId ? undefined : () => setPlacementEmployee(null)} />
                 ) : (
-                  <EmployeePicker onSelect={setPlacementEmployee} />
+                  <>
+                    <EmployeePicker onSelect={(emp) => { setPlacementEmployee(emp); setPlaceError(null) }} />
+                    {placeError ? <div className="ele-field__error-text" style={{ marginTop: 6 }}>{placeError}</div> : null}
+                  </>
                 )
               ) : (
                 <PlaceSelect
@@ -349,7 +375,8 @@ export function EquipmentFormPage() {
                   label={null}
                   required
                   value={placementPlaceId}
-                  onChange={setPlacementPlaceId}
+                  onChange={(v) => { setPlacementPlaceId(v); setPlaceError(null) }}
+                  error={placeError}
                 />
               )}
             </Card>

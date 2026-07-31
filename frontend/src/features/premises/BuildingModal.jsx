@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Banner, Button, Checkbox, Input, Modal } from '../../shared/ui'
+import { splitApiError } from '../../shared/formErrors.js'
 import { createBuilding, updateBuilding } from './premisesApi.js'
 
 // Создание/редактирование Здания. Наименование обязательно; адрес и
@@ -17,6 +18,11 @@ export function BuildingModal({ building, onClose, onDone }) {
   const [fieldErrors, setFieldErrors] = useState({})
 
   const submit = async () => {
+    if (!name.trim()) {
+      setFieldErrors({ name: 'Укажите наименование.' })
+      setError(null)
+      return
+    }
     setSubmitting(true)
     setError(null)
     setFieldErrors({})
@@ -30,11 +36,9 @@ export function BuildingModal({ building, onClose, onDone }) {
       const saved = isEdit ? await updateBuilding(building.id, payload) : await createBuilding(payload)
       onDone(saved)
     } catch (err) {
-      if (err.errors) {
-        setFieldErrors(err.errors)
-      } else {
-        setError(err.detail || 'Не удалось сохранить здание.')
-      }
+      const { fieldErrors: fe, formError } = splitApiError(err)
+      setFieldErrors(fe)
+      setError(formError || 'Не удалось сохранить здание.')
     } finally {
       setSubmitting(false)
     }

@@ -6,6 +6,8 @@ import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { BackButton, Banner, Card, FormActions, Icon, Input, Select, Spinner } from '../../shared/ui'
+import { splitApiError } from '../../shared/formErrors.js'
+import { requiredValueErrors } from '../../shared/eav'
 import {
   createTransport,
   deleteTransportFieldFilePath,
@@ -41,6 +43,10 @@ export function TransportFormPage() {
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  // Ошибки под конкретными полями (см. форму Оборудования).
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [valueErrors, setValueErrors] = useState({})
+  const [placeError, setPlaceError] = useState(null)
   const [genLoading, setGenLoading] = useState(false)
   // Размещение при создании (B3): за сотрудником (mobile) или свободный (free).
   const [placementMode, setPlacementMode] = useState(employeeId ? 'mobile' : 'free')
@@ -100,10 +106,29 @@ export function TransportFormPage() {
     setTypeId(newTypeId)
     setValues({})
     setFileValues({})
+    setFieldErrors((prev) => ({ ...prev, transport_type: undefined }))
+    setValueErrors({})
   }
 
   const submit = async (e) => {
     e.preventDefault()
+    // Клиентская валидация обязательных полей — понятная ошибка сразу под полем.
+    const fe = {}
+    if (!typeId) fe.transport_type = 'Выберите вид транспорта.'
+    if (!inventoryNumber.trim()) fe.inventory_number = 'Укажите учётный номер.'
+    const ve = requiredValueErrors(typeFields, values)
+    let placeErr = null
+    if (!isEdit && placementMode === 'mobile' && !placementEmployee) {
+      placeErr = 'Выберите сотрудника для закрепления.'
+    }
+    setFieldErrors(fe)
+    setValueErrors(ve)
+    setPlaceError(placeErr)
+    if (Object.keys(fe).length || Object.keys(ve).length || placeErr) {
+      setError(null)
+      return
+    }
+
     setSubmitting(true)
     setError(null)
     const payload = {
@@ -113,15 +138,8 @@ export function TransportFormPage() {
       custom_fields: customFields.filter((f) => f.name.trim()),
     }
     if (!isEdit && comment.trim()) payload.comment = comment.trim()
-    if (!isEdit) {
-      if (placementMode === 'mobile') {
-        if (!placementEmployee) {
-          setError('Выберите сотрудника для закрепления.')
-          setSubmitting(false)
-          return
-        }
-        payload.employee = placementEmployee.id
-      }
+    if (!isEdit && placementMode === 'mobile') {
+      payload.employee = placementEmployee.id
       // free — сотрудник не задаётся (транспорт свободен).
     }
     try {
@@ -151,12 +169,9 @@ export function TransportFormPage() {
         navigate(target, { replace: true })
       }
     } catch (err) {
-      if (err.errors) {
-        const messages = Object.values(err.errors).flat()
-        setError(messages.join(' '))
-      } else {
-        setError(err.detail || 'Не удалось сохранить транспорт.')
-      }
+      const { fieldErrors: fe, formError } = splitApiError(err, { bannerKeys: ['field_values'] })
+      setFieldErrors(fe)
+      setError(formError || 'Не удалось сохранить транспорт.')
     } finally {
       setSubmitting(false)
     }
@@ -180,7 +195,7 @@ export function TransportFormPage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Основная информация</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <Select label="Вид транспорта" required placeholder="Выберите вид" value={typeId} onChange={handleTypeChange}>
+              <Select label="Вид транспорта" required placeholder="Выберите вид" value={typeId} onChange={handleTypeChange} error={fieldErrors.transport_type}>
                 {types
                   .filter((t) => !t.is_archived || String(t.id) === String(typeId))
                   .map((t) => (
@@ -194,6 +209,7 @@ export function TransportFormPage() {
                 required
                 value={inventoryNumber}
                 onChange={(e) => setInventoryNumber(e.target.value)}
+                error={fieldErrors.inventory_number}
                 style={{ fontFamily: 'var(--font-mono)' }}
                 trailing={!isEdit ? (
                   <button
@@ -222,7 +238,11 @@ export function TransportFormPage() {
                       key={f.id}
                       field={f}
                       value={values[f.id]}
-                      onChange={(v) => setValues((prev) => ({ ...prev, [f.id]: v }))}
+                      error={valueErrors[f.id]}
+                      onChange={(v) => {
+                        setValues((prev) => ({ ...prev, [f.id]: v }))
+                        setValueErrors((prev) => (prev[f.id] ? { ...prev, [f.id]: undefined } : prev))
+                      }}
                     />
                   ))}
               </div>
@@ -276,7 +296,7 @@ export function TransportFormPage() {
                     <button
                       key={m.value}
                       type="button"
-                      onClick={() => setPlacementMode(m.value)}
+                      onClick={() => { setPlacementMode(m.value); setPlaceError(null) }}
                       style={{
                         flex: 1,
                         padding: '8px 6px',
@@ -299,7 +319,10 @@ export function TransportFormPage() {
                 placementEmployee ? (
                   <SelectedEmployee employee={placementEmployee} onClear={employeeId ? undefined : () => setPlacementEmployee(null)} />
                 ) : (
-                  <EmployeePicker onSelect={setPlacementEmployee} />
+                  <>
+                    <EmployeePicker onSelect={(emp) => { setPlacementEmployee(emp); setPlaceError(null) }} />
+                    {placeError ? <div className="ele-field__error-text" style={{ marginTop: 6 }}>{placeError}</div> : null}
+                  </>
                 )
               ) : null}
             </Card>
