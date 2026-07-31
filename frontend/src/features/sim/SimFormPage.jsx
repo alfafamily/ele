@@ -54,9 +54,13 @@ export function SimFormPage() {
   }, [employeeId])
 
   // E-SIM виртуальна — на складе не хранится: режим «На складе» ей недоступен,
-  // вместо него — «Свободна» (у оператора).
+  // вместо него — «Свободна» (у оператора). Обратный переход E-SIM→SIM
+  // возвращает физическую карту в режим «На складе»: у SIM режима «Свободна»
+  // нет, иначе после круга E-SIM→SIM можно было бы создать физическую SIM без
+  // сотрудника/оборудования/склада (размещение вообще не задавалось бы).
   useEffect(() => {
     if (simType === 'esim' && placementMode === 'storage') setPlacementMode('free')
+    else if (simType === 'sim' && placementMode === 'free') setPlacementMode('storage')
   }, [simType, placementMode])
 
   useEffect(() => {

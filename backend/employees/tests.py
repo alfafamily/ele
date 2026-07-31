@@ -159,6 +159,36 @@ class SimCardTests(APITestCase):
         self.assertEqual(resp.data["sim_type_display"], "E-SIM")
         self.assertFalse(resp.data["is_deactivated"])
 
+    def test_physical_sim_requires_placement(self):
+        # Физическая SIM (не E-SIM) при создании обязана иметь размещение:
+        # сотрудник, оборудование или склад. Без них — 400 (серверный гард,
+        # закрывает обход клиентской валидации в форме).
+        resp = self.client.post(
+            "/api/sim-cards/",
+            {"sim_type": "sim", "phone_number": "+79001112233"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400, resp.data)
+        self.assertIn("storage_place", resp.data["errors"])
+        # sim_type по умолчанию — физическая SIM: без указания типа гард тоже сработает.
+        resp = self.client.post(
+            "/api/sim-cards/",
+            {"phone_number": "+79004445566"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400, resp.data)
+
+    def test_free_esim_allowed_without_placement(self):
+        # E-SIM виртуальна — может быть свободной (без сотрудника/оборудования/склада).
+        resp = self.client.post(
+            "/api/sim-cards/",
+            {"sim_type": "esim", "phone_number": "+79001112233"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        self.assertIsNone(resp.data["employee"])
+        self.assertIsNone(resp.data["storage_place"])
+
     def test_blank_phone_number_rejected(self):
         resp = self.client.post(
             "/api/sim-cards/",

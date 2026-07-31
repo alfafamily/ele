@@ -144,10 +144,17 @@ class SimCardSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerializ
             raise serializers.ValidationError(
                 {"equipment": "В этот тип оборудования нельзя устанавливать SIM/E-SIM."}
             )
-        # Обязательность склада при создании свободной SIM — на стороне формы.
         storage = attrs.get("storage_place")
         if storage is not None and storage.place_type != Place.PlaceType.STORAGE:
             raise serializers.ValidationError({"storage_place": "Выберите место хранения (склад)."})
+        # Физическая SIM (не E-SIM) при создании обязана иметь размещение —
+        # сотрудник, оборудование или склад. E-SIM виртуальна и может быть
+        # свободной. Раньше это гарантировала только форма; серверный гард
+        # закрывает обход (напр. переключение типа E-SIM→SIM в форме или прямой
+        # запрос к API), иначе физическая карта повисает без места хранения.
+        if self.instance is None and (attrs.get("sim_type") or SimCard.SimType.SIM) != SimCard.SimType.ESIM:
+            if not employee and not equipment and storage is None:
+                raise serializers.ValidationError({"storage_place": "Выберите место хранения (склад)."})
         return attrs
 
 
