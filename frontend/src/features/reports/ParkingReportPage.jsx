@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { EmptyState, Icon, Spinner, TypeSelect } from '../../shared/ui'
+import { EmptyState, Icon, Spinner } from '../../shared/ui'
 import { getParkingReport } from './reportsApi.js'
-import { BuildingHead, ExpandCard, ReportTwoStage, RoomHead } from './reportsShared.jsx'
+import { BuildingHead, ExpandCard, LocationFilters, ReportTwoStage, RoomHead, useLocationFilter } from './reportsShared.jsx'
 // countLabel не нужен здесь — сводка парковок текстовая.
 
 // B45. Отчёт по парковкам: парковочные места с увязкой к зданию/помещению; за
@@ -10,9 +10,6 @@ import { BuildingHead, ExpandCard, ReportTwoStage, RoomHead } from './reportsSha
 export function ParkingReportPage() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
-  const [buildingId, setBuildingId] = useState('')
-  const [roomId, setRoomId] = useState('')
-  const [placeId, setPlaceId] = useState('')
 
   useEffect(() => {
     getParkingReport()
@@ -21,57 +18,10 @@ export function ParkingReportPage() {
   }, [])
 
   const buildings = useMemo(() => data || [], [data])
-  const roomOptions = useMemo(() => {
-    const src = buildingId ? buildings.filter((b) => String(b.id) === buildingId) : buildings
-    return src.flatMap((b) => b.rooms.map((r) => ({ id: r.id, name: r.name })))
-  }, [buildings, buildingId])
-  const placeOptions = useMemo(() => {
-    const rooms = buildings.flatMap((b) => b.rooms)
-    const src = roomId ? rooms.filter((r) => String(r.id) === roomId) : rooms
-    return src.flatMap((r) => r.places.map((p) => ({ id: p.id, name: p.name })))
-  }, [buildings, roomId])
+  const loc = useLocationFilter(buildings)
+  const tree = loc.tree
 
-  const tree = useMemo(() => {
-    return buildings
-      .filter((b) => !buildingId || String(b.id) === buildingId)
-      .map((b) => ({
-        ...b,
-        rooms: b.rooms
-          .filter((r) => !roomId || String(r.id) === roomId)
-          .map((r) => ({ ...r, places: r.places.filter((p) => !placeId || String(p.id) === placeId) }))
-          .filter((r) => r.places.length),
-      }))
-      .filter((b) => b.rooms.length)
-  }, [buildings, buildingId, roomId, placeId])
-
-  const filters = (
-    <div className="ele-report-place-filters">
-      <TypeSelect
-        label="Здание"
-        icon="building-2"
-        emptyText="Зданий нет"
-        options={buildings.map((b) => ({ id: b.id, name: b.name }))}
-        value={buildingId}
-        onChange={(v) => { setBuildingId(v); setRoomId(''); setPlaceId('') }}
-      />
-      <TypeSelect
-        label="Помещение"
-        icon="map-pin"
-        emptyText="Помещений нет"
-        options={roomOptions}
-        value={roomId}
-        onChange={(v) => { setRoomId(v); setPlaceId('') }}
-      />
-      <TypeSelect
-        label="Место"
-        icon="square-parking"
-        emptyText="Мест нет"
-        options={placeOptions}
-        value={placeId}
-        onChange={setPlaceId}
-      />
-    </div>
-  )
+  const filters = <LocationFilters buildings={buildings} state={loc} />
 
   let body
   if (error) body = <EmptyState title={error} />
