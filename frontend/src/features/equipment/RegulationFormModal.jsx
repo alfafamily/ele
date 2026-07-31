@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Banner, Button, Icon, InlineCalendar, Input, Modal, Select } from '../../shared/ui'
 // Раскладка строки «работа/материал» (desktop — в ряд, мобилка — построчно).
-import './MaintenanceFormPage.css'
+import '../../shared/maintenance/MaintenanceFormPage.css'
 
 let nextRowId = 1
 
