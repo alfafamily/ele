@@ -158,7 +158,7 @@ export function PlaceSelect({
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder={placeholder || 'Поиск места'}
+        placeholder={placeholder || 'Поиск'}
         style={{
           width: '100%',
           height: 40,

@@ -199,7 +199,6 @@ export function TransportFormPage() {
                 label="Вид транспорта"
                 required
                 icon="car"
-                placeholder="Поиск вида транспорта"
                 options={types.filter((t) => !t.is_archived || String(t.id) === String(typeId))}
                 value={typeId}
                 onChange={handleTypeChange}
@@ -320,10 +319,7 @@ export function TransportFormPage() {
                 placementEmployee ? (
                   <SelectedEmployee employee={placementEmployee} onClear={employeeId ? undefined : () => setPlacementEmployee(null)} />
                 ) : (
-                  <>
-                    <EmployeePicker onSelect={(emp) => { setPlacementEmployee(emp); setPlaceError(null) }} />
-                    {placeError ? <div className="ele-field__error-text" style={{ marginTop: 6 }}>{placeError}</div> : null}
-                  </>
+                  <EmployeePicker error={placeError} onSelect={(emp) => { setPlacementEmployee(emp); setPlaceError(null) }} />
                 )
               ) : null}
             </Card>

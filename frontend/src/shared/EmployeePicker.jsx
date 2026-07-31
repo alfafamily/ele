@@ -7,12 +7,13 @@ import { Icon } from './ui/Icon/Icon.jsx'
 // Подбор Сотрудника с поиском (C2 «Закрепить сотрудника», форма Оборудования,
 // модалка приглашения) — общий для всех мест, где нужен именно Сотрудник
 // (не Пользователь).
-export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeIds, withPlus = false, extraParams, listMaxHeight = 216 }) {
+export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeIds, withPlus = false, extraParams, listMaxHeight = 216, error }) {
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query, 250)
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
   const excludeSet = new Set(excludeIds || [])
+  const errorText = Array.isArray(error) ? error[0] : error
   // B27: доп. параметры запроса (ограничение опций выбранными фильтрами).
   const extraKey = JSON.stringify(extraParams || {})
 
@@ -44,7 +45,7 @@ export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeI
         style={{
           height: inputHeight,
           background: 'var(--color-surface)',
-          boxShadow: 'inset 0 0 0 1px var(--color-primary)',
+          boxShadow: `inset 0 0 0 1px ${errorText ? 'var(--color-error)' : 'var(--color-primary)'}`,
           borderRadius: 10,
           display: 'flex',
           alignItems: 'center',
@@ -61,6 +62,7 @@ export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeI
           style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13.5, fontFamily: 'inherit' }}
         />
       </div>
+      {errorText ? <div className="ele-field__error-text" style={{ marginTop: 5 }}>{errorText}</div> : null}
       {loading && results.length === 0 ? (
         <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Загрузка…</div>
       ) : results.filter((e) => !excludeSet.has(e.id)).length === 0 ? (

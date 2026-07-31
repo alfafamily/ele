@@ -17,7 +17,7 @@ export function TypeSelect({
   value,
   onChange,
   error,
-  placeholder = 'Поиск вида',
+  placeholder = 'Поиск',
 }) {
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState(true)

@@ -8,12 +8,13 @@ import { Icon } from './ui/Icon/Icon.jsx'
 // onSelect(equipment) — выбранная единица. simOnly — только типы, у которых
 // разрешена установка SIM/E-SIM (B17); licenseOnly — только типы с разрешённой
 // установкой лицензий.
-export function EquipmentPicker({ onSelect, autoFocus, simOnly = false, licenseOnly = false, excludeIds, withPlus = false, licenseTypeIds }) {
+export function EquipmentPicker({ onSelect, autoFocus, simOnly = false, licenseOnly = false, excludeIds, withPlus = false, licenseTypeIds, error }) {
   const [query, setQuery] = useState('')
   const debounced = useDebouncedValue(query, 250)
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
   const excludeSet = new Set(excludeIds || [])
+  const errorText = Array.isArray(error) ? error[0] : error
   // B27: ограничение опций выбранными типами лицензий (в фильтре Лицензий).
   const typeKey = (licenseTypeIds || []).join(',')
 
@@ -41,7 +42,7 @@ export function EquipmentPicker({ onSelect, autoFocus, simOnly = false, licenseO
         style={{
           height: 40,
           background: 'var(--color-surface)',
-          boxShadow: 'inset 0 0 0 1px var(--color-primary)',
+          boxShadow: `inset 0 0 0 1px ${errorText ? 'var(--color-error)' : 'var(--color-primary)'}`,
           borderRadius: 10,
           display: 'flex',
           alignItems: 'center',
@@ -54,10 +55,11 @@ export function EquipmentPicker({ onSelect, autoFocus, simOnly = false, licenseO
           autoFocus={autoFocus}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Поиск оборудования"
+          placeholder="Поиск"
           style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13.5, fontFamily: 'inherit' }}
         />
       </div>
+      {errorText ? <div className="ele-field__error-text" style={{ marginTop: 5 }}>{errorText}</div> : null}
       {loading && results.length === 0 ? (
         <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Загрузка…</div>
       ) : results.filter((eq) => !excludeSet.has(eq.id)).length === 0 ? (

@@ -41,7 +41,7 @@ export function TransportPicker({ onSelect, excludeIds, purpose }) {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Поиск транспорта"
+          placeholder="Поиск"
           style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 13.5, fontFamily: 'inherit' }}
         />
       </div>

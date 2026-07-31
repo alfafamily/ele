@@ -180,7 +180,6 @@ export function LicenseFormPage() {
                 label="Вид лицензии"
                 required
                 icon="scroll-text"
-                placeholder="Поиск вида лицензии"
                 // При редактировании — только виды того же типа (программный/аппаратный).
                 options={types
                   .filter((t) => !t.is_archived || String(t.id) === String(typeId))
@@ -280,10 +279,7 @@ export function LicenseFormPage() {
                     </button>
                   </div>
                 ) : (
-                  <>
-                    <EquipmentPicker licenseOnly onSelect={(eq) => { setPlacementEquipment(eq); setPlaceError(null) }} />
-                    {placeError ? <div className="ele-field__error-text" style={{ marginTop: 6 }}>{placeError}</div> : null}
-                  </>
+                  <EquipmentPicker licenseOnly error={placeError} onSelect={(eq) => { setPlacementEquipment(eq); setPlaceError(null) }} />
                 )
               ) : selectedType.kind === 'hardware' ? (
                 <PlaceSelect placeType="storage" label={null} value={storagePlaceId} onChange={setStoragePlaceId} />

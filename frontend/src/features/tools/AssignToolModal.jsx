@@ -124,7 +124,7 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
                   autoFocus
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Поиск инструмента"
+                  placeholder="Поиск"
                   style={{ width: '100%', height: 40, boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, border: 'none', padding: '0 12px', fontSize: 13.5, fontFamily: 'inherit' }}
                 />
                 <div style={{ marginTop: 8, border: '1px solid var(--color-border)', borderRadius: 10, overflowY: 'auto', maxHeight: 216, padding: 4 }}>

@@ -231,7 +231,6 @@ export function EquipmentFormPage() {
                 label="Вид оборудования"
                 required
                 icon="tag"
-                placeholder="Поиск вида оборудования"
                 options={types.filter((t) => !t.is_archived || String(t.id) === String(typeId))}
                 value={typeId}
                 onChange={handleTypeChange}
@@ -365,10 +364,7 @@ export function EquipmentFormPage() {
                 placementEmployee ? (
                   <SelectedEmployee employee={placementEmployee} onClear={employeeId ? undefined : () => setPlacementEmployee(null)} />
                 ) : (
-                  <>
-                    <EmployeePicker onSelect={(emp) => { setPlacementEmployee(emp); setPlaceError(null) }} />
-                    {placeError ? <div className="ele-field__error-text" style={{ marginTop: 6 }}>{placeError}</div> : null}
-                  </>
+                  <EmployeePicker error={placeError} onSelect={(emp) => { setPlacementEmployee(emp); setPlaceError(null) }} />
                 )
               ) : (
                 <PlaceSelect
