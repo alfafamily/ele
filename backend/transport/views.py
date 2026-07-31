@@ -20,7 +20,7 @@ from core.permissions import (
     can_maintain_transport_type,
 )
 from employees.models import Employee
-from equipment.maintenance import add_months, plan_sort_key, plan_status
+from core.maintenance import add_months, plan_sort_key, plan_status
 from storage.service import delete_stored_file, store_uploaded_file
 
 from .maintenance import (
@@ -246,7 +246,7 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
             from django.db.models import Exists, OuterRef
 
-            from equipment.maintenance import DUE_SOON_DAYS
+            from core.maintenance import DUE_SOON_DAYS
 
             today = timezone.localdate()
             active = TransportMaintenancePlan.objects.filter(

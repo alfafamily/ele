@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from accounts.models import MaintenanceReminderState, NotificationKind
 from accounts.notifications import notify_maintenance
-from equipment.maintenance import DUE_SOON, OVERDUE, plan_status
+from core.maintenance import DUE_SOON, OVERDUE, plan_status
 
 _STATUS_KIND = {
     DUE_SOON: NotificationKind.MAINTENANCE_DUE,

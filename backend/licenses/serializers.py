@@ -2,6 +2,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from core.eav import apply_field_values, missing_required_fields, upsert_custom_fields
+from core.serializers import place_detail
 from equipment.serializers import EquipmentMiniSerializer
 from storage.serializers import StoredFileSerializer
 
@@ -201,13 +202,7 @@ class LicenseSerializer(serializers.ModelSerializer):
         return obj.license_type.kind == LicenseType.Kind.HARDWARE
 
     def get_storage_place_detail(self, obj):
-        if not obj.storage_place_id:
-            return None
-        p = obj.storage_place
-        return {
-            "id": p.id, "name": p.name, "place_type": p.place_type,
-            "room_name": p.room.name, "building_name": p.room.building.name,
-        }
+        return place_detail(obj.storage_place) if obj.storage_place_id else None
 
     def validate(self, attrs):
         # Размещение (B8): в оборудовании — значит не на складе. Свободная
@@ -333,13 +328,7 @@ class LicenseListSerializer(serializers.ModelSerializer):
         ]
 
     def get_storage_place_detail(self, obj):
-        if not obj.storage_place_id:
-            return None
-        p = obj.storage_place
-        return {
-            "id": p.id, "name": p.name, "place_type": p.place_type,
-            "room_name": p.room.name, "building_name": p.room.building.name,
-        }
+        return place_detail(obj.storage_place) if obj.storage_place_id else None
 
     def get_status(self, obj):
         return "assigned" if obj.equipment_id else "free"

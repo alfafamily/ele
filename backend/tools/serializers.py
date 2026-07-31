@@ -2,6 +2,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from core.eav import upsert_custom_fields
+from core.serializers import EmployeeHolderSerializerMixin
 from employees.models import Employee
 from locations.models import Place
 from storage.serializers import StoredFileSerializer
@@ -19,7 +20,7 @@ class ToolCustomFieldSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "value"]
 
 
-class ToolAllocationSerializer(serializers.ModelSerializer):
+class ToolAllocationSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerializer):
     """Размещение части инструмента (сотрудник / рабочее место / склад) —
     для карточки инструмента."""
 
@@ -44,9 +45,6 @@ class ToolAllocationSerializer(serializers.ModelSerializer):
             "acceptance_status",
         ]
 
-    def get_employee_name(self, obj):
-        return str(obj.employee) if obj.employee_id else None
-
     def get_acceptance_status(self, obj):
         # B32: репрезентативный статус акцепта размещения за сотрудником —
         # приоритет «требующего внимания»: pending > in_absentia > accepted.
@@ -67,17 +65,6 @@ class ToolAllocationSerializer(serializers.ModelSerializer):
             if s in statuses:
                 return s
         return None
-
-    def get_employee_avatar(self, obj):
-        if obj.employee_id and obj.employee.avatar_id:
-            return StoredFileSerializer(obj.employee.avatar).data
-        return None
-
-    def get_department(self, obj):
-        return obj.employee.department if obj.employee_id else None
-
-    def get_position(self, obj):
-        return obj.employee.position if obj.employee_id else None
 
     def get_place_name(self, obj):
         return obj.place.name if obj.place_id else None

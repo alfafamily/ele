@@ -5,22 +5,28 @@ from django.core.files.storage import FileSystemStorage
 
 
 class StorageBackend:
+    """Базовый делегирующий backend. Все операции проксируются в django-стораж
+    `self._storage`, который подкласс обязан установить в __init__. Подклассы
+    задают только `name` и способ создания `self._storage`."""
+
     name: str
+    _storage = None
 
     def save(self, path: str, file_obj) -> str:
-        raise NotImplementedError
+        return self._storage.save(path, file_obj)
 
     def open(self, path: str):
-        raise NotImplementedError
+        return self._storage.open(path)
 
     def delete(self, path: str) -> None:
-        raise NotImplementedError
+        if self._storage.exists(path):
+            self._storage.delete(path)
 
     def exists(self, path: str) -> bool:
-        raise NotImplementedError
+        return self._storage.exists(path)
 
     def url(self, path: str) -> str:
-        raise NotImplementedError
+        return self._storage.url(path)
 
 
 class LocalStorageBackend(StorageBackend):
@@ -28,22 +34,6 @@ class LocalStorageBackend(StorageBackend):
 
     def __init__(self):
         self._storage = FileSystemStorage(location=str(settings.MEDIA_ROOT), base_url=settings.MEDIA_URL)
-
-    def save(self, path, file_obj):
-        return self._storage.save(path, file_obj)
-
-    def open(self, path):
-        return self._storage.open(path)
-
-    def delete(self, path):
-        if self._storage.exists(path):
-            self._storage.delete(path)
-
-    def exists(self, path):
-        return self._storage.exists(path)
-
-    def url(self, path):
-        return self._storage.url(path)
 
 
 class S3StorageBackend(StorageBackend):
@@ -59,22 +49,6 @@ class S3StorageBackend(StorageBackend):
             access_key=settings.S3_ACCESS_KEY,
             secret_key=settings.S3_SECRET_KEY,
         )
-
-    def save(self, path, file_obj):
-        return self._storage.save(path, file_obj)
-
-    def open(self, path):
-        return self._storage.open(path)
-
-    def delete(self, path):
-        if self._storage.exists(path):
-            self._storage.delete(path)
-
-    def exists(self, path):
-        return self._storage.exists(path)
-
-    def url(self, path):
-        return self._storage.url(path)
 
 
 _INSTANCES: dict[str, StorageBackend] = {}

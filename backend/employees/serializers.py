@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from core.serializers import EmployeeHolderSerializerMixin
 from equipment.serializers import EquipmentMiniSerializer
 from transport.serializers import TransportMiniSerializer
 from locations.models import Building, Place, Room
@@ -69,20 +70,7 @@ class EmployeeAssignmentSerializer(serializers.ModelSerializer):
         return obj.decided_by.email if obj.decided_by_id else None
 
 
-def place_detail(place):
-    """Краткое описание Места для карточек (склад/рабочее место)."""
-    if place is None:
-        return None
-    return {
-        "id": place.id,
-        "name": place.name,
-        "place_type": place.place_type,
-        "room_name": place.room.name,
-        "building_name": place.room.building.name,
-    }
-
-
-class SimCardSerializer(serializers.ModelSerializer):
+class SimCardSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerializer):
     sim_type_display = serializers.CharField(source="get_sim_type_display", read_only=True)
     # «Неиспользуемая» (не за сотрудником и не в оборудовании, не утилизирована).
     is_deactivated = serializers.BooleanField(read_only=True)
@@ -129,26 +117,6 @@ class SimCardSerializer(serializers.ModelSerializer):
         # утилизация только через action utilize.
         read_only_fields = ["created_at", "is_utilized", "utilized_at"]
 
-    def get_employee_name(self, obj):
-        return str(obj.employee) if obj.employee_id else None
-
-    def get_acceptance_status(self, obj):
-        return getattr(obj, "acceptance_status", None)  # B32
-
-    def get_employee_avatar(self, obj):
-        if obj.employee_id and obj.employee.avatar_id:
-            return StoredFileSerializer(obj.employee.avatar).data
-        return None
-
-    def get_position(self, obj):
-        return obj.employee.position if obj.employee_id else None
-
-    def get_department(self, obj):
-        return obj.employee.department if obj.employee_id else None
-
-    def get_storage_place_detail(self, obj):
-        return place_detail(obj.storage_place) if obj.storage_place_id else None
-
     def validate_phone_number(self, value):
         value = value.strip()
         if not value:
@@ -183,7 +151,7 @@ class SimCardSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class AccessPassSerializer(serializers.ModelSerializer):
+class AccessPassSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerializer):
     # Здания/помещения на чтение — вложенно; на запись — по id. Один пропуск
     # может действовать в нескольких зданиях (buildings — M2M).
     buildings = BuildingMiniSerializer(many=True, read_only=True)
@@ -281,26 +249,6 @@ class AccessPassSerializer(serializers.ModelSerializer):
         # UniqueTogetherValidator, который делает account_number обязательным и
         # отдаёт ошибку в non_field_errors — оба поведения нам не нужны.
         validators = []
-
-    def get_employee_name(self, obj):
-        return str(obj.employee) if obj.employee_id else None
-
-    def get_acceptance_status(self, obj):
-        return getattr(obj, "acceptance_status", None)  # B32
-
-    def get_employee_avatar(self, obj):
-        if obj.employee_id and obj.employee.avatar_id:
-            return StoredFileSerializer(obj.employee.avatar).data
-        return None
-
-    def get_position(self, obj):
-        return obj.employee.position if obj.employee_id else None
-
-    def get_department(self, obj):
-        return obj.employee.department if obj.employee_id else None
-
-    def get_storage_place_detail(self, obj):
-        return place_detail(obj.storage_place) if obj.storage_place_id else None
 
     def get_transport_detail(self, obj):
         return TransportMiniSerializer(obj.transport).data if obj.transport_id else None

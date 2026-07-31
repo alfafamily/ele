@@ -1,16 +1,13 @@
-"""B22. Регламентное ТО транспорта — статус планов и инварианты.
+"""B22. Регламентное ТО транспорта — инварианты и каскады.
 
-Механика идентична ТО оборудования; модель-независимые хелперы (статус плана по
-дате, ключ сортировки, сдвиг даты на месяцы, окно «скоро») переиспользуются из
-equipment.maintenance. Здесь — только транспорт-специфичные сводка и каскады.
-Отличие от оборудования: ТО для транспорта включено всегда (флага
-maintenance_enabled у типа нет), поэтому в сводке его не проверяем.
+Механика идентична ТО оборудования; модель-независимое ядро (статус плана,
+сортировка, сводка, каскад архива) — в core.maintenance. Здесь — только
+транспорт-специфичные создание/каскады планов. Отличие от оборудования: ТО для
+транспорта включено всегда (флага maintenance_enabled у типа нет).
 """
 
-from django.utils import timezone
-
-# Переиспользуем generic-хелперы и константы (не завязаны на модели equipment).
-from equipment.maintenance import (  # noqa: F401
+# Реэкспорт generic-ядра для обратной совместимости импортов (transport.views).
+from core.maintenance import (  # noqa: F401
     DUE_SOON_DAYS,
     NOT_PLANNED,
     OVERDUE,
@@ -18,36 +15,17 @@ from equipment.maintenance import (  # noqa: F401
     SCHEDULED,
     add_months,
     is_plan_active,
+    maintenance_summary,
     plan_sort_key,
     plan_status,
+    set_regulation_archived,
 )
-from equipment.maintenance import _CRITICAL_RANK
 
 
 def transport_maintenance_summary(transport, today=None):
-    """Сводка индикации по экземпляру для списка/карточки:
-      {critical: overdue|due_soon|scheduled|None, has_unplanned: bool, enabled}.
-    Для транспорта ТО включено всегда → enabled=True (кроме списанного).
-    Использует prefetched maintenance_plans__regulation (без доп. запросов)."""
-    result = {"critical": None, "has_unplanned": False, "enabled": True}
-    if transport.is_written_off:
-        result["enabled"] = False
-        return result
-
-    today = today or timezone.localdate()
-    best = 0
-    for plan in transport.maintenance_plans.all():
-        if not is_plan_active(plan) or plan.regulation.on_demand:
-            continue
-        status = plan_status(plan.next_planned_date, today)
-        if status == NOT_PLANNED:
-            result["has_unplanned"] = True
-            continue
-        rank = _CRITICAL_RANK[status]
-        if rank > best:
-            best = rank
-            result["critical"] = status
-    return result
+    """Сводка индикации по экземпляру транспорта. ТО у транспорта включено всегда
+    (кроме списанного). См. core.maintenance."""
+    return maintenance_summary(transport, True, today)
 
 
 # --- Инварианты создания/каскадов планов -----------------------------------
@@ -86,13 +64,6 @@ def create_plan_for_individual_regulation(regulation):
     TransportMaintenancePlan.objects.get_or_create(
         transport=regulation.transport, regulation=regulation
     )
-
-
-def set_regulation_archived(regulation, archived):
-    """Архивирование/возврат регламента с каскадом на планы."""
-    regulation.is_archived = archived
-    regulation.save(update_fields=["is_archived"])
-    regulation.plans.update(is_cancelled=archived, next_planned_date=None)
 
 
 def archive_transport_maintenance(transport):

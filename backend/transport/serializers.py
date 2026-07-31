@@ -2,6 +2,13 @@ from django.db import transaction
 from rest_framework import serializers
 
 from core.eav import apply_field_values, missing_required_fields, upsert_custom_fields
+from core.maintenance_serializers import (
+    BaseMaintenancePerformItemSerializer,
+    BaseMaintenanceRegulationItemSerializer,
+    BaseMaintenanceRegulationSerializer,
+    BasePerformMaintenanceSerializer,
+)
+from core.serializers import EmployeeHolderSerializerMixin
 from storage.serializers import StoredFileSerializer
 
 from .maintenance import create_plans_for_transport, transport_maintenance_summary
@@ -162,7 +169,7 @@ def transport_parking(obj):
     return None
 
 
-class TransportSerializer(serializers.ModelSerializer):
+class TransportSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerializer):
     """Единый сериализатор чтения/записи. Файловые реквизиты — через отдельный
     upload-эндпоинт (см. views.py)."""
 
@@ -258,23 +265,6 @@ class TransportSerializer(serializers.ModelSerializer):
             "unit": obj.transport_type.mileage_unit,
             "performed_at": rec.performed_at,
         }
-
-    def get_employee_name(self, obj):
-        return str(obj.employee) if obj.employee_id else None
-
-    def get_acceptance_status(self, obj):
-        return getattr(obj, "acceptance_status", None)  # B32
-
-    def get_employee_avatar(self, obj):
-        if obj.employee_id and obj.employee.avatar_id:
-            return StoredFileSerializer(obj.employee.avatar).data
-        return None
-
-    def get_department(self, obj):
-        return obj.employee.department if obj.employee_id else None
-
-    def get_position(self, obj):
-        return obj.employee.position if obj.employee_id else None
 
     def get_status(self, obj):
         # assigned — за сотрудником; free — свободен.
@@ -379,101 +369,32 @@ class TransportMiniSerializer(serializers.ModelSerializer):
 
 # --- Регламенты ТО ---------------------------------------------------------
 
-class MaintenanceRegulationItemSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)
-
-    class Meta:
+class MaintenanceRegulationItemSerializer(BaseMaintenanceRegulationItemSerializer):
+    class Meta(BaseMaintenanceRegulationItemSerializer.Meta):
         model = MaintenanceRegulationItem
-        fields = ["id", "kind", "name", "quantity"]
 
 
-class MaintenanceRegulationSerializer(serializers.ModelSerializer):
+class MaintenanceRegulationSerializer(BaseMaintenanceRegulationSerializer):
     items = MaintenanceRegulationItemSerializer(many=True)
-    scope = serializers.CharField(read_only=True)
 
-    class Meta:
+    class Meta(BaseMaintenanceRegulationSerializer.Meta):
         model = MaintenanceRegulation
-        fields = ["id", "name", "period_months", "on_demand", "is_archived", "scope", "items", "created_at"]
-        read_only_fields = ["is_archived", "created_at"]
-
-    def validate_name(self, value):
-        value = (value or "").strip()
-        if not value:
-            raise serializers.ValidationError("Укажите наименование регламента.")
-        return value
-
-    def validate(self, attrs):
-        on_demand = attrs.get("on_demand", getattr(self.instance, "on_demand", False))
-        period = attrs.get("period_months", getattr(self.instance, "period_months", None))
-        if on_demand:
-            attrs["period_months"] = None
-        elif not period or period < 1:
-            raise serializers.ValidationError(
-                {"period_months": ["Укажите периодичность в месяцах или отметьте «по потребности»."]}
-            )
-        items = attrs.get("items")
-        if items is not None:
-            cleaned = [i for i in items if (i.get("name") or "").strip()]
-            if not cleaned:
-                raise serializers.ValidationError({"items": ["Добавьте хотя бы одну работу или материал."]})
-            attrs["items"] = cleaned
-        return attrs
-
-    def create(self, validated_data):
-        items = validated_data.pop("items", [])
-        regulation = super().create(validated_data)
-        self._sync_items(regulation, items)
-        return regulation
-
-    def update(self, instance, validated_data):
-        items = validated_data.pop("items", None)
-        regulation = super().update(instance, validated_data)
-        if items is not None:
-            self._sync_items(regulation, items)
-        return regulation
-
-    def _sync_items(self, regulation, items):
-        regulation.items.all().delete()
-        MaintenanceRegulationItem.objects.bulk_create([
-            MaintenanceRegulationItem(
-                regulation=regulation,
-                kind=i["kind"],
-                name=i["name"].strip(),
-                quantity=i["quantity"],
-            )
-            for i in items
-        ])
 
 
 # --- Проведение ТО ---------------------------------------------------------
 
-class MaintenancePerformItemSerializer(serializers.Serializer):
+class MaintenancePerformItemSerializer(BaseMaintenancePerformItemSerializer):
     kind = serializers.ChoiceField(choices=MaintenanceKind.choices)
-    name = serializers.CharField(max_length=255)
-    quantity = serializers.DecimalField(max_digits=12, decimal_places=3, min_value=0)
-    from_regulation = serializers.BooleanField(required=False, default=False)
-    is_cancelled = serializers.BooleanField(required=False, default=False)
-    cancel_reason = serializers.CharField(required=False, allow_blank=True, default="")
 
 
-class PerformMaintenanceSerializer(serializers.Serializer):
-    """B22. Проведение ТО по регламенту (или «Внеплановое» — regulation=null).
+class PerformMaintenanceSerializer(BasePerformMaintenanceSerializer):
+    """B22. Проведение ТО транспорта по регламенту (см. базовый класс).
     Дополнительно принимает `mileage` — текущий пробег/моточасы (необязательно)."""
 
     regulation = serializers.PrimaryKeyRelatedField(
         queryset=MaintenanceRegulation.objects.all(), required=False, allow_null=True
     )
-    next_planned_date = serializers.DateField(required=False, allow_null=True)
     mileage = serializers.DecimalField(
         max_digits=12, decimal_places=2, min_value=0, required=False, allow_null=True
     )
-    comment = serializers.CharField(required=False, allow_blank=True, default="")
     items = MaintenancePerformItemSerializer(many=True, required=False, default=list)
-
-    def validate_items(self, value):
-        for item in value:
-            if not item["name"].strip():
-                raise serializers.ValidationError("У позиции не заполнено наименование.")
-            if item["is_cancelled"] and not (item.get("cancel_reason") or "").strip():
-                raise serializers.ValidationError("Для отменённой позиции укажите причину отмены.")
-        return value

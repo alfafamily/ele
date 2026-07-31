@@ -7,6 +7,8 @@
 """
 from rest_framework.permissions import BasePermission
 
+_SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
+
 
 def _role(request):
     user = request.user
@@ -16,6 +18,43 @@ def _role(request):
 def _is_observer(request):
     user = request.user
     return _role(request) == "employee" and getattr(user, "is_observer", False)
+
+
+class EmployeeScopedAccessPermission(BasePermission):
+    """Базовый класс раздела, который видит и «Сотрудник» (только своё, read-only).
+
+    Матрица: admin/accountant — полный доступ; роли из `read_only_roles` —
+    только чтение (например «Ответственный за ТО» для оборудования, «Автомеханик»
+    для транспорта); «Сотрудник» — только чтение своих объектов (Наблюдатель —
+    чтение всех). Признак «свой объект» задаёт `_owns`; по умолчанию сравнение
+    `obj.employee_id == user.employee_id` (SIM-карты, пропуска, оборудование,
+    транспорт). Инструменты переопределяют `_owns` (закрепление через allocations).
+    Фильтрация списка под «только своё» — в get_queryset() соответствующего вьюсета."""
+
+    # Роли (помимо admin/accountant), которым доступен раздел на чтение.
+    read_only_roles: tuple = ()
+
+    def _owns(self, user, obj):
+        return obj.employee_id == user.employee_id
+
+    def has_permission(self, request, view):
+        role = _role(request)
+        if role in ("admin", "accountant"):
+            return True
+        if role in self.read_only_roles:
+            return request.method in _SAFE_METHODS
+        return role == "employee" and request.method in _SAFE_METHODS
+
+    def has_object_permission(self, request, view, obj):
+        role = _role(request)
+        if role in ("admin", "accountant"):
+            return True
+        if role in self.read_only_roles:
+            return request.method in _SAFE_METHODS
+        if role != "employee" or request.method not in _SAFE_METHODS:
+            return False
+        # Наблюдатель видит любой объект раздела; обычный сотрудник — только свой.
+        return request.user.is_observer or self._owns(request.user, obj)
 
 
 def can_perform_maintenance(request):
@@ -158,31 +197,14 @@ class TransportRegulationAccessPermission(BasePermission):
         return can_manage_transport_maintenance(request)
 
 
-class TransportAccessPermission(BasePermission):
+class TransportAccessPermission(EmployeeScopedAccessPermission):
     """Транспорт (B22): admin/accountant — полный доступ; роль «Автомеханик» —
     только чтение объектов (проведение ТО — отдельный экшен со своей проверкой);
     Наблюдатель — сквозной read-only; обычный «Сотрудник» — только чтение своего
     транспорта (для блока в Профиле). Список для «Автомеханика»/«Сотрудника»
     сужается в TransportViewSet.get_queryset()."""
 
-    def has_permission(self, request, view):
-        role = _role(request)
-        if role in ("admin", "accountant"):
-            return True
-        if role == "automechanic":
-            return request.method in _SAFE_METHODS
-        return role == "employee" and request.method in _SAFE_METHODS
-
-    def has_object_permission(self, request, view, obj):
-        role = _role(request)
-        if role in ("admin", "accountant"):
-            return True
-        if role == "automechanic":
-            return request.method in _SAFE_METHODS
-        if role != "employee" or request.method not in _SAFE_METHODS:
-            return False
-        # Наблюдатель видит любой транспорт; обычный сотрудник — только свой.
-        return request.user.is_observer or obj.employee_id == request.user.employee_id
+    read_only_roles = ("automechanic",)
 
 
 class IsAdmin(BasePermission):
@@ -199,9 +221,6 @@ class IsAdminOrAccountant(BasePermission):
         return _role(request) in ("admin", "accountant")
 
 
-_SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
-
-
 class IsAdminOrAccountantOrReadOnlyObserver(BasePermission):
     """Admin/Accountant — полный доступ; Наблюдатель — только чтение
     (SAFE_METHODS). Прочие роли к разделу не допускаются. Управляющие действия
@@ -213,95 +232,32 @@ class IsAdminOrAccountantOrReadOnlyObserver(BasePermission):
         return _is_observer(request) and request.method in _SAFE_METHODS
 
 
-class EquipmentAccessPermission(BasePermission):
-    """Оборудование — единственный раздел, где Сотрудник вообще что-то видит
-   : свои объекты, либо все — с признаком «Наблюдатель», но
-    всегда только на просмотр. Фильтрация списка под «только своё» —
-    в EquipmentViewSet.get_queryset(), здесь — доступ к разделу и объекту."""
+class EquipmentAccessPermission(EmployeeScopedAccessPermission):
+    """Оборудование — единственный раздел, где Сотрудник вообще что-то видит:
+    свои объекты, либо все — с признаком «Наблюдатель», но всегда только на
+    просмотр. Роль «Ответственный за ТО» (B13+) видит раздел на чтение;
+    проведение ТО — отдельный экшен со своей проверкой CanPerformMaintenance.
+    Фильтрация списка под «только своё» — в EquipmentViewSet.get_queryset()."""
 
-    def has_permission(self, request, view):
-        role = _role(request)
-        if role in ("admin", "accountant"):
-            return True
-        # B13+: роль «Ответственный за ТО» видит раздел Оборудование (только
-        # чтение самих объектов); проведение ТО — отдельный экшен со своей
-        # проверкой CanPerformMaintenance.
-        if role == "maintenance":
-            return request.method in _SAFE_METHODS
-        return role == "employee" and request.method in _SAFE_METHODS
-
-    def has_object_permission(self, request, view, obj):
-        role = _role(request)
-        if role in ("admin", "accountant"):
-            return True
-        if role == "maintenance":
-            return request.method in _SAFE_METHODS
-        if role != "employee" or request.method not in _SAFE_METHODS:
-            return False
-        user = request.user
-        return user.is_observer or obj.employee_id == user.employee_id
+    read_only_roles = ("maintenance",)
 
 
-class ToolAccessPermission(BasePermission):
+class ToolAccessPermission(EmployeeScopedAccessPermission):
     """Инструменты — как Оборудование: Сотрудник видит инструменты, где за ним
     закреплены единицы (или все — с признаком «Наблюдатель»), только на просмотр.
     Фильтрация списка под «только своё» — в ToolViewSet.get_queryset()."""
 
-    def has_permission(self, request, view):
-        role = _role(request)
-        if role in ("admin", "accountant"):
-            return True
-        return role == "employee" and request.method in _SAFE_METHODS
-
-    def has_object_permission(self, request, view, obj):
-        role = _role(request)
-        if role in ("admin", "accountant"):
-            return True
-        if role != "employee" or request.method not in _SAFE_METHODS:
-            return False
-        user = request.user
-        return user.is_observer or (
-            bool(user.employee_id) and obj.allocations.filter(employee_id=user.employee_id).exists()
-        )
+    def _owns(self, user, obj):
+        return bool(user.employee_id) and obj.allocations.filter(employee_id=user.employee_id).exists()
 
 
-class SimCardAccessPermission(BasePermission):
+class SimCardAccessPermission(EmployeeScopedAccessPermission):
     """SIM-карты: управление — admin/accountant. Наблюдатель — просмотр всех
     номеров (раздел «Корпоративная связь»); обычный «Сотрудник» — только свои
     номера в Профиле. Фильтрация — в SimCardViewSet.get_queryset()."""
 
-    def has_permission(self, request, view):
-        role = _role(request)
-        if role in ("admin", "accountant"):
-            return True
-        return role == "employee" and request.method in _SAFE_METHODS
 
-    def has_object_permission(self, request, view, obj):
-        role = _role(request)
-        if role in ("admin", "accountant"):
-            return True
-        if role != "employee" or request.method not in _SAFE_METHODS:
-            return False
-        # Наблюдатель видит любую карту; обычный сотрудник — только свою.
-        return request.user.is_observer or obj.employee_id == request.user.employee_id
-
-
-class AccessPassAccessPermission(BasePermission):
+class AccessPassAccessPermission(EmployeeScopedAccessPermission):
     """Пропуска СКУД: управление — admin/accountant. Наблюдатель — просмотр всех
     средств доступа (раздел «Средства доступа»); обычный «Сотрудник» — только
     свои в Профиле. Фильтрация — в AccessPassViewSet.get_queryset()."""
-
-    def has_permission(self, request, view):
-        role = _role(request)
-        if role in ("admin", "accountant"):
-            return True
-        return role == "employee" and request.method in _SAFE_METHODS
-
-    def has_object_permission(self, request, view, obj):
-        role = _role(request)
-        if role in ("admin", "accountant"):
-            return True
-        if role != "employee" or request.method not in _SAFE_METHODS:
-            return False
-        # Наблюдатель видит любой пропуск; обычный сотрудник — только свой.
-        return request.user.is_observer or obj.employee_id == request.user.employee_id
