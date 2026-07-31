@@ -18,6 +18,7 @@ export function TypeSelect({
   onChange,
   error,
   placeholder = 'Поиск',
+  emptyText = 'Нет доступных видов',
 }) {
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState(true)
@@ -94,7 +95,7 @@ export function TypeSelect({
       <div style={{ marginTop: 8, border: '1px solid var(--color-border)', borderRadius: 10, overflowY: 'auto', maxHeight: LIST_MAX_HEIGHT, padding: 4 }}>
         {list.length === 0 ? (
           <div style={{ padding: 12, fontSize: 13, color: 'var(--color-text-placeholder)', textAlign: 'center' }}>
-            {query ? 'Ничего не найдено' : 'Нет доступных видов'}
+            {query ? 'Ничего не найдено' : emptyText}
           </div>
         ) : (
           list.map((o) => (

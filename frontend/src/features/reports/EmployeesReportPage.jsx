@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
-import { EmptyState, Icon, Select, Spinner } from '../../shared/ui'
+import { EmptyState, Icon, MultiSelectList, Spinner } from '../../shared/ui'
 import { getEmployeesReport } from './reportsApi.js'
 import {
-  AcceptanceLegend, EmployeePropertyBlock, ExpandCard, FilterRow, ReportShell, SectionHead, WorkplaceBlock,
+  AcceptanceLegend, EmployeePropertyBlock, ExpandCard, ReportShell, SectionHead, WorkplaceBlock,
 } from './reportsShared.jsx'
 import { countLabel } from './reportsUtils.js'
 
 // B45. Отчёт по имуществу у сотрудников: закреплённое имущество (с иконкой
-// статуса акцепта B32) + рабочие места сотрудника с имуществом на них. Фильтр —
-// по сотруднику. Показываются все сотрудники (в т.ч. без имущества).
+// статуса акцепта B32) + рабочие места сотрудника с имуществом на них. Подбор
+// сотрудников — поиском+списком (как в модалках закрепления); не выбран никто —
+// отчёт по всем.
 export function EmployeesReportPage() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
-  const [employeeId, setEmployeeId] = useState('')
+  const [selectedIds, setSelectedIds] = useState([])
 
   useEffect(() => {
     getEmployeesReport()
@@ -21,18 +22,32 @@ export function EmployeesReportPage() {
   }, [])
 
   const employees = useMemo(() => data || [], [data])
-  const list = useMemo(
-    () => (employeeId ? employees.filter((e) => String(e.id) === employeeId) : employees),
-    [employees, employeeId],
+  const options = useMemo(
+    () => employees.map((e) => ({ value: String(e.id), label: e.name, sub: [e.position, e.department].filter(Boolean).join(' · ') })),
+    [employees],
   )
+  const list = useMemo(
+    () => (selectedIds.length ? employees.filter((e) => selectedIds.includes(String(e.id))) : employees),
+    [employees, selectedIds],
+  )
+  const toggle = (v) => setSelectedIds((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]))
 
   const filters = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <FilterRow>
-        <Select label="Сотрудник" placeholder="Все" value={employeeId} onChange={setEmployeeId} className="ele-report-filter">
-          {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-        </Select>
-      </FilterRow>
+      <div>
+        <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 6 }}>Сотрудники</div>
+        <MultiSelectList
+          options={options}
+          selected={selectedIds}
+          onToggle={toggle}
+          search
+          chips
+          emptyText="Сотрудников нет"
+        />
+        <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 6 }}>
+          Не выбрано — отчёт по всем сотрудникам.
+        </div>
+      </div>
       <AcceptanceLegend />
     </div>
   )

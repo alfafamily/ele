@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { EmptyState, Icon, Select, Spinner } from '../../shared/ui'
+import { EmptyState, Icon, Spinner, TypeSelect } from '../../shared/ui'
 import { getPlacesReport } from './reportsApi.js'
 import {
-  BuildingHead, ExpandCard, FilterRow, PlaceBody, ReportShell, RoomHead,
+  BuildingHead, ExpandCard, PlaceBody, ReportShell, RoomHead,
 } from './reportsShared.jsx'
 import { countLabel } from './reportsUtils.js'
 
@@ -60,17 +60,32 @@ export function PlacesReportPage({ kind }) {
   }, [buildings, buildingId, roomId, placeId])
 
   const filters = (
-    <FilterRow>
-      <Select label="Здание" placeholder="Все" value={buildingId} onChange={(v) => { setBuildingId(v); setRoomId(''); setPlaceId('') }} className="ele-report-filter">
-        {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-      </Select>
-      <Select label="Помещение" placeholder="Все" value={roomId} onChange={(v) => { setRoomId(v); setPlaceId('') }} className="ele-report-filter">
-        {roomOptions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-      </Select>
-      <Select label="Место" placeholder="Все" value={placeId} onChange={setPlaceId} className="ele-report-filter">
-        {placeOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-      </Select>
-    </FilterRow>
+    <div className="ele-report-place-filters">
+      <TypeSelect
+        label="Здание"
+        icon="building-2"
+        emptyText="Зданий нет"
+        options={buildings.map((b) => ({ id: b.id, name: b.name }))}
+        value={buildingId}
+        onChange={(v) => { setBuildingId(v); setRoomId(''); setPlaceId('') }}
+      />
+      <TypeSelect
+        label="Помещение"
+        icon="map-pin"
+        emptyText="Помещений нет"
+        options={roomOptions}
+        value={roomId}
+        onChange={(v) => { setRoomId(v); setPlaceId('') }}
+      />
+      <TypeSelect
+        label="Место"
+        icon={meta.icon}
+        emptyText="Мест нет"
+        options={placeOptions}
+        value={placeId}
+        onChange={setPlaceId}
+      />
+    </div>
   )
 
   let body

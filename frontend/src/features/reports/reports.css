@@ -6,6 +6,20 @@
   max-width: 300px;
 }
 
+/* Подбор здание/помещение/место в отчётах: три пикера в ряд на десктопе,
+   друг под другом на мобилке. */
+.ele-report-place-filters {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 640px) {
+  .ele-report-place-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Категория имущества: подпись слева фиксированной ширины, объекты справа.
    Строки категорий разделены тонкой линией. На узком экране — в столбик. */
 .ele-report-cat {
