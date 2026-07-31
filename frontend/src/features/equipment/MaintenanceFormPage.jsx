@@ -4,7 +4,7 @@ import { Banner, BackButton, Button, Card, DatePicker, FormActions, Icon, Input,
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { Tooltip } from '../../shared/Tooltip.jsx'
 import { getEquipment, getEquipmentRegulations, performMaintenance } from './equipmentApi.js'
-import { regulationPeriodLabel } from '../types/TypesEditorPage.jsx'
+import { regulationPeriodLabel } from '../types/regulationPeriodLabel.js'
 import { planStatusIcon } from './statusLabels.js'
 import './MaintenanceFormPage.css'
 

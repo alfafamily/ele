@@ -29,7 +29,6 @@ export function QuantityMoveModal({
   confirmLabel,
   target = null,
   storage = null,
-  storageRequired = false,
   storageFreeMap = {},
   unplacedFree,
   max,

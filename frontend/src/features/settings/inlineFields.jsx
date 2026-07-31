@@ -4,9 +4,6 @@ import { Icon, Input } from '../../shared/ui'
 // Ширина полей ввода/просмотра — под ~20 символов, не на всю ширину блока.
 export const FIELD_W = 'min(100%, 220px)'
 
-export const fieldError = (e) =>
-  e.errors ? Object.values(e.errors).flat().join(' ') : e.detail || 'Не удалось сохранить.'
-
 const ICON_BY_KIND = { edit: 'square-pen', delete: 'trash-2', apply: 'check', cancel: 'x' }
 
 // Иконочная кнопка действия. Плоская (в режиме просмотра — рядом с полем) или

@@ -8,6 +8,7 @@ import { DeleteTypeModal } from './DeleteTypeModal.jsx'
 import { FieldFormModal } from './FieldFormModal.jsx'
 import { NewTypeModal } from './NewTypeModal.jsx'
 import { RenameTypeModal } from './RenameTypeModal.jsx'
+import { regulationPeriodLabel } from './regulationPeriodLabel.js'
 import { makeTypesApi } from './typesApi.js'
 
 const KIND_LABEL = { software: 'Программная', hardware: 'Аппаратная' }
@@ -520,16 +521,6 @@ export function TypesEditorPage({ domain, title }) {
       ) : null}
     </div>
   )
-}
-
-// «раз в N мес.» / «по потребности» — подпись периодичности регламента.
-export function regulationPeriodLabel(reg) {
-  if (reg.on_demand) return 'По потребности'
-  const n = reg.period_months
-  const d = n % 10
-  const h = n % 100
-  const word = d === 1 && h !== 11 ? 'месяц' : d >= 2 && d <= 4 && (h < 10 || h >= 20) ? 'месяца' : 'месяцев'
-  return `Раз в ${n} ${word}`
 }
 
 // Текст-статус флага Типа оборудования (SIM/ТО) — в блоке реквизитов только для

@@ -1,12 +1,6 @@
 import { Icon } from '../Icon/Icon.jsx'
+import { gridTemplateColumns } from './tableGrid.js'
 import './Table.css'
-
-// Один и тот же grid-паттерн колонок повторяется во всех списках спеки
-// (-5.3) — columns описывает и заголовок, и разметку строк
-// (через gridTemplateColumns), чтобы они не могли разъехаться между собой.
-export function gridTemplateColumns(columns) {
-  return columns.map((c) => c.width || '1fr').join(' ')
-}
 
 // Полные "карточки" на мобильных для каждого списка — отдельная задача
 // полировки; здесь минимальная защита от обрезанных колонок —

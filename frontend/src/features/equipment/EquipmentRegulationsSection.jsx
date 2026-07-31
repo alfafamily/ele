@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ActionMenu, Badge, Button, ConfirmModal, Icon, InlineCalendar, Modal } from '../../shared/ui'
 import { Tooltip } from '../../shared/Tooltip.jsx'
-import { regulationPeriodLabel } from '../types/TypesEditorPage.jsx'
+import { regulationPeriodLabel } from '../types/regulationPeriodLabel.js'
 import {
   archiveEquipmentRegulation,
   createEquipmentRegulation,

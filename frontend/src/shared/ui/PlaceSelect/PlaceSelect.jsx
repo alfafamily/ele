@@ -44,7 +44,10 @@ export function PlaceSelect({
   // Выбор «Без склада» неотличим от «не выбрано» по value (''), поэтому храним
   // флаг отдельно; блок свёрнут, если выбрано реальное место или «Без склада».
   const [noneChosen, setNoneChosen] = useState(false)
-  const [editing, setEditing] = useState(true)
+  // Если место пришло извне (редактирование) — стартуем свёрнутыми, иначе в режиме
+  // выбора. Ленивый инициализатор = mount-only: последующие изменения value блок не
+  // схлопывают (иначе он закрывался бы при каждом изменении и мешал пользователю).
+  const [editing, setEditing] = useState(() => !value)
   const errorText = Array.isArray(error) ? error[0] : error
 
   useEffect(() => {
@@ -60,11 +63,6 @@ export function PlaceSelect({
       alive = false
     }
   }, [types])
-
-  // Если место пришло извне (редактирование) — стартуем свёрнутыми.
-  useEffect(() => {
-    if (value) setEditing(false)
-  }, [])
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -107,7 +105,7 @@ export function PlaceSelect({
     return multiType ? `${TYPE_LABEL[p.place_type] || ''} · ${base}` : base
   }
 
-  const meta = (name, location, qty) => (
+  const meta = (name, location) => (
     <span style={{ minWidth: 0, flex: 1 }}>
       <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
       {location ? (
@@ -126,7 +124,7 @@ export function PlaceSelect({
         {labelNode}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', background: 'var(--color-fill-input)', borderRadius: 10 }}>
           <LeadIconCircle name={collapsedIcon} size={30} iconSize={15} tinted />
-          {meta(name, location, qty)}
+          {meta(name, location)}
           {showQuantity && typeof qty === 'number' ? (
             <span style={{ fontSize: 13, fontWeight: 600, flex: 'none', color: 'var(--color-text-muted)' }}>{qty} шт.</span>
           ) : null}
@@ -145,7 +143,7 @@ export function PlaceSelect({
       onClick={onClick}
       style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 11px', border: 'none', borderRadius: 8, background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
     >
-      {meta(name, location, qty)}
+      {meta(name, location)}
       {showQuantity && typeof qty === 'number' ? (
         <span style={{ fontSize: 13, fontWeight: 600, flex: 'none', color: 'var(--color-text-muted)' }}>{qty} шт.</span>
       ) : null}

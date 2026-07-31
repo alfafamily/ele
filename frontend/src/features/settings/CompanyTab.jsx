@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useCompany, useRefreshCompany } from '../../app/CompanyContext.jsx'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { Banner, Card, Checkbox, Icon, Spinner } from '../../shared/ui'
-import { fieldError, InlineField } from './inlineFields.jsx'
+import { InlineField } from './inlineFields.jsx'
+import { fieldError } from './fieldError.js'
 import { deleteCompanyLogo, getCompanySettings, updateCompanySettings, uploadCompanyLogo } from './settingsApi.js'
 
 // Читает натуральные размеры выбранного изображения в браузере (без загрузки

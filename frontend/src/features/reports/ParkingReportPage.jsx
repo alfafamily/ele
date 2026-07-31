@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { EmptyState, Icon, Spinner } from '../../shared/ui'
 import { getParkingReport } from './reportsApi.js'
-import { BuildingHead, ExpandCard, LocationFilters, ReportTwoStage, RoomHead, useLocationFilter } from './reportsShared.jsx'
+import { BuildingHead, ExpandCard, LocationFilters, ReportTwoStage, RoomHead } from './reportsShared.jsx'
+import { useLocationFilter } from './useLocationFilter.js'
 // countLabel не нужен здесь — сводка парковок текстовая.
 
 // B45. Отчёт по парковкам: парковочные места с увязкой к зданию/помещению; за

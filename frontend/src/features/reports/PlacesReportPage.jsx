@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { EmptyState, Icon, Spinner } from '../../shared/ui'
 import { getPlacesReport } from './reportsApi.js'
 import {
-  BuildingHead, ExpandCard, LocationFilters, PlaceBody, ReportTwoStage, RoomHead, useLocationFilter,
+  BuildingHead, ExpandCard, LocationFilters, PlaceBody, ReportTwoStage, RoomHead,
 } from './reportsShared.jsx'
+import { useLocationFilter } from './useLocationFilter.js'
 import { countLabel } from './reportsUtils.js'
 
 // B45. Отчёт по местам одного типа: рабочие места (workplace), МОП (common),

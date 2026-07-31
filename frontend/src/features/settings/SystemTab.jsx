@@ -6,7 +6,8 @@ import { currentSubscription, enablePush, isIOS, permissionDenied, pushUnavailab
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { Banner, Button, Card, Checkbox, Icon, Input, Modal, Spinner } from '../../shared/ui'
 import { formatBytes } from '../../shared/format.js'
-import { FieldView, fieldError, FIELD_W, IconBtn, InlineField } from './inlineFields.jsx'
+import { FieldView, FIELD_W, IconBtn, InlineField } from './inlineFields.jsx'
+import { fieldError } from './fieldError.js'
 import { IpAllowlistEditor } from './IpAllowlistEditor.jsx'
 import {
   checkCaptcha,

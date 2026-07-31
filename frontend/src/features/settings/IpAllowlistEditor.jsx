@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Banner, Button, Icon, Input } from '../../shared/ui'
-import { FieldView, fieldError, FIELD_W, IconBtn } from './inlineFields.jsx'
+import { FieldView, FIELD_W, IconBtn } from './inlineFields.jsx'
+import { fieldError } from './fieldError.js'
 
 const normalizeIps = (list) => (list || []).map((e) => ({ ip: e.ip || '', note: e.note || '' }))
 

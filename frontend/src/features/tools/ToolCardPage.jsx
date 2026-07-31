@@ -183,7 +183,6 @@ export function ToolCardPage() {
           confirmLabel={moveModal.confirmLabel}
           target={moveModal.target}
           storage={moveModal.storage}
-          storageRequired={moveModal.storageRequired}
           storageFreeMap={storageFreeMap}
           unplacedFree={tool.free_unplaced}
           max={moveModal.max}
@@ -204,7 +203,6 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove, onTransfer })
       storage: 'add',
       // Приход только на склад; «Без склада» доступно, лишь если у карточки уже
       // есть неразмещённый остаток (совместимость с обновлением на 1.9.0).
-      storageRequired: tool.free_unplaced <= 0,
       onSubmit: (p) => addUnits(tool.id, { quantity: p.quantity, place: p.storagePlaceId ? Number(p.storagePlaceId) : undefined, comment: p.comment }).then(closeMove),
     })
   const openWriteOff = () =>
@@ -212,7 +210,6 @@ function QuantityStock({ tool, canManage, setMoveModal, closeMove, onTransfer })
       title: 'Списать',
       confirmLabel: 'Списать',
       storage: 'writeoff',
-      storageRequired: tool.free_unplaced <= 0,
       max: tool.free,
       onSubmit: (p) => writeOffUnits(tool.id, { quantity: p.quantity, place: p.storagePlaceId ? Number(p.storagePlaceId) : undefined, comment: p.comment }).then(closeMove),
     })
@@ -288,7 +285,6 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
       confirmLabel: 'Закрепить',
       target: 'both',
       storage: 'from',
-      storageRequired: tool.free_unplaced <= 0,
       max: tool.free,
       onSubmit: (p) =>
         assignUnits(tool.id, {

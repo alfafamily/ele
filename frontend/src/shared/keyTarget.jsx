@@ -15,15 +15,7 @@ function keyTargetParts(pass) {
   return { name: null, scope: b.name } // всё здание
 }
 
-// Плоская строка (для заголовков вкладок, aria и т.п.).
-export function keyTargetText(pass) {
-  const { name, scope } = keyTargetParts(pass)
-  if (scope === null) return '—'
-  return name ? `${name} (${scope})` : scope
-}
-
-// JSX-версия: контекст в скобках — бледным нежирным текстом (как перечень
-// помещений у пропусков).
+// Контекст в скобках — бледным нежирным текстом (как перечень помещений у пропусков).
 export function KeyTarget({ pass }) {
   const { name, scope } = keyTargetParts(pass)
   if (scope === null) return '—'
