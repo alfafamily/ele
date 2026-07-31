@@ -9,8 +9,7 @@
 
 from employees.models import AccessPass, SimCard
 from equipment.models import Equipment
-from licenses.models import License
-from locations.models import Building, Place
+from locations.models import Place
 from tools.models import Tool, ToolAllocation
 from transport.models import Transport
 

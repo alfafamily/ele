@@ -110,7 +110,7 @@ class EquipmentFullLifecycleTests(APITestCase):
         self.assertEqual(resp.data["affected_count"], 0)
 
         # Второй объект без «Серийного номера» -> счётчик impact = 1.
-        equipment2 = Equipment.objects.create(
+        Equipment.objects.create(
             inventory_number="INV-002", equipment_type_id=type_id
         )
         resp = self.client.get(f"/api/equipment-types/{type_id}/fields/{serial_field_id}/impact/")
@@ -879,7 +879,7 @@ class MaintenanceTests(APITestCase):
         today = timezone.localdate()
         type_id = self._make_type()
         reg_overdue = self._make_type_regulation(type_id, name="Просроч")
-        reg_unset = self._make_type_regulation(type_id, name="Без даты")
+        self._make_type_regulation(type_id, name="Без даты")
         eq_id = self._make_equipment(type_id)
         # Один регламент просрочен (через ORM), другой — без даты.
         EquipmentMaintenancePlan.objects.filter(equipment_id=eq_id, regulation_id=reg_overdue).update(

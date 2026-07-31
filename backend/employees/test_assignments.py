@@ -9,7 +9,7 @@ from rest_framework.test import APITestCase
 from tools.models import Tool, ToolAllocation
 
 from core.assignments import open_assignment
-from .models import AccessPass, Employee, EmployeeAssignment, SimCard
+from .models import Employee, EmployeeAssignment
 
 
 def _emp(last="Прозоров", first="Иван", **kw):

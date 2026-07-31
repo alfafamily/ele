@@ -457,7 +457,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         """
         from equipment.models import Equipment
         from equipment.serializers import EquipmentMiniSerializer
-        from tools.models import Tool, ToolMovement
+        from tools.models import ToolMovement
 
         employee = self.get_object()
         eid = employee.id
@@ -1107,7 +1107,6 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="history")
     def history_list(self, request, pk=None):
-        from datetime import timedelta
 
         from locations.models import Building, Place, Room
 

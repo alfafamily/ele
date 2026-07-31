@@ -365,7 +365,7 @@ def reject_assignment(a, request):
 
 def _rollback_object(a, request):
     """Вернуть объект на return_place (для инструмента — return_quantity единиц)."""
-    from employees.models import AccessPass, EmployeeAssignment, SimCard
+    from employees.models import AccessPass, SimCard
     from equipment.models import Equipment
     from tools.models import Tool, ToolAllocation, ToolMovement
     from transport.models import Transport

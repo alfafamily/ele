@@ -1,5 +1,4 @@
 from django.db import transaction
-from django.utils import timezone
 from rest_framework import serializers
 
 from core.eav import apply_field_values, missing_required_fields, upsert_custom_fields
@@ -16,7 +15,6 @@ from .models import (
     MaintenanceKind,
     MaintenanceRegulation,
     MaintenanceRegulationItem,
-    MaintenanceRecordItem,
 )
 from .maintenance import create_plans_for_equipment, equipment_maintenance_summary
 

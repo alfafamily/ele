@@ -102,7 +102,7 @@ class DetectionTests(APITestCase):
         self.assertEqual(duplicate_groups(), [])
 
     def test_one_linked_one_unlinked_is_duplicate(self):
-        a, b = _emp(), _emp()
+        a, _ = _emp(), _emp()
         User.objects.create_user(email="a@example.com", password="Str0ng!Pass1", employee=a)
         groups = duplicate_groups()
         self.assertEqual(len(groups), 1)
