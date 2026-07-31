@@ -1,31 +1,61 @@
 import { useState } from 'react'
 import { AcceptanceIcon } from '../../shared/AcceptanceIcon.jsx'
-import { BackButton, Icon } from '../../shared/ui'
+import { BackButton, Button, Card, Icon } from '../../shared/ui'
 import { Tooltip } from '../../shared/Tooltip.jsx'
 import './reports.css'
 
 // Общие презентационные части отчётов B45.
 
-export function ReportShell({ title, filters, children }) {
+function ReportHead({ title, onBack }) {
   return (
-    <div>
-      <div className="ele-page-head" style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          <BackButton />
-          <h1 style={{ fontSize: 'var(--font-size-h1)', fontWeight: 600, letterSpacing: 'var(--font-h1-letter-spacing)', margin: 0 }}>
-            {title}
-          </h1>
-        </div>
+    <div className="ele-page-head" style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+        <BackButton onClick={onBack} />
+        <h1 style={{ fontSize: 'var(--font-size-h1)', fontWeight: 600, letterSpacing: 'var(--font-h1-letter-spacing)', margin: 0 }}>
+          {title}
+        </h1>
       </div>
-      {filters ? <div style={{ marginBottom: 16 }}>{filters}</div> : null}
-      {children}
     </div>
   )
 }
 
-// Строка фильтров отчёта: несколько селектов в ряд, переносятся на мобильном.
-export function FilterRow({ children }) {
-  return <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>{children}</div>
+// Двухэтапный отчёт: сначала экран подбора фильтров на белой подложке-карточке
+// (как блок «Размещение» в формах), по кнопке «Показать отчёт» — экран самого
+// отчёта с возвратом к фильтрам («Изменить фильтры» и стрелка «Назад»).
+export function ReportTwoStage({ title, filterTitle, filterHint, filters, children }) {
+  const [shown, setShown] = useState(false)
+  if (!shown) {
+    return (
+      <div>
+        <ReportHead title={title} />
+        <Card>
+          {filterTitle ? (
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: filterHint ? 6 : 16 }}>{filterTitle}</div>
+          ) : null}
+          {filterHint ? (
+            <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>{filterHint}</div>
+          ) : null}
+          {filters}
+          <div style={{ marginTop: 18 }}>
+            <Button fullWidth onClick={() => setShown(true)}>Показать отчёт</Button>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+  return (
+    <div>
+      <ReportHead title={title} onBack={() => setShown(false)} />
+      <button
+        type="button"
+        onClick={() => setShown(false)}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--color-primary)', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', padding: 0, marginBottom: 14 }}
+      >
+        <Icon name="chevron-left" size={16} strokeWidth={2.2} /> Изменить фильтры
+      </button>
+      {children}
+    </div>
+  )
 }
 
 const CARD = {

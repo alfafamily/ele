@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { EmptyState, Icon, Spinner, TypeSelect } from '../../shared/ui'
 import { getParkingReport } from './reportsApi.js'
-import { BuildingHead, ExpandCard, ReportShell, RoomHead } from './reportsShared.jsx'
+import { BuildingHead, ExpandCard, ReportTwoStage, RoomHead } from './reportsShared.jsx'
 // countLabel не нужен здесь — сводка парковок текстовая.
 
 // B45. Отчёт по парковкам: парковочные места с увязкой к зданию/помещению; за
@@ -120,5 +120,14 @@ export function ParkingReportPage() {
     ))
   }
 
-  return <ReportShell title="Отчёт по парковкам" filters={filters}>{body}</ReportShell>
+  return (
+    <ReportTwoStage
+      title="Отчёт по парковкам"
+      filterTitle="Здание, помещение, место"
+      filterHint="Выберите или оставьте пустым — отчёт по всем."
+      filters={filters}
+    >
+      {body}
+    </ReportTwoStage>
+  )
 }

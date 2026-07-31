@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { EmptyState, Icon, MultiSelectList, Spinner } from '../../shared/ui'
 import { getEmployeesReport } from './reportsApi.js'
 import {
-  AcceptanceLegend, EmployeePropertyBlock, ExpandCard, ReportShell, SectionHead, WorkplaceBlock,
+  AcceptanceLegend, EmployeePropertyBlock, ExpandCard, ReportTwoStage, SectionHead, WorkplaceBlock,
 } from './reportsShared.jsx'
 import { countLabel } from './reportsUtils.js'
 
@@ -33,26 +33,15 @@ export function EmployeesReportPage() {
   const toggle = (v) => setSelectedIds((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]))
 
   const filters = (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div>
-        <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 6 }}>Сотрудники</div>
-        <MultiSelectList
-          options={options}
-          selected={selectedIds}
-          onToggle={toggle}
-          search
-          chips
-          loading={data === null}
-          emptyText="Сотрудников нет"
-        />
-        {selectedIds.length ? null : (
-          <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 6 }}>
-            Не выбрано — отчёт по всем сотрудникам.
-          </div>
-        )}
-      </div>
-      <AcceptanceLegend />
-    </div>
+    <MultiSelectList
+      options={options}
+      selected={selectedIds}
+      onToggle={toggle}
+      search
+      chips
+      loading={data === null}
+      emptyText="Сотрудников нет"
+    />
   )
 
   let body
@@ -87,5 +76,17 @@ export function EmployeesReportPage() {
     })
   }
 
-  return <ReportShell title="Отчёт по имуществу у сотрудников" filters={filters}>{body}</ReportShell>
+  return (
+    <ReportTwoStage
+      title="Отчёт по имуществу у сотрудников"
+      filterTitle="Сотрудники"
+      filterHint="Выберите сотрудников или оставьте пустым — отчёт по всем."
+      filters={filters}
+    >
+      <div style={{ marginBottom: 14 }}>
+        <AcceptanceLegend />
+      </div>
+      {body}
+    </ReportTwoStage>
+  )
 }

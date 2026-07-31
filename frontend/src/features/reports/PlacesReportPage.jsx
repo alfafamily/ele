@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { EmptyState, Icon, Spinner, TypeSelect } from '../../shared/ui'
 import { getPlacesReport } from './reportsApi.js'
 import {
-  BuildingHead, ExpandCard, PlaceBody, ReportShell, RoomHead,
+  BuildingHead, ExpandCard, PlaceBody, ReportTwoStage, RoomHead,
 } from './reportsShared.jsx'
 import { countLabel } from './reportsUtils.js'
 
@@ -127,5 +127,14 @@ export function PlacesReportPage({ kind }) {
     ))
   }
 
-  return <ReportShell title={meta.title} filters={filters}>{body}</ReportShell>
+  return (
+    <ReportTwoStage
+      title={meta.title}
+      filterTitle="Здание, помещение, место"
+      filterHint="Выберите или оставьте пустым — отчёт по всем."
+      filters={filters}
+    >
+      {body}
+    </ReportTwoStage>
+  )
 }
