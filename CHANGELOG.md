@@ -16,6 +16,16 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.31.8] — 2026-08-02
+
+### Изменено
+- **Внутреннее (без изменений в интерфейсе):** повышение поддерживаемости
+  (кодревью). Самая сложная функция построения ленты «История изменений»
+  разбита на отдельные обработчики по типам записи (создание объекта, движения
+  списания/утилизации, смена размещения/держателя, правки реквизитов, изменения
+  наборов доступа помещений); главный цикл стал диспетчером. Поведение не
+  менялось.
+
 ## [1.31.7] — 2026-08-02
 
 ### Изменено
@@ -1940,7 +1950,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.7...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.8...HEAD
+[1.31.8]: https://github.com/alfafamily/ele/compare/v1.31.7...v1.31.8
 [1.31.7]: https://github.com/alfafamily/ele/compare/v1.31.6...v1.31.7
 [1.31.6]: https://github.com/alfafamily/ele/compare/v1.31.5...v1.31.6
 [1.31.5]: https://github.com/alfafamily/ele/compare/v1.31.4...v1.31.5
