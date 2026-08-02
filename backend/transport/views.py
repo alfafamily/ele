@@ -19,7 +19,13 @@ from core.permissions import (
     can_maintain_transport_type,
 )
 from employees.models import Employee
-from core.maintenance import add_months, maintenance_status_condition, plan_sort_key, plan_status
+from core.maintenance import (
+    MaintenanceError,
+    maintenance_status_condition,
+    perform_maintenance,
+    plan_sort_key,
+    plan_status,
+)
 
 from .maintenance import (
     archive_transport_maintenance,
@@ -418,7 +424,9 @@ class TransportViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
     @action(detail=True, methods=["post"], url_path="maintenance", permission_classes=[CanPerformTransportMaintenance])
     def perform_maintenance(self, request, pk=None):
         """B22. Провести ТО по регламенту (или «Внеплановое»). Дополнительно
-        фиксирует пробег/моточасы (mileage) — необязательно, в историю."""
+        фиксирует пробег/моточасы (mileage) — необязательно, в историю. Атомарный
+        сценарий — в core.maintenance.perform_maintenance (B53-R2); во вью остаются
+        пред-проверки доступа, контроль пробега и сериализация ответа."""
         transport = self.get_object()
         # Область типов — вне выбранных типов ТО проводить нельзя.
         if not can_maintain_transport_type(request, transport.transport_type_id):
@@ -428,91 +436,43 @@ class TransportViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
 
         serializer = PerformMaintenanceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
 
-        regulation = data.get("regulation")
-        plan = None
-        if regulation is not None:
-            plan = TransportMaintenancePlan.objects.filter(transport=transport, regulation=regulation).first()
-            if plan is None or plan.is_cancelled or regulation.is_archived:
-                return Response({"detail": "Регламент недоступен для этого транспорта."}, status=409)
-
-        items = data["items"]
-        active_items = [i for i in items if not i["is_cancelled"]]
-        if not active_items:
-            return Response({"detail": "Добавьте хотя бы одну (неотменённую) работу или материал."}, status=400)
-
-        # Контроль пробега: новый пробег/моточасы должен быть строго больше
-        # последнего зафиксированного (пробег только растёт). Поле необязательное —
-        # если не указано, проверку пропускаем.
-        mileage = data.get("mileage")
-        if mileage is not None:
+        def validate_mileage(instance, data):
+            # Контроль пробега: новый пробег/моточасы должен быть строго больше
+            # последнего зафиксированного (пробег только растёт). Поле
+            # необязательное — если не указано, проверку пропускаем.
+            mileage = data.get("mileage")
+            if mileage is None:
+                return
             # Сравниваем с максимальным зафиксированным (одометр только растёт) —
             # устойчиво к порядку ввода.
             last = (
-                transport.maintenance_records.filter(mileage__isnull=False)
+                instance.maintenance_records.filter(mileage__isnull=False)
                 .order_by("-mileage", "-performed_at", "-id").first()
             )
             if last is not None and mileage <= last.mileage:
-                unit = _mileage_unit_label(transport)
-                return Response(
-                    {"detail": f"Пробег должен быть больше последнего зафиксированного ({_fmt_quantity(last.mileage)} {unit})."},
-                    status=400,
+                unit = _mileage_unit_label(instance)
+                raise MaintenanceError(
+                    f"Пробег должен быть больше последнего зафиксированного ({_fmt_quantity(last.mileage)} {unit}).",
+                    400,
                 )
 
-        is_periodic = regulation is not None and not regulation.on_demand
-        next_date = data.get("next_planned_date")
-        if is_periodic:
-            today = timezone.localdate()
-            if next_date is None:
-                return Response({"detail": "Укажите дату следующего ТО."}, status=400)
-            if next_date < today:
-                return Response({"detail": "Дата следующего ТО не может быть в прошлом."}, status=400)
-            max_date = add_months(today, regulation.period_months)
-            if next_date > max_date:
-                return Response(
-                    {"detail": f"Дата следующего ТО не может быть позже расчётной ({max_date:%d.%m.%Y})."},
-                    status=400,
-                )
-        else:
-            next_date = None
-
-        with transaction.atomic():
-            record = MaintenanceRecord.objects.create(
-                transport=transport,
-                regulation=regulation,
-                regulation_name=(regulation.name if regulation else ""),
-                next_planned_date=next_date,
-                prior_planned_date=(plan.next_planned_date if plan else None),
-                mileage=data.get("mileage"),
-                comment=(data.get("comment") or "").strip(),
-                created_by=request.user if request.user.is_authenticated else None,
+        data = serializer.validated_data
+        try:
+            perform_maintenance(
+                instance=transport,
+                owner_field="transport",
+                owner_label="транспорта",
+                plan_model=TransportMaintenancePlan,
+                record_model=MaintenanceRecord,
+                item_model=MaintenanceRecordItem,
+                data=data,
+                actor=request.user,
+                extra_record_fields={"mileage": data.get("mileage")},
+                extra_validate=validate_mileage,
             )
-            MaintenanceRecordItem.objects.bulk_create([
-                MaintenanceRecordItem(
-                    record=record,
-                    kind=item["kind"],
-                    name=item["name"].strip(),
-                    quantity=item["quantity"],
-                    from_regulation=item["from_regulation"],
-                    is_cancelled=item["is_cancelled"],
-                    cancel_reason=(item.get("cancel_reason") or "").strip(),
-                )
-                for item in items
-            ])
-            if plan is not None and is_periodic:
-                plan.next_planned_date = next_date
-                plan.save(update_fields=["next_planned_date"])
-
-        # B44. Уведомление «Выполненное ТО» (admin/accountant, кроме исполнителя).
-        from accounts.notifications import notify_maintenance
-        from accounts.models import NotificationKind
-
-        notify_maintenance(
-            transport, NotificationKind.MAINTENANCE_PERFORMED,
-            date=timezone.localdate(), exclude_user=request.user,
-            regulation_name=record.regulation_name,
-        )
+        except MaintenanceError as exc:
+            return Response({"detail": exc.detail}, status=exc.status)
         return Response(TransportSerializer(transport, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=["get", "post"], url_path="regulations", permission_classes=[TransportRegulationAccessPermission])

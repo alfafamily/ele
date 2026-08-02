@@ -9,6 +9,7 @@ generic-часть, не завязанная на конкретные моде
 import calendar
 from datetime import timedelta
 
+from django.db import transaction
 from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
@@ -147,3 +148,127 @@ def set_regulation_archived(regulation, archived):
     regulation.is_archived = archived
     regulation.save(update_fields=["is_archived"])
     regulation.plans.update(is_cancelled=archived, next_planned_date=None)
+
+
+class MaintenanceError(Exception):
+    """Отказ доменной операции ТО. Несёт человекочитаемое ``detail`` и HTTP
+    ``status`` — вью переводит его в ``Response({"detail": ...}, status=...)``.
+    Позволяет держать проверки бизнес-правил в сервисе, а формирование ответа —
+    во вью."""
+
+    def __init__(self, detail, status):
+        super().__init__(detail)
+        self.detail = detail
+        self.status = status
+
+
+def perform_maintenance(
+    *,
+    instance,
+    owner_field,
+    owner_label,
+    plan_model,
+    record_model,
+    item_model,
+    data,
+    actor,
+    extra_record_fields=None,
+    extra_validate=None,
+):
+    """B13+/B22. Провести ТО по регламенту (или «Внеплановое» — regulation=null).
+    Проверяет бизнес-правила, атомарно создаёт запись ``record_model`` со снимком
+    позиций (в т.ч. отменённых с причиной) и, для периодического регламента,
+    переносит новую плановую дату в план (``plan_model``). Затем шлёт уведомление
+    «Выполненное ТО». Возвращает созданную запись.
+
+    Устроено одинаково у оборудования и транспорта — различаются только модели
+    и имя FK на объект; параметризовано:
+
+    * ``instance``      — экземпляр объекта (Equipment / Transport);
+    * ``owner_field``   — имя FK на объект (``"equipment"`` / ``"transport"``);
+    * ``owner_label``   — родительный падеж для сообщения о недоступном регламенте
+      (``"оборудования"`` / ``"транспорта"``);
+    * ``plan_model``    — EquipmentMaintenancePlan / TransportMaintenancePlan;
+    * ``record_model``/``item_model`` — MaintenanceRecord(Item) соответствующего
+      приложения;
+    * ``data``          — validated_data ``PerformMaintenanceSerializer``;
+    * ``actor``         — пользователь-исполнитель (request.user);
+    * ``extra_record_fields`` — доп. поля записи (у транспорта — ``mileage``);
+    * ``extra_validate`` — опц. коллбэк ``fn(instance, data)`` для проверок,
+      специфичных для объекта (у транспорта — контроль пробега); вызывается
+      между проверкой позиций и проверкой даты, чтобы сохранить прежний порядок
+      выдачи ошибок. Должен поднимать ``MaintenanceError`` при нарушении.
+
+    Нарушения бизнес-правил поднимают ``MaintenanceError`` (вью → HTTP-ответ).
+    """
+    regulation = data.get("regulation")
+    plan = None
+    if regulation is not None:
+        plan = plan_model.objects.filter(**{owner_field: instance, "regulation": regulation}).first()
+        if plan is None or plan.is_cancelled or regulation.is_archived:
+            raise MaintenanceError(f"Регламент недоступен для этого {owner_label}.", 409)
+
+    # Хотя бы одна неотменённая работа/материал обязательна.
+    items = data["items"]
+    active_items = [i for i in items if not i["is_cancelled"]]
+    if not active_items:
+        raise MaintenanceError("Добавьте хотя бы одну (неотменённую) работу или материал.", 400)
+
+    if extra_validate is not None:
+        extra_validate(instance, data)
+
+    # Дата следующего ТО: обязательна и ограничена для периодического
+    # регламента; у «по потребности» и «Внепланового» даты нет.
+    is_periodic = regulation is not None and not regulation.on_demand
+    next_date = data.get("next_planned_date")
+    if is_periodic:
+        today = timezone.localdate()
+        if next_date is None:
+            raise MaintenanceError("Укажите дату следующего ТО.", 400)
+        if next_date < today:
+            raise MaintenanceError("Дата следующего ТО не может быть в прошлом.", 400)
+        max_date = add_months(today, regulation.period_months)
+        if next_date > max_date:
+            raise MaintenanceError(
+                f"Дата следующего ТО не может быть позже расчётной ({max_date:%d.%m.%Y}).", 400
+            )
+    else:
+        next_date = None
+
+    with transaction.atomic():
+        record = record_model.objects.create(
+            regulation=regulation,
+            regulation_name=(regulation.name if regulation else ""),
+            next_planned_date=next_date,
+            prior_planned_date=(plan.next_planned_date if plan else None),
+            comment=(data.get("comment") or "").strip(),
+            created_by=actor if actor.is_authenticated else None,
+            **{owner_field: instance},
+            **(extra_record_fields or {}),
+        )
+        item_model.objects.bulk_create([
+            item_model(
+                record=record,
+                kind=item["kind"],
+                name=item["name"].strip(),
+                quantity=item["quantity"],
+                from_regulation=item["from_regulation"],
+                is_cancelled=item["is_cancelled"],
+                cancel_reason=(item.get("cancel_reason") or "").strip(),
+            )
+            for item in items
+        ])
+        if plan is not None and is_periodic:
+            plan.next_planned_date = next_date
+            plan.save(update_fields=["next_planned_date"])
+
+    # B44. Уведомление «Выполненное ТО» (admin/accountant, кроме исполнителя).
+    from accounts.models import NotificationKind
+    from accounts.notifications import notify_maintenance
+
+    notify_maintenance(
+        instance, NotificationKind.MAINTENANCE_PERFORMED,
+        date=timezone.localdate(), exclude_user=actor,
+        regulation_name=record.regulation_name,
+    )
+    return record

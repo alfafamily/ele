@@ -21,11 +21,12 @@ from core.permissions import (
 from employees.models import Employee
 
 from .maintenance import (
-    add_months,
+    MaintenanceError,
     archive_equipment_maintenance,
     create_plan_for_individual_regulation,
     create_plans_for_type_regulation,
     maintenance_status_condition,
+    perform_maintenance,
     plan_sort_key,
     plan_status,
     set_regulation_archived,
@@ -418,7 +419,9 @@ class EquipmentViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
         """B13+. Провести ТО по регламенту (или «Внеплановое» — regulation=null).
         Создаёт запись MaintenanceRecord со снимком позиций (в т.ч. отменённых с
         причиной) и, для периодического регламента, переносит новую плановую дату
-        в план (EquipmentMaintenancePlan)."""
+        в план (EquipmentMaintenancePlan). Атомарный сценарий — в
+        core.maintenance.perform_maintenance (B53-R2); во вью остаются пред-проверки
+        доступа и сериализация ответа."""
         equipment = self.get_object()
         if not equipment.equipment_type.maintenance_enabled:
             return Response({"detail": "Для этого типа оборудования ТО не ведётся."}, status=409)
@@ -430,77 +433,20 @@ class EquipmentViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
 
         serializer = PerformMaintenanceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
 
-        regulation = data.get("regulation")
-        plan = None
-        if regulation is not None:
-            plan = EquipmentMaintenancePlan.objects.filter(equipment=equipment, regulation=regulation).first()
-            if plan is None or plan.is_cancelled or regulation.is_archived:
-                return Response({"detail": "Регламент недоступен для этого оборудования."}, status=409)
-
-        # Хотя бы одна неотменённая работа/материал обязательна.
-        items = data["items"]
-        active_items = [i for i in items if not i["is_cancelled"]]
-        if not active_items:
-            return Response(
-                {"detail": "Добавьте хотя бы одну (неотменённую) работу или материал."}, status=400
+        try:
+            perform_maintenance(
+                instance=equipment,
+                owner_field="equipment",
+                owner_label="оборудования",
+                plan_model=EquipmentMaintenancePlan,
+                record_model=MaintenanceRecord,
+                item_model=MaintenanceRecordItem,
+                data=serializer.validated_data,
+                actor=request.user,
             )
-
-        # Дата следующего ТО: обязательна и ограничена для периодического
-        # регламента; у «по потребности» и «Внепланового» даты нет.
-        is_periodic = regulation is not None and not regulation.on_demand
-        next_date = data.get("next_planned_date")
-        if is_periodic:
-            today = timezone.localdate()
-            if next_date is None:
-                return Response({"detail": "Укажите дату следующего ТО."}, status=400)
-            if next_date < today:
-                return Response({"detail": "Дата следующего ТО не может быть в прошлом."}, status=400)
-            max_date = add_months(today, regulation.period_months)
-            if next_date > max_date:
-                return Response(
-                    {"detail": f"Дата следующего ТО не может быть позже расчётной ({max_date:%d.%m.%Y})."},
-                    status=400,
-                )
-        else:
-            next_date = None
-
-        with transaction.atomic():
-            record = MaintenanceRecord.objects.create(
-                equipment=equipment,
-                regulation=regulation,
-                regulation_name=(regulation.name if regulation else ""),
-                next_planned_date=next_date,
-                prior_planned_date=(plan.next_planned_date if plan else None),
-                comment=(data.get("comment") or "").strip(),
-                created_by=request.user if request.user.is_authenticated else None,
-            )
-            MaintenanceRecordItem.objects.bulk_create([
-                MaintenanceRecordItem(
-                    record=record,
-                    kind=item["kind"],
-                    name=item["name"].strip(),
-                    quantity=item["quantity"],
-                    from_regulation=item["from_regulation"],
-                    is_cancelled=item["is_cancelled"],
-                    cancel_reason=(item.get("cancel_reason") or "").strip(),
-                )
-                for item in items
-            ])
-            if plan is not None and is_periodic:
-                plan.next_planned_date = next_date
-                plan.save(update_fields=["next_planned_date"])
-
-        # B44. Уведомление «Выполненное ТО» (admin/accountant, кроме исполнителя).
-        from accounts.notifications import notify_maintenance
-        from accounts.models import NotificationKind
-
-        notify_maintenance(
-            equipment, NotificationKind.MAINTENANCE_PERFORMED,
-            date=timezone.localdate(), exclude_user=request.user,
-            regulation_name=record.regulation_name,
-        )
+        except MaintenanceError as exc:
+            return Response({"detail": exc.detail}, status=exc.status)
         return Response(EquipmentSerializer(equipment, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=["get", "post"], url_path="regulations", permission_classes=[RegulationAccessPermission])
