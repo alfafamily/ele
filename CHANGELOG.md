@@ -16,6 +16,16 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.31.10] — 2026-08-02
+
+### Изменено
+- **Внутреннее (без изменений в интерфейсе):** повышение поддерживаемости
+  (кодревью). Раздел «Настройки → Системные» — один большой компонент почти на
+  тысячу строк — разбит на самостоятельные карточки-виджеты (хранилище
+  приложения, хранилище резервных копий, домен и ограничения входа, доступ к
+  админ-панели, проверки почты/push/Яндекс ID/SmartCaptcha), каждая со своим
+  состоянием. Поведение и интерфейс не менялись.
+
 ## [1.31.9] — 2026-08-02
 
 ### Исправлено
@@ -1964,7 +1974,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.9...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.10...HEAD
+[1.31.10]: https://github.com/alfafamily/ele/compare/v1.31.9...v1.31.10
 [1.31.9]: https://github.com/alfafamily/ele/compare/v1.31.8...v1.31.9
 [1.31.8]: https://github.com/alfafamily/ele/compare/v1.31.7...v1.31.8
 [1.31.7]: https://github.com/alfafamily/ele/compare/v1.31.6...v1.31.7
