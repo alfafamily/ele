@@ -90,6 +90,154 @@ def _created_lines(record, field_specs):
     return lines
 
 
+def _emit_created(record, field_specs, movement_fields, created_extra_lines,
+                  placement_group, acceptance_for, *, date, author, reason):
+    """Строки для историчной записи создания объекта (`history_type == "+"`).
+
+    «Объект создан» — гибридная запись: это и ИЗМЕНЕНИЕ (перечень реквизитов, с
+    которыми создан объект), и ДВИЖЕНИЕ (поступление — комментарий «откуда
+    поступил»). На фронте показывается в обоих фильтрах (спец-случай
+    kind='created'); размещение при создании выносим отдельными записями-
+    движениями со статусом акцепта (B32).
+
+    Порядок эмиссии: сначала движения, потом «Объект создан» — у них одинаковый
+    timestamp, и стабильная сортировка (новые сверху) оставит «Объект создан» В
+    САМОМ НИЗУ (сначала объект создали, потом закрепили).
+    """
+    lines = _created_lines(record, field_specs)
+    if created_extra_lines:
+        lines = lines + [
+            ln for ln in created_extra_lines if ln["value"] not in _EMPTY_CREATED_VALUES
+        ]
+    rows = []
+    if placement_group:
+        nf, nv = _holder(record, placement_group["fields"])
+        if nf:
+            rows.append(_placement_row(
+                placement_group, field_specs, date=date, author=author,
+                old_field=None, old_val=None, new_field=nf, new_val=nv,
+                reason=None, acceptance_for=acceptance_for,
+            ))
+    else:
+        for field in movement_fields:
+            raw = _raw_field(record, field)
+            if not raw:
+                continue
+            spec = field_specs.get(field)
+            if not spec:
+                continue
+            fmt = spec.get("format", _fmt_text)
+            mv = {
+                "date": date, "author": author, "kind": "changed", "category": "movement",
+                "label": spec["label"], "old": fmt(None), "new": fmt(raw),
+                "secret": False, "comment": None,
+            }
+            if acceptance_for is not None and field == "employee":
+                texts = acceptance_for("employee", raw, date)
+                if texts:
+                    mv["acceptance"] = texts
+            rows.append(mv)
+    rows.append({
+        "date": date, "author": author, "kind": "created", "category": "movement",
+        "label": "Объект создан", "old": None, "new": None, "secret": False,
+        "comment": reason or None, "lines": lines,
+    })
+    return rows
+
+
+def _emit_movement_events(record, changes, movement_events, consumed, *, date, author, reason):
+    """События-движения (утилизация/списание) — одной строкой вместо набора
+    пофайловых изменений. Поля события помечаются в `consumed` (мутируется на
+    месте), чтобы дальнейшие хендлеры их не дублировали."""
+    rows = []
+    for ev in movement_events:
+        ch = changes.get(ev["trigger"])
+        if ch is None:
+            continue
+        if bool(ch.new) == ev.get("to", True) and bool(ch.old) != bool(ch.new):
+            label = ev["label"](record) if callable(ev["label"]) else ev["label"]
+            rows.append({
+                "date": date, "author": author, "kind": "movement", "category": "movement",
+                "label": label, "old": None, "new": None, "secret": False,
+                "comment": reason or None,
+            })
+            consumed |= set(ev.get("consume", [ev["trigger"]]))
+    return rows
+
+
+def _emit_placement(record, older, changes, consumed, placement_group, field_specs,
+                    acceptance_for, *, date, author, reason):
+    """B32: смена держателя в группе взаимоисключающих полей размещения
+    (сотрудник↔место/склад/оборудование) — ОДНОЙ записью «было → стало» вместо
+    двух («открепили сотрудника» + «разместили на место»). Не трогаем, если поля
+    группы уже поглощены событием (списание/утилизация). Поля группы помечаются
+    в `consumed` (мутируется на месте)."""
+    if not placement_group:
+        return []
+    gfields = placement_group["fields"]
+    if not (any(f in changes for f in gfields) and not (set(gfields) & consumed)):
+        return []
+    rows = []
+    of, ov = _holder(older, gfields)
+    nf, nv = _holder(record, gfields)
+    if (of, ov) != (nf, nv):
+        rows.append(_placement_row(
+            placement_group, field_specs, date=date, author=author,
+            old_field=of, old_val=ov, new_field=nf, new_val=nv,
+            reason=reason, acceptance_for=acceptance_for,
+        ))
+    consumed |= set(gfields)
+    return rows
+
+
+def _emit_field_changes(changes, consumed, field_specs, movement_fields,
+                        acceptance_for, *, date, author, reason):
+    """Пофайловые изменения реквизитов/атрибутов, кроме уже поглощённых полей
+    (`consumed`). Движение — если поле в `movement_fields`, иначе изменение."""
+    rows = []
+    for field, change in changes.items():
+        if field in consumed:
+            continue
+        spec = field_specs.get(field)
+        if not spec:
+            continue
+        fmt = spec.get("format", _fmt_text)
+        category = "movement" if field in movement_fields else "change"
+        row = {
+            "date": date, "author": author, "kind": "changed", "category": category,
+            "label": spec["label"], "old": fmt(change.old), "new": fmt(change.new),
+            "secret": False,
+            "comment": reason if (category == "movement" and reason) else None,
+        }
+        # B32: подшить статус акцепта к движению закрепления за сотрудником.
+        if acceptance_for is not None and category == "movement" and change.new:
+            texts = acceptance_for(field, change.new, date)
+            if texts:
+                row["acceptance"] = texts
+        rows.append(row)
+    return rows
+
+
+def _emit_m2m(record, older, m2m_specs, creation_window_end, *, date, author):
+    """Изменения M2M-наборов (здания/помещения/места пропуска). Пропускаем
+    переходы внутри «окна создания» — они уже отражены в «Объект создан»."""
+    if not (m2m_specs and (creation_window_end is None or record.history_date > creation_window_end)):
+        return []
+    rows = []
+    for attr, spec in m2m_specs.items():
+        new_ids = sorted(getattr(x, spec["id_attr"]) for x in getattr(record, attr).all())
+        old_ids = sorted(getattr(x, spec["id_attr"]) for x in getattr(older, attr).all())
+        if new_ids == old_ids:
+            continue
+        rows.append({
+            "date": date, "author": author, "kind": "changed", "category": "change",
+            "label": spec["label"],
+            "old": spec["format"](old_ids) or "—", "new": spec["format"](new_ids) or "—",
+            "secret": False, "comment": None,
+        })
+    return rows
+
+
 def build_history_rows(instance, field_specs, *, movement_fields=(), movement_events=(), created_extra_lines=None, m2m_specs=None, acceptance_for=None, placement_group=None):
     """Строки истории базового объекта (новые сверху).
 
@@ -109,6 +257,12 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
       }. Изменения M2M-набора между соседними версиями показываются строкой
       «изменено». Переходы внутри «окна создания» (M2M проставляется сразу после
       создания объекта) не показываем — они уже в записи «Объект создан».
+
+    Главный цикл — диспетчер: для записи создания эмитит `_emit_created`, для
+    остальных версий строит diff против предыдущей записи и по очереди прогоняет
+    хендлеры _emit_movement_events → _emit_placement → _emit_field_changes →
+    _emit_m2m. Первые два помечают «поглощённые» поля в общем множестве
+    `consumed`, чтобы следующие их не дублировали (порядок вызовов важен).
     """
     movement_fields = set(movement_fields)
     m2m_specs = m2m_specs or {}
@@ -128,51 +282,10 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
             continue
 
         if record.history_type == "+":
-            lines = _created_lines(record, field_specs)
-            if created_extra_lines:
-                lines = lines + [
-                    ln for ln in created_extra_lines if ln["value"] not in _EMPTY_CREATED_VALUES
-                ]
-            # «Объект создан» — гибридная запись: это и ИЗМЕНЕНИЕ (перечень
-            # реквизитов, с которыми создан объект), и ДВИЖЕНИЕ (поступление —
-            # комментарий «откуда поступил»). На фронте показывается в обоих
-            # фильтрах (спец-случай kind='created'); размещение при создании
-            # выносим отдельными записями-движениями со статусом акцепта (B32).
-            # Порядок эмиссии: сначала движения, потом «Объект создан» — у них
-            # одинаковый timestamp, и стабильная сортировка (новые сверху) оставит
-            # «Объект создан» В САМОМ НИЗУ (сначала объект создали, потом закрепили).
-            if placement_group:
-                nf, nv = _holder(record, placement_group["fields"])
-                if nf:
-                    rows.append(_placement_row(
-                        placement_group, field_specs, date=date, author=author,
-                        old_field=None, old_val=None, new_field=nf, new_val=nv,
-                        reason=None, acceptance_for=acceptance_for,
-                    ))
-            else:
-                for field in movement_fields:
-                    raw = _raw_field(record, field)
-                    if not raw:
-                        continue
-                    spec = field_specs.get(field)
-                    if not spec:
-                        continue
-                    fmt = spec.get("format", _fmt_text)
-                    mv = {
-                        "date": date, "author": author, "kind": "changed", "category": "movement",
-                        "label": spec["label"], "old": fmt(None), "new": fmt(raw),
-                        "secret": False, "comment": None,
-                    }
-                    if acceptance_for is not None and field == "employee":
-                        texts = acceptance_for("employee", raw, date)
-                        if texts:
-                            mv["acceptance"] = texts
-                    rows.append(mv)
-            rows.append({
-                "date": date, "author": author, "kind": "created", "category": "movement",
-                "label": "Объект создан", "old": None, "new": None, "secret": False,
-                "comment": reason or None, "lines": lines,
-            })
+            rows += _emit_created(
+                record, field_specs, movement_fields, created_extra_lines,
+                placement_group, acceptance_for, date=date, author=author, reason=reason,
+            )
             continue
 
         older = history[i + 1] if i + 1 < len(history) else None
@@ -180,74 +293,22 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
             continue
 
         changes = {c.field: c for c in record.diff_against(older).changes}
-
-        # События-движения (утилизация/списание) — одной строкой.
         consumed = set()
-        for ev in movement_events:
-            ch = changes.get(ev["trigger"])
-            if ch is None:
-                continue
-            if bool(ch.new) == ev.get("to", True) and bool(ch.old) != bool(ch.new):
-                label = ev["label"](record) if callable(ev["label"]) else ev["label"]
-                rows.append({
-                    "date": date, "author": author, "kind": "movement", "category": "movement",
-                    "label": label, "old": None, "new": None, "secret": False,
-                    "comment": reason or None,
-                })
-                consumed |= set(ev.get("consume", [ev["trigger"]]))
-
-        # B32: смена держателя в группе взаимоисключающих полей размещения
-        # (сотрудник↔место/склад/оборудование) — ОДНОЙ записью «было → стало»
-        # вместо двух («открепили сотрудника» + «разместили на место»). Не трогаем,
-        # если поля группы уже поглощены событием (списание/утилизация).
-        if placement_group:
-            gfields = placement_group["fields"]
-            if any(f in changes for f in gfields) and not (set(gfields) & consumed):
-                of, ov = _holder(older, gfields)
-                nf, nv = _holder(record, gfields)
-                if (of, ov) != (nf, nv):
-                    rows.append(_placement_row(
-                        placement_group, field_specs, date=date, author=author,
-                        old_field=of, old_val=ov, new_field=nf, new_val=nv,
-                        reason=reason, acceptance_for=acceptance_for,
-                    ))
-                consumed |= set(gfields)
-
-        for field, change in changes.items():
-            if field in consumed:
-                continue
-            spec = field_specs.get(field)
-            if not spec:
-                continue
-            fmt = spec.get("format", _fmt_text)
-            category = "movement" if field in movement_fields else "change"
-            row = {
-                "date": date, "author": author, "kind": "changed", "category": category,
-                "label": spec["label"], "old": fmt(change.old), "new": fmt(change.new),
-                "secret": False,
-                "comment": reason if (category == "movement" and reason) else None,
-            }
-            # B32: подшить статус акцепта к движению закрепления за сотрудником.
-            if acceptance_for is not None and category == "movement" and change.new:
-                texts = acceptance_for(field, change.new, date)
-                if texts:
-                    row["acceptance"] = texts
-            rows.append(row)
-
-        # Изменения M2M-наборов (здания/помещения/места пропуска). Пропускаем
-        # переходы внутри «окна создания» — они уже отражены в «Объект создан».
-        if m2m_specs and (creation_window_end is None or record.history_date > creation_window_end):
-            for attr, spec in m2m_specs.items():
-                new_ids = sorted(getattr(x, spec["id_attr"]) for x in getattr(record, attr).all())
-                old_ids = sorted(getattr(x, spec["id_attr"]) for x in getattr(older, attr).all())
-                if new_ids == old_ids:
-                    continue
-                rows.append({
-                    "date": date, "author": author, "kind": "changed", "category": "change",
-                    "label": spec["label"],
-                    "old": spec["format"](old_ids) or "—", "new": spec["format"](new_ids) or "—",
-                    "secret": False, "comment": None,
-                })
+        rows += _emit_movement_events(
+            record, changes, movement_events, consumed,
+            date=date, author=author, reason=reason,
+        )
+        rows += _emit_placement(
+            record, older, changes, consumed, placement_group, field_specs,
+            acceptance_for, date=date, author=author, reason=reason,
+        )
+        rows += _emit_field_changes(
+            changes, consumed, field_specs, movement_fields,
+            acceptance_for, date=date, author=author, reason=reason,
+        )
+        rows += _emit_m2m(
+            record, older, m2m_specs, creation_window_end, date=date, author=author,
+        )
     return rows
 
 
