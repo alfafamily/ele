@@ -16,6 +16,16 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.31.7] — 2026-08-02
+
+### Изменено
+- **Внутреннее (без изменений в интерфейсе):** повышение поддерживаемости
+  (кодревью). Многошаговые операции вынесены из веб-слоя в отдельный сервисный
+  слой: увольнение сотрудника (перенос закреплённого имущества на склад,
+  открепление/утилизация SIM и пропусков, снятие с рабочих мест, деактивация
+  учётной записи) и проведение техобслуживания (общий код для оборудования и
+  транспорта). Поведение не менялось.
+
 ## [1.31.6] — 2026-08-02
 
 ### Изменено
@@ -1930,7 +1940,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.6...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.7...HEAD
+[1.31.7]: https://github.com/alfafamily/ele/compare/v1.31.6...v1.31.7
 [1.31.6]: https://github.com/alfafamily/ele/compare/v1.31.5...v1.31.6
 [1.31.5]: https://github.com/alfafamily/ele/compare/v1.31.4...v1.31.5
 [1.31.4]: https://github.com/alfafamily/ele/compare/v1.31.3...v1.31.4
