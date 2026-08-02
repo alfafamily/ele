@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from core.serializers import EmployeeHolderSerializerMixin
+from core.serializers import EmployeeHolderSerializerMixin, validate_storage_place
 from equipment.serializers import EquipmentMiniSerializer
 from transport.serializers import TransportMiniSerializer
 from locations.models import Building, Place, Room
@@ -145,8 +145,7 @@ class SimCardSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerializ
                 {"equipment": "В этот тип оборудования нельзя устанавливать SIM/E-SIM."}
             )
         storage = attrs.get("storage_place")
-        if storage is not None and storage.place_type != Place.PlaceType.STORAGE:
-            raise serializers.ValidationError({"storage_place": "Выберите место хранения (склад)."})
+        validate_storage_place(storage)
         # Физическая SIM (не E-SIM) при создании обязана иметь размещение —
         # сотрудник, оборудование или склад. E-SIM виртуальна и может быть
         # свободной. Раньше это гарантировала только форма; серверный гард
@@ -265,23 +264,46 @@ class AccessPassSerializer(EmployeeHolderSerializerMixin, serializers.ModelSeria
         # (номера пропусков и ключей независимы, см. B1).
         return value.strip()
 
+    def _resolve_m2m(self, attrs, field):
+        """Значение M2M-набора (buildings/rooms/places): из запроса, иначе — из
+        уже сохранённого объекта (частичное обновление не сбрасывает набор)."""
+        value = attrs.get(field)
+        if value is None:
+            value = list(getattr(self.instance, field).all()) if self.instance else []
+        return value
+
+    def _resolve_scalar(self, attrs, field, default):
+        """Скалярное поле: из запроса, иначе — из объекта, иначе — дефолт."""
+        value = attrs.get(field)
+        if value is None:
+            value = getattr(self.instance, field) if self.instance else default
+        return value
+
     def validate(self, attrs):
-        # Каждое выбранное помещение должно принадлежать одному из выбранных зданий.
-        buildings = attrs.get("buildings")
-        if buildings is None:
-            buildings = list(self.instance.buildings.all()) if self.instance else []
-        rooms = attrs.get("rooms")
-        if rooms is None:
-            rooms = list(self.instance.rooms.all()) if self.instance else []
-        places = attrs.get("places")
-        if places is None:
-            places = list(self.instance.places.all()) if self.instance else []
+        # B53-R4: тяжёлый validate() (был CC 41) разложен на проверки по
+        # смыслу; порядок вызовов = прежний порядок выдачи ошибок.
+        buildings = self._resolve_m2m(attrs, "buildings")
+        rooms = self._resolve_m2m(attrs, "rooms")
+        places = self._resolve_m2m(attrs, "places")
+        object_type = self._resolve_scalar(attrs, "object_type", AccessPass.ObjectType.PASS)
+
+        self._validate_access_scope(buildings, rooms, places)
+        self._validate_pass_kind(attrs, object_type, rooms, places)
+        self._validate_account_uniqueness(attrs, object_type)
+        self._validate_key_scope(object_type, buildings, rooms, places)
+        # Размещение (B8): свободный (без сотрудника) пропуск/ключ лежит на складе.
+        # Обязательность выбора склада при создании — на стороне формы.
+        validate_storage_place(attrs.get("storage_place"))
+        return attrs
+
+    def _validate_access_scope(self, buildings, rooms, places):
+        # Каждое выбранное помещение/место должно принадлежать одному из
+        # выбранных зданий (место — через своё помещение).
         building_ids = {b.id for b in buildings}
         if rooms and any(r.building_id not in building_ids for r in rooms):
             raise serializers.ValidationError(
                 {"room_ids": "Помещения должны относиться к выбранным зданиям."}
             )
-        # Место должно относиться к одному из выбранных зданий (через своё помещение).
         if places and any(p.room.building_id not in building_ids for p in places):
             raise serializers.ValidationError(
                 {"place_ids": "Места должны относиться к выбранным зданиям."}
@@ -299,18 +321,11 @@ class AccessPassSerializer(EmployeeHolderSerializerMixin, serializers.ModelSeria
                 {"building_ids": "Здание целиком можно выбрать только с признаком «Требуется ключ/пропуск»."}
             )
 
-        # Ключ — строго один объект доступа: одно здание ИЛИ одно помещение ИЛИ
-        # одно место. Название у ключа не используется.
-        object_type = attrs.get("object_type")
-        if object_type is None:
-            object_type = self.instance.object_type if self.instance else AccessPass.ObjectType.PASS
-
+    def _validate_pass_kind(self, attrs, object_type, rooms, places):
         # B34. Вид пропуска: транспортный пропуск закрепляется за единицей
         # транспорта и действует только на уровне зданий целиком (без помещений/
         # мест и без типа Личный авто/Пеший). Ключ транспортным быть не может.
-        pass_kind = attrs.get("pass_kind")
-        if pass_kind is None:
-            pass_kind = self.instance.pass_kind if self.instance else AccessPass.PassKind.PERSONAL
+        pass_kind = self._resolve_scalar(attrs, "pass_kind", AccessPass.PassKind.PERSONAL)
         if pass_kind == AccessPass.PassKind.TRANSPORT:
             if object_type != AccessPass.ObjectType.PASS:
                 raise serializers.ValidationError(
@@ -335,6 +350,7 @@ class AccessPassSerializer(EmployeeHolderSerializerMixin, serializers.ModelSeria
                     {"transport": "За транспортом закрепляется только транспортный пропуск."}
                 )
 
+    def _validate_account_uniqueness(self, attrs, object_type):
         # Уникальность учётного номера — в разрезе типа объекта и только среди
         # непустых (пропуска и ключи не конфликтуют между собой, см. B1).
         account_number = attrs.get("account_number")
@@ -350,6 +366,9 @@ class AccessPassSerializer(EmployeeHolderSerializerMixin, serializers.ModelSeria
                     {"account_number": f"{label} с таким учётным номером уже есть."}
                 )
 
+    def _validate_key_scope(self, object_type, buildings, rooms, places):
+        # Ключ — строго один объект доступа: одно здание ИЛИ одно помещение ИЛИ
+        # одно место. Название у ключа не используется.
         if object_type == AccessPass.ObjectType.KEY:
             if len(buildings) != 1:
                 raise serializers.ValidationError(
@@ -359,13 +378,6 @@ class AccessPassSerializer(EmployeeHolderSerializerMixin, serializers.ModelSeria
                 raise serializers.ValidationError(
                     {"room_ids": "У ключа можно выбрать только один объект: помещение или место."}
                 )
-
-        # Размещение (B8): свободный (без сотрудника) пропуск/ключ лежит на складе.
-        # Обязательность выбора склада при создании — на стороне формы.
-        storage = attrs.get("storage_place")
-        if storage is not None and storage.place_type != Place.PlaceType.STORAGE:
-            raise serializers.ValidationError({"storage_place": "Выберите место хранения (склад)."})
-        return attrs
 
 
 # Списанное (архивное) Оборудование не считается закреплённым за Сотрудником —

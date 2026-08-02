@@ -1,6 +1,25 @@
 """Общие сериализаторы/миксины для разделов, где объект закреплён за
 сотрудником (SIM-карты, пропуска, оборудование, транспорт, инструменты)."""
+from rest_framework import serializers
+
 from storage.serializers import StoredFileSerializer
+
+
+def validate_storage_place(place, field="storage_place"):
+    """Общий валидатор размещения (B53-R4): свободный объект лежит на складе.
+
+    Если `place` задан — он обязан быть Местом типа STORAGE (склад); иначе
+    поднимается DRF ValidationError на поле `field` с единым сообщением.
+    `None` допустим (объект размещён у сотрудника/в оборудовании или ещё без
+    размещения). Раньше эта проверка была продублирована дословно в
+    сериализаторах SIM-карт, пропусков, лицензий и инструментов (у последних —
+    на поле `place`), поэтому вынесена рядом с EmployeeHolderSerializerMixin."""
+    # Лениво — как в остальных сериализаторах: избегаем импорта locations на
+    # уровне модуля (core/serializers импортируется доменными приложениями).
+    from locations.models import Place
+
+    if place is not None and place.place_type != Place.PlaceType.STORAGE:
+        raise serializers.ValidationError({field: "Выберите место хранения (склад)."})
 
 
 def place_detail(place):

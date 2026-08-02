@@ -2,7 +2,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from core.eav import apply_field_values, missing_required_fields, upsert_custom_fields
-from core.serializers import place_detail
+from core.serializers import place_detail, validate_storage_place
 from equipment.serializers import EquipmentMiniSerializer
 from storage.serializers import StoredFileSerializer
 
@@ -207,8 +207,6 @@ class LicenseSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         # Размещение (B8): в оборудовании — значит не на складе. Свободная
         # аппаратная лицензия может лежать на складе.
-        from locations.models import Place
-
         equipment = attrs.get("equipment")
         if equipment:
             attrs["storage_place"] = None
@@ -218,9 +216,7 @@ class LicenseSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"equipment": "К оборудованию этого типа нельзя привязывать лицензии."}
                 )
-        storage = attrs.get("storage_place")
-        if storage is not None and storage.place_type != Place.PlaceType.STORAGE:
-            raise serializers.ValidationError({"storage_place": "Выберите место хранения (склад)."})
+        validate_storage_place(attrs.get("storage_place"))
 
         # B18: «мягкая» смена типа у существующей лицензии — только на тип того же
         # вида (программный↔программный, аппаратный↔аппаратный).

@@ -2,7 +2,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from core.eav import upsert_custom_fields
-from core.serializers import EmployeeHolderSerializerMixin
+from core.serializers import EmployeeHolderSerializerMixin, validate_storage_place
 from employees.models import Employee
 from locations.models import Place
 
@@ -148,8 +148,7 @@ class ToolSerializer(serializers.ModelSerializer):
             emp_qty = attrs.get("employee_quantity") or 0
             if quantity > 0 and place is None:
                 raise serializers.ValidationError({"place": "Укажите место хранения для остатка."})
-            if place is not None and place.place_type != Place.PlaceType.STORAGE:
-                raise serializers.ValidationError({"place": "Выберите место хранения (склад)."})
+            validate_storage_place(place, field="place")
             if employee and emp_qty <= 0:
                 raise serializers.ValidationError({"employee_quantity": "Укажите количество для сотрудника."})
             if emp_qty > 0 and not employee:
