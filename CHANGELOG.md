@@ -16,6 +16,17 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.31.11] — 2026-08-02
+
+### Изменено
+- **Внутреннее (без изменений в интерфейсе):** повышение поддерживаемости
+  (кодревью). Добавлен CI-гейт контракта зависимостей между приложениями
+  бэкенда (import-linter): проверяет, что верхнеуровневые приложения отчётов и
+  журнала аудита никто не импортирует, что журнал аудита ни от чего не зависит,
+  и что модуль резервного копирования используется только настройками компании
+  и хранилища. Гейт не даёт графу зависимостей деградировать. Поведение
+  приложения не менялось.
+
 ## [1.31.10] — 2026-08-02
 
 ### Изменено
@@ -1974,7 +1985,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.10...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.11...HEAD
+[1.31.11]: https://github.com/alfafamily/ele/compare/v1.31.10...v1.31.11
 [1.31.10]: https://github.com/alfafamily/ele/compare/v1.31.9...v1.31.10
 [1.31.9]: https://github.com/alfafamily/ele/compare/v1.31.8...v1.31.9
 [1.31.8]: https://github.com/alfafamily/ele/compare/v1.31.7...v1.31.8
