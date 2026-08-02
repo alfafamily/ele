@@ -5,7 +5,6 @@ from core.eav import upsert_custom_fields
 from core.serializers import EmployeeHolderSerializerMixin
 from employees.models import Employee
 from locations.models import Place
-from storage.serializers import StoredFileSerializer
 
 from .models import Tool, ToolAllocation, ToolCustomField, ToolMovement
 

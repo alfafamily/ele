@@ -16,6 +16,16 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.31.6] — 2026-08-02
+
+### Изменено
+- **Внутреннее (без изменений в интерфейсе):** повышение поддерживаемости
+  (кодревью). Общий каркас четырёх учётных разделов (Оборудование, Транспорт,
+  Лицензии, Инструменты) вынесен в базовый класс: единые пагинация, защита от
+  удаления (только списание/утилизация), загрузка и удаление файлов-реквизитов;
+  повторяющийся фильтр списка по статусу техобслуживания — в общий модуль.
+  Поведение не менялось. Попутно удалён неиспользуемый импорт.
+
 ## [1.31.5] — 2026-07-31
 
 ### Исправлено
@@ -1920,7 +1930,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.5...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.6...HEAD
+[1.31.6]: https://github.com/alfafamily/ele/compare/v1.31.5...v1.31.6
 [1.31.5]: https://github.com/alfafamily/ele/compare/v1.31.4...v1.31.5
 [1.31.4]: https://github.com/alfafamily/ele/compare/v1.31.3...v1.31.4
 [1.31.3]: https://github.com/alfafamily/ele/compare/v1.31.2...v1.31.3

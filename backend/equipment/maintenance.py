@@ -18,6 +18,7 @@ from core.maintenance import (  # noqa: F401
     SCHEDULED,
     add_months,
     is_plan_active,
+    maintenance_status_condition,
     maintenance_summary,
     plan_sort_key,
     plan_status,

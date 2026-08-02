@@ -2,15 +2,14 @@ from django.db import transaction
 from django.db.models import Max, ProtectedError, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from rest_framework import filters, generics, serializers, viewsets
+from rest_framework import generics, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.asset_views import AccountableAssetViewSet, AssetFieldFileMixin
 from core.eav import count_missing_for_field
 from core.eav_filters import csv_ids, eav_field_value_suggestions, eav_req_conditions
-from core.mixins import CreationCommentMixin
-from core.pagination import ELECursorPagination
 from core.permissions import (
     CanManageMaintenance,
     CanPerformMaintenance,
@@ -20,13 +19,13 @@ from core.permissions import (
     can_maintain_type,
 )
 from employees.models import Employee
-from storage.service import delete_stored_file, store_uploaded_file
 
 from .maintenance import (
     add_months,
     archive_equipment_maintenance,
     create_plan_for_individual_regulation,
     create_plans_for_type_regulation,
+    maintenance_status_condition,
     plan_sort_key,
     plan_status,
     set_regulation_archived,
@@ -169,22 +168,23 @@ class TypeRegulationDetailView(generics.RetrieveUpdateAPIView):
         return super().update(request, *args, **kwargs)
 
 
-class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
+class EquipmentViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
     """Удаления нет — только списание (write_off)."""
 
     serializer_class = EquipmentSerializer
     permission_classes = [EquipmentAccessPermission]
-    pagination_class = ELECursorPagination
-    # DELETE разрешён на уровне диспетчеризации только ради экшена удаления файла
-    # реквизита (ниже); удаление самого Оборудования запрещено — destroy() отдаёт
-    # 405 (только списание).
-    http_method_names = ["get", "post", "put", "patch", "delete", "head", "options"]
-    filter_backends = [filters.OrderingFilter]
     ordering_fields = ["created_at", "equipment_type__name", "employee__last_name"]
     ordering = ["-created_at"]
+    delete_forbidden_detail = "Оборудование не удаляется — только списание."
 
-    def destroy(self, request, *args, **kwargs):
-        return Response({"detail": "Оборудование не удаляется — только списание."}, status=405)
+    # B53-R1: файлы-реквизиты EAV (см. core.asset_views.AssetFieldFileMixin).
+    asset_owner_field = "equipment"
+    asset_type_field = "equipment_type"
+    type_field_model = EquipmentTypeField
+    field_value_model = EquipmentFieldValue
+    field_file_model = EquipmentFieldFile
+    field_value_out_serializer = EquipmentFieldValueOutSerializer
+    field_file_storage_dir = "equipment/fields"
 
     def get_queryset(self):
         from core.assignments import annotate_acceptance
@@ -275,35 +275,15 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         # B13+: фильтры по статусу ТО считаются по активным планам (регламент не
         # архивный, план не отменён, регламент не «по потребности»). Можно выбрать
         # несколько сразу — объединяем через OR по наличию подходящего плана.
-        to_due = self.request.query_params.get("to_due") == "1"
-        to_overdue = self.request.query_params.get("to_overdue") == "1"
-        to_unset = self.request.query_params.get("to_unset") == "1"
-        if to_due or to_overdue or to_unset:
-            from datetime import timedelta
-
-            from django.db.models import Exists, OuterRef
-
-            from equipment.maintenance import DUE_SOON_DAYS
-
-            today = timezone.localdate()
-            active = EquipmentMaintenancePlan.objects.filter(
-                equipment=OuterRef("pk"),
-                is_cancelled=False,
-                regulation__is_archived=False,
-                regulation__on_demand=False,
-            )
-            cond = None
-            if to_overdue:
-                cond = Exists(active.filter(next_planned_date__lt=today))
-            if to_due:
-                due = Exists(active.filter(
-                    next_planned_date__gte=today,
-                    next_planned_date__lte=today + timedelta(days=DUE_SOON_DAYS),
-                ))
-                cond = due if cond is None else (cond | due)
-            if to_unset:
-                unset = Exists(active.filter(next_planned_date__isnull=True))
-                cond = unset if cond is None else (cond | unset)
+        # B13+: фильтры по статусу ТО (по активным планам). Общий хелпер —
+        # см. core.maintenance.maintenance_status_condition. У оборудования ТО
+        # может быть выключено флагом типа — доп. гейт maintenance_enabled.
+        cond = maintenance_status_condition(
+            self.request.query_params,
+            plan_model=EquipmentMaintenancePlan,
+            owner_field="equipment",
+        )
+        if cond is not None:
             qs = qs.filter(equipment_type__maintenance_enabled=True).filter(cond)
 
         search = self.request.query_params.get("search")
@@ -824,80 +804,6 @@ class EquipmentViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
         rows.sort(key=lambda r: r["date"], reverse=True)
         return Response(rows)
-
-    @action(
-        detail=True,
-        methods=["post", "delete"],
-        url_path=r"field-values/(?P<field_id>[^/.]+)/file",
-        permission_classes=[IsAdminOrAccountant],
-    )
-    def upload_field_file(self, request, pk=None, field_id=None):
-        equipment = self.get_object()
-        field = get_object_or_404(EquipmentTypeField, pk=field_id, equipment_type=equipment.equipment_type)
-        if field.value_type != "file":
-            return Response({"detail": "Реквизит не файлового типа."}, status=400)
-
-        # Удаление одиночного файла реквизита (не только замена). Для реквизитов
-        # с несколькими файлами удаление — через delete_field_file по id файла.
-        if request.method == "DELETE":
-            field_value = EquipmentFieldValue.objects.filter(equipment=equipment, field=field).first()
-            if field_value and field_value.value_file_id:
-                delete_stored_file(field_value.value_file)
-                field_value.value_file = None
-                field_value.save(update_fields=["value_file"])
-            return Response(status=204)
-
-        # getlist — реквизит с allow_multiple разрешает выбрать несколько файлов
-        # за один раз (одиночный присылает один). Валидируем все до сохранения.
-        file_objs = request.FILES.getlist("file")
-        if not file_objs:
-            return Response({"detail": "Файл не передан."}, status=400)
-        from company.limits import max_upload_bytes, max_upload_mb
-
-        limit, limit_mb = max_upload_bytes(), max_upload_mb()
-        for f in file_objs:
-            if f.size > limit:
-                return Response({"detail": f"Файл «{f.name}» больше {limit_mb} МБ."}, status=400)
-
-        field_value, created = EquipmentFieldValue.objects.get_or_create(equipment=equipment, field=field)
-        if field.allow_multiple:
-            # Несколько файлов — добавляем в дочернюю таблицу. Если у реквизита
-            # остался legacy одиночный value_file (флаг включили позже) —
-            # переносим его туда же для единообразия.
-            if field_value.value_file_id:
-                EquipmentFieldFile.objects.create(field_value=field_value, stored_file=field_value.value_file)
-                field_value.value_file = None
-                field_value.save(update_fields=["value_file"])
-            for f in file_objs:
-                stored = store_uploaded_file(f, "equipment/fields")
-                EquipmentFieldFile.objects.create(field_value=field_value, stored_file=stored)
-        else:
-            # Одиночный реквизит — берём первый файл, заменяя прежний.
-            stored_file = store_uploaded_file(file_objs[0], "equipment/fields")
-            if not created:
-                delete_stored_file(field_value.value_file)
-            field_value.value_file = stored_file
-            field_value.save(update_fields=["value_file"])
-        return Response(EquipmentFieldValueOutSerializer(field_value).data)
-
-    @action(
-        detail=True,
-        methods=["delete"],
-        url_path=r"field-values/(?P<field_id>[^/.]+)/files/(?P<file_pk>[^/.]+)",
-        permission_classes=[IsAdminOrAccountant],
-    )
-    def delete_field_file(self, request, pk=None, field_id=None, file_pk=None):
-        equipment = self.get_object()
-        field_file = get_object_or_404(
-            EquipmentFieldFile,
-            pk=file_pk,
-            field_value__equipment=equipment,
-            field_value__field_id=field_id,
-        )
-        stored = field_file.stored_file
-        field_file.delete()
-        delete_stored_file(stored)
-        return Response(status=204)
 
 
 def _fmt_quantity(value):

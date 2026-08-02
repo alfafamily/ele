@@ -1,13 +1,11 @@
 from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from core.asset_views import AccountableAssetViewSet
 from core.eav_filters import csv_ids
-from core.mixins import CreationCommentMixin
-from core.pagination import ELECursorPagination
 from core.permissions import IsAdminOrAccountant, ToolAccessPermission
 from employees.models import Employee
 
@@ -15,19 +13,15 @@ from .models import Tool, ToolAllocation, ToolMovement
 from .serializers import ToolSerializer
 
 
-class ToolViewSet(CreationCommentMixin, viewsets.ModelViewSet):
+class ToolViewSet(AccountableAssetViewSet):
     """Инструменты — количественный учёт. Удаления нет, только списание всей
     карточки (write_off) — как у Оборудования."""
 
     serializer_class = ToolSerializer
     permission_classes = [ToolAccessPermission]
-    pagination_class = ELECursorPagination
-    filter_backends = [filters.OrderingFilter]
     ordering_fields = ["created_at", "name"]
     ordering = ["-created_at"]
-
-    def destroy(self, request, *args, **kwargs):
-        return Response({"detail": "Инструмент не удаляется — только списание."}, status=405)
+    delete_forbidden_detail = "Инструмент не удаляется — только списание."
 
     def get_queryset(self):
         qs = Tool.objects.prefetch_related(

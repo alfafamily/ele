@@ -1,11 +1,27 @@
+import tempfile
 from datetime import timedelta
 
 from accounts.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from django.utils import timezone
 from employees.models import Employee
 from rest_framework.test import APITestCase
+from storage import backends as storage_backends
 
-from .models import MaintenanceRecord, Transport, TransportType
+from .models import (
+    MaintenanceRecord,
+    MaintenanceRegulation,
+    Transport,
+    TransportMaintenancePlan,
+    TransportType,
+)
+
+_TEST_MEDIA_ROOT = tempfile.mkdtemp(prefix="ele-transport-tests-")
+
+
+def _reset_local_backend():
+    storage_backends._INSTANCES.pop("local", None)
 
 
 def _base_fields(resp_data):
@@ -453,3 +469,84 @@ class TransportNumberingTests(APITestCase):
         r2 = self.client.post("/api/company/next-number/", {"kind": "transport"}, format="json")
         self.assertNotEqual(r1.data["number"], r2.data["number"])
         self.assertTrue(r1.data["number"].startswith("TS-"))
+
+
+@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
+class TransportSharedAssetTests(APITestCase):
+    """B53-R1. Каркас учётного вьюсета, вынесенный в core.asset_views /
+    core.maintenance, проверяем на владельце-транспорте:
+      - загрузка/удаление файла-реквизита (AssetFieldFileMixin);
+      - защита от удаления объекта (AccountableAssetViewSet.destroy → 405);
+      - фильтр списка по статусу ТО (maintenance_status_condition)."""
+
+    def setUp(self):
+        _reset_local_backend()
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post(
+            "/api/transport-types/", {"name": "Легковой", "gibdd_registration": False}, format="json"
+        )
+        self.type_id = resp.data["id"]
+        resp = self.client.post(
+            f"/api/transport-types/{self.type_id}/fields/",
+            {"name": "Свидетельство о регистрации", "value_type": "file", "is_required": False},
+            format="json",
+        )
+        self.field_id = resp.data["id"]
+        self.transport = Transport.objects.create(inventory_number="TS-FILE-1", transport_type_id=self.type_id)
+
+    def _file_url(self):
+        return f"/api/transport/{self.transport.id}/field-values/{self.field_id}/file/"
+
+    def test_upload_and_delete_field_file(self):
+        resp = self.client.post(
+            self._file_url(),
+            {"file": SimpleUploadedFile("sts.pdf", b"%PDF-1.4 fake", content_type="application/pdf")},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["value_file"]["original_filename"], "sts.pdf")
+        # Удаление одиночного файла реквизита — 204, значение очищается.
+        resp = self.client.delete(self._file_url())
+        self.assertEqual(resp.status_code, 204)
+
+    def test_upload_rejects_non_file_field(self):
+        resp = self.client.post(
+            f"/api/transport-types/{self.type_id}/fields/",
+            {"name": "Заметка", "value_type": "text", "is_required": False},
+            format="json",
+        )
+        text_field_id = resp.data["id"]
+        resp = self.client.post(
+            f"/api/transport/{self.transport.id}/field-values/{text_field_id}/file/",
+            {"file": SimpleUploadedFile("x.txt", b"x")},
+            format="multipart",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_delete_object_forbidden(self):
+        resp = self.client.delete(f"/api/transport/{self.transport.id}/")
+        self.assertEqual(resp.status_code, 405)
+
+    def test_maintenance_status_list_filter(self):
+        today = timezone.localdate()
+        reg = MaintenanceRegulation.objects.create(
+            transport_type_id=self.type_id, name="ТО", period_months=6
+        )
+
+        def _with_plan(inv, next_date):
+            t = Transport.objects.create(inventory_number=inv, transport_type_id=self.type_id)
+            TransportMaintenancePlan.objects.create(transport=t, regulation=reg, next_planned_date=next_date)
+            return t.id
+
+        overdue_id = _with_plan("TS-OVD", today - timedelta(days=2))
+        due_id = _with_plan("TS-DUE", today + timedelta(days=2))
+        unset_id = _with_plan("TS-UNSET", None)
+
+        def ids(params):
+            return {e["id"] for e in self.client.get("/api/transport/", params).data["results"]}
+
+        self.assertEqual(ids({"to_overdue": "1"}), {overdue_id})
+        self.assertEqual(ids({"to_due": "1"}), {due_id})
+        self.assertEqual(ids({"to_unset": "1"}), {unset_id})
+        self.assertEqual(ids({"to_due": "1", "to_overdue": "1"}), {overdue_id, due_id})

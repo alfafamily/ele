@@ -2,17 +2,15 @@ from django.db import transaction
 from django.db.models import Max, ProtectedError, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from rest_framework import filters, generics, viewsets
+from rest_framework import generics, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.asset_views import AccountableAssetViewSet, AssetFieldFileMixin
 from core.eav import count_missing_for_field
 from core.eav_filters import csv_ids, eav_field_value_suggestions, eav_req_conditions
-from core.mixins import CreationCommentMixin
-from core.pagination import ELECursorPagination
 from core.permissions import IsAdminOrAccountant, IsAdminOrAccountantOrReadOnlyObserver
-from storage.service import delete_stored_file, store_uploaded_file
 
 from .models import (
     License,
@@ -112,26 +110,27 @@ class LicenseTypeFieldImpactView(APIView):
         return Response({"affected_count": affected})
 
 
-class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
+class LicenseViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
     """Обычному «Сотруднику» раздел недоступен — свои лицензии видны только в
     карточке привязанного Оборудования. Наблюдатель видит раздел на просмотр,
     но без «Номера/ключа» (см. get_serializer_context). Управление и удаление —
     admin/accountant; удаления нет — только утилизация (utilize)."""
 
     permission_classes = [IsAdminOrAccountantOrReadOnlyObserver]
-    pagination_class = ELECursorPagination
-    # DELETE разрешён только ради экшена удаления файла реквизита (ниже);
-    # удаление самой Лицензии запрещено — destroy() отдаёт 405 (только
-    # утилизация).
-    http_method_names = ["get", "post", "put", "patch", "delete", "head", "options"]
-    filter_backends = [filters.OrderingFilter]
     # B18: лицензия идентифицируется Типом — сортировка «по наименованию» идёт
     # по имени Типа. Алиас "name" оставлен для обратной совместимости запросов.
     ordering_fields = ["created_at", "name", "license_type__name", "equipment__inventory_number"]
     ordering = ["-created_at"]
+    delete_forbidden_detail = "Лицензия не удаляется — только утилизация."
 
-    def destroy(self, request, *args, **kwargs):
-        return Response({"detail": "Лицензия не удаляется — только утилизация."}, status=405)
+    # B53-R1: файлы-реквизиты EAV (см. core.asset_views.AssetFieldFileMixin).
+    asset_owner_field = "license"
+    asset_type_field = "license_type"
+    type_field_model = LicenseTypeField
+    field_value_model = LicenseFieldValue
+    field_file_model = LicenseFieldFile
+    field_value_out_serializer = LicenseFieldValueOutSerializer
+    field_file_storage_dir = "licenses/fields"
 
     def get_serializer_class(self):
         return LicenseListSerializer if self.action == "list" else LicenseSerializer
@@ -418,74 +417,3 @@ class LicenseViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         rows.sort(key=lambda r: r["date"], reverse=True)
         return Response(rows)
 
-    @action(
-        detail=True,
-        methods=["post", "delete"],
-        url_path=r"field-values/(?P<field_id>[^/.]+)/file",
-        permission_classes=[IsAdminOrAccountant],
-    )
-    def upload_field_file(self, request, pk=None, field_id=None):
-        license_obj = self.get_object()
-        field = get_object_or_404(LicenseTypeField, pk=field_id, license_type=license_obj.license_type)
-        if field.value_type != "file":
-            return Response({"detail": "Реквизит не файлового типа."}, status=400)
-
-        # Удаление прикреплённого файла реквизита (не только замена).
-        if request.method == "DELETE":
-            field_value = LicenseFieldValue.objects.filter(license=license_obj, field=field).first()
-            if field_value and field_value.value_file_id:
-                delete_stored_file(field_value.value_file)
-                field_value.value_file = None
-                field_value.save(update_fields=["value_file"])
-            return Response(status=204)
-
-        # getlist — allow_multiple разрешает выбрать несколько файлов за раз
-        # (одиночный присылает один). Валидируем все до сохранения.
-        file_objs = request.FILES.getlist("file")
-        if not file_objs:
-            return Response({"detail": "Файл не передан."}, status=400)
-        from company.limits import max_upload_bytes, max_upload_mb
-
-        limit, limit_mb = max_upload_bytes(), max_upload_mb()
-        for f in file_objs:
-            if f.size > limit:
-                return Response({"detail": f"Файл «{f.name}» больше {limit_mb} МБ."}, status=400)
-
-        field_value, created = LicenseFieldValue.objects.get_or_create(license=license_obj, field=field)
-        if field.allow_multiple:
-            # Несколько файлов — добавляем в дочернюю таблицу; переносим legacy
-            # одиночный файл, если он был (флаг включили позже).
-            if field_value.value_file_id:
-                LicenseFieldFile.objects.create(field_value=field_value, stored_file=field_value.value_file)
-                field_value.value_file = None
-                field_value.save(update_fields=["value_file"])
-            for f in file_objs:
-                stored = store_uploaded_file(f, "licenses/fields")
-                LicenseFieldFile.objects.create(field_value=field_value, stored_file=stored)
-        else:
-            # Одиночный реквизит — берём первый файл, заменяя прежний.
-            stored_file = store_uploaded_file(file_objs[0], "licenses/fields")
-            if not created:
-                delete_stored_file(field_value.value_file)
-            field_value.value_file = stored_file
-            field_value.save(update_fields=["value_file"])
-        return Response(LicenseFieldValueOutSerializer(field_value).data)
-
-    @action(
-        detail=True,
-        methods=["delete"],
-        url_path=r"field-values/(?P<field_id>[^/.]+)/files/(?P<file_pk>[^/.]+)",
-        permission_classes=[IsAdminOrAccountant],
-    )
-    def delete_field_file(self, request, pk=None, field_id=None, file_pk=None):
-        license_obj = self.get_object()
-        field_file = get_object_or_404(
-            LicenseFieldFile,
-            pk=file_pk,
-            field_value__license=license_obj,
-            field_value__field_id=field_id,
-        )
-        stored = field_file.stored_file
-        field_file.delete()
-        delete_stored_file(stored)
-        return Response(status=204)

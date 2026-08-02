@@ -9,6 +9,7 @@ generic-часть, не завязанная на конкретные моде
 import calendar
 from datetime import timedelta
 
+from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
 
@@ -97,6 +98,46 @@ def maintenance_summary(instance, enabled, today=None):
             best = rank
             result["critical"] = status
     return result
+
+
+def maintenance_status_condition(params, *, plan_model, owner_field):
+    """B13+/B22. Условие фильтра списка по статусу ТО из query-параметров
+    ``to_overdue`` / ``to_due`` / ``to_unset`` (каждый ``"1"``). Считается по
+    активным планам (регламент не архивный, план не отменён, регламент не «по
+    потребности»); несколько выбранных статусов объединяются через ИЛИ.
+
+    Возвращает выражение для ``.filter(cond)`` либо ``None``, если ни один статус
+    не запрошен (фильтр не применяется). Идентично у оборудования и транспорта —
+    различаются только модель плана и имя FK на объект:
+
+    * ``plan_model``  — EquipmentMaintenancePlan / TransportMaintenancePlan;
+    * ``owner_field`` — имя FK на объект в плане (``"equipment"`` / ``"transport"``).
+    """
+    to_due = params.get("to_due") == "1"
+    to_overdue = params.get("to_overdue") == "1"
+    to_unset = params.get("to_unset") == "1"
+    if not (to_due or to_overdue or to_unset):
+        return None
+    today = timezone.localdate()
+    active = plan_model.objects.filter(**{
+        owner_field: OuterRef("pk"),
+        "is_cancelled": False,
+        "regulation__is_archived": False,
+        "regulation__on_demand": False,
+    })
+    cond = None
+    if to_overdue:
+        cond = Exists(active.filter(next_planned_date__lt=today))
+    if to_due:
+        due = Exists(active.filter(
+            next_planned_date__gte=today,
+            next_planned_date__lte=today + timedelta(days=DUE_SOON_DAYS),
+        ))
+        cond = due if cond is None else (cond | due)
+    if to_unset:
+        unset = Exists(active.filter(next_planned_date__isnull=True))
+        cond = unset if cond is None else (cond | unset)
+    return cond
 
 
 def set_regulation_archived(regulation, archived):

@@ -2,15 +2,14 @@ from django.db import transaction
 from django.db.models import Max, ProtectedError, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from rest_framework import filters, generics, serializers, viewsets
+from rest_framework import generics, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.asset_views import AccountableAssetViewSet, AssetFieldFileMixin
 from core.eav import count_missing_for_field
 from core.eav_filters import csv_ids, eav_field_value_suggestions, eav_req_conditions
-from core.mixins import CreationCommentMixin
-from core.pagination import ELECursorPagination
 from core.permissions import (
     CanManageTransportMaintenance,
     CanPerformTransportMaintenance,
@@ -20,8 +19,7 @@ from core.permissions import (
     can_maintain_transport_type,
 )
 from employees.models import Employee
-from core.maintenance import add_months, plan_sort_key, plan_status
-from storage.service import delete_stored_file, store_uploaded_file
+from core.maintenance import add_months, maintenance_status_condition, plan_sort_key, plan_status
 
 from .maintenance import (
     archive_transport_maintenance,
@@ -160,16 +158,23 @@ class TypeRegulationDetailView(generics.RetrieveUpdateAPIView):
         return super().update(request, *args, **kwargs)
 
 
-class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
+class TransportViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
     """Удаления нет — только списание (write_off)."""
 
     serializer_class = TransportSerializer
     permission_classes = [TransportAccessPermission]
-    pagination_class = ELECursorPagination
-    http_method_names = ["get", "post", "put", "patch", "delete", "head", "options"]
-    filter_backends = [filters.OrderingFilter]
     ordering_fields = ["created_at", "transport_type__name", "employee__last_name"]
     ordering = ["-created_at"]
+    delete_forbidden_detail = "Транспорт не удаляется — только списание."
+
+    # B53-R1: файлы-реквизиты EAV (см. core.asset_views.AssetFieldFileMixin).
+    asset_owner_field = "transport"
+    asset_type_field = "transport_type"
+    type_field_model = TransportTypeField
+    field_value_model = TransportFieldValue
+    field_file_model = TransportFieldFile
+    field_value_out_serializer = TransportFieldValueOutSerializer
+    field_file_storage_dir = "transport/fields"
 
     def perform_create(self, serializer):
         super().perform_create(serializer)
@@ -179,9 +184,6 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             from core.assignments import create_assignment
 
             create_assignment(t, t.employee, self.request.user, return_place=None)
-
-    def destroy(self, request, *args, **kwargs):
-        return Response({"detail": "Транспорт не удаляется — только списание."}, status=405)
 
     def get_queryset(self):
         from core.assignments import annotate_acceptance
@@ -237,36 +239,14 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         ):
             qs = qs.filter(cond)
 
-        # Фильтры по статусу ТО (по активным планам).
-        to_due = self.request.query_params.get("to_due") == "1"
-        to_overdue = self.request.query_params.get("to_overdue") == "1"
-        to_unset = self.request.query_params.get("to_unset") == "1"
-        if to_due or to_overdue or to_unset:
-            from datetime import timedelta
-
-            from django.db.models import Exists, OuterRef
-
-            from core.maintenance import DUE_SOON_DAYS
-
-            today = timezone.localdate()
-            active = TransportMaintenancePlan.objects.filter(
-                transport=OuterRef("pk"),
-                is_cancelled=False,
-                regulation__is_archived=False,
-                regulation__on_demand=False,
-            )
-            cond = None
-            if to_overdue:
-                cond = Exists(active.filter(next_planned_date__lt=today))
-            if to_due:
-                due = Exists(active.filter(
-                    next_planned_date__gte=today,
-                    next_planned_date__lte=today + timedelta(days=DUE_SOON_DAYS),
-                ))
-                cond = due if cond is None else (cond | due)
-            if to_unset:
-                unset = Exists(active.filter(next_planned_date__isnull=True))
-                cond = unset if cond is None else (cond | unset)
+        # Фильтры по статусу ТО (по активным планам). Общий хелпер —
+        # см. core.maintenance.maintenance_status_condition.
+        cond = maintenance_status_condition(
+            self.request.query_params,
+            plan_model=TransportMaintenancePlan,
+            owner_field="transport",
+        )
+        if cond is not None:
             qs = qs.filter(cond)
 
         search = self.request.query_params.get("search")
@@ -773,72 +753,6 @@ class TransportViewSet(CreationCommentMixin, viewsets.ModelViewSet):
 
         rows.sort(key=lambda r: r["date"], reverse=True)
         return Response(rows)
-
-    @action(
-        detail=True,
-        methods=["post", "delete"],
-        url_path=r"field-values/(?P<field_id>[^/.]+)/file",
-        permission_classes=[IsAdminOrAccountant],
-    )
-    def upload_field_file(self, request, pk=None, field_id=None):
-        transport = self.get_object()
-        field = get_object_or_404(TransportTypeField, pk=field_id, transport_type=transport.transport_type)
-        if field.value_type != "file":
-            return Response({"detail": "Реквизит не файлового типа."}, status=400)
-
-        if request.method == "DELETE":
-            field_value = TransportFieldValue.objects.filter(transport=transport, field=field).first()
-            if field_value and field_value.value_file_id:
-                delete_stored_file(field_value.value_file)
-                field_value.value_file = None
-                field_value.save(update_fields=["value_file"])
-            return Response(status=204)
-
-        file_objs = request.FILES.getlist("file")
-        if not file_objs:
-            return Response({"detail": "Файл не передан."}, status=400)
-        from company.limits import max_upload_bytes, max_upload_mb
-
-        limit, limit_mb = max_upload_bytes(), max_upload_mb()
-        for f in file_objs:
-            if f.size > limit:
-                return Response({"detail": f"Файл «{f.name}» больше {limit_mb} МБ."}, status=400)
-
-        field_value, created = TransportFieldValue.objects.get_or_create(transport=transport, field=field)
-        if field.allow_multiple:
-            if field_value.value_file_id:
-                TransportFieldFile.objects.create(field_value=field_value, stored_file=field_value.value_file)
-                field_value.value_file = None
-                field_value.save(update_fields=["value_file"])
-            for f in file_objs:
-                stored = store_uploaded_file(f, "transport/fields")
-                TransportFieldFile.objects.create(field_value=field_value, stored_file=stored)
-        else:
-            stored_file = store_uploaded_file(file_objs[0], "transport/fields")
-            if not created:
-                delete_stored_file(field_value.value_file)
-            field_value.value_file = stored_file
-            field_value.save(update_fields=["value_file"])
-        return Response(TransportFieldValueOutSerializer(field_value).data)
-
-    @action(
-        detail=True,
-        methods=["delete"],
-        url_path=r"field-values/(?P<field_id>[^/.]+)/files/(?P<file_pk>[^/.]+)",
-        permission_classes=[IsAdminOrAccountant],
-    )
-    def delete_field_file(self, request, pk=None, field_id=None, file_pk=None):
-        transport = self.get_object()
-        field_file = get_object_or_404(
-            TransportFieldFile,
-            pk=file_pk,
-            field_value__transport=transport,
-            field_value__field_id=field_id,
-        )
-        stored = field_file.stored_file
-        field_file.delete()
-        delete_stored_file(stored)
-        return Response(status=204)
 
 
 def _fmt_quantity(value):
