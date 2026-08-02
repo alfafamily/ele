@@ -251,8 +251,12 @@ class EquipmentSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerial
         request = self.context.get("request")
         role = getattr(getattr(request, "user", None), "role", None)
         include_key = getattr(view, "action", None) == "retrieve" and role in ("admin", "accountant")
+        # B38: фильтруем в Python по прогретому prefetch (obj.licenses), а не
+        # obj.licenses.filter(...) — иначе .filter() бьёт в БД на каждое
+        # оборудование (N+1). Порядок сохраняем как в БД (pk).
+        active = [lic for lic in obj.licenses.all() if not lic.is_retired]
         return LicenseMiniSerializer(
-            obj.licenses.filter(is_retired=False),
+            active,
             many=True,
             context={"include_key": include_key},
         ).data

@@ -1,51 +1,61 @@
+import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
-import { ConfirmEmailPendingPage } from '../features/auth/ConfirmEmailPendingPage.jsx'
-import { ConfirmEmailTokenPage } from '../features/auth/ConfirmEmailTokenPage.jsx'
-import { LoginPage } from '../features/auth/LoginPage.jsx'
-import { PasswordResetRequestPage } from '../features/auth/PasswordResetRequestPage.jsx'
-import { RegisterPage } from '../features/auth/RegisterPage.jsx'
-import { SetPasswordPage } from '../features/auth/SetPasswordPage.jsx'
-import { SetupWizardPage } from '../features/auth/setup/SetupWizardPage.jsx'
-import { EquipmentCardPage } from '../features/equipment/EquipmentCardPage.jsx'
-import { EquipmentFormPage } from '../features/equipment/EquipmentFormPage.jsx'
-import { EquipmentListPage } from '../features/equipment/EquipmentListPage.jsx'
-import { MaintenanceFormPage } from '../features/equipment/MaintenanceFormPage.jsx'
-import { TransportListPage } from '../features/transport/TransportListPage.jsx'
-import { TransportCardPage } from '../features/transport/TransportCardPage.jsx'
-import { TransportFormPage } from '../features/transport/TransportFormPage.jsx'
-import { MaintenanceFormPage as TransportMaintenanceFormPage } from '../features/transport/MaintenanceFormPage.jsx'
-import { ToolCardPage } from '../features/tools/ToolCardPage.jsx'
-import { ToolFormPage } from '../features/tools/ToolFormPage.jsx'
-import { ToolListPage } from '../features/tools/ToolListPage.jsx'
-import { LicenseCardPage } from '../features/licenses/LicenseCardPage.jsx'
-import { LicenseFormPage } from '../features/licenses/LicenseFormPage.jsx'
-import { LicenseListPage } from '../features/licenses/LicenseListPage.jsx'
-import { EmployeeCardPage } from '../features/employees/EmployeeCardPage.jsx'
-import { EmployeeFormPage } from '../features/employees/EmployeeFormPage.jsx'
-import { EmployeeListPage } from '../features/employees/EmployeeListPage.jsx'
-import { AssignmentsPage } from '../features/employees/AssignmentsPage.jsx'
-import { SimListPage } from '../features/sim/SimListPage.jsx'
-import { SimFormPage } from '../features/sim/SimFormPage.jsx'
-import { SimCardPage } from '../features/sim/SimCardPage.jsx'
-import { PassListPage } from '../features/passes/PassListPage.jsx'
-import { PassFormPage } from '../features/passes/PassFormPage.jsx'
-import { PassCardPage } from '../features/passes/PassCardPage.jsx'
-import { PremisesPage } from '../features/premises/PremisesPage.jsx'
-import { PlacesReportPage } from '../features/reports/PlacesReportPage.jsx'
-import { ParkingReportPage } from '../features/reports/ParkingReportPage.jsx'
-import { EmployeesReportPage } from '../features/reports/EmployeesReportPage.jsx'
-import { TypesEditorPage } from '../features/types/TypesEditorPage.jsx'
-import { SettingsPage } from '../features/settings/SettingsPage.jsx'
-import { ConfirmEmailChangePage } from '../features/profile/ConfirmEmailChangePage.jsx'
-import { ProfilePage } from '../features/profile/ProfilePage.jsx'
-import { NotificationsPage } from '../features/notifications/NotificationsPage.jsx'
-import { GuidePage } from '../features/guide/GuidePage.jsx'
 import { AppLayout } from './AppLayout.jsx'
 import { NotFoundPage } from './NotFoundPage.jsx'
+import { RouteFallback } from './RouteFallback.jsx'
 import { RequireAdmin, RequireAuth, RequireEquipmentViewer, RequireGuest, RequireMaintainer, RequireSetupPending, RequireStaff, RequireTransportMaintainer, RequireTransportViewer, RequireViewer } from './guards.jsx'
+
+// B38: страницы-маршруты грузятся лениво (React.lazy) — каждый раздел уходит в
+// свой чанк вместо общего index-бандла (~226 КБ gzip → на первый экран нужен
+// только шелл + текущий раздел). Именованные экспорты оборачиваем в default для
+// React.lazy. AppLayout/guards/NotFound остаются в основном бандле (нужны сразу).
+const named = (factory, name) => lazy(() => factory().then((m) => ({ default: m[name] })))
+
+const ConfirmEmailPendingPage = named(() => import('../features/auth/ConfirmEmailPendingPage.jsx'), 'ConfirmEmailPendingPage')
+const ConfirmEmailTokenPage = named(() => import('../features/auth/ConfirmEmailTokenPage.jsx'), 'ConfirmEmailTokenPage')
+const LoginPage = named(() => import('../features/auth/LoginPage.jsx'), 'LoginPage')
+const PasswordResetRequestPage = named(() => import('../features/auth/PasswordResetRequestPage.jsx'), 'PasswordResetRequestPage')
+const RegisterPage = named(() => import('../features/auth/RegisterPage.jsx'), 'RegisterPage')
+const SetPasswordPage = named(() => import('../features/auth/SetPasswordPage.jsx'), 'SetPasswordPage')
+const SetupWizardPage = named(() => import('../features/auth/setup/SetupWizardPage.jsx'), 'SetupWizardPage')
+const EquipmentCardPage = named(() => import('../features/equipment/EquipmentCardPage.jsx'), 'EquipmentCardPage')
+const EquipmentFormPage = named(() => import('../features/equipment/EquipmentFormPage.jsx'), 'EquipmentFormPage')
+const EquipmentListPage = named(() => import('../features/equipment/EquipmentListPage.jsx'), 'EquipmentListPage')
+const MaintenanceFormPage = named(() => import('../features/equipment/MaintenanceFormPage.jsx'), 'MaintenanceFormPage')
+const TransportListPage = named(() => import('../features/transport/TransportListPage.jsx'), 'TransportListPage')
+const TransportCardPage = named(() => import('../features/transport/TransportCardPage.jsx'), 'TransportCardPage')
+const TransportFormPage = named(() => import('../features/transport/TransportFormPage.jsx'), 'TransportFormPage')
+const TransportMaintenanceFormPage = named(() => import('../features/transport/MaintenanceFormPage.jsx'), 'MaintenanceFormPage')
+const ToolCardPage = named(() => import('../features/tools/ToolCardPage.jsx'), 'ToolCardPage')
+const ToolFormPage = named(() => import('../features/tools/ToolFormPage.jsx'), 'ToolFormPage')
+const ToolListPage = named(() => import('../features/tools/ToolListPage.jsx'), 'ToolListPage')
+const LicenseCardPage = named(() => import('../features/licenses/LicenseCardPage.jsx'), 'LicenseCardPage')
+const LicenseFormPage = named(() => import('../features/licenses/LicenseFormPage.jsx'), 'LicenseFormPage')
+const LicenseListPage = named(() => import('../features/licenses/LicenseListPage.jsx'), 'LicenseListPage')
+const EmployeeCardPage = named(() => import('../features/employees/EmployeeCardPage.jsx'), 'EmployeeCardPage')
+const EmployeeFormPage = named(() => import('../features/employees/EmployeeFormPage.jsx'), 'EmployeeFormPage')
+const EmployeeListPage = named(() => import('../features/employees/EmployeeListPage.jsx'), 'EmployeeListPage')
+const AssignmentsPage = named(() => import('../features/employees/AssignmentsPage.jsx'), 'AssignmentsPage')
+const SimListPage = named(() => import('../features/sim/SimListPage.jsx'), 'SimListPage')
+const SimFormPage = named(() => import('../features/sim/SimFormPage.jsx'), 'SimFormPage')
+const SimCardPage = named(() => import('../features/sim/SimCardPage.jsx'), 'SimCardPage')
+const PassListPage = named(() => import('../features/passes/PassListPage.jsx'), 'PassListPage')
+const PassFormPage = named(() => import('../features/passes/PassFormPage.jsx'), 'PassFormPage')
+const PassCardPage = named(() => import('../features/passes/PassCardPage.jsx'), 'PassCardPage')
+const PremisesPage = named(() => import('../features/premises/PremisesPage.jsx'), 'PremisesPage')
+const PlacesReportPage = named(() => import('../features/reports/PlacesReportPage.jsx'), 'PlacesReportPage')
+const ParkingReportPage = named(() => import('../features/reports/ParkingReportPage.jsx'), 'ParkingReportPage')
+const EmployeesReportPage = named(() => import('../features/reports/EmployeesReportPage.jsx'), 'EmployeesReportPage')
+const TypesEditorPage = named(() => import('../features/types/TypesEditorPage.jsx'), 'TypesEditorPage')
+const SettingsPage = named(() => import('../features/settings/SettingsPage.jsx'), 'SettingsPage')
+const ConfirmEmailChangePage = named(() => import('../features/profile/ConfirmEmailChangePage.jsx'), 'ConfirmEmailChangePage')
+const ProfilePage = named(() => import('../features/profile/ProfilePage.jsx'), 'ProfilePage')
+const NotificationsPage = named(() => import('../features/notifications/NotificationsPage.jsx'), 'NotificationsPage')
+const GuidePage = named(() => import('../features/guide/GuidePage.jsx'), 'GuidePage')
 
 export function AppRoutes() {
   return (
+    <Suspense fallback={<RouteFallback />}>
     <Routes>
       <Route
         path="/setup"
@@ -405,5 +415,6 @@ export function AppRoutes() {
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    </Suspense>
   )
 }

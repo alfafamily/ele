@@ -134,7 +134,8 @@ class License(models.Model):
     license_type = models.ForeignKey(
         LicenseType, verbose_name="Вид лицензии", on_delete=models.PROTECT, related_name="licenses",
     )
-    created_at = models.DateTimeField(auto_now_add=True)
+    # B38: индекс под курсорную пагинацию по created_at (см. Equipment).
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     history = HistoricalRecords()
 
     class Meta:

@@ -123,7 +123,10 @@ class Equipment(models.Model):
     equipment_type = models.ForeignKey(
         EquipmentType, verbose_name="Вид оборудования", on_delete=models.PROTECT, related_name="equipment",
     )
-    created_at = models.DateTimeField(auto_now_add=True)
+    # B38: индекс под курсорную пагинацию (WHERE created_at < cursor ORDER BY
+    # created_at DESC) — на больших наборах убирает Seq Scan+сортировку каждой
+    # страницы (синтетический бенч 100k строк: 10.7мс → 0.45мс).
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     history = HistoricalRecords()
 
     class Meta:

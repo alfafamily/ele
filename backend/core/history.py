@@ -240,11 +240,25 @@ def _emit_m2m(history, m2m_specs, creation_window_end, *, merge_window=M2M_MERGE
     if not m2m_specs:
         return []
     ordered = list(reversed(history))  # старые -> новые
+    if not ordered:
+        return []
     rows = []
     for attr, spec in m2m_specs.items():
+        id_attr = spec["id_attr"]
+        # B38: снимок набора для каждой версии одним запросом, а не
+        # getattr(rec, attr).all() per-record. Историчный through-объект (напр.
+        # HistoricalAccessPass_buildings) держит FK `history` на историчную запись
+        # — группируем его id по history_id. Раньше это давало SELECT на каждую
+        # версию × каждый набор (69 запросов на истории пропуска с 23 версиями).
+        through = getattr(ordered[0], attr).model
+        by_hist = {}
+        for hid, oid in through.objects.filter(
+            history_id__in=[rec.history_id for rec in ordered]
+        ).values_list("history_id", id_attr):
+            by_hist.setdefault(hid, []).append(oid)
         # Состояние набора id по каждой версии в хронологическом порядке.
         timeline = [
-            (rec, tuple(sorted(getattr(x, spec["id_attr"]) for x in getattr(rec, attr).all())))
+            (rec, tuple(sorted(by_hist.get(rec.history_id, []))))
             for rec in ordered
         ]
         # Схлопнуть версии одной операции: подряд идущие ближе окна — в итоговую.
@@ -299,7 +313,9 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
     """
     movement_fields = set(movement_fields)
     m2m_specs = m2m_specs or {}
-    history = list(instance.history.all())  # новые сверху
+    # B38: history_user читается на каждой записи (author) — select_related,
+    # иначе SELECT на пользователя per-record.
+    history = list(instance.history.select_related("history_user"))  # новые сверху
     # Конец «окна создания» — чтобы не дублировать M2M, проставленный при создании.
     creation = next((r for r in history if r.history_type == "+"), None)
     creation_window_end = (creation.history_date + CREATION_WINDOW) if creation else None
@@ -325,7 +341,13 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
         if older is None:
             continue
 
-        changes = {c.field: c for c in record.diff_against(older).changes}
+        # B38: M2M-наборы разбираем отдельным проходом (_emit_m2m) — исключаем их
+        # из diff_against, иначе он на каждой паре версий тянет снимок каждого
+        # набора (N+1 по historical through-таблицам).
+        changes = {
+            c.field: c
+            for c in record.diff_against(older, excluded_fields=set(m2m_specs)).changes
+        }
         consumed = set()
         rows += _emit_movement_events(
             record, changes, movement_events, consumed,

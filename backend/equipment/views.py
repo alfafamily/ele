@@ -220,8 +220,32 @@ class EquipmentViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
         # (tab по умолчанию «active») отдавала бы 404, а фронт вис бы на лоадере.
         if self.action != "list":
             # На карточке (retrieve) отдаём «Номер/ключ» привязанных лицензий —
-            # прогреваем field_values, чтобы не ловить N+1 при сериализации.
-            return qs.prefetch_related("licenses__field_values__field", "sim_cards")
+            # прогреваем field_values + license_type, чтобы не ловить N+1 при
+            # сериализации (LicenseMiniSerializer читает license_type.name/kind).
+            from django.db.models import Prefetch
+
+            from licenses.models import License
+
+            return qs.prefetch_related(
+                Prefetch(
+                    "licenses",
+                    queryset=License.objects.select_related("license_type").prefetch_related(
+                        "field_values__field"
+                    ),
+                ),
+                "sim_cards",
+            )
+
+        # B38: блок «Установленные лицензии» сериализуется и в списке
+        # (get_licenses), прогреваем license_type — иначе на каждое оборудование
+        # уходит отдельный SELECT (наблюдалось 14 запросов N+1 по licenses_license).
+        from django.db.models import Prefetch
+
+        from licenses.models import License
+
+        qs = qs.prefetch_related(
+            Prefetch("licenses", queryset=License.objects.select_related("license_type"))
+        )
 
         tab = self.request.query_params.get("tab", "active")
         qs = qs.filter(is_written_off=(tab == "archive"))
@@ -344,6 +368,11 @@ class EquipmentViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
             for lic in active_licenses:
                 lic.equipment = None
                 lic.save(update_fields=["equipment"])
+            # B38: get_object() прогрел prefetch licenses — после открепления он
+            # устарел, а get_licenses теперь читает именно кэш prefetch. Сбрасываем,
+            # чтобы блок «Установленные лицензии» в ответе пересобрался из БД.
+            if hasattr(equipment, "_prefetched_objects_cache"):
+                equipment._prefetched_objects_cache.pop("licenses", None)
         # Списанное оборудование выходит из обращения — снимаем закрепление за
         # Сотрудником (аналогично тому, как увольнение открепляет оборудование,
         #). Историю «за кем было закреплено» хранит журнал изменений.

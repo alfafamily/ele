@@ -106,24 +106,33 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         return EmployeeListSerializer if self.action == "list" else EmployeeSerializer
 
     def get_queryset(self):
-        qs = Employee.objects.all().prefetch_related(
-            "equipment__equipment_type",
-            "equipment__field_values__field",
-            # Транспорт сотрудника + состояние парковки (для блока «Транспорт»).
-            "transport__field_values__field",
-            "transport__parking_spots__room__building",
-            "transport__parking_spots__room__plan_file",
-            "tool_allocations__tool",
-            "sim_cards",
-            "passes__buildings",
-            "passes__rooms",
-            "passes__places__room",
-            # Объекты, стоящие на рабочих местах сотрудника (для карточки).
-            "workplaces__room__building",
-            "workplaces__equipment__equipment_type",
-            "workplaces__equipment__field_values__field",
-            "workplaces__tool_allocations__tool",
-        )
+        # B38: список (EmployeeListSerializer) читает только avatar и счётчик
+        # активного оборудования — тяжёлые наборы карточки (транспорт/пропуска/
+        # парковки/рабочие места/реквизиты) в списке не сериализуются, поэтому их
+        # prefetch там — чистый оверхед (по запросу на набор × страница). Полный
+        # набор прогреваем только для карточки и служебных экшенов.
+        qs = Employee.objects.select_related("avatar")
+        if self.action == "list":
+            qs = qs.prefetch_related("equipment")
+        else:
+            qs = qs.prefetch_related(
+                "equipment__equipment_type",
+                "equipment__field_values__field",
+                # Транспорт сотрудника + состояние парковки (для блока «Транспорт»).
+                "transport__field_values__field",
+                "transport__parking_spots__room__building",
+                "transport__parking_spots__room__plan_file",
+                "tool_allocations__tool",
+                "sim_cards",
+                "passes__buildings",
+                "passes__rooms",
+                "passes__places__room",
+                # Объекты, стоящие на рабочих местах сотрудника (для карточки).
+                "workplaces__room__building",
+                "workplaces__equipment__equipment_type",
+                "workplaces__equipment__field_values__field",
+                "workplaces__tool_allocations__tool",
+            )
         # Вкладки списка: Работают / Уволены.
         employment = self.request.query_params.get("employment")
         if employment == "working":

@@ -189,7 +189,8 @@ class SimCard(models.Model):
     # Поставщик услуг связи — через кого управление номером (пополнение, смена
     # тарифа, договор). Не всегда совпадает с Оператором (MVNO/дилер).
     provider = models.CharField("Поставщик услуг связи", max_length=255, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    # B38: индекс под курсорную пагинацию по created_at (см. Equipment).
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     history = HistoricalRecords()
 
     class Meta:
@@ -300,7 +301,8 @@ class AccessPass(models.Model):
     places = models.ManyToManyField(
         "locations.Place", verbose_name="Места", blank=True, related_name="+",
     )
-    created_at = models.DateTimeField(auto_now_add=True)
+    # B38: индекс под курсорную пагинацию по created_at (см. Equipment).
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     history = HistoricalRecords(m2m_fields=[buildings, rooms, places])
 
     class Meta:

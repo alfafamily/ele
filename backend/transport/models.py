@@ -137,7 +137,8 @@ class Transport(models.Model):
     transport_type = models.ForeignKey(
         TransportType, verbose_name="Вид транспорта", on_delete=models.PROTECT, related_name="transport",
     )
-    created_at = models.DateTimeField(auto_now_add=True)
+    # B38: индекс под курсорную пагинацию по created_at (см. Equipment).
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     history = HistoricalRecords()
 
     class Meta:

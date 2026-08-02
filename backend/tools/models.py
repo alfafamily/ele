@@ -17,7 +17,8 @@ class Tool(models.Model):
     quantity = models.PositiveIntegerField("Остаток", default=0)
     is_written_off = models.BooleanField("Признак списания", default=False)
     written_off_at = models.DateTimeField("Дата списания", null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    # B38: индекс под курсорную пагинацию по created_at (см. Equipment).
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     history = HistoricalRecords()
 
     class Meta:

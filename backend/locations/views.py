@@ -26,7 +26,15 @@ class BuildingViewSet(_NoDeleteViewSet):
     serializer_class = BuildingSerializer
 
     def get_queryset(self):
-        qs = Building.objects.all().prefetch_related("rooms__places__employees__avatar")
+        # B38: PlaceSerializer сериализует transport_detail (TransportMiniSerializer
+        # читает transport_type + залоченные field_values) — без этих prefetch на
+        # каждое место с транспортом уходил каскад SELECT (наблюдалось 34 запроса
+        # к transport_* на дереве из 3 зданий).
+        qs = Building.objects.all().prefetch_related(
+            "rooms__places__employees__avatar",
+            "rooms__places__transport__transport_type",
+            "rooms__places__transport__field_values__field",
+        )
         # Список слева: по умолчанию только активные; ?include_archived=1
         # подмешивает архивные (детали здания открываются всегда).
         if self.action == "list" and self.request.query_params.get("include_archived") not in ("1", "true"):
@@ -52,6 +60,9 @@ class RoomViewSet(_NoDeleteViewSet):
     def get_queryset(self):
         return Room.objects.all().select_related("plan_file").prefetch_related(
             "places__employees__avatar", "places__transport__transport_type",
+            # B38: TransportMiniSerializer читает залоченные field_values (Модель/
+            # Гос.номер) — прогреваем, иначе N+1 к transport_transportfieldvalue.
+            "places__transport__field_values__field",
         )
 
     @action(detail=True, methods=["post", "delete"])
@@ -110,7 +121,10 @@ class PlaceViewSet(_NoDeleteViewSet):
 
     def get_queryset(self):
         qs = Place.objects.select_related("room__building").prefetch_related(
-            "employees__avatar", "transport__transport_type"
+            "employees__avatar", "transport__transport_type",
+            # B38: TransportMiniSerializer читает залоченные field_values (Модель/
+            # Гос.номер) — прогреваем, иначе N+1 к transport_transportfieldvalue.
+            "transport__field_values__field",
         )
         # Плоский список мест для пикеров размещения: ?place_type=storage|workplace|
         # common|parking_spot, ?active=1 — только не архивные.
