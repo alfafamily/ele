@@ -23,6 +23,15 @@ from datetime import timedelta
 # заполненными «при создании» и уносим их в запись «Объект создан».
 CREATION_WINDOW = timedelta(seconds=10)
 
+# Одна правка M2M-набора через `.set()` (напр. замена здания у пропуска) рождает
+# ДВА снимка истории: Django шлёт сигнал m2m_changed раздельно на удаление и
+# добавление, а django-simple-history пишет по историчной записи на каждый. Из-за
+# промежуточного снимка (набор пуст) diff давал бы две строки («— → новое» и
+# «старое → —») вместо одной. Снимки одной операции отстоят на миллисекунды;
+# настоящие пользовательские правки набора — на секунды и больше. Соседние версии
+# ближе этого окна считаем одной операцией и берём только её итоговое состояние.
+M2M_MERGE_WINDOW = timedelta(seconds=1)
+
 # Значения, которые не показываем в перечне полей записи «Объект создан».
 _EMPTY_CREATED_VALUES = {None, "", "—", "Нет"}
 
@@ -218,23 +227,46 @@ def _emit_field_changes(changes, consumed, field_specs, movement_fields,
     return rows
 
 
-def _emit_m2m(record, older, m2m_specs, creation_window_end, *, date, author):
-    """Изменения M2M-наборов (здания/помещения/места пропуска). Пропускаем
-    переходы внутри «окна создания» — они уже отражены в «Объект создан»."""
-    if not (m2m_specs and (creation_window_end is None or record.history_date > creation_window_end)):
+def _emit_m2m(history, m2m_specs, creation_window_end, *, merge_window=M2M_MERGE_WINDOW):
+    """Изменения M2M-наборов (здания/помещения/места пропуска) — по ОДНОЙ строке
+    на нетто-изменение набора. `history` — записи новее-сверху.
+
+    В отличие от пофайловых полей, M2M нельзя разбирать пороздово: одна операция
+    `.set()` создаёт несколько историчных снимков с промежуточными состояниями
+    (см. M2M_MERGE_WINDOW). Поэтому идём по всей хронологии набора, схлопываем
+    цепочки близких по времени версий до их итогового состояния и эмитим строку
+    только там, где итоговый набор реально изменился. Переходы внутри «окна
+    создания» пропускаем — набор при создании уже отражён в «Объект создан»."""
+    if not m2m_specs:
         return []
+    ordered = list(reversed(history))  # старые -> новые
     rows = []
     for attr, spec in m2m_specs.items():
-        new_ids = sorted(getattr(x, spec["id_attr"]) for x in getattr(record, attr).all())
-        old_ids = sorted(getattr(x, spec["id_attr"]) for x in getattr(older, attr).all())
-        if new_ids == old_ids:
-            continue
-        rows.append({
-            "date": date, "author": author, "kind": "changed", "category": "change",
-            "label": spec["label"],
-            "old": spec["format"](old_ids) or "—", "new": spec["format"](new_ids) or "—",
-            "secret": False, "comment": None,
-        })
+        # Состояние набора id по каждой версии в хронологическом порядке.
+        timeline = [
+            (rec, tuple(sorted(getattr(x, spec["id_attr"]) for x in getattr(rec, attr).all())))
+            for rec in ordered
+        ]
+        # Схлопнуть версии одной операции: подряд идущие ближе окна — в итоговую.
+        collapsed = []
+        for rec, ids in timeline:
+            if collapsed and rec.history_date - collapsed[-1][0].history_date < merge_window:
+                collapsed[-1] = (rec, ids)
+            else:
+                collapsed.append((rec, ids))
+        # Нетто-переходы между схлопнутыми состояниями.
+        prev_ids = collapsed[0][1] if collapsed else ()
+        for rec, ids in collapsed[1:]:
+            if ids != prev_ids and (creation_window_end is None or rec.history_date > creation_window_end):
+                author = rec.history_user.email if rec.history_user_id else None
+                rows.append({
+                    "date": rec.history_date, "author": author, "kind": "changed",
+                    "category": "change", "label": spec["label"],
+                    "old": spec["format"](list(prev_ids)) or "—",
+                    "new": spec["format"](list(ids)) or "—",
+                    "secret": False, "comment": None,
+                })
+            prev_ids = ids
     return rows
 
 
@@ -260,9 +292,10 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
 
     Главный цикл — диспетчер: для записи создания эмитит `_emit_created`, для
     остальных версий строит diff против предыдущей записи и по очереди прогоняет
-    хендлеры _emit_movement_events → _emit_placement → _emit_field_changes →
-    _emit_m2m. Первые два помечают «поглощённые» поля в общем множестве
-    `consumed`, чтобы следующие их не дублировали (порядок вызовов важен).
+    хендлеры _emit_movement_events → _emit_placement → _emit_field_changes.
+    Первые два помечают «поглощённые» поля в общем множестве `consumed`, чтобы
+    следующие их не дублировали (порядок вызовов важен). M2M-наборы разбираются
+    отдельным проходом `_emit_m2m` по всей хронологии (см. его док-строку).
     """
     movement_fields = set(movement_fields)
     m2m_specs = m2m_specs or {}
@@ -306,9 +339,9 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
             changes, consumed, field_specs, movement_fields,
             acceptance_for, date=date, author=author, reason=reason,
         )
-        rows += _emit_m2m(
-            record, older, m2m_specs, creation_window_end, date=date, author=author,
-        )
+    # M2M-наборы разбираем не пороздово, а по всей хронологии сразу: одна
+    # операция .set() рождает промежуточные снимки, которые нужно схлопнуть.
+    rows += _emit_m2m(history, m2m_specs, creation_window_end)
     return rows
 
 

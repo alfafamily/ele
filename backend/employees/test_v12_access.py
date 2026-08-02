@@ -276,6 +276,30 @@ class HistoryTests(APITestCase):
         self.assertEqual(changed[0]["old"], "Корпус А")
         self.assertIn("Корпус Б", changed[0]["new"])
 
+    def test_m2m_building_replace_is_single_history_row(self):
+        # Замена здания (было одно, стало другое) через .set() создаёт два
+        # историчных снимка (remove + add). В истории это должна быть ОДНА строка
+        # «было → стало», а не две («— → новое» и «старое → —»).
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        b2 = Building.objects.create(name="Корпус Б", requires_pass=True)
+        resp = self.client.post("/api/access-passes/", {
+            "object_type": "pass", "building_ids": [self.b1.id],
+        }, format="json")
+        pid = resp.data["id"]
+        ap = AccessPass.objects.get(pk=pid)
+        # Отодвигаем создание в прошлое, чтобы правка не попала в «окно создания».
+        ap.history.all().update(history_date=timezone.now() - timedelta(minutes=5))
+        # Заменяем здание: было [Корпус А], стало [Корпус Б].
+        self.client.patch(f"/api/access-passes/{pid}/", {"building_ids": [b2.id]}, format="json")
+        rows = self.client.get(f"/api/access-passes/{pid}/history/").data
+        changed = [r for r in rows if r["kind"] == "changed" and r["label"] == "Здания"]
+        self.assertEqual(len(changed), 1, changed)
+        self.assertEqual(changed[0]["old"], "Корпус А")
+        self.assertEqual(changed[0]["new"], "Корпус Б")
+
     def test_utilize_is_movement_with_reason_label(self):
         ap = AccessPass.objects.create(object_type="pass")
         ap.buildings.add(self.b1)
