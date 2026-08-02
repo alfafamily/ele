@@ -9,6 +9,10 @@ media/
 *.sqlite3
 .pytest_cache/
 .coverage
+.ruff_cache/
+# Кэш анализа графа импортов (import-linter / grimp, гейт слоёв B53)
+.import_linter_cache/
+.grimp_cache/
 
 # Node / frontend
 node_modules/

@@ -1,0 +1,96 @@
+# B53 (ось 2). Контракт слоёв между Django-приложениями — гейт import-linter в CI
+# (по образцу гейтов ruff/knip из B36). Проверяется командой `lint-imports`
+# из каталога backend/.
+#
+# Важно: это НЕ полная слоистая архитектура. Исторически граф приложений имеет
+# циклы (core↔домен через ленивые импорты, employees↔equipment и т.п.), поэтому
+# строгий `layers`-контракт сегодня не выполним и не навязывается. Здесь зафиксированы
+# только те инварианты, что реально держатся на текущем графе (проверено grimp) и
+# несут архитектурный смысл: их задача — не дать графу деградировать дальше.
+# Контракты подобраны так, чтобы проходить БЕЗ изменения кода; ужесточать по мере
+# развязывания циклов в будущих итерациях B53.
+
+[importlinter]
+root_packages =
+    core
+    storage
+    company
+    accounts
+    employees
+    equipment
+    transport
+    tools
+    licenses
+    locations
+    reports
+    audit
+    backup
+
+# --- Контракт 1 -------------------------------------------------------------
+# `reports` и `audit` — верхнеуровневые приложения-потребители: генерация отчётов
+# читает из всех доменов, журнал аудита ни от чего не зависит по данным. Ни одно
+# другое приложение не должно от них зависеть (иначе появляется обратное ребро в
+# самый верх графа). Сегодня их не импортирует никто — фиксируем это.
+[importlinter:contract:no-deps-on-top-apps]
+name = Верхнеуровневые приложения (reports, audit) никто не импортирует
+type = forbidden
+source_modules =
+    core
+    storage
+    company
+    accounts
+    employees
+    equipment
+    transport
+    tools
+    licenses
+    locations
+    backup
+forbidden_modules =
+    reports
+    audit
+
+# --- Контракт 2 -------------------------------------------------------------
+# `audit` изолирован и в обратную сторону: журнал аудита не должен тянуть доменные
+# приложения (его модель — самостоятельная запись событий). Вместе с контрактом 1
+# это делает `audit` полностью развязанным узлом графа.
+[importlinter:contract:audit-is-isolated]
+name = audit не импортирует другие приложения
+type = forbidden
+source_modules =
+    audit
+forbidden_modules =
+    core
+    storage
+    company
+    accounts
+    employees
+    equipment
+    transport
+    tools
+    licenses
+    locations
+    reports
+    backup
+
+# --- Контракт 3 -------------------------------------------------------------
+# `backup` — оркестрация резервного копирования (верхний слой). Единственная
+# санкционированная зависимость на него — ленивый импорт `backup.destinations`
+# (конфигурация вторичного S3) из `company` и `storage`. Больше никто не должен
+# зависеть от backup; контракт не даёт этой зависимости расползтись.
+[importlinter:contract:backup-consumers-are-limited]
+name = backup импортируют только company и storage
+type = forbidden
+source_modules =
+    core
+    accounts
+    employees
+    equipment
+    transport
+    tools
+    licenses
+    locations
+    reports
+    audit
+forbidden_modules =
+    backup

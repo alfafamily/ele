@@ -63,6 +63,8 @@ jobs:
       - run: pip install -r requirements/dev.txt
       - name: Dead code (ruff)
         run: ruff check .
+      - name: Layer contract (import-linter)
+        run: lint-imports
       - name: Django system checks
         run: python manage.py check
       - name: Missing migrations guard
