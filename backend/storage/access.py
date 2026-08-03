@@ -86,7 +86,27 @@ def can_access_stored_file(user, sf) -> bool:
             and Transport.objects.filter(pk__in=tr_ids, employee_id=emp_id).exists()
         )
 
-    # Лицензии, планы помещений/парковок и прочее видят только admin/accountant/
-    # Наблюдатель (обработаны выше). Для остальных ролей и для файлов, которые мы
-    # не смогли сопоставить ни с одним объектом, — отказ (fail-closed).
+    # Планы помещений/парковок (Room.plan_file). Показываются в Профиле сотрудника
+    # для его парковочных мест (личное авто) и на карточке его транспорта, поэтому
+    # обычный «Сотрудник» вправе открыть план комнаты, где он размещён (парковочное/
+    # рабочее место) или где стоит закреплённый за ним транспорт; «Автомеханик»
+    # читает раздел «Транспорт» целиком — значит и планы парковок, где стоит любой
+    # транспорт компании.
+    from locations.models import Place, Room
+    plan_room_ids = set(Room.objects.filter(plan_file_id=sf.pk).values_list("id", flat=True))
+    if plan_room_ids:
+        if emp_id is not None and (
+            Place.objects.filter(room_id__in=plan_room_ids, employees__id=emp_id).exists()
+            or Place.objects.filter(room_id__in=plan_room_ids, transport__employee_id=emp_id).exists()
+        ):
+            return True
+        if role == "automechanic" and Place.objects.filter(
+            room_id__in=plan_room_ids, transport__isnull=False
+        ).exists():
+            return True
+        return False
+
+    # Лицензии и прочее видят только admin/accountant/Наблюдатель (обработаны
+    # выше). Для остальных ролей и для файлов, которые мы не смогли сопоставить ни
+    # с одним объектом, — отказ (fail-closed).
     return False

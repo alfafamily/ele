@@ -329,6 +329,8 @@ class InlineFileViewTests(APITestCase):
     def setUp(self):
         self.admin = User.objects.create_user(email="inline-admin@e.com", password="Str0ng!Pass1", role="admin")
         self.plain = User.objects.create_user(email="inline-plain@e.com", password="Str0ng!Pass1")
+        self.maintenance = User.objects.create_user(email="inline-maint@e.com", password="Str0ng!Pass1", role="maintenance")
+        self.automechanic = User.objects.create_user(email="inline-auto@e.com", password="Str0ng!Pass1", role="automechanic")
 
     def _store(self, name, content, ct):
         return store_uploaded_file(SimpleUploadedFile(name, content, content_type=ct), "test-inline")
@@ -391,4 +393,81 @@ class InlineFileViewTests(APITestCase):
             backend="local", path="backups/dump.bin", content_type="application/octet-stream"
         )
         self.client.force_authenticate(self.admin)
+        self.assertEqual(self.client.get(f"/api/files/{sf.id}/inline/").status_code, 404)
+
+    def _parking_plan(self, name):
+        """Комната-парковка с планом (plan_file) — возвращает (place, stored_file)."""
+        from locations.models import Building, Place, Room
+        sf = self._store(name, b"img-bytes", "image/png")
+        building = Building.objects.create(name="БЦ Звездный")
+        room = Room.objects.create(building=building, name="Паркинг", plan_file=sf)
+        spot = Place.objects.create(room=room, name="Место", place_type=Place.PlaceType.PARKING_SPOT)
+        return spot, sf
+
+    def test_employee_can_access_own_parking_plan(self):
+        """Сотрудник, закреплённый за парковочным местом, открывает план своей
+        парковки (показывается в его Профиле)."""
+        from employees.models import Employee
+        spot, sf = self._parking_plan("parking-own.png")
+        emp = Employee.objects.create(first_name="Иван", last_name="Иванов")
+        spot.employees.add(emp)
+        self.plain.employee = emp
+        self.plain.save(update_fields=["employee"])
+        self.client.force_authenticate(self.plain)
+        self.assertEqual(self.client.get(f"/api/files/{sf.id}/inline/").status_code, 200)
+
+    def test_employee_cannot_access_foreign_parking_plan(self):
+        """План чужой парковки (сотрудник за ней не закреплён) — недоступен."""
+        from employees.models import Employee
+        spot, sf = self._parking_plan("parking-foreign.png")
+        spot.employees.add(Employee.objects.create(first_name="Пётр", last_name="Петров"))
+        self.plain.employee = Employee.objects.create(first_name="Иван", last_name="Иванов")
+        self.plain.save(update_fields=["employee"])
+        self.client.force_authenticate(self.plain)
+        self.assertEqual(self.client.get(f"/api/files/{sf.id}/inline/").status_code, 404)
+
+    def _equipment_file(self, name):
+        """Файл-реквизит оборудования — возвращает stored_file."""
+        from equipment.models import Equipment, EquipmentFieldValue, EquipmentType, EquipmentTypeField
+        sf = self._store(name, b"img-bytes", "image/png")
+        etype = EquipmentType.objects.create(name="ПК")
+        field = EquipmentTypeField.objects.create(equipment_type=etype, name="Скан", value_type="file")
+        eq = Equipment.objects.create(inventory_number=f"EQ-{name}", equipment_type=etype)
+        EquipmentFieldValue.objects.create(equipment=eq, field=field, value_file=sf)
+        return sf
+
+    def _transport_file(self, name):
+        """Файл-реквизит транспорта — возвращает stored_file."""
+        from transport.models import Transport, TransportFieldValue, TransportType, TransportTypeField
+        sf = self._store(name, b"img-bytes", "image/png")
+        ttype = TransportType.objects.create(name="Легковой")
+        field = TransportTypeField.objects.create(transport_type=ttype, name="Скан", value_type="file")
+        tr = Transport.objects.create(inventory_number=f"TS-{name}", transport_type=ttype)
+        TransportFieldValue.objects.create(transport=tr, field=field, value_file=sf)
+        return sf
+
+    def test_maintenance_can_access_equipment_file(self):
+        """«Механик по оборудованию» читает раздел Оборудование → открывает
+        файлы-реквизиты его карточек."""
+        sf = self._equipment_file("eqm")
+        self.client.force_authenticate(self.maintenance)
+        self.assertEqual(self.client.get(f"/api/files/{sf.id}/inline/").status_code, 200)
+
+    def test_maintenance_cannot_access_transport_file(self):
+        """…но раздел Транспорт ему недоступен — его файлы тоже."""
+        sf = self._transport_file("trm")
+        self.client.force_authenticate(self.maintenance)
+        self.assertEqual(self.client.get(f"/api/files/{sf.id}/inline/").status_code, 404)
+
+    def test_automechanic_can_access_transport_file(self):
+        """«Автомеханик» читает раздел Транспорт → открывает файлы-реквизиты его
+        карточек."""
+        sf = self._transport_file("tra")
+        self.client.force_authenticate(self.automechanic)
+        self.assertEqual(self.client.get(f"/api/files/{sf.id}/inline/").status_code, 200)
+
+    def test_automechanic_cannot_access_equipment_file(self):
+        """…но раздел Оборудование ему недоступен — его файлы тоже."""
+        sf = self._equipment_file("eqa")
+        self.client.force_authenticate(self.automechanic)
         self.assertEqual(self.client.get(f"/api/files/{sf.id}/inline/").status_code, 404)
