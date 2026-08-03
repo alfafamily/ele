@@ -5,6 +5,20 @@
 
 encode gzip
 
+# Заголовки безопасности для dev-стенда — по образцу infra/Caddyfile (прод), но с
+# отличием: HSTS БЕЗ includeSubDomains. Стенд живёт на поддомене (test-ele.
+# dailycompany.cc), а includeSubDomains навязал бы браузеру HTTPS-политику всем
+# соседним *.dailycompany.cc — на общем домене это опасно. Для клиентского прода
+# (собственный домен) includeSubDomains уместен. nosniff + X-Frame-Options
+# защищают SPA-оболочку от Vite (frontend:5173), которая иначе идёт без них.
+# Остальные пути ведут на backend, где заголовки ставит сам Django.
+header {
+	Strict-Transport-Security "max-age=31536000"
+	X-Content-Type-Options "nosniff"
+	X-Frame-Options "SAMEORIGIN"
+	-Server
+}
+
 # Ограничение доступа по IP — см. подробный комментарий в
 # infra/Caddyfile (прод). Здесь то же самое, чтобы фичу можно было проверить
 # в dev через docker compose, не только в проде.

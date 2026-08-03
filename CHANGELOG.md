@@ -16,6 +16,37 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.31.15] — 2026-08-03
+
+Кодревью **B55 — supply-chain и безопасность инфраструктуры/CI**. Только обвязка
+(сборка/деплой/прокси), прикладной код и поведение приложения не менялись.
+
+### Безопасность
+- **GitHub Actions запинены по коммит-SHA.** Экшены (`actions/checkout`,
+  `setup-node`, `setup-python`, `softprops/action-gh-release`) в `ci.yml`/
+  `release.yml` использовались по плавающим тегам (`@v5` и т.п.) — тег мутабелен
+  и при компрометации экшена мог бы выполнить чужой код в CI. Теперь — по SHA
+  (комментарий `# vX` сохранён для читаемости и Dependabot).
+- **Минимальные права токена CI.** В `ci.yml` добавлен
+  `permissions: contents: read` (раньше действовал дефолт репозитория).
+- **Заголовки безопасности на уровне Caddy** (`infra/Caddyfile` +
+  `infra/Caddyfile.dev`): `Strict-Transport-Security`, `X-Content-Type-Options:
+  nosniff`, `X-Frame-Options: SAMEORIGIN`, скрытие `Server`. Покрывают
+  SPA-оболочку и статику, которые в проде отдаёт сам Caddy мимо Django (раньше
+  часть заголовков ставил только Django на ответах API). На dev-стенде HSTS без
+  `includeSubDomains` (поддомен общего домена).
+- **Прокси-контейнер Caddy больше не получает весь `.env`** (`docker-compose.prod.yml`):
+  вместо `env_file: .env` пробрасывается только нужный `SITE_ADDRESS`, а секреты
+  БД/S3/VAPID в окружение прокси не попадают.
+
+### Обновление
+- Стандартное: `git pull` →
+  `docker compose -f docker-compose.prod.yml up -d --build`.
+- **Разово после обновления выполнить** `docker compose -f docker-compose.prod.yml restart caddy`
+  — изменился `infra/Caddyfile`, а при изменении только смонтированного конфига
+  `up -d` не пересоздаёт контейнер Caddy (старый inode) и новые заголовки не
+  подхватятся.
+
 ## [1.31.14] — 2026-08-03
 
 ### Исправлено
@@ -2057,7 +2088,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.14...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.15...HEAD
+[1.31.15]: https://github.com/alfafamily/ele/compare/v1.31.14...v1.31.15
 [1.31.14]: https://github.com/alfafamily/ele/compare/v1.31.13...v1.31.14
 [1.31.13]: https://github.com/alfafamily/ele/compare/v1.31.12...v1.31.13
 [1.31.12]: https://github.com/alfafamily/ele/compare/v1.31.11...v1.31.12

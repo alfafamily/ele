@@ -79,7 +79,12 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
-    env_file: .env
+    # Caddy'ю нужен ТОЛЬКО адрес сайта ({$SITE_ADDRESS} в Caddyfile). Пробрасываем
+    # именно его (docker compose подставляет значение из .env при интерполяции),
+    # а не весь .env через env_file: иначе секреты БД/S3/VAPID лишний раз попадают
+    # в окружение прокси-контейнера, которому они не нужны.
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-}
     volumes:
       - ./infra/Caddyfile:/etc/caddy/Caddyfile
       - static_data:/srv/static:ro
