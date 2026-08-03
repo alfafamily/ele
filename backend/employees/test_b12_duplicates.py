@@ -226,6 +226,8 @@ class RegistrationApiTests(APITestCase):
             "password_repeat": "Str0ng!Pass1",
             "last_name": "Прозоров",
             "first_name": "Иван",
+            "consent_acknowledged": True,
+            "consent_agreed": True,
             **extra,
         }
         return self.client.post("/api/auth/register/", payload, format="json")
@@ -268,7 +270,7 @@ class CreationWarningApiTests(APITestCase):
         _emp()
         resp = self.client.post(
             "/api/employees/",
-            {"last_name": "Прозоров", "first_name": "Иван", "confirm_duplicate": True},
+            {"last_name": "Прозоров", "first_name": "Иван", "confirm_duplicate": True, "consent_obtained": True},
             format="json",
         )
         self.assertEqual(resp.status_code, 201, resp.data)

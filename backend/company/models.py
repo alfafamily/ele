@@ -109,3 +109,43 @@ class Company(models.Model):
     def load(cls):
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
+
+
+class PdnDocument(models.Model):
+    """B51-R2. Версия документа по обработке ПДн, на который субъект даёт согласие.
+
+    Три вида: Согласие / Политика / Положение. Оператор задаёт документ ссылкой
+    ИЛИ файлом — в любом случае система хранит ЛОКАЛЬНУЮ копию (`stored_file`):
+    при вводе ссылки файл скачивается по ней (см. company/pdn.py). Каждое изменение
+    документа создаёт новую строку-версию (старые сохраняются, чтобы согласие
+    ссылалось ровно на тот файл, что действовал на момент его выражения). Текущая
+    версия вида — единственная строка с `is_current=True`.
+    """
+
+    class Kind(models.TextChoices):
+        CONSENT = "consent", "Согласие на обработку ПДн"
+        POLICY = "policy", "Политика обработки ПДн"
+        REGULATION = "regulation", "Положение в области обработки ПДн"
+
+    class SourceMode(models.TextChoices):
+        LINK = "link", "Ссылка"
+        FILE = "file", "Файл"
+
+    kind = models.CharField("Вид документа", max_length=12, choices=Kind.choices)
+    source_mode = models.CharField("Способ задания", max_length=4, choices=SourceMode.choices)
+    # Исходная ссылка (для source_mode=link) — сам файл всё равно хранится локально.
+    source_url = models.CharField("Ссылка на документ", max_length=1000, blank=True)
+    stored_file = models.ForeignKey(
+        "storage.StoredFile", verbose_name="Файл документа", on_delete=models.PROTECT, related_name="+"
+    )
+    is_current = models.BooleanField("Текущая версия", default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Документ по обработке ПДн"
+        verbose_name_plural = "Документы по обработке ПДн"
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["kind", "is_current"])]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} ({self.created_at:%d.%m.%Y})"

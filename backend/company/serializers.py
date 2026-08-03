@@ -6,7 +6,19 @@ from rest_framework import serializers
 
 from storage.serializers import StoredFileSerializer
 
-from .models import Company
+from .models import Company, PdnDocument
+
+
+class PdnDocumentSerializer(serializers.ModelSerializer):
+    """Текущий/сохранённый документ по обработке ПДн — с ссылкой на локальную
+    копию (`file`) и человекочитаемым названием вида."""
+
+    file = StoredFileSerializer(source="stored_file", read_only=True)
+    kind_display = serializers.CharField(source="get_kind_display", read_only=True)
+
+    class Meta:
+        model = PdnDocument
+        fields = ["id", "kind", "kind_display", "source_mode", "source_url", "file", "created_at"]
 
 
 def clean_ip_allowlist(value):

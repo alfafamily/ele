@@ -16,6 +16,7 @@ import { nameInitials } from '../../shared/employeeName.js'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { anonymizeEmployee, getEmployee, getEmployeeAssignments, getEmployeeIssuedArchive, restoreEmployee } from './employeesApi.js'
 import { AttachOrCreateModal } from './AttachOrCreateModal.jsx'
+import { ConsentCard } from './ConsentCard.jsx'
 import { PassInfo } from './PassInfo.jsx'
 import { PassDetachModal } from './PassDetachModal.jsx'
 import { SimCardInfo } from './SimCardInfo.jsx'
@@ -241,6 +242,9 @@ export function EmployeeCardPage() {
             </div>
           </div>
         </Card>
+
+        {/* B51-R2: согласие на обработку ПДн (у обезличенных не показываем). */}
+        {!employee.is_anonymized ? <ConsentCard employee={employee} /> : null}
 
         <div>
           <TabBar options={ISSUED_ARCHIVE_TABS} value={tab} onChange={setTab} />

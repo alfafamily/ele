@@ -48,6 +48,50 @@ class Employee(models.Model):
         return f"{self.first_name} {initial}".strip()
 
 
+class EmployeeConsent(models.Model):
+    """B51-R2. Подтверждение согласия субъекта на обработку ПДн.
+
+    Два независимых источника, могут сосуществовать (согласие субъекта ДОПОЛНЯЕТ
+    отметку оператора, не заменяет):
+      • operator — оператор (admin/accountant) подтвердил, что согласие субъекта
+        получено офлайн; фиксируем Должность+ФИО оператора снимком (by_position/
+        by_name), т.к. учётка оператора может измениться/обезличиться.
+      • self — сам субъект (связанный пользователь) выразил согласие в интерфейсе;
+        для доказательства ВСЕГДА прикладываем слепок устройства (device_snapshot).
+    `documents` — снимок набора действовавших PdnDocument на момент согласия
+    (не «версия №N», а перечень конкретных сохранённых файлов). До одной записи на
+    (employee, source)."""
+
+    class Source(models.TextChoices):
+        OPERATOR = "operator", "Подтверждено оператором"
+        SELF = "self", "Подтверждено сотрудником"
+
+    employee = models.ForeignKey(
+        Employee, verbose_name="Сотрудник", on_delete=models.CASCADE, related_name="consents"
+    )
+    source = models.CharField("Источник", max_length=8, choices=Source.choices)
+    at = models.DateTimeField("Дата согласия", default=timezone.now)
+    # Снимок оператора (для source=operator) — на момент подтверждения.
+    by_position = models.CharField("Должность оператора", max_length=255, blank=True)
+    by_name = models.CharField("ФИО оператора", max_length=301, blank=True)
+    # Слепок устройства (для source=self) — доказательство согласия.
+    device_snapshot = models.JSONField("Слепок устройства", null=True, blank=True)
+    documents = models.ManyToManyField(
+        "company.PdnDocument", verbose_name="Документы согласия", related_name="+", blank=True
+    )
+
+    class Meta:
+        verbose_name = "Согласие на обработку ПДн"
+        verbose_name_plural = "Согласия на обработку ПДн"
+        ordering = ["source"]
+        constraints = [
+            models.UniqueConstraint(fields=["employee", "source"], name="uniq_employee_consent_source"),
+        ]
+
+    def __str__(self):
+        return f"{self.employee} — {self.get_source_display()}"
+
+
 class EmployeeDuplicateDismissal(models.Model):
     """Пометка «не дубль» для конкретного набора сотрудников-тёзок (B12).
 

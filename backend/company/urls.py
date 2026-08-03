@@ -24,6 +24,7 @@ urlpatterns = [
         name="company-storage-migration-retry",
     ),
     path("company/logo/", views.CompanyLogoUploadView.as_view(), name="company-logo"),
+    path("company/pdn-documents/", views.PdnDocumentsView.as_view(), name="company-pdn-documents"),
     path("company/backup-settings/", views.BackupSettingsView.as_view(), name="company-backup-settings"),
     path("company/numbering-settings/", views.NumberingSettingsView.as_view(), name="company-numbering-settings"),
     path("company/next-number/", views.NextNumberView.as_view(), name="company-next-number"),

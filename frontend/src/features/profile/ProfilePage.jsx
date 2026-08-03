@@ -8,6 +8,7 @@ import { PlanLink } from '../../shared/PlanLink.jsx'
 import { TransportParkingLine } from '../../shared/TransportParkingLine.jsx'
 import { Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
+import { ConsentReminderBanner } from './ConsentReminder.jsx'
 import { RejectAssignmentModal } from './RejectAssignmentModal.jsx'
 import { deleteEmployeeAvatar, uploadEmployeeAvatar } from '../employees/employeesApi.js'
 import { PassInfo } from '../employees/PassInfo.jsx'
@@ -262,6 +263,9 @@ export function ProfilePage() {
             </Button>
           </div>
         </Card>
+
+        {/* B51-R2: напоминание подтвердить согласие на обработку ПДн — над «Обо мне». */}
+        <ConsentReminderBanner />
 
         {employee ? (
           <Card>

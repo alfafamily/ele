@@ -223,6 +223,10 @@ def anonymize_employee(employee, *, actor=None):
     # историзуется, поэтому bulk update безопасен и не плодит историю).
     employee.assignments.exclude(device_snapshot__isnull=True).update(device_snapshot=None)
 
+    # B51-R2: слепок устройства в self-согласии — тоже ПДн субъекта (IP/UA);
+    # факт и дату согласия сохраняем, персонализирующий слепок стираем.
+    employee.consents.exclude(device_snapshot__isnull=True).update(device_snapshot=None)
+
     if hasattr(employee, "user"):
         user = employee.user
         user.email = f"deleted+{user.id}@anonymized.invalid"

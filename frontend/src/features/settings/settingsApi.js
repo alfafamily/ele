@@ -8,6 +8,17 @@ export const uploadCompanyLogo = (file) => {
   return apiRequest('/api/company/logo/', { method: 'POST', body: formData })
 }
 export const deleteCompanyLogo = () => apiDelete('/api/company/logo/')
+
+// B51-R2: документы по обработке ПДн (Согласие/Политика/Положение).
+export const getPdnDocuments = () => apiGet('/api/company/pdn-documents/')
+export const setPdnDocumentLink = (kind, url) => apiPost('/api/company/pdn-documents/', { kind, url })
+export const uploadPdnDocumentFile = (kind, file) => {
+  const formData = new FormData()
+  formData.append('kind', kind)
+  formData.append('file', file)
+  return apiRequest('/api/company/pdn-documents/', { method: 'POST', body: formData })
+}
+export const deletePdnDocument = (kind) => apiDelete(`/api/company/pdn-documents/?kind=${kind}`)
 export const updateStorageMode = (mode) => apiPatch('/api/company/storage-mode/', { storage_mode: mode })
 export const getStorageMigrationStatus = () => apiGet('/api/company/storage-migration-status/')
 export const retryStorageMigration = () => apiPost('/api/company/storage-migration-retry/')

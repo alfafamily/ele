@@ -2,6 +2,8 @@ import { useCallback, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../app/AuthContext.jsx'
 import { apiPost } from '../../shared/api/client'
+import { collectDeviceHints } from '../../shared/consent/deviceHints.js'
+import { ConsentCheckboxes } from '../../shared/consent/ConsentCheckboxes.jsx'
 import { Banner, Button, Input } from '../../shared/ui'
 import { AuthShell } from './AuthShell.jsx'
 
@@ -17,6 +19,8 @@ export function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordRepeat, setPasswordRepeat] = useState('')
+  const [acknowledged, setAcknowledged] = useState(false)
+  const [agreed, setAgreed] = useState(false)
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -36,6 +40,9 @@ export function RegisterPage() {
           first_name: firstName,
           department,
           position,
+          consent_acknowledged: acknowledged,
+          consent_agreed: agreed,
+          device: collectDeviceHints(),
         })
         navigate('/confirm-email', { state: { email } })
       } catch (err) {
@@ -45,7 +52,7 @@ export function RegisterPage() {
         setSubmitting(false)
       }
     },
-    [email, password, passwordRepeat, lastName, firstName, department, position, navigate]
+    [email, password, passwordRepeat, lastName, firstName, department, position, acknowledged, agreed, navigate]
   )
 
   // B14: регистрация закрыта администратором — форму не показываем.
@@ -128,7 +135,18 @@ export function RegisterPage() {
           onChange={(e) => setPasswordRepeat(e.target.value)}
           error={errors.password_repeat}
         />
-        <Button type="submit" fullWidth loading={submitting}>
+        <ConsentCheckboxes
+          pdn={bootstrap?.pdn_consent}
+          acknowledged={acknowledged}
+          agreed={agreed}
+          onAcknowledged={setAcknowledged}
+          onAgreed={setAgreed}
+        />
+        {errors.consent_acknowledged ? (
+          <div className="ele-field__error-text">{errors.consent_acknowledged}</div>
+        ) : null}
+        {errors.consent_agreed ? <div className="ele-field__error-text">{errors.consent_agreed}</div> : null}
+        <Button type="submit" fullWidth loading={submitting} disabled={!acknowledged || !agreed}>
           Зарегистрироваться
         </Button>
       </form>

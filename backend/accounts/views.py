@@ -11,7 +11,7 @@ from django.middleware.csrf import get_token
 from django.utils import timezone
 from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -60,6 +60,7 @@ class BootstrapView(APIView):
 
     def get(self, request):
         from company.models import Company
+        from company.pdn import consent_context
 
         setup_required = not User.objects.filter(role=User.Role.ADMIN).exists()
         return Response(
@@ -71,6 +72,9 @@ class BootstrapView(APIView):
                 # B14: открыта ли самостоятельная регистрация (скрывает форму
                 # регистрации на входе, когда выключена).
                 "registration_open": Company.load().open_registration,
+                # B51-R2: название/ИНН и документы ПДн для текста согласия на
+                # экранах регистрации/приглашения/дособирания.
+                "pdn_consent": consent_context(),
             }
         )
 
@@ -90,6 +94,28 @@ class MeView(APIView):
         return Response(MeSerializer(request.user).data)
 
 
+class SelfConsentView(APIView):
+    """B51-R2. Субъект (связанный с учёткой сотрудник) сам выражает согласие на
+    обработку ПДн — дособирание для записей, где отметил только оператор, или для
+    заведённых до внедрения фиксации. Всегда со слепком устройства."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        employee = getattr(request.user, "employee", None)
+        if employee is None:
+            return Response({"detail": "У учётной записи нет связанного сотрудника."}, status=400)
+        if not request.data.get("consent_acknowledged") or not request.data.get("consent_agreed"):
+            return Response(
+                {"detail": "Необходимо подтвердить ознакомление с документами и согласие на обработку ПДн."},
+                status=400,
+            )
+        from employees.consent import record_self_consent
+
+        record_self_consent(employee, request)
+        return Response({"detail": "Согласие зафиксировано."})
+
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
@@ -102,7 +128,7 @@ class RegisterView(APIView):
                 {"detail": "Открытая регистрация недоступна, обратитесь к администратору или руководителю."},
                 status=403,
             )
-        serializer = RegisterSerializer(data=request.data)
+        serializer = RegisterSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         send_confirm_email(user)
@@ -309,7 +335,7 @@ class InviteView(APIView):
     permission_classes = [IsAdmin]
 
     def post(self, request):
-        serializer = InviteSerializer(data=request.data)
+        serializer = InviteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
         # Домен email отличается от домена компании — не отправляем сразу, а

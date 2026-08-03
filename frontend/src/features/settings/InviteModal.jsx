@@ -36,6 +36,8 @@ export function InviteModal({ onClose, onInvited }) {
   const [empFirstName, setEmpFirstName] = useState('')
   const [empDepartment, setEmpDepartment] = useState('')
   const [empPosition, setEmpPosition] = useState('')
+  // B51-R2: отметка оператора о получении согласия субъекта — при создании нового.
+  const [consentObtained, setConsentObtained] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [warning, setWarning] = useState(null)
@@ -97,6 +99,7 @@ export function InviteModal({ onClose, onInvited }) {
               first_name: empFirstName,
               department: empDepartment,
               position: empPosition,
+              consent_obtained: consentObtained,
             }
           : { employee_id: employeeMode === 'existing' ? employee?.id : undefined }),
       })
@@ -220,6 +223,14 @@ export function InviteModal({ onClose, onInvited }) {
           onDepartment={(e) => setEmpDepartment(e.target.value)}
           onPosition={(e) => setEmpPosition(e.target.value)}
         />
+
+        {employeeMode === 'create' ? (
+          <Checkbox
+            label="Согласие субъекта на обработку персональных данных получено (на бумажном/ином носителе)."
+            checked={consentObtained}
+            onChange={setConsentObtained}
+          />
+        ) : null}
       </div>
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22 }}>
         <Button variant="secondary" onClick={onClose}>
@@ -227,7 +238,10 @@ export function InviteModal({ onClose, onInvited }) {
         </Button>
         <Button
           loading={submitting}
-          disabled={!email.trim() || (employeeMode === 'create' && (!empLastName.trim() || !empFirstName.trim()))}
+          disabled={
+            !email.trim() ||
+            (employeeMode === 'create' && (!empLastName.trim() || !empFirstName.trim() || !consentObtained))
+          }
           onClick={submit}
         >
           {needsDuplicateConfirm ? 'Всё равно создать' : needsDomainConfirm ? 'Всё равно пригласить' : 'Отправить приглашение'}

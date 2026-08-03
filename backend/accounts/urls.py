@@ -10,6 +10,7 @@ urlpatterns = [
     path("auth/bootstrap/", views.BootstrapView.as_view(), name="auth-bootstrap"),
     path("auth/csrf/", views.CsrfView.as_view(), name="auth-csrf"),
     path("auth/me/", views.MeView.as_view(), name="auth-me"),
+    path("auth/me/consent/", views.SelfConsentView.as_view(), name="auth-me-consent"),
     path("auth/register/", views.RegisterView.as_view(), name="auth-register"),
     path("auth/confirm-email/", views.ConfirmEmailView.as_view(), name="auth-confirm-email"),
     path("auth/resend-confirmation/", views.ResendConfirmationView.as_view(), name="auth-resend-confirmation"),

@@ -8,6 +8,7 @@ import { roleLabel } from '../shared/roles.js'
 import { nameInitials } from '../shared/employeeName.js'
 import { Icon } from '../shared/ui'
 import { PushPromptModal } from '../features/notifications/PushPromptModal.jsx'
+import { ConsentReminderBanner } from '../features/profile/ConsentReminder.jsx'
 import './AppLayout.css'
 
 // Маркер-предупреждение (треугольник) поверх иконки «Настройки». Один общий
@@ -220,6 +221,9 @@ export function AppLayout() {
 
       <main className="ele-content ele-content--with-bottomnav">
         <div className="ele-content__inner">
+          {/* B51-R2: напоминание подтвердить согласие (при входе, на любой странице
+              кроме Профиля — там баннер над блоком «Обо мне»). */}
+          {location.pathname !== '/profile' ? <ConsentReminderBanner /> : null}
           <Outlet />
         </div>
       </main>

@@ -637,6 +637,56 @@ class CompanyLogoUploadView(APIView):
         return Response(status=204)
 
 
+class PdnDocumentsView(APIView):
+    """B51-R2. Настройки → Компания: документы по обработке ПДн (Согласие/
+    Политика/Положение). GET — текущий набор. POST — задать документ ссылкой или
+    файлом (при ссылке файл скачивается и хранится локально; недоступная ссылка
+    или веб-страница вместо файла — 400). DELETE — снять текущий документ вида."""
+
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        from .pdn import current_documents
+        from .serializers import PdnDocumentSerializer
+
+        docs = current_documents()
+        return Response(
+            {kind: (PdnDocumentSerializer(doc).data if doc else None) for kind, doc in docs.items()}
+        )
+
+    def post(self, request):
+        from .models import PdnDocument
+        from .pdn import PdnDocumentError, set_document_from_file, set_document_from_link
+        from .serializers import PdnDocumentSerializer
+
+        kind = request.data.get("kind")
+        if kind not in PdnDocument.Kind.values:
+            return Response({"detail": "Неизвестный вид документа."}, status=400)
+        file_obj = request.FILES.get("file")
+        try:
+            if file_obj is not None:
+                doc = set_document_from_file(kind, file_obj)
+            else:
+                url = (request.data.get("url") or "").strip()
+                if not url:
+                    return Response({"detail": "Укажите ссылку или загрузите файл."}, status=400)
+                doc = set_document_from_link(kind, url)
+        except PdnDocumentError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(PdnDocumentSerializer(doc).data)
+
+    def delete(self, request):
+        from .models import PdnDocument
+
+        kind = request.query_params.get("kind")
+        if kind not in PdnDocument.Kind.values:
+            return Response({"detail": "Неизвестный вид документа."}, status=400)
+        # Снимаем только признак «текущий» — сами версии сохраняются, т.к. на них
+        # могут ссылаться уже выраженные согласия (снимок документов).
+        PdnDocument.objects.filter(kind=kind, is_current=True).update(is_current=False)
+        return Response(status=204)
+
+
 class BackupSettingsView(APIView):
     """Настройки → Резервное копирование: тумблер/расписание/глубина
     хранения автокопирования. Сам запуск — cron (backup/

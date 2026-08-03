@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { BackButton, Banner, Button, Card, FormActions, Input, Modal, Spinner } from '../../shared/ui'
+import { BackButton, Banner, Button, Card, Checkbox, FormActions, Input, Modal, Spinner } from '../../shared/ui'
 import { splitApiError } from '../../shared/formErrors.js'
 import { createEmployee, getDepartments, getEmployee, updateEmployee } from './employeesApi.js'
 
@@ -18,6 +18,8 @@ export function EmployeeFormPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
+  // B51-R2: при создании оператор подтверждает получение согласия субъекта.
+  const [consentObtained, setConsentObtained] = useState(false)
   // B12: предупреждение о тёзке-работнике (ответ 409). Создание не запрещено —
   // могут работать однофамильцы; запрашиваем подтверждение.
   const [dupWarn, setDupWarn] = useState(null)
@@ -60,6 +62,7 @@ export function EmployeeFormPage() {
     setError(null)
     setFieldErrors({})
     const payload = { first_name: firstName, last_name: lastName, position, department }
+    if (!isEdit) payload.consent_obtained = consentObtained
     try {
       if (isEdit) {
         await updateEmployee(id, payload)
@@ -123,12 +126,28 @@ export function EmployeeFormPage() {
               </div>
             </div>
           </Card>
+
+          {!isEdit ? (
+            <Card style={{ marginTop: 16 }}>
+              <Checkbox
+                label="Согласие субъекта на обработку персональных данных получено (на бумажном/ином носителе)."
+                checked={consentObtained}
+                onChange={setConsentObtained}
+              />
+              {fieldErrors.consent_obtained ? (
+                <div className="ele-field__error-text" style={{ marginTop: 6 }}>
+                  {Array.isArray(fieldErrors.consent_obtained) ? fieldErrors.consent_obtained[0] : fieldErrors.consent_obtained}
+                </div>
+              ) : null}
+            </Card>
+          ) : null}
         </form>
 
         <FormActions
           onCancel={() => navigate(-1)}
           onSubmit={submit}
           submitting={submitting}
+          submitDisabled={!isEdit && !consentObtained}
           submitLabel={isEdit ? 'Сохранить' : 'Создать'}
         />
       </div>

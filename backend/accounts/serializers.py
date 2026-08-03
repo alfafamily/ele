@@ -40,6 +40,9 @@ class MeSerializer(serializers.ModelSerializer):
     # B22: область типов транспорта — фронт гейтит блок «Провести ТО» на карточке
     # транспорта.
     maintenance_transport_types = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    # B51-R2: связанному сотруднику без self-подтверждения показываем напоминание
+    # выразить согласие на обработку ПДн (баннер при входе и в Профиле).
+    needs_consent = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -50,7 +53,13 @@ class MeSerializer(serializers.ModelSerializer):
             "maintenance_all_transport_types", "maintenance_transport_types",
             "employee", "is_email_confirmed",
             "date_joined", "password_changed_at",
+            "needs_consent",
         ]
+
+    def get_needs_consent(self, obj):
+        from employees.consent import needs_self_consent
+
+        return needs_self_consent(obj)
 
 
 class UserListSerializer(serializers.ModelSerializer):
@@ -212,6 +221,12 @@ class RegisterSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=150)
     position = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
     department = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    # B51-R2: два обязательных согласия — ознакомление с документами и согласие
+    # на обработку ПДн (субъект = сам регистрирующийся). required=False, чтобы
+    # проверка истинности шла в validate() ПОСЛЕ пароля/дублей (единый порядок
+    # ошибок), а не как поле-level «обязательное поле» вперёд всего.
+    consent_acknowledged = serializers.BooleanField(write_only=True, required=False, default=False)
+    consent_agreed = serializers.BooleanField(write_only=True, required=False, default=False)
 
     def validate_email(self, value):
         value = User.objects.normalize_email(value)
@@ -239,6 +254,15 @@ class RegisterSerializer(serializers.Serializer):
         if attrs["password"] != attrs["password_repeat"]:
             raise serializers.ValidationError({"password_repeat": ["Пароли не совпадают."]})
         validate_password_field(attrs["password"], "password")
+        # B51-R2: без обоих согласий регистрация не проходит.
+        if not attrs.get("consent_acknowledged"):
+            raise serializers.ValidationError(
+                {"consent_acknowledged": ["Необходимо подтвердить ознакомление с документами."]}
+            )
+        if not attrs.get("consent_agreed"):
+            raise serializers.ValidationError(
+                {"consent_agreed": ["Необходимо выразить согласие на обработку персональных данных."]}
+            )
 
         # B12: контроль дублей по Фамилии/Имени среди работающих сотрудников.
         # Только для НОВОЙ регистрации — повторная незавершённая регистрация тем
@@ -291,6 +315,13 @@ class RegisterSerializer(serializers.Serializer):
                 employee.save()
             user.employee = employee
             user.save()
+            # B51-R2: субъект сам выразил согласие — фиксируем self-запись со
+            # слепком устройства и снимком действующих документов.
+            from employees.consent import record_self_consent
+
+            request = self.context.get("request")
+            if request is not None:
+                record_self_consent(employee, request)
         return user
 
 
@@ -331,6 +362,9 @@ class InviteSerializer(serializers.Serializer):
     # B12: явное подтверждение создания сотрудника-тёзки (create_employee) при
     # совпадении Фамилии/Имени с уже работающим сотрудником.
     confirm_duplicate = serializers.BooleanField(required=False, default=False)
+    # B51-R2: отметка оператора «согласие субъекта на обработку ПДн получено» —
+    # обязательна при создании нового сотрудника из приглашения.
+    consent_obtained = serializers.BooleanField(required=False, default=False)
 
     def duplicate_conflicts(self):
         """B12. Тёзки-работники, если приглашение создаёт нового сотрудника."""
@@ -377,6 +411,8 @@ class InviteSerializer(serializers.Serializer):
                 errors["last_name"] = ["Укажите фамилию."]
             if not attrs.get("first_name"):
                 errors["first_name"] = ["Укажите имя."]
+            if not attrs.get("consent_obtained"):
+                errors["consent_obtained"] = ["Подтвердите, что согласие субъекта на обработку ПДн получено."]
             if errors:
                 raise serializers.ValidationError(errors)
         existing = User.objects.filter(email__iexact=attrs["email"]).first()
@@ -412,6 +448,12 @@ class InviteSerializer(serializers.Serializer):
                     position=self.validated_data.get("position", ""),
                     department=self.validated_data.get("department", ""),
                 )
+                # B51-R2: оператор подтвердил получение согласия субъекта.
+                from employees.consent import record_operator_consent
+
+                request = self.context.get("request")
+                if request is not None:
+                    record_operator_consent(employee, request.user)
             fields = {
                 "role": self.validated_data["role"],
                 "is_observer": self.validated_data.get("is_observer", False),

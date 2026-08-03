@@ -3,6 +3,7 @@ import { useCompany, useRefreshCompany } from '../../app/CompanyContext.jsx'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { Banner, Card, Checkbox, Icon, Spinner } from '../../shared/ui'
 import { InlineField } from './inlineFields.jsx'
+import { PdnDocumentsCard } from './PdnDocumentsCard.jsx'
 import { fieldError } from './fieldError.js'
 import { deleteCompanyLogo, getCompanySettings, updateCompanySettings, uploadCompanyLogo } from './settingsApi.js'
 
@@ -219,6 +220,9 @@ export function CompanyTab() {
           </div>
         </div>
       </Card>
+
+      {/* B51-R2: документы по обработке ПДн (Согласие/Политика/Положение). */}
+      <PdnDocumentsCard />
 
       {/* B32: сбор слепков устройств при акцепте (переехал из «Системные»). */}
       <Card style={{ marginBottom: 16 }}>

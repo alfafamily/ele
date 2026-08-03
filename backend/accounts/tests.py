@@ -91,6 +91,8 @@ class RegistrationTests(APITestCase):
                 "first_name": "Пётр",
                 "department": "ИТ",
                 "position": "Инженер",
+                "consent_acknowledged": True,
+                "consent_agreed": True,
             },
             format="json",
         )
@@ -117,6 +119,8 @@ class RegistrationTests(APITestCase):
                 "password_repeat": "Str0ng!Pass1",
                 "last_name": "Петров",
                 "first_name": "Пётр",
+                "consent_acknowledged": True,
+                "consent_agreed": True,
             },
             format="json",
         )
@@ -258,6 +262,7 @@ class InviteAcceptTests(APITestCase):
                 "last_name": "Сидоров",
                 "first_name": "Семён",
                 "department": "Бухгалтерия",
+                "consent_obtained": True,
             },
             format="json",
         )

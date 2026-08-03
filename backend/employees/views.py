@@ -197,7 +197,21 @@ class EmployeeViewSet(viewsets.ModelViewSet):
                     },
                     status=409,
                 )
+        # B51-R2: при создании сотрудника оператор обязан подтвердить получение
+        # согласия субъекта на обработку ПДн.
+        if not request.data.get("consent_obtained"):
+            return Response(
+                {"consent_obtained": ["Подтвердите, что согласие субъекта на обработку ПДн получено."]},
+                status=400,
+            )
         return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        # B51-R2: фиксируем отметку оператора о получении согласия субъекта.
+        from .consent import record_operator_consent
+
+        employee = serializer.save()
+        record_operator_consent(employee, self.request.user)
 
     @action(detail=False, methods=["get"], permission_classes=[IsAdmin])
     def duplicates(self, request):

@@ -7,7 +7,27 @@ from locations.models import Building, Place, Room
 from locations.serializers import BuildingMiniSerializer, PlaceMiniSerializer, RoomMiniSerializer
 from storage.serializers import StoredFileSerializer
 
-from .models import AccessPass, Employee, EmployeeAssignment, SimCard
+from .models import AccessPass, Employee, EmployeeAssignment, EmployeeConsent, SimCard
+
+
+class ConsentDocumentSerializer(serializers.Serializer):
+    """Документ из снимка согласия — вид + ссылка на сохранённую локальную копию."""
+
+    kind = serializers.CharField()
+    kind_display = serializers.CharField(source="get_kind_display")
+    url = serializers.CharField(source="stored_file.url")
+    name = serializers.CharField(source="stored_file.original_filename")
+
+
+class EmployeeConsentSerializer(serializers.ModelSerializer):
+    """B51-R2. Подтверждение согласия для карточки сотрудника."""
+
+    source_display = serializers.CharField(source="get_source_display", read_only=True)
+    documents = ConsentDocumentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = EmployeeConsent
+        fields = ["source", "source_display", "at", "by_position", "by_name", "device_snapshot", "documents"]
 
 
 class EmployeeAssignmentSerializer(serializers.ModelSerializer):
@@ -445,6 +465,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     parking_spots = serializers.SerializerMethodField()
     user_email = serializers.SerializerMethodField()
     avatar = StoredFileSerializer(read_only=True)
+    consents = EmployeeConsentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Employee
@@ -466,6 +487,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "workplaces",
             "parking_spots",
             "user_email",
+            "consents",
         ]
         read_only_fields = ["is_employed"]
 
