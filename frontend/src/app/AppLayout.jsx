@@ -14,9 +14,11 @@ import './AppLayout.css'
 // на обработку ПДн (жёлтый треугольник в правом нижнем углу, поверх аватара —
 // размер блока не меняется, т.к. позиционируется абсолютно).
 function ProfileConsentMarker() {
+  // Тот же размер/толщина, что у маркера «Настройки» (SettingsWarningMarker),
+  // чтобы значок на аватаре не выглядел крупнее.
   return (
     <span className="ele-nav-warning" aria-label="Требуется подтвердить согласие на обработку ПДн">
-      <Icon name="triangle-alert" size={12} strokeWidth={2.4} />
+      <Icon name="triangle-alert" size={13} strokeWidth={2.4} />
     </span>
   )
 }
