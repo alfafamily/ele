@@ -41,10 +41,15 @@ def send_to_subscription(sub, payload: dict) -> bool:
             # Подписка на стороне push-сервиса больше не существует — удаляем.
             sub.delete()
         else:
-            logger.warning("Web push failed (status=%s): %s", status, exc)
+            # Не логируем текст исключения: он может содержать endpoint подписки
+            # (URL push-сервиса однозначно идентифицирует устройство/браузер
+            # пользователя — это ПДн). Достаточно статуса и класса ошибки.
+            logger.warning("Web push failed (status=%s, %s)", status, type(exc).__name__)
         return False
     except Exception as exc:  # сеть/формат — не роняем вызвавшую операцию
-        logger.warning("Web push error: %s", exc)
+        # Сетевые исключения включают URL endpoint'а в тексте — логируем только
+        # класс ошибки, без ПДн.
+        logger.warning("Web push error: %s", type(exc).__name__)
         return False
 
 
