@@ -4,7 +4,7 @@
 # Базовые образы запинены по digest (см. пояснение в backend/Dockerfile):
 # неизменяемая сборка + защита от подмены тега. Тег рядом — для читаемости и
 # автообновления (Dependabot docker / infra/update-image-digests.sh).
-FROM node:22-slim@sha256:f32b81066cde10a75dbac96646099533316d94bac4150c55da1636e1f0ffdc46 AS build
+FROM node:26-slim@sha256:deae974a69e140f44f434ab29cb519fb5f8fe250fd364b8ca446bd0761acdc6a AS build
 
 WORKDIR /app
 
