@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import { Card, Icon, StatusPill } from '../../shared/ui'
+import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { DeviceSnapshotChip } from '../../shared/DeviceSnapshot.jsx'
+
+// Короткие подписи пилюль документов — полные названия не влезают в строку.
+const DOC_SHORT = { consent: 'Согласие', policy: 'Политика', regulation: 'Положение' }
 
 // B51-R2. Блок «Согласие на обработку ПДн» на карточке сотрудника. Оператор и
 // субъект — два независимых подтверждения (могут сосуществовать). Вместо номера
@@ -18,6 +22,7 @@ const metaStyle = { fontSize: 12.5, color: 'var(--color-text-muted)', marginTop:
 export function ConsentCard({ employee }) {
   // Свёрнут по умолчанию (в шапке — статус); раскрывается по клику.
   const [open, setOpen] = useState(false)
+  const isMobile = useMediaQuery('(max-width: 768px)')
   const consents = employee.consents || []
   const operator = consents.find((c) => c.source === 'operator')
   const self = consents.find((c) => c.source === 'self')
@@ -83,20 +88,21 @@ export function ConsentCard({ employee }) {
           <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 8 }}>
             Документы, на которые дано согласие:
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 8 }}>
             {documents.map((d) => (
               <a
                 key={d.kind}
                 href={d.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                title={d.kind_display}
                 style={{
-                  fontSize: 13, color: 'var(--color-primary)', textDecoration: 'none',
+                  flex: 1, textAlign: 'center', fontSize: 13, color: 'var(--color-primary)', textDecoration: 'none',
                   background: 'var(--color-fill-input)', border: '1px solid var(--color-border)',
-                  borderRadius: 8, padding: '6px 11px',
+                  borderRadius: 8, padding: '8px 11px',
                 }}
               >
-                {d.kind_display}
+                {DOC_SHORT[d.kind] || d.kind_display}
               </a>
             ))}
           </div>

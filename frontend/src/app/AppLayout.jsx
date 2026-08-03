@@ -14,10 +14,15 @@ import './AppLayout.css'
 // на обработку ПДн (жёлтый треугольник в правом нижнем углу, поверх аватара —
 // размер блока не меняется, т.к. позиционируется абсолютно).
 function ProfileConsentMarker() {
-  // Тот же размер/толщина, что у маркера «Настройки» (SettingsWarningMarker),
-  // чтобы значок на аватаре не выглядел крупнее.
+  // Тот же размер/толщина, что у маркера «Настройки». Аватар — круг, поэтому
+  // сдвигаем значок внутрь (процент от размера аватара — масштабируется под
+  // rail 34px и таб-бар 22px), иначе угол значка вылезает за правый край круга.
   return (
-    <span className="ele-nav-warning" aria-label="Требуется подтвердить согласие на обработку ПДн">
+    <span
+      className="ele-nav-warning"
+      style={{ right: '8%', bottom: '8%' }}
+      aria-label="Требуется подтвердить согласие на обработку ПДн"
+    >
       <Icon name="triangle-alert" size={13} strokeWidth={2.4} />
     </span>
   )
@@ -281,7 +286,9 @@ export function AppLayout() {
           to="/profile"
           className={({ isActive }) => `ele-bottom-nav__item${isActive ? ' ele-bottom-nav__item--active' : ''}`}
         >
-          {avatar(24, 10)}
+          {/* 22×22 — как у остальных иконок таб-бара, иначе подпись «Профиль»
+              съезжает ниже из-за более высокой иконки. */}
+          {avatar(22, 9)}
           <span>Профиль</span>
         </NavLink>
       </nav>
