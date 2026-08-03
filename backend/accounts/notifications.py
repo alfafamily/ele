@@ -269,9 +269,13 @@ def notify_assignment_rejected(assignment):
 
         send_assignment_rejected(user, assignment, label=label, employee_name=employee_name, reason=reason)
     if push_on:
+        # B51: в теле push минимизируем ПДн — имя + инициал фамилии («Михаил П.»),
+        # т.к. тело уходит на сторонние push-сервисы. В письме (авторизованному
+        # admin/accountant) остаётся полное ФИО.
+        push_name = assignment.employee.masked_name if assignment.employee_id else "Сотрудник"
         send_to_user(user, {
             "title": "Отказ от закрепления",
-            "body": f"{employee_name} отказался: {label}",
+            "body": f"{push_name} отказался: {label}",
             "url": "/employees/assignments",
             "tag": f"assignment-rejected:{assignment.id}",
         })

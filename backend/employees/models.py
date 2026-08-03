@@ -30,6 +30,14 @@ class Employee(models.Model):
     def __str__(self):
         return f"{self.last_name} {self.first_name}".strip()
 
+    @property
+    def masked_name(self):
+        """Имя + инициал фамилии («Михаил П.») — минимизация ПДн (B51) для
+        внешних каналов (тело Web Push транзитит через сторонние push-сервисы:
+        FCM/Apple/Mozilla). Инициал фамилии не указывает на конкретное лицо."""
+        initial = f"{self.last_name[:1]}." if self.last_name else ""
+        return f"{self.first_name} {initial}".strip()
+
 
 class EmployeeDuplicateDismissal(models.Model):
     """Пометка «не дубль» для конкретного набора сотрудников-тёзок (B12).

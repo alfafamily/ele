@@ -148,6 +148,33 @@ class DecisionTests(AssignmentBaseTests):
         self.client.post(f"/api/assignments/{a.id}/reject/", {"comment": "не подходит"})
         self.assertEqual(len(mail.outbox), 0)
 
+    def test_masked_name_minimizes_surname(self):
+        # B51: имя + инициал фамилии для тела push (минимизация ПДн).
+        self.assertEqual(_emp(last="Петров", first="Михаил").masked_name, "Михаил П.")
+        self.assertEqual(_emp(last="", first="Анна").masked_name, "Анна")
+        self.assertEqual(_emp(last="Ким", first="").masked_name, "К.")
+
+    def test_reject_push_body_masks_surname(self):
+        # B51: письмо (админу) сохраняет полное ФИО, а тело push — только «Имя Ф.».
+        from unittest.mock import patch
+
+        from accounts.models import NotificationKind, NotificationPreference
+
+        NotificationPreference.objects.update_or_create(
+            user=self.admin, kind=NotificationKind.ASSIGNMENT_REJECTED,
+            defaults={"email_enabled": False, "push_enabled": True},
+        )
+        eq = self._equip(place=self.storage)
+        self._assign(eq, self.emp)
+        a = open_assignment(eq)
+        self.client.force_authenticate(self.user)
+        with patch("accounts.notifications.send_to_user") as m:
+            self.client.post(f"/api/assignments/{a.id}/reject/", {"comment": "не подходит"})
+        self.assertTrue(m.called)
+        body = m.call_args.args[1]["body"]
+        self.assertIn(self.emp.masked_name, body)
+        self.assertNotIn(self.emp.last_name, body)  # фамилия не раскрыта в push
+
     def test_reassign_after_reject_shows_new_pending(self):
         # assign → reject → assign снова: новая запись закрепления должна появиться
         # (регресс: skip_history рвал diff-цепочку, и повтор не отражался).
