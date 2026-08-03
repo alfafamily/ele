@@ -9,6 +9,7 @@ import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterModal, Icon, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 import { EquipmentMultiPicker } from '../../shared/EquipmentMultiPicker.jsx'
 import { TruncatedText } from '../../shared/TruncatedText.jsx'
+import { PlacementIcon } from '../../shared/PlacementIcon.jsx'
 import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
 import { TypeRequisiteFilter } from '../../shared/TypeRequisiteFilter.jsx'
 import { csvParam, reqParams } from '../../shared/filterParams.js'
@@ -261,13 +262,13 @@ export function LicenseListPage() {
                       </>
                     ) : row.storage_place_detail ? (
                       <>
-                        <TruncatedText singleLine={false} className="ele-clamp-2">На складе: {row.storage_place_detail.name}</TruncatedText>
+                        <TruncatedText singleLine={false} className="ele-clamp-2"><PlacementIcon placeType="storage" />{row.storage_place_detail.name}</TruncatedText>
                         <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {row.storage_place_detail.building_name} — {row.storage_place_detail.room_name}
                         </div>
                       </>
                     ) : row.license_type_kind === 'hardware' ? (
-                      <div className="ele-clamp-2">На складе: Без склада</div>
+                      <div className="ele-clamp-2"><PlacementIcon placeType="storage" />Без склада</div>
                     ) : (
                       <span style={{ color: 'var(--color-text-placeholder)' }}>Не хранится физически</span>
                     )}

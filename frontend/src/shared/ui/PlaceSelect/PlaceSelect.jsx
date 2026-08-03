@@ -15,7 +15,7 @@ const DEFAULT_LABEL = { storage: 'Место хранения', workplace: 'Ра
 // B45: типы места — метки и иконки. Для стационарного размещения передаётся
 // массив ['workplace', 'common'] — тогда в подписи строки показываем тип места.
 const TYPE_LABEL = { workplace: 'Рабочее место', common: 'МОП', storage: 'Место хранения' }
-const TYPE_ICON = { workplace: 'briefcase', common: 'coffee', storage: 'warehouse' }
+const TYPE_ICON = { workplace: 'monitor', common: 'coffee', storage: 'warehouse' }
 const LIST_MAX_HEIGHT = 216 // ≈ 4 строки
 
 export function PlaceSelect({

@@ -18,10 +18,11 @@ import { EquipmentPlacementModal } from './EquipmentPlacementModal.jsx'
 import { InlineMaskedKey } from '../licenses/MaskedKeyField.jsx'
 import { EquipmentRegulationsSection } from './EquipmentRegulationsSection.jsx'
 import { getEquipment, getEquipmentHistoryPath, getEquipmentRegulations } from './equipmentApi.js'
-import { PLACEMENT_LOCATION_LABEL, planStatusIcon } from './statusLabels.js'
+import { planStatusIcon } from './statusLabels.js'
+import { placementFullTitle } from '../../shared/placement.js'
 
 // B45. Иконка по типу места на карточке размещения.
-const PLACE_ICON = { storage: 'warehouse', workplace: 'briefcase', common: 'coffee' }
+const PLACE_ICON = { storage: 'warehouse', workplace: 'monitor', common: 'coffee' }
 import { WriteOffModal } from './WriteOffModal.jsx'
 
 function formatShortDate(iso) {
@@ -276,8 +277,8 @@ export function EquipmentCardPage() {
           ) : equipment.place_detail ? (
             <>
               <PlacementRow
-                circle={<LeadIconCircle name={PLACE_ICON[equipment.place_detail.place_type] || 'briefcase'} size={46} iconSize={20} />}
-                label={PLACEMENT_LOCATION_LABEL[equipment.place_detail.place_type] || 'На рабочем месте'}
+                circle={<LeadIconCircle name={PLACE_ICON[equipment.place_detail.place_type] || 'monitor'} size={46} iconSize={20} />}
+                label={placementFullTitle(equipment.place_detail.place_type)}
                 title={equipment.place_detail.name}
                 sub={`${equipment.place_detail.building_name} — ${equipment.place_detail.room_name}`}
               />

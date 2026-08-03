@@ -71,21 +71,27 @@ export function EmployeeCardPage() {
 
   useEffect(load, [load])
 
+  // B65. У уволенного за ним ничего не закреплено (перед увольнением всё
+  // возвращается на места в компании), поэтому вкладку «Выдано» не показываем —
+  // остаётся только «Архив» того, что было выдано и возвращено.
+  const onlyArchive = employee != null && !employee.is_employed
+  const activeTab = onlyArchive ? 'archive' : tab
+
   // Архив грузим лениво — при первом открытии вкладки (и после инвалидации).
   useEffect(() => {
-    if (tab === 'archive' && archive === null) {
+    if (activeTab === 'archive' && archive === null) {
       getEmployeeIssuedArchive(id).then(setArchive)
     }
-  }, [tab, archive, id])
+  }, [activeTab, archive, id])
 
   // Пишем активную вкладку в кэш — чтобы «назад» с карточки объекта вернул на неё.
   useEffect(() => {
-    writeListCache(cacheKey, { ui: { tab } })
-  }, [cacheKey, tab])
+    writeListCache(cacheKey, { ui: { tab: activeTab } })
+  }, [cacheKey, activeTab])
 
   // Восстанавливаем прокрутку при POP, как только содержимое активной вкладки
   // готово (для «Архива» — после загрузки таблицы).
-  const contentReady = employee != null && (tab === 'archive' ? archive !== null : true)
+  const contentReady = employee != null && (activeTab === 'archive' ? archive !== null : true)
   useScrollRestoration(cacheKey, isPop && contentReady)
 
   if (!employee) {
@@ -246,11 +252,13 @@ export function EmployeeCardPage() {
         {/* B51-R2: согласие на обработку ПДн (у обезличенных не показываем). */}
         {!employee.is_anonymized ? <ConsentCard employee={employee} /> : null}
 
-        <div>
-          <TabBar options={ISSUED_ARCHIVE_TABS} value={tab} onChange={setTab} />
-        </div>
+        {onlyArchive ? null : (
+          <div>
+            <TabBar options={ISSUED_ARCHIVE_TABS} value={activeTab} onChange={setTab} />
+          </div>
+        )}
 
-        {tab === 'issued' ? (
+        {activeTab === 'issued' ? (
         <>
         {pendingAssignments.length ? (
           <Card>
@@ -304,7 +312,7 @@ export function EmployeeCardPage() {
             {employee.workplaces.map((wp) => (
               <div key={wp.id} style={{ padding: '11px 13px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <LeadIconCircle name="briefcase" />
+                  <LeadIconCircle name="monitor" />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600 }}>{wp.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{wp.location}</div>

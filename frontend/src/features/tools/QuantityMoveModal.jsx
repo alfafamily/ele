@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
+import { ModeToggle } from '../../shared/ModeToggle.jsx'
+import { PLACEMENT } from '../../shared/placement.js'
 import { Banner, Button, Input, Modal, PlaceSelect } from '../../shared/ui'
 import { StoragePicker } from './StoragePicker.jsx'
 
@@ -98,40 +100,19 @@ export function QuantityMoveModal({
       {error ? <Banner variant="error">{error}</Banner> : null}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 4 }}>
         {target === 'both' ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            {[
-              { value: 'mobile', label: 'Сотруднику' },
-              { value: 'stationary', label: 'Рабочее место' },
-              { value: 'common', label: 'МОП' },
-            ].map((m) => (
-              <button
-                key={m.value}
-                type="button"
-                onClick={() => {
-                  setMode(m.value)
-                  setError(null)
-                }}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  padding: '8px 6px',
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                  borderRadius: 8,
-                  border: 'none',
-                  color: mode === m.value ? 'var(--color-primary-text)' : 'var(--color-text-secondary)',
-                  background: mode === m.value ? 'var(--color-primary)' : 'var(--color-fill-input)',
-                }}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
+          <ModeToggle
+            mode={mode}
+            options={[
+              { value: 'mobile', ...PLACEMENT.employee },
+              { value: 'stationary', ...PLACEMENT.workplace },
+              { value: 'common', ...PLACEMENT.common },
+            ]}
+            style={{ marginBottom: 0 }}
+            onChange={(v) => {
+              setMode(v)
+              setError(null)
+            }}
+          />
         ) : null}
 
         {fixed ? (

@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { apiGet } from '../../shared/api/client'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
+import { PLACEMENT } from '../../shared/placement.js'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { BackButton, Badge, Banner, Card, FormActions, Icon, Input, PlaceSelect, Spinner } from '../../shared/ui'
 import { splitApiError } from '../../shared/formErrors.js'
@@ -573,8 +574,8 @@ export function PassFormPage() {
                       onChange={(m) => { setPlacementMode(m); setStoragePlaceId(''); setPlaceError(null) }}
                       options={
                         isTransport
-                          ? [{ value: 'transport', label: 'За транспортом' }, { value: 'storage', label: 'На складе' }]
-                          : [{ value: 'employee', label: 'За сотрудником' }, { value: 'storage', label: 'На складе' }]
+                          ? [{ value: 'transport', icon: 'car', label: 'За транспортом' }, { value: 'storage', ...PLACEMENT.storage }]
+                          : [{ value: 'employee', ...PLACEMENT.employee }, { value: 'storage', ...PLACEMENT.storage }]
                       }
                     />
                     {placementMode === 'employee' ? (

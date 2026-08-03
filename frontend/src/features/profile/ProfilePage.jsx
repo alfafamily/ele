@@ -341,7 +341,7 @@ export function ProfilePage() {
             {workplaces.map((wp) => (
               <div key={wp.id} style={{ padding: '11px 13px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <LeadIconCircle name="briefcase" />
+                  <LeadIconCircle name="monitor" />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 600 }}>{wp.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{wp.location}</div>

@@ -5,6 +5,8 @@ import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
+import { ModeToggle } from '../../shared/ModeToggle.jsx'
+import { PLACEMENT } from '../../shared/placement.js'
 import { BackButton, Banner, Card, FormActions, Icon, Input, Spinner, TypeSelect } from '../../shared/ui'
 import { splitApiError } from '../../shared/formErrors.js'
 import { requiredValueErrors } from '../../shared/eav'
@@ -288,32 +290,14 @@ export function TransportFormPage() {
                   : 'Закрепить транспорт за сотрудником или оставить свободным.'}
               </div>
               {!employeeId ? (
-                <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-                  {[
-                    { value: 'mobile', label: 'За сотрудником' },
+                <ModeToggle
+                  mode={placementMode}
+                  options={[
+                    { value: 'mobile', ...PLACEMENT.employee },
                     { value: 'free', label: 'Свободный' },
-                  ].map((m) => (
-                    <button
-                      key={m.value}
-                      type="button"
-                      onClick={() => { setPlacementMode(m.value); setPlaceError(null) }}
-                      style={{
-                        flex: 1,
-                        padding: '8px 6px',
-                        fontSize: 12.5,
-                        fontWeight: 600,
-                        fontFamily: 'inherit',
-                        cursor: 'pointer',
-                        borderRadius: 8,
-                        border: 'none',
-                        color: placementMode === m.value ? 'var(--color-primary-text)' : 'var(--color-text-secondary)',
-                        background: placementMode === m.value ? 'var(--color-primary)' : 'var(--color-fill-input)',
-                      }}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
+                  ]}
+                  onChange={(v) => { setPlacementMode(v); setPlaceError(null) }}
+                />
               ) : null}
               {placementMode === 'mobile' ? (
                 placementEmployee ? (

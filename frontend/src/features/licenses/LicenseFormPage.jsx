@@ -270,7 +270,7 @@ export function LicenseFormPage() {
                 onChange={(m) => { setPlacementMode(m); setPlacementEquipment(null); setStoragePlaceId(''); setPlaceError(null) }}
                 options={[
                   { value: 'free', label: 'Свободна' },
-                  { value: 'equipment', label: 'В оборудовании' },
+                  { value: 'equipment', icon: 'cpu', label: 'В оборудовании' },
                 ]}
               />
               {placementMode === 'equipment' ? (

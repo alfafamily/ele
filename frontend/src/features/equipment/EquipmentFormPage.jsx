@@ -5,6 +5,8 @@ import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
+import { ModeToggle } from '../../shared/ModeToggle.jsx'
+import { PLACEMENT } from '../../shared/placement.js'
 import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Spinner, TypeSelect } from '../../shared/ui'
 import { splitApiError } from '../../shared/formErrors.js'
 import { requiredValueErrors } from '../../shared/eav'
@@ -323,42 +325,20 @@ export function EquipmentFormPage() {
               </div>
               {/* Из карточки сотрудника — только «За сотрудником», сотрудник фиксирован. */}
               {!employeeId ? (
-                <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-                  {[
-                    { value: 'mobile', label: 'За сотрудником' },
-                    { value: 'stationary', label: 'Рабочее место' },
-                    { value: 'common', label: 'МОП' },
-                    { value: 'storage', label: 'На складе' },
-                  ].map((m) => (
-                    <button
-                      key={m.value}
-                      type="button"
-                      onClick={() => {
-                        setPlacementMode(m.value)
-                        setPlacementPlaceId('')
-                        setPlaceError(null)
-                      }}
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        padding: '8px 6px',
-                        fontSize: 12.5,
-                        fontWeight: 600,
-                        fontFamily: 'inherit',
-                        cursor: 'pointer',
-                        borderRadius: 8,
-                        border: 'none',
-                        color: placementMode === m.value ? 'var(--color-primary-text)' : 'var(--color-text-secondary)',
-                        background: placementMode === m.value ? 'var(--color-primary)' : 'var(--color-fill-input)',
-                      }}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
+                <ModeToggle
+                  mode={placementMode}
+                  options={[
+                    { value: 'mobile', ...PLACEMENT.employee },
+                    { value: 'stationary', ...PLACEMENT.workplace },
+                    { value: 'common', ...PLACEMENT.common },
+                    { value: 'storage', ...PLACEMENT.storage },
+                  ]}
+                  onChange={(v) => {
+                    setPlacementMode(v)
+                    setPlacementPlaceId('')
+                    setPlaceError(null)
+                  }}
+                />
               ) : null}
               {placementMode === 'mobile' ? (
                 placementEmployee ? (

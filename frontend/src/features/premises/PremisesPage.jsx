@@ -494,7 +494,7 @@ function PlaceChip({ place, canManage, onEdit, onArchive, onUnarchive }) {
   const isParkingSpot = place.place_type === 'parking_spot'
   const isCommon = place.place_type === 'common'
   const icon =
-    place.place_type === 'storage' ? 'warehouse' : isParkingSpot ? 'car' : isCommon ? 'coffee' : 'briefcase'
+    place.place_type === 'storage' ? 'warehouse' : isParkingSpot ? 'car' : isCommon ? 'coffee' : 'monitor'
   const iconTitle =
     place.place_type === 'storage' ? 'Место хранения' : isParkingSpot ? 'Парковочное место' : isCommon ? 'МОП' : 'Рабочее место'
   // Число закреплённых объектов: рабочее место — сотрудники; парковочное — либо

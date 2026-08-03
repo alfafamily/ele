@@ -9,6 +9,7 @@ import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, EmptyState, FilterModal, Icon, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 import { EmployeeNameCell } from '../../shared/EmployeeNameCell.jsx'
 import { TruncatedText } from '../../shared/TruncatedText.jsx'
+import { PlacementIcon } from '../../shared/PlacementIcon.jsx'
 import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
 import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
 import { PassAccessFilter } from '../../shared/PassAccessFilter.jsx'
@@ -292,13 +293,13 @@ export function PassListPage() {
                       </>
                     ) : row.storage_place_detail ? (
                       <>
-                        <TruncatedText singleLine={false} className="ele-clamp-2">На складе: {row.storage_place_detail.name}</TruncatedText>
+                        <TruncatedText singleLine={false} className="ele-clamp-2"><PlacementIcon placeType="storage" />{row.storage_place_detail.name}</TruncatedText>
                         <TruncatedText style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>
                           {row.storage_place_detail.building_name} — {row.storage_place_detail.room_name}
                         </TruncatedText>
                       </>
                     ) : (
-                      <div className="ele-clamp-2">На складе: Без склада</div>
+                      <div className="ele-clamp-2"><PlacementIcon placeType="storage" />Без склада</div>
                     )}
                   </div>
                 ) : (

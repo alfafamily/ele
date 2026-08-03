@@ -3,6 +3,8 @@ import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { EquipmentPicker } from '../../shared/EquipmentPicker.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
+import { ModeToggle } from '../../shared/ModeToggle.jsx'
+import { PLACEMENT } from '../../shared/placement.js'
 import { Banner, Button, Icon, Modal } from '../../shared/ui'
 import { attachSimCard, attachSimToEquipment } from '../employees/employeesApi.js'
 
@@ -31,36 +33,19 @@ export function SimAttachModal({ sim, initialMode = 'employee', onClose, onDone 
   return (
     <Modal open onClose={onClose} title="Разместить SIM-карту">
       {error ? <Banner variant="error">{error}</Banner> : null}
-      <div style={{ display: 'flex', gap: 8, margin: '4px 0 16px' }}>
-        {[
-          { value: 'employee', label: 'За сотрудником' },
-          { value: 'equipment', label: 'В оборудовании' },
-        ].map((m) => (
-          <button
-            key={m.value}
-            type="button"
-            onClick={() => {
-              setMode(m.value)
-              setSelected(null)
-              setError(null)
-            }}
-            style={{
-              flex: 1,
-              padding: '8px 6px',
-              fontSize: 12.5,
-              fontWeight: 600,
-              fontFamily: 'inherit',
-              cursor: 'pointer',
-              borderRadius: 8,
-              border: 'none',
-              color: mode === m.value ? 'var(--color-primary-text)' : 'var(--color-text-secondary)',
-              background: mode === m.value ? 'var(--color-primary)' : 'var(--color-fill-input)',
-            }}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
+      <ModeToggle
+        mode={mode}
+        options={[
+          { value: 'employee', ...PLACEMENT.employee },
+          { value: 'equipment', icon: 'cpu', label: 'В оборудовании' },
+        ]}
+        style={{ margin: '4px 0 16px' }}
+        onChange={(v) => {
+          setMode(v)
+          setSelected(null)
+          setError(null)
+        }}
+      />
 
       {selected ? (
         mode === 'employee' ? (

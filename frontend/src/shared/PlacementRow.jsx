@@ -9,7 +9,7 @@ export function PlacementRow({ circle, label, title, sub }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       {circle}
       <div style={{ minWidth: 0 }}>
-        {label ? <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{label}</div> : null}
+        {label ? <TruncatedText style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>{label}</TruncatedText> : null}
         <TruncatedText style={{ fontSize: 15, fontWeight: 600 }}>{title}</TruncatedText>
         {sub ? <TruncatedText style={{ fontSize: 13, color: 'var(--color-text-placeholder)' }}>{sub}</TruncatedText> : null}
       </div>

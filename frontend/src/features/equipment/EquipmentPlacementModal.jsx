@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
+import { ModeToggle } from '../../shared/ModeToggle.jsx'
+import { PLACEMENT } from '../../shared/placement.js'
 import { Banner, Button, Input, Modal, PlaceSelect } from '../../shared/ui'
 import { assignEquipment, unassignEquipment } from './equipmentApi.js'
 
@@ -9,10 +11,10 @@ import { assignEquipment, unassignEquipment } from './equipmentApi.js'
 // все переходы. Рабочее место и МОП — отдельные вкладки, но оба стационарны
 // (mode=stationary на бэке), просто с разным типом мест в списке.
 const MODES = [
-  { value: 'mobile', label: 'За сотрудником' },
-  { value: 'workplace', label: 'Рабочее место' },
-  { value: 'common', label: 'МОП' },
-  { value: 'storage', label: 'На складе' },
+  { value: 'mobile', ...PLACEMENT.employee },
+  { value: 'workplace', ...PLACEMENT.workplace },
+  { value: 'common', ...PLACEMENT.common },
+  { value: 'storage', ...PLACEMENT.storage },
 ]
 const PLACE_TYPE = { workplace: 'workplace', common: 'common', storage: 'storage' }
 
@@ -52,37 +54,16 @@ export function EquipmentPlacementModal({ equipment, onClose, onDone }) {
     <Modal open onClose={onClose} title="Закрепить / разместить оборудование">
       {error ? <Banner variant="error">{error}</Banner> : null}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, margin: '4px 0 20px' }}>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {MODES.map((m) => (
-            <button
-              key={m.value}
-              type="button"
-              onClick={() => {
-                setMode(m.value)
-                setPlaceId('') // сбрасываем место — у нового режима свой список
-                setError(null)
-              }}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                padding: '8px 6px',
-                fontSize: 12.5,
-                fontWeight: 600,
-                fontFamily: 'inherit',
-                cursor: 'pointer',
-                borderRadius: 8,
-                border: 'none',
-                color: mode === m.value ? 'var(--color-primary-text)' : 'var(--color-text-secondary)',
-                background: mode === m.value ? 'var(--color-primary)' : 'var(--color-fill-input)',
-              }}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
+        <ModeToggle
+          mode={mode}
+          options={MODES}
+          style={{ marginBottom: 0 }}
+          onChange={(v) => {
+            setMode(v)
+            setPlaceId('') // сбрасываем место — у нового режима свой список
+            setError(null)
+          }}
+        />
 
         {mode === 'mobile' ? (
           employee ? (

@@ -11,7 +11,7 @@ import { countLabel } from './reportsUtils.js'
 // места хранения (storage). Данные грузятся целиком; фильтры (здание/помещение/
 // место) применяются на клиенте. Пустые места показываются.
 const META = {
-  workplace: { title: 'Отчёт по рабочим местам', icon: 'briefcase', withEmployees: true },
+  workplace: { title: 'Отчёт по рабочим местам', icon: 'monitor', withEmployees: true },
   common: { title: 'Отчёт по местам общего пользования', icon: 'coffee', withEmployees: false },
   storage: { title: 'Отчёт по местам хранения', icon: 'warehouse', withEmployees: false },
 }

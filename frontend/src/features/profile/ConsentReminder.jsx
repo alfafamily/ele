@@ -70,7 +70,6 @@ export function ConsentReminderBanner() {
           display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
           padding: '13px 16px', borderRadius: 12,
           border: '1px solid var(--color-warning)', background: 'var(--color-warning-bg)',
-          marginBottom: 16,
         }}
       >
         <Icon name="lock" size={20} strokeWidth={2} style={{ color: 'var(--color-warning)', flex: 'none' }} />

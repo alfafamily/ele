@@ -9,6 +9,7 @@ import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { Button, Checkbox, EmptyState, FilterModal, Icon, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 import { EmployeeNameCell } from '../../shared/EmployeeNameCell.jsx'
 import { TruncatedText } from '../../shared/TruncatedText.jsx'
+import { PlacementIcon } from '../../shared/PlacementIcon.jsx'
 import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
 import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
 import { csvParam } from '../../shared/filterParams.js'
@@ -288,13 +289,13 @@ export function SimListPage() {
                       <span style={{ color: 'var(--color-text-placeholder)' }}>На хранении у оператора</span>
                     ) : row.storage_place_detail ? (
                       <>
-                        <TruncatedText singleLine={false} className="ele-clamp-2">На складе: {row.storage_place_detail.name}</TruncatedText>
+                        <TruncatedText singleLine={false} className="ele-clamp-2"><PlacementIcon placeType="storage" />{row.storage_place_detail.name}</TruncatedText>
                         <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {row.storage_place_detail.building_name} — {row.storage_place_detail.room_name}
                         </div>
                       </>
                     ) : (
-                      <div className="ele-clamp-2">На складе: Без склада</div>
+                      <div className="ele-clamp-2"><PlacementIcon placeType="storage" />Без склада</div>
                     )}
                   </div>
                 ) : (
