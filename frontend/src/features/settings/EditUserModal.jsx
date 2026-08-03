@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Banner, Button, Checkbox, Modal, Select } from '../../shared/ui'
 import { EmployeeChoice } from './EmployeeChoice.jsx'
 import { MaintenanceTypeScope } from './MaintenanceTypeScope.jsx'
-import { deactivateUser, getCompanySettings, updateUser } from './settingsApi.js'
+import { activateUser, deactivateUser, getCompanySettings, updateUser } from './settingsApi.js'
 
 const ROLE_OPTIONS = [
   { value: 'admin', label: 'Администратор' },
@@ -44,6 +44,9 @@ export function EditUserModal({ user, onClose, onSaved }) {
   const [adminAccessEnabled, setAdminAccessEnabled] = useState(null)
   // Статус доступа: приглашённый пользователь тоже активен (is_active=True).
   const currentlyActive = user.status !== 'deactivated'
+  // B51-R2: деактивированного можно активировать обратно — кроме обезличенного
+  // субъекта (у него деактивация терминальна, форма только для чтения).
+  const editable = currentlyActive || !user.is_anonymized
   const [status, setStatus] = useState(currentlyActive ? 'active' : 'deactivated')
   const [terminateEmployee, setTerminateEmployee] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -85,6 +88,8 @@ export function EditUserModal({ user, onClose, onSaved }) {
           maintenance_transport_types: transportMaintainer && !maintenanceAllTransportTypes ? maintenanceTransportTypeIds : [],
           admin_edit_enabled: role === 'admin' ? adminEditEnabled : false,
         })
+        // Реактивация ранее деактивированного (кроме обезличенных — там кнопки нет).
+        if (status === 'active' && !currentlyActive) await activateUser(user.id)
       }
       onSaved()
     } catch (err) {
@@ -99,7 +104,7 @@ export function EditUserModal({ user, onClose, onSaved }) {
       <p style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginBottom: 18, marginTop: -6 }}>{user.email}</p>
       {error ? <Banner variant="error">{error}</Banner> : null}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {currentlyActive ? (
+        {editable ? (
           <Select label="Статус доступа" value={status} onChange={setStatus}>
             <option value="active">Активен</option>
             <option value="deactivated">Деактивирован</option>
@@ -107,7 +112,7 @@ export function EditUserModal({ user, onClose, onSaved }) {
         ) : (
           <div>
             <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 6 }}>Статус доступа</div>
-            <div style={{ fontWeight: 500, color: 'var(--color-error)' }}>Деактивирован</div>
+            <div style={{ fontWeight: 500, color: 'var(--color-error)' }}>Деактивирован (обезличен)</div>
           </div>
         )}
 
@@ -188,7 +193,7 @@ export function EditUserModal({ user, onClose, onSaved }) {
         ) : null}
       </div>
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22 }}>
-        {currentlyActive ? (
+        {editable ? (
           <>
             <Button variant="secondary" onClick={onClose}>
               Отмена

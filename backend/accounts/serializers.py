@@ -78,6 +78,9 @@ class UserListSerializer(serializers.ModelSerializer):
     maintenance_transport_types = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     # B9: право редактировать данные в служебной Django-админке (= is_superuser).
     admin_edit_enabled = serializers.BooleanField(source="is_superuser", read_only=True)
+    # B51-R2: обезличен ли связанный субъект — деактивация обезличенного
+    # терминальна (повторная активация запрещена), у прочих реактивация доступна.
+    is_anonymized = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -96,6 +99,7 @@ class UserListSerializer(serializers.ModelSerializer):
             "maintenance_transport_types",
             "admin_edit_enabled",
             "status",
+            "is_anonymized",
             "employee",
             "employee_name",
             "employee_first_name",
@@ -109,6 +113,9 @@ class UserListSerializer(serializers.ModelSerializer):
         if not obj.is_email_confirmed:
             return "invited"
         return "active"
+
+    def get_is_anonymized(self, obj):
+        return bool(obj.employee_id and obj.employee.is_anonymized)
 
     def get_employee_name(self, obj):
         return str(obj.employee) if obj.employee_id else None

@@ -666,17 +666,34 @@ class UserDeactivateTests(APITestCase):
         resp = self.client.post(f"/api/users/{self.admin.id}/deactivate/", format="json")
         self.assertEqual(resp.status_code, 403)
 
-    def test_activate_endpoint_removed(self):
-        # Деактивация односторонняя: маршрута реактивации нет (связь с
-        # сотрудником рвётся при деактивации, поэтому «включить обратно»
-        # бесполезно — при необходимости пользователя приглашают заново).
+    def test_activate_reenables_login(self):
+        # B51-R2: деактивированного (не обезличенного) можно активировать обратно.
         worker = User.objects.create_user(
             email="worker@example.com", password="Str0ng!Pass1", is_active=False
         )
         resp = self.client.post(f"/api/users/{worker.id}/activate/", format="json")
-        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.status_code, 200, resp.data)
+        worker.refresh_from_db()
+        self.assertTrue(worker.is_active)
+
+    def test_activate_blocked_for_anonymized(self):
+        # У обезличенного субъекта деактивация терминальна — активация запрещена.
+        from employees.models import Employee
+
+        emp = Employee.objects.create(last_name="Удалён", first_name="", is_anonymized=True)
+        worker = User.objects.create_user(
+            email="worker@example.com", password="Str0ng!Pass1", is_active=False, employee=emp
+        )
+        resp = self.client.post(f"/api/users/{worker.id}/activate/", format="json")
+        self.assertEqual(resp.status_code, 400)
         worker.refresh_from_db()
         self.assertFalse(worker.is_active)
+
+    def test_activate_forbidden_for_non_admin(self):
+        worker = User.objects.create_user(email="worker@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=worker)
+        resp = self.client.post(f"/api/users/{self.admin.id}/activate/", format="json")
+        self.assertEqual(resp.status_code, 403)
 
 
 @override_settings(YANDEX_ID_CLIENT_ID="cid", YANDEX_ID_CLIENT_SECRET="secret")

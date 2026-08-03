@@ -213,6 +213,16 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         employee = serializer.save()
         record_operator_consent(employee, self.request.user)
 
+    def perform_update(self, serializer):
+        # B51-R2: у ранее заведённых сотрудников без согласия оператор может
+        # проставить отметку из формы редактирования (галка есть только пока
+        # согласие не зафиксировано — если уже есть, повторно не пишем).
+        employee = serializer.save()
+        if self.request.data.get("consent_obtained") and not employee.consents.exists():
+            from .consent import record_operator_consent
+
+            record_operator_consent(employee, self.request.user)
+
     @action(detail=False, methods=["get"], permission_classes=[IsAdmin])
     def duplicates(self, request):
         """B12. Возможные дубли сотрудников (для раздела Настроек)."""

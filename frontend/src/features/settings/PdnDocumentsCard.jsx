@@ -1,7 +1,39 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Card, Input, Segmented, Spinner } from '../../shared/ui'
+import { Button, Card, Spinner } from '../../shared/ui'
 import { fieldError } from './fieldError.js'
 import { deletePdnDocument, getPdnDocuments, setPdnDocumentLink, uploadPdnDocumentFile } from './settingsApi.js'
+
+// Компактный переключатель Ссылка/Файл — в одну строку с инпутом/кнопкой,
+// высота ровно по кнопке (--control-height).
+function ModeToggle({ value, onChange }) {
+  return (
+    <div
+      style={{
+        display: 'flex', height: 'var(--control-height)', flex: 'none',
+        background: 'var(--color-fill-input)', borderRadius: 10, padding: 3, gap: 3,
+      }}
+    >
+      {[
+        { v: 'link', label: 'Ссылка' },
+        { v: 'file', label: 'Файл' },
+      ].map((o) => (
+        <button
+          key={o.v}
+          type="button"
+          onClick={() => onChange(o.v)}
+          style={{
+            border: 'none', borderRadius: 8, padding: '0 16px', fontSize: 13, fontWeight: 600,
+            fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
+            color: value === o.v ? 'var(--color-primary-text)' : 'var(--color-text-secondary)',
+            background: value === o.v ? 'var(--color-primary)' : 'transparent',
+          }}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 // B51-R2. Настройки → Компания: документы по обработке ПДн. Каждый вид задаётся
 // ссылкой ИЛИ файлом; при вводе ссылки файл скачивается и хранится локально.
@@ -77,40 +109,35 @@ function DocRow({ meta, doc, onChanged }) {
   return (
     <div style={{ padding: '16px 0', borderTop: '1px solid var(--color-border)' }}>
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>{meta.name}</div>
-      <div style={{ maxWidth: 220, marginBottom: 10 }}>
-        <Segmented
-          value={mode}
-          onChange={setMode}
-          options={[
-            { value: 'link', label: 'Ссылка' },
-            { value: 'file', label: 'Файл' },
-          ]}
-        />
-      </div>
 
-      {mode === 'link' ? (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 300px', minWidth: 220 }}>
-            <Input
-              placeholder="https://…/document.pdf"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              error={error}
-            />
-          </div>
-          <Button variant="secondary" onClick={saveLink} loading={busy} disabled={busy}>
-            Загрузить по ссылке
-          </Button>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Button variant="secondary" onClick={() => fileRef.current?.click()} loading={busy} disabled={busy}>
-            {doc ? 'Заменить файл' : 'Загрузить файл'}
-          </Button>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <ModeToggle value={mode} onChange={setMode} />
+        {mode === 'link' ? (
+          <input
+            type="text"
+            placeholder="https://…/document.pdf"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            style={{
+              flex: '1 1 260px', minWidth: 200, height: 'var(--control-height)',
+              border: `1px solid ${error ? 'var(--color-error)' : 'var(--color-border-strong)'}`,
+              borderRadius: 10, padding: '0 14px', fontSize: 14, fontFamily: 'inherit',
+              background: 'var(--color-surface)', color: 'var(--color-text-primary)', outline: 'none',
+            }}
+          />
+        ) : (
           <input ref={fileRef} type="file" style={{ display: 'none' }} onChange={onFile} />
-          {error ? <span style={{ fontSize: 12.5, color: 'var(--color-error)' }}>{error}</span> : null}
-        </div>
-      )}
+        )}
+        <Button
+          variant="secondary"
+          onClick={mode === 'link' ? saveLink : () => fileRef.current?.click()}
+          loading={busy}
+          disabled={busy}
+        >
+          {mode === 'link' ? 'Загрузить по ссылке' : doc ? 'Заменить файл' : 'Загрузить файл'}
+        </Button>
+      </div>
+      {error ? <div style={{ fontSize: 12.5, color: 'var(--color-error)', marginTop: 6 }}>{error}</div> : null}
 
       {/* Текущая сохранённая локальная копия. */}
       {doc?.file?.url ? (

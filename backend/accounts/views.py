@@ -472,6 +472,22 @@ class UserViewSet(viewsets.ModelViewSet):
         data["terminated_employee"] = terminated_employee
         return Response(data)
 
+    @action(detail=True, methods=["post"])
+    def activate(self, request, pk=None):
+        """Обратно включить деактивированного пользователя (is_active=True).
+        Терминально только для ОБЕЗЛИЧЕННЫХ субъектов: их учётку повторно не
+        активируем. Связь с сотрудником при деактивации была снята — при
+        необходимости назначается отдельно в разделе «Сотрудники»."""
+        user = self.get_object()
+        if user.employee_id and user.employee.is_anonymized:
+            return Response(
+                {"detail": "Учётная запись обезличенного субъекта не активируется повторно."},
+                status=400,
+            )
+        user.is_active = True
+        user.save(update_fields=["is_active"])
+        return Response(UserSerializer(user).data)
+
 
 class YandexIDAuthorizeView(APIView):
     permission_classes = [AllowAny]

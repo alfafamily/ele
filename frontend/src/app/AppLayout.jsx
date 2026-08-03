@@ -8,8 +8,18 @@ import { roleLabel } from '../shared/roles.js'
 import { nameInitials } from '../shared/employeeName.js'
 import { Icon } from '../shared/ui'
 import { PushPromptModal } from '../features/notifications/PushPromptModal.jsx'
-import { ConsentReminderBanner } from '../features/profile/ConsentReminder.jsx'
 import './AppLayout.css'
+
+// B51-R2. Маркер на аватаре профиля, если сотрудник ещё не подтвердил согласие
+// на обработку ПДн (жёлтый треугольник в правом нижнем углу, поверх аватара —
+// размер блока не меняется, т.к. позиционируется абсолютно).
+function ProfileConsentMarker() {
+  return (
+    <span className="ele-nav-warning" aria-label="Требуется подтвердить согласие на обработку ПДн">
+      <Icon name="triangle-alert" size={12} strokeWidth={2.4} />
+    </span>
+  )
+}
 
 // Маркер-предупреждение (треугольник) поверх иконки «Настройки». Один общий
 // значок на все причины: B12 — возможные дубли сотрудников, B33 — заканчивается
@@ -75,12 +85,15 @@ export function AppLayout() {
   }, [location.pathname, refreshDuplicates])
 
   const avatar = (size, fontSize) => (
-    <span className="ele-rail__avatar" style={{ width: size, height: size, fontSize, overflow: 'hidden' }}>
-      {user.employee?.avatar ? (
-        <img src={user.employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-      ) : (
-        nameInitials(employeeName || user.email)
-      )}
+    <span className="ele-nav-warning-host">
+      <span className="ele-rail__avatar" style={{ width: size, height: size, fontSize, overflow: 'hidden' }}>
+        {user.employee?.avatar ? (
+          <img src={user.employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          nameInitials(employeeName || user.email)
+        )}
+      </span>
+      {user.needs_consent ? <ProfileConsentMarker /> : null}
     </span>
   )
 
@@ -148,12 +161,15 @@ export function AppLayout() {
         </div>
 
         <NavLink to="/profile" className={({ isActive }) => `ele-rail__user${isActive ? ' ele-rail__user--active' : ''}`} onClick={(e) => e.currentTarget.blur()}>
-          <span className="ele-rail__avatar" style={{ overflow: 'hidden' }}>
-            {user.employee?.avatar ? (
-              <img src={user.employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              nameInitials(employeeName || user.email)
-            )}
+          <span className="ele-nav-warning-host">
+            <span className="ele-rail__avatar" style={{ overflow: 'hidden' }}>
+              {user.employee?.avatar ? (
+                <img src={user.employee.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                nameInitials(employeeName || user.email)
+              )}
+            </span>
+            {user.needs_consent ? <ProfileConsentMarker /> : null}
           </span>
           <span className="ele-rail__user-text">
             <div className="ele-rail__user-name">{employeeName || user.email}</div>
@@ -221,9 +237,6 @@ export function AppLayout() {
 
       <main className="ele-content ele-content--with-bottomnav">
         <div className="ele-content__inner">
-          {/* B51-R2: напоминание подтвердить согласие (при входе, на любой странице
-              кроме Профиля — там баннер над блоком «Обо мне»). */}
-          {location.pathname !== '/profile' ? <ConsentReminderBanner /> : null}
           <Outlet />
         </div>
       </main>

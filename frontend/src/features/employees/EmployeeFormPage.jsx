@@ -18,8 +18,11 @@ export function EmployeeFormPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
-  // B51-R2: при создании оператор подтверждает получение согласия субъекта.
+  // B51-R2: оператор подтверждает получение согласия субъекта. При создании —
+  // обязательно; при редактировании галка есть, только пока согласие не
+  // зафиксировано (иначе изменить нельзя).
   const [consentObtained, setConsentObtained] = useState(false)
+  const [hasConsent, setHasConsent] = useState(false)
   // B12: предупреждение о тёзке-работнике (ответ 409). Создание не запрещено —
   // могут работать однофамильцы; запрашиваем подтверждение.
   const [dupWarn, setDupWarn] = useState(null)
@@ -35,6 +38,7 @@ export function EmployeeFormPage() {
       setLastName(data.last_name)
       setPosition(data.position)
       setDepartment(data.department)
+      setHasConsent(Boolean(data.consents?.length))
       setLoaded(true)
     })
   }, [id, isEdit])
@@ -46,6 +50,10 @@ export function EmployeeFormPage() {
       </div>
     )
   }
+
+  // Галка согласия: при создании всегда; при редактировании — только если
+  // согласие ещё не зафиксировано.
+  const showConsent = !isEdit || !hasConsent
 
   const submit = async (e, confirmDuplicate = false) => {
     if (e) e.preventDefault()
@@ -62,7 +70,7 @@ export function EmployeeFormPage() {
     setError(null)
     setFieldErrors({})
     const payload = { first_name: firstName, last_name: lastName, position, department }
-    if (!isEdit) payload.consent_obtained = consentObtained
+    if (showConsent) payload.consent_obtained = consentObtained
     try {
       if (isEdit) {
         await updateEmployee(id, payload)
@@ -127,13 +135,18 @@ export function EmployeeFormPage() {
             </div>
           </Card>
 
-          {!isEdit ? (
+          {showConsent ? (
             <Card style={{ marginTop: 16 }}>
               <Checkbox
                 label="Согласие субъекта на обработку персональных данных получено (на бумажном/ином носителе)."
                 checked={consentObtained}
                 onChange={setConsentObtained}
               />
+              {isEdit ? (
+                <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 8, marginLeft: 30 }}>
+                  Отметьте, если согласие субъекта получено. После сохранения изменить нельзя.
+                </div>
+              ) : null}
               {fieldErrors.consent_obtained ? (
                 <div className="ele-field__error-text" style={{ marginTop: 6 }}>
                   {Array.isArray(fieldErrors.consent_obtained) ? fieldErrors.consent_obtained[0] : fieldErrors.consent_obtained}

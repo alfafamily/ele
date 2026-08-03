@@ -9,6 +9,7 @@ import { Banner, Button, Icon, SearchInput, Skeleton, StatusPill, Table, TableRo
 import { DeactivateUserModal } from './DeactivateUserModal.jsx'
 import { EditUserModal } from './EditUserModal.jsx'
 import { InviteModal } from './InviteModal.jsx'
+import { activateUser } from './settingsApi.js'
 
 const DESKTOP_COLUMNS = [
   { key: 'email', label: 'Пользователь', width: '1fr' },
@@ -64,23 +65,52 @@ export function UsersTab() {
   const [showInvite, setShowInvite] = useState(false)
   const [deactivateTarget, setDeactivateTarget] = useState(null)
   const [editTarget, setEditTarget] = useState(null)
+  const [activatingId, setActivatingId] = useState(null)
 
   const columns = isMobile ? MOBILE_COLUMNS : DESKTOP_COLUMNS
 
+  const onActivate = async (e, user) => {
+    e.stopPropagation()
+    setActivatingId(user.id)
+    try {
+      await activateUser(user.id)
+      refetch()
+    } finally {
+      setActivatingId(null)
+    }
+  }
+
   // Кнопка-статус: у активного — зелёная кнопка деактивации (через модалку-
-  // подтверждение). Деактивация односторонняя: у деактивированного показываем
-  // только красный индикатор состояния, действия нет.
+  // подтверждение). У деактивированного — кнопка активации, КРОМЕ обезличенного
+  // субъекта: для него деактивация терминальна (красный индикатор без действия).
   const statusButton = (u) => {
     const active = u.status !== 'deactivated'
     if (!active) {
+      if (u.is_anonymized) {
+        return (
+          <span
+            style={{ color: 'var(--color-error)', display: 'inline-flex', padding: 4 }}
+            title="Обезличенный субъект — активация недоступна"
+            aria-label="Обезличенный субъект — активация недоступна"
+          >
+            <Icon name="power" size={18} />
+          </span>
+        )
+      }
       return (
-        <span
-          style={{ color: 'var(--color-error)', display: 'inline-flex', padding: 4 }}
-          title="Пользователь деактивирован"
-          aria-label="Пользователь деактивирован"
+        <button
+          type="button"
+          disabled={activatingId === u.id}
+          onClick={(e) => onActivate(e, u)}
+          style={{
+            border: 'none', background: 'none', color: 'var(--color-error)',
+            cursor: activatingId === u.id ? 'default' : 'pointer', display: 'inline-flex', padding: 4,
+          }}
+          title="Активировать пользователя"
+          aria-label="Активировать пользователя"
         >
           <Icon name="power" size={18} />
-        </span>
+        </button>
       )
     }
     return (

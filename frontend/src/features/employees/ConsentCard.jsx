@@ -1,4 +1,5 @@
-import { Card, StatusPill } from '../../shared/ui'
+import { useState } from 'react'
+import { Card, Icon, StatusPill } from '../../shared/ui'
 import { DeviceSnapshotChip } from '../../shared/DeviceSnapshot.jsx'
 
 // B51-R2. Блок «Согласие на обработку ПДн» на карточке сотрудника. Оператор и
@@ -15,6 +16,8 @@ const labelStyle = { fontSize: 13.5, fontWeight: 600 }
 const metaStyle = { fontSize: 12.5, color: 'var(--color-text-muted)', marginTop: 2 }
 
 export function ConsentCard({ employee }) {
+  // Свёрнут по умолчанию (в шапке — статус); раскрывается по клику.
+  const [open, setOpen] = useState(false)
   const consents = employee.consents || []
   const operator = consents.find((c) => c.source === 'operator')
   const self = consents.find((c) => c.source === 'self')
@@ -24,11 +27,27 @@ export function ConsentCard({ employee }) {
 
   return (
     <Card>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: has ? 14 : 8 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: 0,
+          border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+        }}
+      >
+        <Icon
+          name="chevron-right"
+          size={18}
+          strokeWidth={2}
+          style={{ color: 'var(--color-text-muted)', flex: 'none', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}
+        />
         <div style={{ fontSize: 16, fontWeight: 600 }}>Согласие на обработку ПДн</div>
         <StatusPill variant={has ? 'assigned' : 'meta'}>{has ? 'Получено' : 'Не зафиксировано'}</StatusPill>
-      </div>
+      </button>
 
+      {!open ? null : (
+      <div style={{ marginTop: 14 }}>
       {operator ? (
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', paddingBottom: self ? 12 : 0 }}>
           <div>
@@ -83,6 +102,8 @@ export function ConsentCard({ employee }) {
           </div>
         </div>
       ) : null}
+      </div>
+      )}
     </Card>
   )
 }
