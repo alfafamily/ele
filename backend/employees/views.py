@@ -259,6 +259,13 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         undismiss_group(signature)
         return Response({"detail": "Отметка снята."})
 
+    def update(self, request, *args, **kwargs):
+        # B51-R1: обезличенную запись редактировать нельзя — иначе можно было бы
+        # вернуть стёртые ПДн (ФИО и т.п.), обойдя необратимость обезличивания.
+        if self.get_object().is_anonymized:
+            return Response({"detail": "Запись обезличена — редактирование недоступно."}, status=409)
+        return super().update(request, *args, **kwargs)
+
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         if instance.equipment.exists():
@@ -299,9 +306,31 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         """Восстановление уволенного сотрудника: снова «Работает». Привязки
         SIM/оборудования/пропусков при увольнении были сняты — не возвращаем."""
         employee = self.get_object()
+        if employee.is_anonymized:
+            return Response({"detail": "Запись обезличена — восстановить нельзя."}, status=409)
         if not employee.is_employed:
             employee.is_employed = True
-            employee.save(update_fields=["is_employed"])
+            # B51-R1: сбрасываем таймер авто-обезличивания — при повторном
+            # увольнении отсчёт пойдёт заново от новой даты.
+            employee.terminated_at = None
+            employee.save(update_fields=["is_employed", "terminated_at"])
+        return Response(EmployeeSerializer(employee).data)
+
+    @action(detail=True, methods=["post"])
+    def anonymize(self, request, pk=None):
+        """B51-R1. Немедленно обезличить запись уволенного сотрудника (право на
+        забвение по требованию). Необратимо: ПДн субъекта и связанного
+        пользователя стираются, история действий сохраняется. Авто-обезличивание
+        по сроку (Company.anonymize_after_months) делает cron; здесь — ручной
+        запуск раньше срока."""
+        from .services import AnonymizeError, anonymize_employee
+
+        employee = self.get_object()
+        try:
+            anonymize_employee(employee, actor=request.user)
+        except AnonymizeError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        employee.refresh_from_db()
         return Response(EmployeeSerializer(employee).data)
 
     @action(detail=False, methods=["get"])

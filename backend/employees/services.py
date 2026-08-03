@@ -6,6 +6,7 @@
 """
 
 from django.db import transaction
+from django.utils import timezone
 
 
 @transaction.atomic
@@ -27,8 +28,6 @@ def terminate_employee(employee, request_data, *, actor):
 
     Возвращает словарь сводных счётчиков (для сериализации ответа во вью).
     """
-    from django.utils import timezone
-
     from core.placement import get_storage_place
     from tools.models import ToolAllocation, ToolMovement
 
@@ -144,7 +143,10 @@ def terminate_employee(employee, request_data, *, actor):
         wp.employees.remove(employee)
 
     employee.is_employed = False
-    employee.save(update_fields=["is_employed"])
+    # B51-R1: точка отсчёта авто-обезличивания. Каждое увольнение перезапускает
+    # таймер (при восстановлении поле сбрасывается в NULL).
+    employee.terminated_at = timezone.now()
+    employee.save(update_fields=["is_employed", "terminated_at"])
 
     # B32: увольнение сняло все объекты — закрываем все открытые эпизоды акцепта.
     from core.assignments import close_employee_assignments
@@ -168,3 +170,95 @@ def terminate_employee(employee, request_data, *, actor):
         "utilized_pass_count": utilized_pass_count,
         "deactivated_user": deactivated_user,
     }
+
+
+class AnonymizeError(Exception):
+    """Обезличивание невозможно в текущем состоянии сотрудника (400)."""
+
+
+# Маркер обезличенной записи вместо ФИО (см. Employee.__str__ → «last first»).
+ANONYMIZED_NAME = "Удалён"
+
+
+@transaction.atomic
+def anonymize_employee(employee, *, actor=None):
+    """B51-R1. Необратимо стирает персональные данные субъекта (сотрудник +
+    связанный пользователь + слепки устройств), сохраняя ссылочную целостность и
+    историю действий. Обходит запрет физического удаления (on_delete=PROTECT у
+    EmployeeAssignment.employee и др.): запись остаётся «скелетом» без ПДн.
+
+    Условие: сотрудник должен быть уволен (is_employed=False) — увольнение уже
+    сняло всё имущество на склад. Повторное обезличивание — no-op-ошибка.
+
+    Что стирается:
+      • Employee: ФИО → «Удалён»; аватар (файл в S3 + StoredFile) удаляется.
+        Должность/отдел сохраняются (не ПДн после снятия идентификаторов).
+      • User (если есть): email → технический deleted+<id>@anonymized.invalid,
+        пароль делается неиспользуемым, is_active=False, Web Push-подписки удаляются.
+      • EmployeeAssignment.device_snapshot → NULL во всех эпизодах сотрудника
+        (IP/UA/геопризнаки). decision_comment не трогаем (там ПДн практически нет).
+    """
+    from storage.service import delete_stored_file
+
+    if employee.is_anonymized:
+        raise AnonymizeError("Запись уже обезличена.")
+    if employee.is_employed:
+        raise AnonymizeError("Обезличить можно только уволенного сотрудника.")
+
+    # Аватар — удалить бинарник из хранилища и запись StoredFile.
+    if employee.avatar_id:
+        avatar = employee.avatar
+        employee.avatar = None
+        delete_stored_file(avatar)
+
+    employee.first_name = ""
+    employee.last_name = ANONYMIZED_NAME
+    employee.is_anonymized = True
+    employee.anonymized_at = timezone.now()
+    employee.save(update_fields=[
+        "first_name", "last_name", "avatar", "is_anonymized", "anonymized_at",
+    ])
+
+    # Слепки устройств — во всех эпизодах сотрудника (EmployeeAssignment не
+    # историзуется, поэтому bulk update безопасен и не плодит историю).
+    employee.assignments.exclude(device_snapshot__isnull=True).update(device_snapshot=None)
+
+    if hasattr(employee, "user"):
+        user = employee.user
+        user.email = f"deleted+{user.id}@anonymized.invalid"
+        user.set_unusable_password()
+        user.is_active = False
+        user.save(update_fields=["email", "password", "is_active"])
+        # Web Push-подписки (endpoint = идентификатор устройства) — удаляем.
+        user.push_subscriptions.all().delete()
+
+
+def anonymize_due_employees(now=None):
+    """B51-R1 (cron). Обезличивает уволенных, у кого с даты увольнения прошло
+    ≥ Company.anonymize_after_months. 0 месяцев — авто-обезличивание выключено.
+    Идемпотентно (is_anonymized-записи отфильтрованы). Возвращает число
+    обработанных записей."""
+    from datetime import timedelta
+
+    from company.models import Company
+
+    from .models import Employee
+
+    company = Company.objects.first()
+    months = getattr(company, "anonymize_after_months", 0) or 0
+    if months <= 0:
+        return 0
+
+    now = now or timezone.now()
+    # Пороговая дата: уволен не позднее (now − months·30 сут). Календарная
+    # точность до дня не важна — операция и так «через ~N месяцев».
+    cutoff = now - timedelta(days=30 * months)
+    due = Employee.objects.filter(
+        is_employed=False, is_anonymized=False, terminated_at__isnull=False,
+        terminated_at__lte=cutoff,
+    )
+    count = 0
+    for employee in due:
+        anonymize_employee(employee)
+        count += 1
+    return count

@@ -13,6 +13,8 @@ export const terminateEmployee = (id, { deactivateUser, equipmentActions, toolAc
   })
 export const getDepartments = () => apiGet('/api/employees/departments/')
 export const restoreEmployee = (id) => apiPost(`/api/employees/${id}/restore/`, {})
+// B51-R1: немедленно обезличить запись уволенного (необратимо — стирает ПДн).
+export const anonymizeEmployee = (id) => apiPost(`/api/employees/${id}/anonymize/`, {})
 // Архив выданного: завершённые эпизоды владения (объект + даты закрепления/открепления).
 export const getEmployeeIssuedArchive = (id) => apiGet(`/api/employees/${id}/issued-archive/`)
 

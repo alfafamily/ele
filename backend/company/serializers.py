@@ -54,7 +54,7 @@ class CompanySettingsSerializer(serializers.ModelSerializer):
         model = Company
         fields = [
             "name", "inn", "domain", "ip_allowlist", "open_registration",
-            "device_snapshot_enabled",
+            "device_snapshot_enabled", "anonymize_after_months",
             "admin_access_enabled", "admin_access_ips",
             "max_upload_mb",
         ]

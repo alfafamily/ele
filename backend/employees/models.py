@@ -21,6 +21,15 @@ class Employee(models.Model):
         "storage.StoredFile", verbose_name="Аватар", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )
     is_employed = models.BooleanField("Работает", default=True)
+    # B51-R1: момент увольнения — точка отсчёта авто-обезличивания ПДн
+    # (уволен + Company.anonymize_after_months). Ставится в terminate_employee,
+    # сбрасывается в NULL при восстановлении, так что при повторном увольнении
+    # отсчёт начинается заново. NULL у работающих.
+    terminated_at = models.DateTimeField("Дата увольнения", null=True, blank=True)
+    # B51-R1: запись обезличена (ПДн стёрты) — необратимо. Восстановить/повторно
+    # обезличить нельзя; в UI вместо ФИО «Удалён» + плашка «Обезличен».
+    is_anonymized = models.BooleanField("Обезличен", default=False)
+    anonymized_at = models.DateTimeField("Дата обезличивания", null=True, blank=True)
 
     class Meta:
         verbose_name = "Сотрудник"

@@ -43,6 +43,8 @@ export function CompanyTab() {
   // B32: сбор слепков устройств при акцепте — переехал сюда из «Системные».
   const [deviceSnapshot, setDeviceSnapshot] = useState(false)
   const [deviceSnapSaving, setDeviceSnapSaving] = useState(false)
+  // B51-R1: срок авто-обезличивания уволенных (месяцев; 0 — выключено).
+  const [anonMonths, setAnonMonths] = useState('')
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export function CompanyTab() {
       setName(c.name || '')
       setInn(c.inn || '')
       setDeviceSnapshot(c.device_snapshot_enabled === true)
+      setAnonMonths(String(c.anonymize_after_months ?? 12))
     })
   }, [])
 
@@ -88,6 +91,19 @@ export function CompanyTab() {
       setDeviceSnapshot(!val)
     } finally {
       setDeviceSnapSaving(false)
+    }
+  }
+
+  const saveAnonMonths = async (val) => {
+    const n = Number(val)
+    if (!Number.isInteger(n) || n < 0) {
+      return 'Укажите целое число месяцев (0 — не обезличивать автоматически).'
+    }
+    try {
+      const u = await updateCompanySettings({ anonymize_after_months: n })
+      setAnonMonths(String(u.anonymize_after_months ?? 0))
+    } catch (err) {
+      return fieldError(err)
     }
   }
 
@@ -215,6 +231,19 @@ export function CompanyTab() {
         />
         <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 2, marginLeft: 30 }}>
           При включении настройки система будет добавлять слепок устройства пользователя в принятие или отказ сотрудника при закреплении за ним имущества. Слепок устанавливается только в том случае, если сотрудник сам подтверждает/отклоняет закрепление за ним оборудования, для этого требуется связанный с сотрудником пользователь. При включении настройки убедитесь что у вас есть разрешение от сотрудника на сбор и обработку ПДн.
+        </div>
+      </Card>
+
+      {/* B51-R1: авто-обезличивание ПДн уволенных по истечении срока хранения. */}
+      <Card>
+        <div style={sectionTitle}>Обезличивание данных уволенных</div>
+        <InlineField
+          label="Автообезличивание уволенных через, месяцев"
+          value={anonMonths}
+          onSave={saveAnonMonths}
+        />
+        <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginTop: 8 }}>
+          Через указанное число месяцев после увольнения персональные данные сотрудника обезличиваются автоматически. 0 — не обезличивать автоматически.
         </div>
       </Card>
     </div>

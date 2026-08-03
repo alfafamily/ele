@@ -424,6 +424,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
             "avatar",
             "equipment_count",
             "is_employed",
+            "is_anonymized",
         ]
 
     def get_full_name(self, obj):
@@ -456,6 +457,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             "department",
             "avatar",
             "is_employed",
+            "is_anonymized",
             "equipment",
             "transport",
             "tools",

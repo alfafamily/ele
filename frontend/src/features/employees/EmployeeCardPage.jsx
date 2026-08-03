@@ -8,13 +8,13 @@ import { DetachToStorageModal } from './DetachToStorageModal.jsx'
 import { Can } from '../../app/usePermissions.js'
 import { PlanLink } from '../../shared/PlanLink.jsx'
 import { TransportParkingLine } from '../../shared/TransportParkingLine.jsx'
-import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner, StatusPill, Table, TabBar, TableRow } from '../../shared/ui'
+import { ActionMenu, Badge, BackButton, Button, Card, ConfirmModal, Icon, Spinner, StatusPill, Table, TabBar, TableRow } from '../../shared/ui'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { nameInitials } from '../../shared/employeeName.js'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
-import { getEmployee, getEmployeeAssignments, getEmployeeIssuedArchive, restoreEmployee } from './employeesApi.js'
+import { anonymizeEmployee, getEmployee, getEmployeeAssignments, getEmployeeIssuedArchive, restoreEmployee } from './employeesApi.js'
 import { AttachOrCreateModal } from './AttachOrCreateModal.jsx'
 import { PassInfo } from './PassInfo.jsx'
 import { PassDetachModal } from './PassDetachModal.jsx'
@@ -43,6 +43,8 @@ export function EmployeeCardPage() {
   const [tab, setTab] = useState(() => savedUi?.tab ?? 'issued')
   const [archive, setArchive] = useState(null)
   const [showTerminate, setShowTerminate] = useState(false)
+  // B51-R1: подтверждение немедленного обезличивания записи уволенного.
+  const [showAnonymize, setShowAnonymize] = useState(false)
   // Создание/редактирование SIM и пропусков — отдельные страницы-формы
   // (/sim-cards/new|:id/edit, /passes/new|:id/edit). Здесь остаётся только
   // модалка выбора свободного объекта для привязки.
@@ -132,6 +134,12 @@ export function EmployeeCardPage() {
     load()
   }
 
+  const onAnonymize = async () => {
+    await anonymizeEmployee(employee.id)
+    setShowAnonymize(false)
+    load()
+  }
+
   // Открепление из карточки сотрудника — через выбор действия (открепить /
   // утилизировать / передать арендодателю), как и на карточке объекта.
   const askDetachSim = (sim) => setDetachSim(sim)
@@ -198,9 +206,22 @@ export function EmployeeCardPage() {
                 />
               </div>
             </Can>
+          ) : employee.is_anonymized ? (
+            <Badge>Обезличен</Badge>
           ) : (
             <Can perm="canManageEmployees">
-              <Button variant="secondary" onClick={onRestore}>Восстановить</Button>
+              <div className="ele-card-actions-desktop">
+                <Button variant="secondary" onClick={onRestore}>Восстановить</Button>
+                <Button variant="danger" onClick={() => setShowAnonymize(true)}>Обезличить запись</Button>
+              </div>
+              <div className="ele-card-actions-mobile">
+                <Button variant="secondary" onClick={onRestore}>Восстановить</Button>
+                <ActionMenu
+                  items={[
+                    { label: 'Обезличить запись', danger: true, onClick: () => setShowAnonymize(true) },
+                  ]}
+                />
+              </div>
             </Can>
           )}
         </div>
@@ -644,6 +665,16 @@ export function EmployeeCardPage() {
             setShowTerminate(false)
             load()
           }}
+        />
+      ) : null}
+
+      {showAnonymize ? (
+        <ConfirmModal
+          title="Обезличить запись сотрудника?"
+          message="Персональные данные (ФИО, аватар, слепки устройств, данные учётной записи) будут безвозвратно удалены или заменены. История действий и связи сохранятся. Действие необратимо."
+          confirmLabel="Обезличить"
+          onConfirm={onAnonymize}
+          onClose={() => setShowAnonymize(false)}
         />
       ) : null}
     </div>
