@@ -661,20 +661,17 @@ class UserDeactivateTests(APITestCase):
         resp = self.client.post(f"/api/users/{self.admin.id}/deactivate/", format="json")
         self.assertEqual(resp.status_code, 403)
 
-    def test_activate_reenables_login(self):
+    def test_activate_endpoint_removed(self):
+        # Деактивация односторонняя: маршрута реактивации нет (связь с
+        # сотрудником рвётся при деактивации, поэтому «включить обратно»
+        # бесполезно — при необходимости пользователя приглашают заново).
         worker = User.objects.create_user(
             email="worker@example.com", password="Str0ng!Pass1", is_active=False
         )
         resp = self.client.post(f"/api/users/{worker.id}/activate/", format="json")
-        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.status_code, 404)
         worker.refresh_from_db()
-        self.assertTrue(worker.is_active)
-
-    def test_activate_forbidden_for_non_admin(self):
-        worker = User.objects.create_user(email="worker@example.com", password="Str0ng!Pass1")
-        self.client.force_authenticate(user=worker)
-        resp = self.client.post(f"/api/users/{self.admin.id}/activate/", format="json")
-        self.assertEqual(resp.status_code, 403)
+        self.assertFalse(worker.is_active)
 
 
 @override_settings(YANDEX_ID_CLIENT_ID="cid", YANDEX_ID_CLIENT_SECRET="secret")

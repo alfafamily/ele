@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Banner, Button, Checkbox, Modal, Select } from '../../shared/ui'
 import { EmployeeChoice } from './EmployeeChoice.jsx'
 import { MaintenanceTypeScope } from './MaintenanceTypeScope.jsx'
-import { activateUser, deactivateUser, getCompanySettings, updateUser } from './settingsApi.js'
+import { deactivateUser, getCompanySettings, updateUser } from './settingsApi.js'
 
 const ROLE_OPTIONS = [
   { value: 'admin', label: 'Администратор' },
@@ -85,7 +85,6 @@ export function EditUserModal({ user, onClose, onSaved }) {
           maintenance_transport_types: transportMaintainer && !maintenanceAllTransportTypes ? maintenanceTransportTypeIds : [],
           admin_edit_enabled: role === 'admin' ? adminEditEnabled : false,
         })
-        if (status === 'active' && !currentlyActive) await activateUser(user.id)
       }
       onSaved()
     } catch (err) {
@@ -100,10 +99,17 @@ export function EditUserModal({ user, onClose, onSaved }) {
       <p style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginBottom: 18, marginTop: -6 }}>{user.email}</p>
       {error ? <Banner variant="error">{error}</Banner> : null}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <Select label="Статус доступа" value={status} onChange={setStatus}>
-          <option value="active">Активен</option>
-          <option value="deactivated">Деактивирован</option>
-        </Select>
+        {currentlyActive ? (
+          <Select label="Статус доступа" value={status} onChange={setStatus}>
+            <option value="active">Активен</option>
+            <option value="deactivated">Деактивирован</option>
+          </Select>
+        ) : (
+          <div>
+            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 6 }}>Статус доступа</div>
+            <div style={{ fontWeight: 500, color: 'var(--color-error)' }}>Деактивирован</div>
+          </div>
+        )}
 
         {status === 'active' ? (
           <>
@@ -182,12 +188,20 @@ export function EditUserModal({ user, onClose, onSaved }) {
         ) : null}
       </div>
       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22 }}>
-        <Button variant="secondary" onClick={onClose}>
-          Отмена
-        </Button>
-        <Button loading={submitting} onClick={submit}>
-          Сохранить
-        </Button>
+        {currentlyActive ? (
+          <>
+            <Button variant="secondary" onClick={onClose}>
+              Отмена
+            </Button>
+            <Button loading={submitting} onClick={submit}>
+              Сохранить
+            </Button>
+          </>
+        ) : (
+          <Button variant="secondary" onClick={onClose}>
+            Закрыть
+          </Button>
+        )}
       </div>
     </Modal>
   )

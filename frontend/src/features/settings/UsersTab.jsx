@@ -9,7 +9,6 @@ import { Banner, Button, Icon, SearchInput, Skeleton, StatusPill, Table, TableRo
 import { DeactivateUserModal } from './DeactivateUserModal.jsx'
 import { EditUserModal } from './EditUserModal.jsx'
 import { InviteModal } from './InviteModal.jsx'
-import { activateUser } from './settingsApi.js'
 
 const DESKTOP_COLUMNS = [
   { key: 'email', label: 'Пользователь', width: '1fr' },
@@ -65,47 +64,42 @@ export function UsersTab() {
   const [showInvite, setShowInvite] = useState(false)
   const [deactivateTarget, setDeactivateTarget] = useState(null)
   const [editTarget, setEditTarget] = useState(null)
-  const [activatingId, setActivatingId] = useState(null)
 
   const columns = isMobile ? MOBILE_COLUMNS : DESKTOP_COLUMNS
 
-  const onActivate = async (e, user) => {
-    e.stopPropagation()
-    setActivatingId(user.id)
-    try {
-      await activateUser(user.id)
-      refetch()
-    } finally {
-      setActivatingId(null)
-    }
-  }
-
-  // Кнопка-статус: цвет отражает текущее состояние (активен — зелёная, деактивирован
-  // — красная); клик переключает (деактивация через модалку-подтверждение).
+  // Кнопка-статус: у активного — зелёная кнопка деактивации (через модалку-
+  // подтверждение). Деактивация односторонняя: у деактивированного показываем
+  // только красный индикатор состояния, действия нет.
   const statusButton = (u) => {
     const active = u.status !== 'deactivated'
+    if (!active) {
+      return (
+        <span
+          style={{ color: 'var(--color-error)', display: 'inline-flex', padding: 4 }}
+          title="Пользователь деактивирован"
+          aria-label="Пользователь деактивирован"
+        >
+          <Icon name="power" size={18} />
+        </span>
+      )
+    }
     return (
       <button
         type="button"
-        disabled={!active && activatingId === u.id}
         onClick={(e) => {
-          if (active) {
-            e.stopPropagation()
-            setDeactivateTarget(u)
-          } else {
-            onActivate(e, u)
-          }
+          e.stopPropagation()
+          setDeactivateTarget(u)
         }}
         style={{
           border: 'none',
           background: 'none',
-          color: active ? 'var(--color-success)' : 'var(--color-error)',
-          cursor: !active && activatingId === u.id ? 'default' : 'pointer',
+          color: 'var(--color-success)',
+          cursor: 'pointer',
           display: 'inline-flex',
           padding: 4,
         }}
-        title={active ? 'Деактивировать пользователя' : 'Активировать пользователя'}
-        aria-label={active ? 'Деактивировать пользователя' : 'Активировать пользователя'}
+        title="Деактивировать пользователя"
+        aria-label="Деактивировать пользователя"
       >
         <Icon name="power" size={18} />
       </button>

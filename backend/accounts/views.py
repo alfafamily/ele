@@ -446,16 +446,6 @@ class UserViewSet(viewsets.ModelViewSet):
         data["terminated_employee"] = terminated_employee
         return Response(data)
 
-    @action(detail=True, methods=["post"])
-    def activate(self, request, pk=None):
-        """Обратно включить деактивированного пользователя — только
-        восстанавливает вход (is_active=True). Занятость сотрудника и связь при
-        необходимости управляются отдельно в разделе Сотрудники."""
-        user = self.get_object()
-        user.is_active = True
-        user.save(update_fields=["is_active"])
-        return Response(UserSerializer(user).data)
-
 
 class YandexIDAuthorizeView(APIView):
     permission_classes = [AllowAny]
