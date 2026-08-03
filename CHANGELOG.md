@@ -16,6 +16,19 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.31.14] — 2026-08-03
+
+### Исправлено
+- **CI (фронтенд): гейт `knip` снова зелёный.** Убран лишний `export` у
+  внутреннего компонента `StatusDot` (используется только внутри своего модуля
+  `settings/system/parts.jsx`; экспорт появился в 1.31.10 при декомпозиции
+  вкладки «Системные» и с тех пор флажился `knip` как неиспользуемый, роняя
+  фронт-проверку CI). На поведение приложения не влияет.
+
+### Обновление
+- Стандартное: `git pull` →
+  `docker compose -f docker-compose.prod.yml up -d --build`.
+
 ## [1.31.13] — 2026-08-03
 
 Кодревью по безопасности (без изменений в логике интерфейса): устранены
@@ -2044,7 +2057,8 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.13...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.14...HEAD
+[1.31.14]: https://github.com/alfafamily/ele/compare/v1.31.13...v1.31.14
 [1.31.13]: https://github.com/alfafamily/ele/compare/v1.31.12...v1.31.13
 [1.31.12]: https://github.com/alfafamily/ele/compare/v1.31.11...v1.31.12
 [1.31.11]: https://github.com/alfafamily/ele/compare/v1.31.10...v1.31.11

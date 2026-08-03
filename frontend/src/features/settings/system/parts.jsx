@@ -2,8 +2,10 @@ import { Button, Icon, Modal } from '../../../shared/ui'
 import { spaceText } from './helpers.js'
 
 // Индикатор результата проверки рядом с кнопкой: зелёная галочка-в-круге при
-// успехе; красный крестик-в-круге и текст ошибки при неудаче.
-export function StatusDot({ ok }) {
+// успехе; красный крестик-в-круге и текст ошибки при неудаче. Локальный —
+// используется только в CheckResult/CheckSuccess ниже (без export, иначе knip
+// в CI флажит неиспользуемый экспорт).
+function StatusDot({ ok }) {
   return (
     <Icon
       name={ok ? 'circle-check' : 'circle-x'}
