@@ -1,9 +1,16 @@
 // Service worker: устанавливаемость PWA (B44 — плюс приём Web Push).
 // Offline-режим намеренно не реализуется: сервис предполагает постоянное
-// соединение с сервером, ответы не кешируются — просто прозрачно проксируем сеть.
+// соединение с сервером, ответы не кешируются.
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
+
+// Перехватываем ТОЛЬКО same-origin запросы. Кросс-доменные (аватары/логотип из
+// S3, шрифты Google) пропускаем мимо SW — иначе повторный fetch() внутри worker'а
+// подпадает под CSP-директиву connect-src (там только 'self' + капча), тогда как
+// нативная загрузка <img>/шрифта проходит под img-src/font-src (где https:
+// разрешён). Перехват тут не даёт ничего (кэша нет) и лишь ломал кросс-домен.
 self.addEventListener('fetch', (event) => {
+  if (new URL(event.request.url).origin !== self.location.origin) return
   event.respondWith(fetch(event.request))
 })
 
