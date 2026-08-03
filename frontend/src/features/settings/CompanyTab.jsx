@@ -221,7 +221,7 @@ export function CompanyTab() {
       </Card>
 
       {/* B32: сбор слепков устройств при акцепте (переехал из «Системные»). */}
-      <Card>
+      <Card style={{ marginBottom: 16 }}>
         <div style={sectionTitle}>Сбор слепков устройств пользователей</div>
         <Checkbox
           label="Сбор слепков устройств при подтверждении/отказе сотрудников при закреплении оборудования"
@@ -238,7 +238,7 @@ export function CompanyTab() {
       <Card>
         <div style={sectionTitle}>Обезличивание данных уволенных</div>
         <InlineField
-          label="Автообезличивание уволенных через, месяцев"
+          label="Обезличивать через, месяцев"
           value={anonMonths}
           onSave={saveAnonMonths}
         />
