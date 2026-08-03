@@ -95,7 +95,7 @@ jobs:
       # B63 — сканирование Dockerfile'ов/compose на мисконфиги. Строгий гейт
       # HIGH,CRITICAL; осознанные исключения — в .trivyignore (с обоснованием).
       - name: Trivy — misconfig (Dockerfiles/compose)
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           # Версия trivy зафиксирована → детерминированный набор check'ов
           # мисконфига (ровно тот, что валидирован локально); БД уязвимостей
@@ -114,7 +114,7 @@ jobs:
       # информационно, не блокирует (ignore-unfixed: без исправления смысла падать
       # нет). Отдельный шаг ниже жёстко гейтит только исправимые CRITICAL.
       - name: Trivy — vulnerabilities (report)
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           version: v0.72.0
           # trivy-action кэширует БД через actions/cache (Node 20 → deprecation-warning
@@ -128,7 +128,7 @@ jobs:
           exit-code: "0"
 
       - name: Trivy — vulnerabilities (gate on fixable CRITICAL)
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
           version: v0.72.0
           # trivy-action кэширует БД через actions/cache (Node 20 → deprecation-warning
