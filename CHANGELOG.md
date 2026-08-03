@@ -16,6 +16,40 @@ GitHub Release. Обновление инстансов — по `docs/INSTALL.m
 
 ## [Unreleased]
 
+## [1.31.17] — 2026-08-03
+
+Задачи **B63 — digest-пиннинг образов + Trivy в CI** и **B64 — целостность
+`install.sh`** (продолжение supply-chain-аудита B55). Только обвязка сборки/CI/
+документация; прикладной код и поведение приложения не менялись. Обновление
+кумулятивное — **никаких ручных действий не требуется** (`git pull` → пересборка
+подтянет образы по digest).
+
+### Безопасность
+- **Базовые Docker-образы запинены по digest** (`name:tag@sha256:…`) во всех
+  файлах: `backend/Dockerfile` (python), `frontend/Dockerfile` (node, caddy),
+  `docker-compose.yml`, `docker-compose.prod.yml` (postgres, caddy, mailpit) и
+  postgres-сервис в CI. Тег мутабелен — digest фиксирует неизменяемый образ:
+  воспроизводимые сборки и защита от подмены/переноса тега. Тег рядом сохранён
+  для читаемости и автообновления. Digest берётся из индекс-манифеста
+  (арх-независим — один и тот же на amd64/arm64).
+- **Trivy в CI** (job `security`): скан мисконфигов Dockerfile'ов/compose
+  (строгий гейт `HIGH,CRITICAL`; осознанный root+gosu в backend — с обоснованием
+  в `.trivyignore`) и уязвимостей зависимостей (полный отчёт `HIGH,CRITICAL`
+  информационно, жёсткий гейт — только исправимые `CRITICAL`). Версия Trivy
+  зафиксирована для детерминизма check'ов; БД CVE тянется свежая.
+- **Контроль целостности `install.sh`.** Рядом с установщиком —
+  `install.sh.sha256`; CI-гард (`sha256sum -c`) не даёт сумме разойтись с
+  файлом, а `release.yml` прикладывает установщик и сумму к каждому релизу как
+  неизменяемые ассеты. Появился документированный сценарий **проверенной
+  установки** (скачать → сверить сумму → запустить) — см. `docs/INSTALL.md`.
+
+### Инфраструктура
+- Скрипт `infra/update-image-digests.sh` — пере-пиннинг всех образов по свежим
+  digest'ам одной командой (и режим `--check`); покрывает и Dockerfile'ы, и
+  compose (которые Dependabot не сканирует).
+- `.github/dependabot.yml` — авто-PR на обновление digest'ов образов в
+  Dockerfile'ах и SHA GitHub Actions.
+
 ## [1.31.16] — 2026-08-03
 
 ### Исправлено
@@ -2125,7 +2159,8 @@ root)**. Только обвязка контейнеров; прикладно�
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.16...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.31.17...HEAD
+[1.31.17]: https://github.com/alfafamily/ele/compare/v1.31.16...v1.31.17
 [1.31.16]: https://github.com/alfafamily/ele/compare/v1.31.15...v1.31.16
 [1.31.15]: https://github.com/alfafamily/ele/compare/v1.31.14...v1.31.15
 [1.31.14]: https://github.com/alfafamily/ele/compare/v1.31.13...v1.31.14

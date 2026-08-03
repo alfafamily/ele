@@ -1,7 +1,10 @@
 # Прод: собирает статику SPA и сам её раздаёт (Caddy-контейнер этого сервиса,
 # отдельный от reverse-proxy Caddy из infra/Caddyfile, который проксирует
 # сюда `/`). Один инструмент (Caddy) на весь стек вместо Node+nginx+Caddy.
-FROM node:22-slim AS build
+# Базовые образы запинены по digest (см. пояснение в backend/Dockerfile):
+# неизменяемая сборка + защита от подмены тега. Тег рядом — для читаемости и
+# автообновления (Dependabot docker / infra/update-image-digests.sh).
+FROM node:22-slim@sha256:f32b81066cde10a75dbac96646099533316d94bac4150c55da1636e1f0ffdc46 AS build
 
 WORKDIR /app
 
@@ -11,7 +14,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM caddy:2-alpine
+FROM caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
 # Непривилегированный пользователь для статик-сервера (без root внутри
 # контейнера). Право bind на привилегированный :80 даём точечной файловой
 # capability на бинаре Caddy, а не запуском под root. /data и /config — рабочие

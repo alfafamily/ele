@@ -1,0 +1,10 @@
+# Подавления Trivy — каждое с обоснованием. Пересматривать при апгрейдах.
+
+# DS-0002 «Specify a USER command / non-root user» в backend/Dockerfile.
+# Осознанное решение (см. комментарий в backend/Dockerfile и entrypoint.sh, B62):
+# контейнер СТАРТУЕТ под root, чтобы entrypoint применил миграции/collectstatic и
+# разово привёл владельца named-volume'ов static/media к пользователю app (иначе
+# ломается кумулятивный апгрейд у клиентов, чьи тома принадлежат root), после чего
+# рабочий процесс запускается уже под непривилегированным app через gosu. Итоговый
+# gunicorn НЕ работает под root. frontend/Dockerfile завершается USER caddyapp.
+AVD-DS-0002

@@ -49,6 +49,38 @@ curl -fsSL https://raw.githubusercontent.com/alfafamily/ele/main/install.sh | ba
 
 Каталог установки можно переопределить: `ELE_DIR=/srv/ele bash install.sh`.
 
+### Проверка целостности установщика (по желанию)
+
+Вариант `curl … | bash` выполняет скрипт сразу. Если политика безопасности
+требует проверить установщик перед запуском — скачайте его вместе с контрольной
+суммой SHA-256 (`install.sh.sha256` лежит в репозитории и прикладывается к
+каждому релизу как ассет), сверьте и только потом запустите:
+
+```sh
+# из ветки main
+curl -fsSL https://raw.githubusercontent.com/alfafamily/ele/main/install.sh        -o install.sh
+curl -fsSL https://raw.githubusercontent.com/alfafamily/ele/main/install.sh.sha256 -o install.sh.sha256
+sha256sum -c install.sh.sha256   # ожидается: install.sh: OK
+bash install.sh
+```
+
+Для воспроизводимой установки конкретной версии берите установщик и сумму из
+**ассетов релиза** (файлы неизменяемы после публикации тега):
+
+```sh
+VER=v1.31.16   # нужный тег из списка релизов
+base="https://github.com/alfafamily/ele/releases/download/$VER"
+curl -fsSLO "$base/install.sh"
+curl -fsSLO "$base/install.sh.sha256"
+sha256sum -c install.sh.sha256
+bash install.sh
+```
+
+Эталонное значение суммы также видно в файле
+[`install.sh.sha256`](../install.sh.sha256) в репозитории (открывается на
+github.com по HTTPS) — его можно сверить с тем, что вы скачали, как независимый
+ориентир.
+
 ### Первый администратор и компания
 
 Первого администратора и компанию создаёт **Setup Wizard в браузере** при первом

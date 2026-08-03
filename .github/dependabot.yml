@@ -1,0 +1,28 @@
+# Автообновление запиненных зависимостей PR'ами (supply-chain автоматизация, B63).
+# Dependabot умеет digest-пиннинг Docker-образов в Dockerfile'ах и SHA-пиннинг
+# GitHub Actions — открывает PR, когда появляется свежий digest/коммит под тем же
+# тегом. Образы в docker-compose*.yml Dependabot не сканирует — их обновляет
+# infra/update-image-digests.sh (запускать вручную или проверять в CI job security).
+version: 2
+updates:
+  # Базовые образы в Dockerfile'ах (python, node, caddy) — обновление digest'а.
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(deps)"
+  - package-ecosystem: docker
+    directory: /frontend
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(deps)"
+
+  # GitHub Actions — обновление SHA-пиннинга (все экшены запинены по коммиту).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "chore(ci)"

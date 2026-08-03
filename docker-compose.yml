@@ -2,7 +2,9 @@
 # server), код смонтирован bind-volume'ами. Прод — docker-compose.prod.yml.
 services:
   postgres:
-    image: postgres:17-alpine
+    # Образы запинены по digest (см. docker-compose.prod.yml) — та же гигиена и
+    # для локального стека; обновление digest'ов — infra/update-image-digests.sh.
+    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-ele}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ele}
@@ -76,7 +78,7 @@ services:
     command: gosu app sh -c "while true; do python manage.py migrate_storage_files; python manage.py run_scheduled_backup; python manage.py send_maintenance_reminders; sleep 60; done"
 
   frontend:
-    image: node:22-slim
+    image: node:22-slim@sha256:f32b81066cde10a75dbac96646099533316d94bac4150c55da1636e1f0ffdc46
     working_dir: /app
     volumes:
       - ./frontend:/app
@@ -88,14 +90,15 @@ services:
       - "5173"
 
   mailpit:
-    image: axllent/mailpit:latest
+    # dev-only; digest фиксирует конкретный образ вместо плавающего :latest.
+    image: axllent/mailpit:latest@sha256:7f33095f80e901f6ad08028f06ca284aa58fe84942be5496008d041d3b9f4d4d
     expose:
       - "1025"
     ports:
       - "8025:8025" # веб-интерфейс писем — см.
 
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
     volumes:
       - ./infra/Caddyfile.dev:/etc/caddy/Caddyfile
     ports:

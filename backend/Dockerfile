@@ -1,4 +1,9 @@
-FROM python:3.13-slim
+# Базовый образ запинен по digest (не только по тегу): тег мутабелен, а
+# sha256-digest фиксирует конкретный неизменяемый образ — воспроизводимые
+# сборки и защита от подмены/переноса тега. Тег рядом оставлен для читаемости и
+# автообновления digest'а (Dependabot ecosystem: docker; либо
+# infra/update-image-digests.sh). Обновлять digest вместе с апгрейдом тега.
+FROM python:3.13-slim@sha256:6771159cd4fa5d9bba1258caf0b82e6b73458c694d178ad97c5e925c2d0e1a91
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1

@@ -40,7 +40,8 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17-alpine
+        # Запинен по digest как и в compose (единый образ во всех окружениях).
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
         env:
           POSTGRES_USER: ele
           POSTGRES_PASSWORD: ele
@@ -77,3 +78,56 @@ jobs:
         run: python manage.py makemigrations --check --dry-run
       - name: Tests
         run: python manage.py test -v2
+
+  security:
+    name: Security (trivy + install.sh integrity)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      # B64 — целостность install.sh: контрольная сумма коммитится в репозиторий
+      # (install.sh.sha256) и публикуется как ассет релиза; клиент может сверить
+      # скачанный установщик. Гард держит сумму в синхроне: если install.sh
+      # изменён без обновления суммы — CI падает (сумма перестаёт быть доверенной).
+      - name: install.sh checksum in sync
+        run: sha256sum -c install.sh.sha256
+
+      # B63 — сканирование Dockerfile'ов/compose на мисконфиги. Строгий гейт
+      # HIGH,CRITICAL; осознанные исключения — в .trivyignore (с обоснованием).
+      - name: Trivy — misconfig (Dockerfiles/compose)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          # Версия trivy зафиксирована → детерминированный набор check'ов
+          # мисконфига (ровно тот, что валидирован локально); БД уязвимостей
+          # всё равно тянется свежая, так что новые CVE по-прежнему видны.
+          version: v0.72.0
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          trivyignores: .trivyignore
+          exit-code: "1"
+
+      # Уязвимости зависимостей (pip/npm-lock). Полный отчёт HIGH,CRITICAL —
+      # информационно, не блокирует (ignore-unfixed: без исправления смысла падать
+      # нет). Отдельный шаг ниже жёстко гейтит только исправимые CRITICAL.
+      - name: Trivy — vulnerabilities (report)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          version: v0.72.0
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Trivy — vulnerabilities (gate on fixable CRITICAL)
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          version: v0.72.0
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"

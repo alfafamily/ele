@@ -16,7 +16,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      # B64 — целостность install.sh: гарантируем, что коммитнутая сумма совпадает
+      # с установщиком именно этого тега, и прикладываем оба файла к релизу
+      # (неизменяемые ассеты релиза → проверяемая установка, см. docs/INSTALL.md).
+      - name: Verify install.sh checksum
+        run: sha256sum -c install.sh.sha256
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3
         with:
           generate_release_notes: true
+          files: |
+            install.sh
+            install.sh.sha256
