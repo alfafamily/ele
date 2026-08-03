@@ -24,6 +24,14 @@ if _https:
     # напрямую, docker-compose.prod.yml) и сам проставляет X-Forwarded-Proto —
     # без этой настройки request.is_secure() всегда считал бы соединение http.
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    # B39/F4: HSTS в https-режиме. Год + includeSubDomains — инстанс живёт на
+    # выделенном домене/поддомене, поэтому HSTS на нём не затрагивает соседние
+    # сервисы. preload не включаем (необратимая заявка в списки браузеров).
+    # Клиент с нетипичной схемой доменов может уменьшить/обнулить срок через
+    # DJANGO_HSTS_SECONDS (0 — полностью выключить заголовок).
+    SECURE_HSTS_SECONDS = env.int("DJANGO_HSTS_SECONDS", default=31536000)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0
+    SECURE_HSTS_PRELOAD = False
 
 # SMTP — опционален, как капча/Яндекс ID : пусто = приложение не
 # падает при старте, письма просто некуда слать (Setup Wizard пропустит

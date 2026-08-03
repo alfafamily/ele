@@ -8,10 +8,12 @@ Pillow==12.3.0
 requests==2.34.2
 boto3==1.43.46
 django-storages==1.14.6
-cryptography==44.0.0
-# Web Push (B44). pywebpush 1.x работает на requests (уже в зависимостях) и
-# совместим с cryptography 44; py-vapid/http-ece закреплены явно, чтобы резолвер
-# не подтянул версию py-vapid, требующую cryptography>=45 (конфликт с пином).
+# B39/F3: 48.0.1 закрывает известные CVE 44.0.0 (PYSEC-2026-35/-1284/-2141,
+# GHSA-537c-gmf6-5ccf). Используется в AES-шифровании бэкапов и в Web Push.
+cryptography==48.0.1
+# Web Push (B44). pywebpush 1.x работает на requests (уже в зависимостях).
+# py-vapid/http-ece закреплены явно; py-vapid 1.9.4 совместим с cryptography 48
+# (прежний пин 1.9.2 держал cryptography<45 — снят вместе с апгрейдом crypto).
 pywebpush==1.14.1
-py-vapid==1.9.2
+py-vapid==1.9.4
 http-ece==1.2.1

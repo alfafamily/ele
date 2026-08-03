@@ -58,5 +58,18 @@ handle /media/* {
 }
 
 handle {
+	# B39/F6: CSP как защита в глубину для SPA-оболочки. Внешние origin'ы заперты
+	# в аллоўлист реальных интеграций: Яндекс SmartCaptcha (единый хост
+	# smartcaptcha.yandexcloud.net — и скрипт, и iframe, и его запросы) и Google
+	# Fonts. Картинки — self/data/blob и любой https (файлы-реквизиты с S3
+	# отдаются с домена провайдера, заранее неизвестного). worker/blob — для
+	# PDF.js. object-src none, base-uri/frame-ancestors self — против внедрения
+	# плагинов, <base>-хайджека и кликджекинга.
+	#
+	# script/style-src держат 'unsafe-inline': прод-сборка Vite инлайнит
+	# модуль-preload-полифилл, а виджет капчи — свои inline-стили/скрипты; без
+	# nonce на статике это неизбежно. Полноценный script-src без 'unsafe-inline'
+	# (на nonce) — отдельная задача уровня сборки.
+	header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://smartcaptcha.yandexcloud.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://smartcaptcha.yandexcloud.net; frame-src 'self' https://smartcaptcha.yandexcloud.net; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"
 	reverse_proxy frontend:80
 }

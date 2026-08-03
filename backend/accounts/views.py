@@ -34,6 +34,7 @@ from .serializers import (
     UserListSerializer,
     UserSerializer,
 )
+from .throttling import LoginRateThrottle
 from .tokens import read_email_confirmation_token
 from .yandex_oauth import (
     build_authorize_url,
@@ -137,9 +138,14 @@ class ResendConfirmationView(APIView):
 
 class LoginView(APIView):
     """Сессионный вход с защитой от подбора пароля: капча с 3-й
-    подряд неудачной попытки, блокировка на 5 минут после 5-й."""
+    подряд неудачной попытки, блокировка на 5 минут после 5-й.
+
+    B39/F8: сверх пер-аккаунтной блокировки — IP-троттлинг (LoginRateThrottle)
+    как второй слой против шквала запросов и распределённого перебора с одного
+    адреса."""
 
     permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)

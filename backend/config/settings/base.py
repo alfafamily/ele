@@ -139,6 +139,13 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "EXCEPTION_HANDLER": "core.exceptions.exception_handler",
+    # B39/F8: лимит попыток входа по IP (второй слой поверх пер-аккаунтной
+    # блокировки; применяется точечно в LoginView через throttle_classes).
+    # Дефолт щадящий к офисам за одним NAT-адресом; можно поднять/понизить через
+    # LOGIN_THROTTLE_RATE (напр. "60/min"). Хранилище — дефолтный кэш процесса.
+    "DEFAULT_THROTTLE_RATES": {
+        "login": env("LOGIN_THROTTLE_RATE", default="30/min"),
+    },
 }
 
 # SPA и backend — на одном домене за Caddy, поэтому CORS не нужен.

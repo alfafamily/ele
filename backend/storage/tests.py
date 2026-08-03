@@ -322,17 +322,20 @@ class StorageSpaceEndpointTests(APITestCase):
 
 
 class InlineFileViewTests(APITestCase):
-    """Same-origin прокси файла для PDF-просмотрщика (обход CORS S3-ссылок)."""
+    """Same-origin прокси файла для PDF-просмотрщика (обход CORS S3-ссылок).
+    B39/F1: доступ к файлу проверяется по объекту-владельцу — админ видит любой
+    бизнес-файл, обычный сотрудник — только связанные с ним объекты."""
 
     def setUp(self):
-        self.user = User.objects.create_user(email="inline@e.com", password="Str0ng!Pass1")
+        self.admin = User.objects.create_user(email="inline-admin@e.com", password="Str0ng!Pass1", role="admin")
+        self.plain = User.objects.create_user(email="inline-plain@e.com", password="Str0ng!Pass1")
 
     def _store(self, name, content, ct):
         return store_uploaded_file(SimpleUploadedFile(name, content, content_type=ct), "test-inline")
 
     def test_streams_pdf_same_origin(self):
         sf = self._store("plan.pdf", b"%PDF-1.4 test-bytes", "application/pdf")
-        self.client.force_authenticate(self.user)
+        self.client.force_authenticate(self.admin)
         resp = self.client.get(f"/api/files/{sf.id}/inline/")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp["Content-Type"], "application/pdf")
@@ -342,7 +345,7 @@ class InlineFileViewTests(APITestCase):
 
     def test_non_pdf_gets_sandbox(self):
         sf = self._store("x.html", b"<b>hi</b>", "text/html")
-        self.client.force_authenticate(self.user)
+        self.client.force_authenticate(self.admin)
         resp = self.client.get(f"/api/files/{sf.id}/inline/")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp["Content-Security-Policy"], "sandbox")
@@ -353,5 +356,39 @@ class InlineFileViewTests(APITestCase):
         self.assertIn(resp.status_code, (401, 403))
 
     def test_missing_file_404(self):
-        self.client.force_authenticate(self.user)
+        self.client.force_authenticate(self.admin)
         self.assertEqual(self.client.get("/api/files/999999/inline/").status_code, 404)
+
+    # --- B39/F1: объектная авторизация инлайн-выдачи ---
+
+    def test_idor_unrelated_file_denied_for_plain_user(self):
+        """Файл, не связанный ни с одним доступным объектом, обычному
+        пользователю не отдаётся — перебор последовательных id закрыт."""
+        sf = self._store("secret.pdf", b"%PDF secret", "application/pdf")
+        self.client.force_authenticate(self.plain)
+        self.assertEqual(self.client.get(f"/api/files/{sf.id}/inline/").status_code, 404)
+
+    def test_employee_can_access_own_avatar(self):
+        from employees.models import Employee
+        sf = self._store("me.png", b"img-bytes", "image/png")
+        emp = Employee.objects.create(first_name="Иван", last_name="Иванов", avatar=sf)
+        self.plain.employee = emp
+        self.plain.save(update_fields=["employee"])
+        self.client.force_authenticate(self.plain)
+        self.assertEqual(self.client.get(f"/api/files/{sf.id}/inline/").status_code, 200)
+
+    def test_employee_cannot_access_other_avatar(self):
+        from employees.models import Employee
+        sf = self._store("other.png", b"img-bytes", "image/png")
+        Employee.objects.create(first_name="Пётр", last_name="Петров", avatar=sf)
+        self.client.force_authenticate(self.plain)
+        self.assertEqual(self.client.get(f"/api/files/{sf.id}/inline/").status_code, 404)
+
+    def test_backup_binary_denied_even_for_admin(self):
+        """Бинарники бэкапов инлайн не отдаются никому (скачиваются отдельным
+        авторизованным эндпоинтом)."""
+        sf = StoredFile.objects.create(
+            backend="local", path="backups/dump.bin", content_type="application/octet-stream"
+        )
+        self.client.force_authenticate(self.admin)
+        self.assertEqual(self.client.get(f"/api/files/{sf.id}/inline/").status_code, 404)

@@ -2,12 +2,14 @@ from smtplib import SMTPException
 from unittest import mock
 
 from django.core import mail
+from django.core.cache import cache
 from django.test import override_settings
 from rest_framework.test import APITestCase
 
 from company.models import Company
 
 from .models import User
+from .throttling import LoginRateThrottle
 from .tokens import make_set_password_link
 
 
@@ -437,8 +439,38 @@ class PasswordResetTests(APITestCase):
         self.assertTrue(user.check_password("New!Pass456"))
 
 
+class LoginThrottleTests(APITestCase):
+    """B39/F8: IP-троттлинг попыток входа — второй слой поверх пер-аккаунтной
+    блокировки. При лимите 3/мин четвёртый запрос с того же IP → 429.
+
+    Лимит подменяем на классе троттла: DRF фиксирует THROTTLE_RATES как атрибут
+    класса на импорте, поэтому override_settings(REST_FRAMEWORK=...) до него не
+    доходит."""
+
+    def setUp(self):
+        cache.clear()
+        self._orig_rates = LoginRateThrottle.THROTTLE_RATES
+        LoginRateThrottle.THROTTLE_RATES = {**self._orig_rates, "login": "3/min"}
+
+    def tearDown(self):
+        LoginRateThrottle.THROTTLE_RATES = self._orig_rates
+        cache.clear()
+
+    def test_returns_429_after_rate_exceeded(self):
+        payload = {"email": "nobody@example.com", "password": "wrong"}
+        for _ in range(3):
+            resp = self.client.post("/api/auth/login/", payload, format="json")
+            self.assertNotEqual(resp.status_code, 429, resp.data)
+        resp = self.client.post("/api/auth/login/", payload, format="json")
+        self.assertEqual(resp.status_code, 429, resp.data)
+
+
 class LoginBruteForceTests(APITestCase):
     def setUp(self):
+        # B39/F8: сбрасываем историю IP-троттла перед каждым тестом — иначе
+        # накопленные между тестами попытки входа с 127.0.0.1 могли бы дать 429
+        # вместо ожидаемых 400/423 (сам lockout живёт в БД, кэш его не трогает).
+        cache.clear()
         self.user = User.objects.create_user(email="worker@example.com", password="Correct!Pass1")
 
     def test_lockout_after_5_failed_attempts(self):

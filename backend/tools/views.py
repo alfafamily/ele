@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -82,6 +83,14 @@ class ToolViewSet(AccountableAssetViewSet):
             created_by=user if getattr(user, "is_authenticated", False) else None,
         )
 
+    def _locked(self, tool):
+        # B39/F2: сериализуем конкурентные операции остатка на строке Tool.
+        # Все count-then-write действия сперва блокируют родительскую карточку —
+        # это единая точка синхронизации: два параллельных запроса по одному
+        # инструменту не проходят проверку остатка одновременно (иначе —
+        # потерянное обновление quantity и рассинхрон с суммой allocations).
+        return Tool.objects.select_for_update().get(pk=tool.pk)
+
     def _guard(self, tool):
         if tool.is_written_off:
             return Response({"detail": "Инструмент списан — операции недоступны."}, status=409)
@@ -152,18 +161,20 @@ class ToolViewSet(AccountableAssetViewSet):
         """Приход: qty единиц. Склад необязателен — если указан, приход ложится
         на него; иначе пополняет свободный остаток без склада."""
         tool = self.get_object()
-        if (err := self._guard(tool)) is not None:
-            return err
         qty, err = self._parse_positive_qty(request)
         if err is not None:
             return err
-        storage = self._opt_storage(request, "place")
         comment = (request.data.get("comment") or "").strip()
-        tool.quantity += qty
-        tool.save(update_fields=["quantity"])
-        if storage is not None:
-            self._inc_alloc(tool, qty, place=storage)
-        self._record_movement(tool, ToolMovement.Kind.ADD, qty, request.user, comment, place=storage)
+        with transaction.atomic():
+            tool = self._locked(tool)
+            if (err := self._guard(tool)) is not None:
+                return err
+            storage = self._opt_storage(request, "place")
+            tool.quantity += qty
+            tool.save(update_fields=["quantity"])
+            if storage is not None:
+                self._inc_alloc(tool, qty, place=storage)
+            self._record_movement(tool, ToolMovement.Kind.ADD, qty, request.user, comment, place=storage)
         return Response(ToolSerializer(self.get_object()).data)
 
     @action(detail=True, methods=["post"], url_path="write-off-units", permission_classes=[IsAdminOrAccountant])
@@ -171,22 +182,25 @@ class ToolViewSet(AccountableAssetViewSet):
         """Списание qty из свободного остатка. Склад необязателен: если указан —
         списываем с него; иначе — из свободного остатка без склада."""
         tool = self.get_object()
-        if (err := self._guard(tool)) is not None:
-            return err
         qty, err = self._parse_positive_qty(request)
         if err is not None:
             return err
-        storage = self._opt_storage(request, "place")
-        if storage is not None:
-            if qty > self._free_at(tool, storage):
-                return Response({"detail": "Нельзя списать больше, чем лежит на этом складе."}, status=409)
-            self._dec_alloc(tool.allocations.get(place=storage), qty)
-        else:
-            if qty > self._unplaced_free(tool):
-                return Response({"detail": "Нельзя списать больше свободного остатка без склада."}, status=409)
-        tool.quantity -= qty
-        tool.save(update_fields=["quantity"])
-        self._record_movement(tool, ToolMovement.Kind.WRITE_OFF, qty, request.user, comment=(request.data.get("comment") or "").strip(), place=storage)
+        comment = (request.data.get("comment") or "").strip()
+        with transaction.atomic():
+            tool = self._locked(tool)
+            if (err := self._guard(tool)) is not None:
+                return err
+            storage = self._opt_storage(request, "place")
+            if storage is not None:
+                if qty > self._free_at(tool, storage):
+                    return Response({"detail": "Нельзя списать больше, чем лежит на этом складе."}, status=409)
+                self._dec_alloc(tool.allocations.get(place=storage), qty)
+            else:
+                if qty > self._unplaced_free(tool):
+                    return Response({"detail": "Нельзя списать больше свободного остатка без склада."}, status=409)
+            tool.quantity -= qty
+            tool.save(update_fields=["quantity"])
+            self._record_movement(tool, ToolMovement.Kind.WRITE_OFF, qty, request.user, comment=comment, place=storage)
         return Response(ToolSerializer(self.get_object()).data)
 
     @action(detail=True, methods=["post"], url_path="assign-units", permission_classes=[IsAdminOrAccountant])
@@ -197,45 +211,47 @@ class ToolViewSet(AccountableAssetViewSet):
         from core.placement import get_workplace
 
         tool = self.get_object()
-        if (err := self._guard(tool)) is not None:
-            return err
         qty, err = self._parse_positive_qty(request)
         if err is not None:
             return err
-        storage = self._opt_storage(request, "from_place")
-        if storage is not None:
-            if qty > self._free_at(tool, storage):
-                return Response({"detail": "Нельзя выдать больше, чем лежит на этом складе."}, status=409)
-        else:
-            if qty > self._unplaced_free(tool):
-                return Response({"detail": "Нельзя выдать больше свободного остатка без склада."}, status=409)
-        mode = request.data.get("mode", "mobile")
-        employee = target_place = None
-        if mode == "stationary":
-            target_place = get_workplace(request.data.get("place"))
-        else:
-            employee = get_object_or_404(Employee, pk=request.data.get("employee"))
         comment = (request.data.get("comment") or "").strip()
-        if storage is not None:
-            self._dec_alloc(tool.allocations.get(place=storage), qty)
-        self._inc_alloc(tool, qty, employee=employee, place=target_place)
-        mv = self._record_movement(
-            tool, ToolMovement.Kind.ASSIGN, qty, request.user, comment,
-            employee=employee, place=target_place, storage_place=storage,
-        )
-        # B32: раздача за сотрудником — эпизод акцепта (каждый ASSIGN отдельно;
-        # прежние эпизоды не закрываем). ASSIGN-движение связываем с эпизодом,
-        # чтобы парный возврат при отказе показывался одной записью. Рабочее
-        # место — без акцепта.
-        if employee is not None:
-            from core.assignments import create_assignment
-
-            a = create_assignment(
-                tool, employee, request.user, return_place=storage,
-                return_quantity=qty, close_prior=False,
+        with transaction.atomic():
+            tool = self._locked(tool)
+            if (err := self._guard(tool)) is not None:
+                return err
+            storage = self._opt_storage(request, "from_place")
+            if storage is not None:
+                if qty > self._free_at(tool, storage):
+                    return Response({"detail": "Нельзя выдать больше, чем лежит на этом складе."}, status=409)
+            else:
+                if qty > self._unplaced_free(tool):
+                    return Response({"detail": "Нельзя выдать больше свободного остатка без склада."}, status=409)
+            mode = request.data.get("mode", "mobile")
+            employee = target_place = None
+            if mode == "stationary":
+                target_place = get_workplace(request.data.get("place"))
+            else:
+                employee = get_object_or_404(Employee, pk=request.data.get("employee"))
+            if storage is not None:
+                self._dec_alloc(tool.allocations.get(place=storage), qty)
+            self._inc_alloc(tool, qty, employee=employee, place=target_place)
+            mv = self._record_movement(
+                tool, ToolMovement.Kind.ASSIGN, qty, request.user, comment,
+                employee=employee, place=target_place, storage_place=storage,
             )
-            mv.assignment = a
-            mv.save(update_fields=["assignment"])
+            # B32: раздача за сотрудником — эпизод акцепта (каждый ASSIGN отдельно;
+            # прежние эпизоды не закрываем). ASSIGN-движение связываем с эпизодом,
+            # чтобы парный возврат при отказе показывался одной записью. Рабочее
+            # место — без акцепта.
+            if employee is not None:
+                from core.assignments import create_assignment
+
+                a = create_assignment(
+                    tool, employee, request.user, return_place=storage,
+                    return_quantity=qty, close_prior=False,
+                )
+                mv.assignment = a
+                mv.save(update_fields=["assignment"])
         return Response(ToolSerializer(self.get_object()).data)
 
     @action(detail=True, methods=["post"], url_path="unassign-units", permission_classes=[IsAdminOrAccountant])
@@ -246,37 +262,39 @@ class ToolViewSet(AccountableAssetViewSet):
         from core.placement import get_workplace
 
         tool = self.get_object()
-        if (err := self._guard(tool)) is not None:
-            return err
         qty, err = self._parse_positive_qty(request)
         if err is not None:
             return err
-        storage = self._opt_storage(request, "to_place")
-        mode = request.data.get("mode", "mobile")
-        employee = source_place = None
-        if mode == "stationary":
-            source_place = get_workplace(request.data.get("place"))
-            alloc = tool.allocations.filter(place=source_place).first()
-            miss = "Нельзя вернуть больше, чем закреплено за рабочим местом."
-        else:
-            employee = get_object_or_404(Employee, pk=request.data.get("employee"))
-            alloc = tool.allocations.filter(employee=employee).first()
-            miss = "Нельзя вернуть больше, чем закреплено за сотрудником."
-        if not alloc or qty > alloc.quantity:
-            return Response({"detail": miss}, status=409)
         comment = (request.data.get("comment") or "").strip()
-        self._dec_alloc(alloc, qty)
-        if storage is not None:
-            self._inc_alloc(tool, qty, place=storage)
-        self._record_movement(
-            tool, ToolMovement.Kind.UNASSIGN, qty, request.user, comment,
-            employee=employee, place=source_place, storage_place=storage,
-        )
-        # B32: возврат от сотрудника закрывает эпизоды акцепта (FIFO по qty).
-        if employee is not None:
-            from core.assignments import close_tool_episodes
+        with transaction.atomic():
+            tool = self._locked(tool)
+            if (err := self._guard(tool)) is not None:
+                return err
+            storage = self._opt_storage(request, "to_place")
+            mode = request.data.get("mode", "mobile")
+            employee = source_place = None
+            if mode == "stationary":
+                source_place = get_workplace(request.data.get("place"))
+                alloc = tool.allocations.filter(place=source_place).first()
+                miss = "Нельзя вернуть больше, чем закреплено за рабочим местом."
+            else:
+                employee = get_object_or_404(Employee, pk=request.data.get("employee"))
+                alloc = tool.allocations.filter(employee=employee).first()
+                miss = "Нельзя вернуть больше, чем закреплено за сотрудником."
+            if not alloc or qty > alloc.quantity:
+                return Response({"detail": miss}, status=409)
+            self._dec_alloc(alloc, qty)
+            if storage is not None:
+                self._inc_alloc(tool, qty, place=storage)
+            self._record_movement(
+                tool, ToolMovement.Kind.UNASSIGN, qty, request.user, comment,
+                employee=employee, place=source_place, storage_place=storage,
+            )
+            # B32: возврат от сотрудника закрывает эпизоды акцепта (FIFO по qty).
+            if employee is not None:
+                from core.assignments import close_tool_episodes
 
-            close_tool_episodes(tool, employee, qty)
+                close_tool_episodes(tool, employee, qty)
         return Response(ToolSerializer(self.get_object()).data)
 
     @action(detail=True, methods=["post"], url_path="transfer-units", permission_classes=[IsAdminOrAccountant])
@@ -287,29 +305,31 @@ class ToolViewSet(AccountableAssetViewSet):
         from core.placement import get_storage_place
 
         tool = self.get_object()
-        if (err := self._guard(tool)) is not None:
-            return err
         qty, err = self._parse_positive_qty(request)
         if err is not None:
             return err
-        from_place = self._opt_storage(request, "from_place")
-        to_place = get_storage_place(request.data.get("to_place"), field="to_place")
-        if from_place is not None:
-            if from_place.id == to_place.id:
-                return Response({"detail": "Склады должны различаться."}, status=400)
-            if qty > self._free_at(tool, from_place):
-                return Response({"detail": "Нельзя переместить больше, чем лежит на складе-источнике."}, status=409)
-            self._dec_alloc(tool.allocations.get(place=from_place), qty)
-        else:
-            # Размещение остатка «без склада» на реальный склад.
-            if qty > self._unplaced_free(tool):
-                return Response({"detail": "Нельзя разместить больше остатка без склада."}, status=409)
         comment = (request.data.get("comment") or "").strip()
-        self._inc_alloc(tool, qty, place=to_place)
-        self._record_movement(
-            tool, ToolMovement.Kind.TRANSFER, qty, request.user, comment,
-            place=to_place, storage_place=from_place,
-        )
+        with transaction.atomic():
+            tool = self._locked(tool)
+            if (err := self._guard(tool)) is not None:
+                return err
+            from_place = self._opt_storage(request, "from_place")
+            to_place = get_storage_place(request.data.get("to_place"), field="to_place")
+            if from_place is not None:
+                if from_place.id == to_place.id:
+                    return Response({"detail": "Склады должны различаться."}, status=400)
+                if qty > self._free_at(tool, from_place):
+                    return Response({"detail": "Нельзя переместить больше, чем лежит на складе-источнике."}, status=409)
+                self._dec_alloc(tool.allocations.get(place=from_place), qty)
+            else:
+                # Размещение остатка «без склада» на реальный склад.
+                if qty > self._unplaced_free(tool):
+                    return Response({"detail": "Нельзя разместить больше остатка без склада."}, status=409)
+            self._inc_alloc(tool, qty, place=to_place)
+            self._record_movement(
+                tool, ToolMovement.Kind.TRANSFER, qty, request.user, comment,
+                place=to_place, storage_place=from_place,
+            )
         return Response(ToolSerializer(self.get_object()).data)
 
     @action(detail=True, methods=["post"], url_path="write-off", permission_classes=[IsAdminOrAccountant])
@@ -318,27 +338,29 @@ class ToolViewSet(AccountableAssetViewSet):
         остаток (весь остаток уходит из обращения). Списанное количество
         показывается строкой «Списано: N шт.» в истории (см. history_list)."""
         tool = self.get_object()
-        if tool.is_written_off:
-            return Response({"detail": "Инструмент уже списан."}, status=409)
         comment = (request.data.get("comment") or "").strip()
         # Фиксируем открепление закреплённых (за сотрудниками/рабочими местами)
         # частей; свободный складской остаток просто уходит вместе с карточкой.
         from core.assignments import close_tool_episodes
 
-        for alloc in list(tool.allocations.filter(Q(employee__isnull=False) | Q(place__place_type__in=("workplace", "common")))):
-            self._record_movement(
-                tool, ToolMovement.Kind.UNASSIGN, alloc.quantity, request.user, comment,
-                employee=alloc.employee, place=alloc.place,
-            )
-            if alloc.employee_id:  # B32: закрыть все эпизоды акцепта сотрудника
-                close_tool_episodes(tool, alloc.employee, None)
-        tool.allocations.all().delete()
-        tool.quantity = 0
-        tool.is_written_off = True
-        tool.written_off_at = timezone.now()
-        if comment:
-            tool._change_reason = comment
-        tool.save(update_fields=["quantity", "is_written_off", "written_off_at"])
+        with transaction.atomic():
+            tool = self._locked(tool)
+            if tool.is_written_off:
+                return Response({"detail": "Инструмент уже списан."}, status=409)
+            for alloc in list(tool.allocations.filter(Q(employee__isnull=False) | Q(place__place_type__in=("workplace", "common")))):
+                self._record_movement(
+                    tool, ToolMovement.Kind.UNASSIGN, alloc.quantity, request.user, comment,
+                    employee=alloc.employee, place=alloc.place,
+                )
+                if alloc.employee_id:  # B32: закрыть все эпизоды акцепта сотрудника
+                    close_tool_episodes(tool, alloc.employee, None)
+            tool.allocations.all().delete()
+            tool.quantity = 0
+            tool.is_written_off = True
+            tool.written_off_at = timezone.now()
+            if comment:
+                tool._change_reason = comment
+            tool.save(update_fields=["quantity", "is_written_off", "written_off_at"])
         return Response(ToolSerializer(self.get_object()).data)
 
     @action(detail=True, methods=["get"], url_path="history")
