@@ -29,6 +29,10 @@
   background: var(--color-badge-bg);
   color: var(--color-badge-text);
 }
+.ele-pill--warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
 .ele-pill--role-admin {
   background: var(--color-role-admin-bg);
   color: var(--color-role-admin-text);

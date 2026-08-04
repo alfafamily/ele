@@ -27,6 +27,9 @@ export function ConsentCard({ employee }) {
   const operator = consents.find((c) => c.source === 'operator')
   const self = consents.find((c) => c.source === 'self')
   const has = Boolean(operator || self)
+  // B65: цвет плашки — как у иконки в списке: согласие субъекта → зелёная,
+  // только отметка оператора → жёлтая, ничего → нейтральная.
+  const pillVariant = self ? 'assigned' : operator ? 'warning' : 'meta'
   // Перечень документов — из последнего доступного снимка (self приоритетнее).
   const documents = (self?.documents?.length ? self.documents : operator?.documents) || []
 
@@ -48,7 +51,7 @@ export function ConsentCard({ employee }) {
           style={{ color: 'var(--color-text-muted)', flex: 'none', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}
         />
         <div style={{ fontSize: 16, fontWeight: 600 }}>Согласие на обработку ПДн</div>
-        <StatusPill variant={has ? 'assigned' : 'meta'}>{has ? 'Получено' : 'Не зафиксировано'}</StatusPill>
+        <StatusPill variant={pillVariant}>{has ? 'Получено' : 'Не зафиксировано'}</StatusPill>
       </button>
 
       {!open ? null : (
