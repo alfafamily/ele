@@ -23,8 +23,9 @@ const TABS = [
 // в одну колонку «Сотрудник» (ФИО + Должность + Отдел), остальные — как есть.
 const DESKTOP_COLUMNS = [
   { key: 'last_name', label: 'ФИО', sortable: true, width: '1fr' },
-  { key: 'position', label: 'Должность', width: '190px' },
-  { key: 'department', label: 'Отдел', width: '160px' },
+  { key: 'position', label: 'Должность', width: '180px' },
+  { key: 'department', label: 'Отдел', width: '150px' },
+  { key: 'consent', label: 'Согласие ПДн', width: '190px' },
   { key: 'chevron', label: '', width: '30px' },
 ]
 const MOBILE_COLUMNS = [
@@ -54,22 +55,31 @@ function avatarNode(row) {
   )
 }
 
-// B65. Иконка статуса согласия на обработку ПДн между аватаром и ФИО в списке.
-// self — согласие выразил сам сотрудник (зелёная); operator — отметил
-// ответственный (жёлтая); none — не получено/не указано (красная). У обезличенных
-// не показываем (их ПДн удалены, как и блок «Согласие» на карточке).
-const CONSENT_ICON = {
-  self: { color: 'var(--color-success)', title: 'Сотрудник выразил согласие на обработку ПДн' },
-  operator: { color: 'var(--color-warning)', title: 'Ответственный отметил, что согласие от сотрудника на обработку ПДн получено' },
-  none: { color: 'var(--color-error)', title: 'Согласие не получено от сотрудника или не указано' },
+// B65. Статус согласия на обработку ПДн в отдельной колонке списка: цветная
+// иконка + короткая подпись. self — выразил сам сотрудник (зелёная); operator —
+// отметил ответственный (жёлтая); none — не получено/не указано (красная).
+// Полная формулировка — в тултипе. У обезличенных не показываем (их ПДн удалены,
+// как и блок «Согласие» на карточке).
+const CONSENT_META = {
+  self: { color: 'var(--color-success)', text: 'Получено от сотрудника', title: 'Сотрудник выразил согласие на обработку ПДн' },
+  operator: { color: 'var(--color-warning)', text: 'Отмечено ответственным', title: 'Ответственный отметил, что согласие от сотрудника на обработку ПДн получено' },
+  none: { color: 'var(--color-error)', text: 'Не получено', title: 'Согласие не получено от сотрудника или не указано' },
 }
 
-function consentIconNode(row) {
+function consentCell(row) {
   if (row.is_anonymized) return null
-  const meta = CONSENT_ICON[row.consent_status] || CONSENT_ICON.none
+  const meta = CONSENT_META[row.consent_status] || CONSENT_META.none
   return (
-    <Tooltip label={meta.title} role="img" aria-label={meta.title} style={{ flex: 'none', color: meta.color }}>
-      <Icon name="clipboard-pen-line" size={18} strokeWidth={2} />
+    <Tooltip
+      label={meta.title}
+      role="img"
+      aria-label={meta.title}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0, maxWidth: '100%', color: meta.color }}
+    >
+      <Icon name="clipboard-pen-line" size={16} strokeWidth={2} style={{ flex: 'none' }} />
+      <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {meta.text}
+      </span>
     </Tooltip>
   )
 }
@@ -173,26 +183,26 @@ export function EmployeeListPage() {
             <Link key={row.id} to={`/employees/${row.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
               <TableRow columns={columns}>
                 {isMobile ? (
-                  // «Сотрудник»: ФИО в 2 строки · должность/отдел · статус
+                  // «Сотрудник»: ФИО в 2 строки · должность/отдел · согласие ПДн
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11, minWidth: 0 }}>
                     {avatarNode(row)}
-                    {consentIconNode(row)}
                     <div style={{ minWidth: 0 }}>
                       <div className="ele-clamp-2" style={{ fontWeight: 600 }}>{row.full_name}</div>
                       <div style={{ color: 'var(--color-text-muted)', fontSize: 12, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {[row.position, row.department].filter(Boolean).join(' · ') || '—'}
                       </div>
+                      {row.is_anonymized ? null : <div style={{ marginTop: 4 }}>{consentCell(row)}</div>}
                     </div>
                   </div>
                 ) : (
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
                       {avatarNode(row)}
-                      {consentIconNode(row)}
                       <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.full_name}</span>
                     </div>
                     <div className="ele-clamp-2">{row.position || '—'}</div>
                     <div className="ele-clamp-2" style={{ color: 'var(--color-text-muted)', fontSize: 13 }}>{row.department || '—'}</div>
+                    <div style={{ minWidth: 0 }}>{consentCell(row)}</div>
                     <div style={{ textAlign: 'right', color: 'var(--color-border-strong)' }}>
                       <Icon name="chevron-right" size={18} strokeWidth={2} />
                     </div>
