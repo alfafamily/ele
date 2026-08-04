@@ -2,7 +2,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from core.eav import apply_field_values, missing_required_fields, upsert_custom_fields
-from core.serializers import place_detail, validate_storage_place
+from core.serializers import place_detail, serialize_type_files, validate_storage_place
 from equipment.serializers import EquipmentMiniSerializer
 from storage.serializers import StoredFileSerializer
 
@@ -14,6 +14,7 @@ from .models import (
     LicenseType,
     LicenseTypeField,
     LicenseTypeFieldOption,
+    LicenseTypeFile,
 )
 
 
@@ -85,11 +86,16 @@ class LicenseTypeFieldSerializer(serializers.ModelSerializer):
 class LicenseTypeSerializer(serializers.ModelSerializer):
     fields = LicenseTypeFieldSerializer(many=True, read_only=True)
     objects_count = serializers.IntegerField(source="licenses.count", read_only=True)
+    # B67: библиотека общих файлов Вида (read-only, см. serialize_type_files).
+    type_files = serializers.SerializerMethodField()
 
     class Meta:
         model = LicenseType
-        fields = ["id", "name", "kind", "is_archived", "is_locked", "fields", "objects_count"]
+        fields = ["id", "name", "kind", "is_archived", "is_locked", "fields", "objects_count", "type_files"]
         read_only_fields = ["is_locked"]
+
+    def get_type_files(self, obj):
+        return serialize_type_files(obj.type_files.all())
 
     def validate(self, attrs):
         if self.instance and self.instance.is_locked and "name" in attrs and attrs["name"] != self.instance.name:
@@ -171,6 +177,11 @@ class LicenseSerializer(serializers.ModelSerializer):
     field_values = LicenseFieldValueOutSerializer(many=True, read_only=True)
     custom_fields = LicenseCustomFieldSerializer(many=True, required=False)
     field_values_input = LicenseFieldValueInputSerializer(many=True, required=False, write_only=True)
+    # B67: выбранные для лицензии файлы из библиотеки Вида (чтение/запись).
+    type_files = serializers.SerializerMethodField()
+    type_file_ids = serializers.PrimaryKeyRelatedField(
+        queryset=LicenseTypeFile.objects.all(), many=True, required=False, write_only=True
+    )
 
     class Meta:
         model = License
@@ -191,12 +202,17 @@ class LicenseSerializer(serializers.ModelSerializer):
             "field_values",
             "field_values_input",
             "custom_fields",
+            "type_files",
+            "type_file_ids",
             "created_at",
         ]
         read_only_fields = ["is_retired", "retired_at", "created_at"]
 
     def get_status(self, obj):
         return "assigned" if obj.equipment_id else "free"
+
+    def get_type_files(self, obj):
+        return serialize_type_files(obj.type_files.all())
 
     def get_is_hardware(self, obj):
         return obj.license_type.kind == LicenseType.Kind.HARDWARE
@@ -228,6 +244,14 @@ class LicenseSerializer(serializers.ModelSerializer):
                 )
 
         license_type = attrs.get("license_type") or getattr(self.instance, "license_type", None)
+        # B67: выбранные файлы Вида должны принадлежать выбранному Виду.
+        type_file_ids = attrs.get("type_file_ids")
+        if type_file_ids:
+            for tf in type_file_ids:
+                if tf.license_type_id != license_type.pk:
+                    raise serializers.ValidationError(
+                        {"type_file_ids": ["Файл не относится к выбранному Виду лицензии."]}
+                    )
         field_values_input = attrs.get("field_values_input")
         if field_values_input:
             for item in field_values_input:
@@ -256,7 +280,10 @@ class LicenseSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         field_values_input = validated_data.pop("field_values_input", [])
         custom_fields_data = validated_data.pop("custom_fields", [])
+        type_files = validated_data.pop("type_file_ids", None)
         instance = License.objects.create(**validated_data)
+        if type_files is not None:
+            instance.type_files.set(type_files)
         if field_values_input:
             apply_field_values(instance, "license", LicenseFieldValue, field_values_input, instance.license_type.fields.all())
         upsert_custom_fields(instance, LicenseCustomField, "license", custom_fields_data)
@@ -269,9 +296,12 @@ class LicenseSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         field_values_input = validated_data.pop("field_values_input", None)
         custom_fields_data = validated_data.pop("custom_fields", None)
+        type_files = validated_data.pop("type_file_ids", None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+        if type_files is not None:
+            instance.type_files.set(type_files)
         if field_values_input is not None:
             apply_field_values(instance, "license", LicenseFieldValue, field_values_input, instance.license_type.fields.all())
         if custom_fields_data is not None:

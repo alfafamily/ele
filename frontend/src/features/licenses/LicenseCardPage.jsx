@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
+import { TypeFilesView } from '../../shared/TypeFilesView.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { PlacementRow } from '../../shared/PlacementRow.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
@@ -137,32 +138,42 @@ export function LicenseCardPage() {
                 )}
               </Card>
 
-              {fileValues.length > 0 ? (
+              {/* B67: файловые реквизиты + выбранные общие файлы Вида. */}
+              {fileValues.length > 0 || (license.type_files?.length ?? 0) > 0 ? (
                 <Card>
                   <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Файлы</div>
-                  <div className="ele-field-grid">
-                    {fileValues.map((fv) => (
-                      <FieldValueDisplay key={fv.field} fv={fv} />
-                    ))}
-                  </div>
+                  {fileValues.length > 0 ? (
+                    <div className="ele-field-grid">
+                      {fileValues.map((fv) => (
+                        <FieldValueDisplay key={fv.field} fv={fv} />
+                      ))}
+                    </div>
+                  ) : null}
+                  {(license.type_files?.length ?? 0) > 0 ? (
+                    <div style={{ marginTop: fileValues.length > 0 ? 18 : 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+                        Общие файлы вида
+                      </div>
+                      <TypeFilesView files={license.type_files} />
+                    </div>
+                  ) : null}
                 </Card>
               ) : null}
             </>
           )
         })()}
 
-        <Card>
-          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Дополнительные поля</div>
-          {license.custom_fields.length === 0 ? (
-            <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>Дополнительных полей нет.</div>
-          ) : (
+        {/* B67: блок доп. полей скрываем, если их нет. */}
+        {license.custom_fields.length > 0 ? (
+          <Card>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Дополнительные поля</div>
             <div className="ele-field-grid">
               {license.custom_fields.map((cf) => (
                 <Field key={cf.id} label={cf.name} value={cf.value} />
               ))}
             </div>
-          )}
-        </Card>
+          </Card>
+        ) : null}
         </div>
 
         {/* Боковой блок «Лицензия установлена на» — справа и липкий (desktop),

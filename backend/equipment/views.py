@@ -7,7 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.asset_views import AccountableAssetViewSet, AssetFieldFileMixin
+from core.asset_views import AccountableAssetViewSet, AssetFieldFileMixin, TypeFileMixin
 from core.eav import count_missing_for_field
 from core.eav_filters import csv_ids, eav_field_value_suggestions, eav_req_conditions
 from core.permissions import (
@@ -39,6 +39,7 @@ from .models import (
     EquipmentMaintenancePlan,
     EquipmentType,
     EquipmentTypeField,
+    EquipmentTypeFile,
     MaintenanceRecord,
     MaintenanceRecordItem,
     MaintenanceRegulation,
@@ -53,10 +54,13 @@ from .serializers import (
 )
 
 
-class EquipmentTypeViewSet(viewsets.ModelViewSet):
-    queryset = EquipmentType.objects.all().order_by("name").prefetch_related("fields__options")
+class EquipmentTypeViewSet(TypeFileMixin, viewsets.ModelViewSet):
+    queryset = EquipmentType.objects.all().order_by("name").prefetch_related("fields__options", "type_files__stored_file")
     serializer_class = EquipmentTypeSerializer
     permission_classes = [IsAdminOrAccountant]
+    type_file_model = EquipmentTypeFile
+    type_owner_field = "equipment_type"
+    type_file_storage_dir = "equipment/type-files"
 
     def destroy(self, request, *args, **kwargs):
         try:
@@ -196,6 +200,8 @@ class EquipmentViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
             "field_values__field", "field_values__files__stored_file", "custom_fields", "place__employees",
             # B13+: планы+регламенты для сводной индикации ТО (без N+1).
             "maintenance_plans__regulation",
+            # B67: выбранные файлы Вида (раздел «Файлы» карточки), без N+1.
+            "type_files__stored_file",
         )
         qs = annotate_acceptance(qs, Equipment)  # B32: статус акцепта для плашки
         user = self.request.user

@@ -1,6 +1,8 @@
 from django.db import models
 from simple_history.models import HistoricalRecords
 
+from core.models import TypeFileBase
+
 
 class EquipmentType(models.Model):
     """Вид оборудования — классификатор, задающий набор реквизитов."""
@@ -96,6 +98,16 @@ class EquipmentTypeFieldOption(models.Model):
         return f"{self.field.name} / {self.value}"
 
 
+class EquipmentTypeFile(TypeFileBase):
+    """Общий файл Вида оборудования (B67) — библиотека Вида."""
+
+    equipment_type = models.ForeignKey(EquipmentType, on_delete=models.CASCADE, related_name="type_files")
+
+    class Meta(TypeFileBase.Meta):
+        verbose_name = "Общий файл вида оборудования"
+        verbose_name_plural = "Общие файлы вида оборудования"
+
+
 class Equipment(models.Model):
     """Единица физического актива компании."""
 
@@ -123,6 +135,10 @@ class Equipment(models.Model):
     equipment_type = models.ForeignKey(
         EquipmentType, verbose_name="Вид оборудования", on_delete=models.PROTECT, related_name="equipment",
     )
+    # B67: выбранные для этого экземпляра файлы из библиотеки Вида (подмножество
+    # EquipmentType.type_files). Показываются в разделе «Файлы» карточки после
+    # файловых реквизитов экземпляра.
+    type_files = models.ManyToManyField(EquipmentTypeFile, blank=True, related_name="equipment")
     # B38: индекс под курсорную пагинацию (WHERE created_at < cursor ORDER BY
     # created_at DESC) — на больших наборах убирает Seq Scan+сортировку каждой
     # страницы (синтетический бенч 100k строк: 10.7мс → 0.45мс).

@@ -20,6 +20,7 @@ SIM («Корп. связь») и Средства доступа (AccessPass) �
 EAV-реквизитов с файлами и ТО, а размещение — своё (см. отчёт B53, R4).
 """
 
+from django.db import transaction
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -158,3 +159,69 @@ class AssetFieldFileMixin:
         field_file.delete()
         delete_stored_file(stored)
         return Response(status=204)
+
+
+class TypeFileMixin:
+    """Библиотека общих файлов Вида имущества (B67) — CRUD поверх ``*TypeViewSet``.
+
+    Файлы принадлежат Виду (не экземпляру), одинаково для оборудования / лицензий
+    / транспорта; различаются только модель файла, имя FK на Тип и подкаталог
+    хранилища. Права — как у редактирования самих Видов (``IsAdminOrAccountant``).
+    Список файлов Вида отдаётся сериализатором Типа (``type_files``); здесь —
+    только добавление и удаление, оба возвращают обновлённый список.
+
+    Конкретный вьюсет задаёт:
+
+    * ``type_file_model``  — модель файла Вида (наследник ``TypeFileBase``);
+    * ``type_owner_field`` — имя FK на Тип (``"equipment_type"`` и т.п.);
+    * ``type_file_storage_dir`` — подкаталог хранилища (``"equipment/type-files"``).
+    """
+
+    type_file_model = None
+    type_owner_field = None
+    type_file_storage_dir = None
+
+    def _type_files_response(self, type_obj):
+        from storage.serializers import StoredFileSerializer
+
+        files = (
+            self.type_file_model.objects.filter(**{self.type_owner_field: type_obj}, stored_file__isnull=False)
+            .select_related("stored_file")
+        )
+        return Response([{"id": tf.id, "file": StoredFileSerializer(tf.stored_file).data} for tf in files])
+
+    @action(detail=True, methods=["post"], url_path="files", permission_classes=[IsAdminOrAccountant])
+    def upload_type_file(self, request, pk=None):
+        from storage.service import store_uploaded_file
+
+        type_obj = self.get_object()
+        file_objs = request.FILES.getlist("file")
+        if not file_objs:
+            return Response({"detail": "Файл не передан."}, status=400)
+        from company.limits import max_upload_bytes, max_upload_mb
+
+        limit, limit_mb = max_upload_bytes(), max_upload_mb()
+        for f in file_objs:
+            if f.size > limit:
+                return Response({"detail": f"Файл «{f.name}» больше {limit_mb} МБ."}, status=400)
+        for f in file_objs:
+            with transaction.atomic():
+                stored = store_uploaded_file(f, self.type_file_storage_dir)
+                self.type_file_model.objects.create(stored_file=stored, **{self.type_owner_field: type_obj})
+        return self._type_files_response(type_obj)
+
+    @action(
+        detail=True,
+        methods=["delete"],
+        url_path=r"files/(?P<file_pk>[^/.]+)",
+        permission_classes=[IsAdminOrAccountant],
+    )
+    def delete_type_file(self, request, pk=None, file_pk=None):
+        from storage.service import delete_stored_file
+
+        type_obj = self.get_object()
+        type_file = get_object_or_404(self.type_file_model, pk=file_pk, **{self.type_owner_field: type_obj})
+        stored = type_file.stored_file
+        type_file.delete()
+        delete_stored_file(stored)
+        return self._type_files_response(type_obj)

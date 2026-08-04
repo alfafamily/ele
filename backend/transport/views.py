@@ -7,7 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.asset_views import AccountableAssetViewSet, AssetFieldFileMixin
+from core.asset_views import AccountableAssetViewSet, AssetFieldFileMixin, TypeFileMixin
 from core.eav import count_missing_for_field
 from core.eav_filters import csv_ids, eav_field_value_suggestions, eav_req_conditions
 from core.permissions import (
@@ -44,6 +44,7 @@ from .models import (
     TransportMaintenancePlan,
     TransportType,
     TransportTypeField,
+    TransportTypeFile,
 )
 from .serializers import (
     MaintenanceRegulationSerializer,
@@ -56,10 +57,13 @@ from .serializers import (
 )
 
 
-class TransportTypeViewSet(viewsets.ModelViewSet):
-    queryset = TransportType.objects.all().order_by("name").prefetch_related("fields__options")
+class TransportTypeViewSet(TypeFileMixin, viewsets.ModelViewSet):
+    queryset = TransportType.objects.all().order_by("name").prefetch_related("fields__options", "type_files__stored_file")
     serializer_class = TransportTypeSerializer
     permission_classes = [IsAdminOrAccountant]
+    type_file_model = TransportTypeFile
+    type_owner_field = "transport_type"
+    type_file_storage_dir = "transport/type-files"
 
     def destroy(self, request, *args, **kwargs):
         try:
@@ -201,6 +205,8 @@ class TransportViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
             "maintenance_plans__regulation", "maintenance_records",
             "parking_spots__room__building", "parking_spots__room__plan_file",
             "passes__buildings",
+            # B67: выбранные файлы Вида (раздел «Файлы» карточки), без N+1.
+            "type_files__stored_file",
         )
         qs = annotate_acceptance(qs, Transport)  # B32
         user = self.request.user

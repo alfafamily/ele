@@ -6,6 +6,7 @@ import { EquipmentPicker } from '../../shared/EquipmentPicker.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
+import { TypeFilesPicker } from '../../shared/TypeFilesPicker.jsx'
 import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Spinner, TypeSelect } from '../../shared/ui'
 import { splitApiError } from '../../shared/formErrors.js'
 import { requiredValueErrors } from '../../shared/eav'
@@ -36,6 +37,7 @@ export function LicenseFormPage() {
   const [typeId, setTypeId] = useState('')
   const [values, setValues] = useState({})
   const [fileValues, setFileValues] = useState({})
+  const [typeFileIds, setTypeFileIds] = useState([]) // B67: выбранные файлы Вида (id)
   const [customFields, setCustomFields] = useState([])
   const [comment, setComment] = useState('')
   const [placementMode, setPlacementMode] = useState('free') // 'free' | 'equipment'
@@ -61,6 +63,7 @@ export function LicenseFormPage() {
       const fMap = {}
       for (const fv of data.field_values) if (fv.value_type === 'file') fMap[fv.field] = fv
       setFileValues(fMap)
+      setTypeFileIds((data.type_files || []).map((f) => f.id))
       setCustomFields(data.custom_fields)
     })
   }, [id, isEdit])
@@ -83,6 +86,7 @@ export function LicenseFormPage() {
     setTypeId(newTypeId)
     setValues({})
     setFileValues({})
+    setTypeFileIds([]) // B67: другой Вид — своя библиотека файлов
     setFieldErrors((prev) => ({ ...prev, license_type: undefined }))
     setValueErrors({})
   }
@@ -117,6 +121,7 @@ export function LicenseFormPage() {
       license_type: Number(typeId),
       field_values_input: typeFields.filter((f) => f.value_type !== 'file').map((f) => ({ field: f.id, value: values[f.id] ?? null })),
       custom_fields: customFields.filter((f) => f.name.trim()),
+      type_file_ids: typeFileIds,
     }
     // Размещение при создании: в оборудовании или свободна (аппаратная — по
     // желанию на складе). При редактировании размещение меняется из карточки.
@@ -244,6 +249,17 @@ export function LicenseFormPage() {
                     />
                   ))}
               </div>
+            </Card>
+          ) : null}
+
+          {selectedType && (selectedType.type_files?.length ?? 0) > 0 ? (
+            <Card>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 14 }}>Общие файлы вида</div>
+              <TypeFilesPicker
+                available={selectedType.type_files}
+                selectedIds={typeFileIds}
+                onChange={setTypeFileIds}
+              />
             </Card>
           ) : null}
 

@@ -19,6 +19,11 @@ export function makeTypesApi(domain) {
     // реквизитов в желаемом порядке (залоченные идут первыми).
     reorderFields: (typeId, orderedIds) => apiPost(`${base}${typeId}/fields/reorder/`, { order: orderedIds }),
     getFieldImpact: (typeId, fieldId) => apiGet(`${base}${typeId}/fields/${fieldId}/impact/`),
+    // B67: библиотека общих файлов Вида. upload принимает FormData (одно/
+    // несколько полей «file»); оба эндпоинта возвращают обновлённый список
+    // [{id, file}]. Список приходит и в самом Виде (type_files), отдельного GET нет.
+    uploadTypeFile: (typeId, formData) => apiPost(`${base}${typeId}/files/`, formData),
+    deleteTypeFile: (typeId, fileId) => apiDelete(`${base}${typeId}/files/${fileId}/`),
     // B13+: регламенты ТО типа (только оборудование).
     listRegulations: (typeId) => apiGet(`${base}${typeId}/regulations/`),
     createRegulation: (typeId, payload) => apiPost(`${base}${typeId}/regulations/`, payload),

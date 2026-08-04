@@ -4,6 +4,7 @@ import { apiPatch } from '../../shared/api/client'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { canMaintainType, historyMode } from '../../shared/permissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
+import { TypeFilesView } from '../../shared/TypeFilesView.jsx'
 import { AvatarCircle } from '../../shared/AvatarCircle.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { Tooltip } from '../../shared/Tooltip.jsx'
@@ -160,32 +161,43 @@ export function EquipmentCardPage() {
                   )}
                 </Card>
 
-                {fileValues.length > 0 ? (
+                {/* B67: раздел «Файлы» — файловые реквизиты экземпляра, затем
+                    выбранные для него общие файлы Вида под отдельным подзаголовком. */}
+                {fileValues.length > 0 || (equipment.type_files?.length ?? 0) > 0 ? (
                   <Card>
                     <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Файлы</div>
-                    <div className="ele-field-grid">
-                      {fileValues.map((fv) => (
-                        <FieldValueDisplay key={fv.field} fv={fv} />
-                      ))}
-                    </div>
+                    {fileValues.length > 0 ? (
+                      <div className="ele-field-grid">
+                        {fileValues.map((fv) => (
+                          <FieldValueDisplay key={fv.field} fv={fv} />
+                        ))}
+                      </div>
+                    ) : null}
+                    {(equipment.type_files?.length ?? 0) > 0 ? (
+                      <div style={{ marginTop: fileValues.length > 0 ? 18 : 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+                          Общие файлы вида
+                        </div>
+                        <TypeFilesView files={equipment.type_files} />
+                      </div>
+                    ) : null}
                   </Card>
                 ) : null}
               </>
             )
           })()}
 
-          <Card>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Дополнительные поля</div>
-            {equipment.custom_fields.length === 0 ? (
-              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>Дополнительных полей нет.</div>
-            ) : (
+          {/* B67: блок доп. полей скрываем, если их нет (иначе он всегда пустой). */}
+          {equipment.custom_fields.length > 0 ? (
+            <Card>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Дополнительные поля</div>
               <div className="ele-field-grid">
                 {equipment.custom_fields.map((cf) => (
                   <Field key={cf.id} label={cf.name} value={cf.value} />
                 ))}
               </div>
-            )}
-          </Card>
+            </Card>
+          ) : null}
 
           {/* B13+/B23. Регламенты ТО — сворачиваемый раздел перед историей. Виден
               только тем, кто может управлять регламентами (admin / учётчик с флагом

@@ -7,6 +7,7 @@ import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { PLACEMENT } from '../../shared/placement.js'
+import { TypeFilesPicker } from '../../shared/TypeFilesPicker.jsx'
 import { BackButton, Banner, Card, FormActions, Icon, Input, Spinner, TypeSelect } from '../../shared/ui'
 import { splitApiError } from '../../shared/formErrors.js'
 import { requiredValueErrors } from '../../shared/eav'
@@ -41,6 +42,7 @@ export function TransportFormPage() {
   const [inventoryNumber, setInventoryNumber] = useState('')
   const [values, setValues] = useState({})
   const [fileValues, setFileValues] = useState({})
+  const [typeFileIds, setTypeFileIds] = useState([]) // B67: выбранные файлы Вида (id)
   const [customFields, setCustomFields] = useState([])
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -89,6 +91,7 @@ export function TransportFormPage() {
       const fMap = {}
       for (const fv of data.field_values) if (fv.value_type === 'file') fMap[fv.field] = fv
       setFileValues(fMap)
+      setTypeFileIds((data.type_files || []).map((f) => f.id))
       setCustomFields(data.custom_fields)
     })
   }, [id, isEdit])
@@ -108,6 +111,7 @@ export function TransportFormPage() {
     setTypeId(newTypeId)
     setValues({})
     setFileValues({})
+    setTypeFileIds([]) // B67: другой Вид — своя библиотека файлов
     setFieldErrors((prev) => ({ ...prev, transport_type: undefined }))
     setValueErrors({})
   }
@@ -138,6 +142,7 @@ export function TransportFormPage() {
       transport_type: Number(typeId),
       field_values_input: typeFields.filter((f) => f.value_type !== 'file').map((f) => ({ field: f.id, value: values[f.id] ?? null })),
       custom_fields: customFields.filter((f) => f.name.trim()),
+      type_file_ids: typeFileIds,
     }
     if (!isEdit && comment.trim()) payload.comment = comment.trim()
     if (!isEdit && placementMode === 'mobile') {
@@ -270,6 +275,17 @@ export function TransportFormPage() {
                     />
                   ))}
               </div>
+            </Card>
+          ) : null}
+
+          {selectedType && (selectedType.type_files?.length ?? 0) > 0 ? (
+            <Card>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 14 }}>Общие файлы вида</div>
+              <TypeFilesPicker
+                available={selectedType.type_files}
+                selectedIds={typeFileIds}
+                onChange={setTypeFileIds}
+              />
             </Card>
           ) : null}
 

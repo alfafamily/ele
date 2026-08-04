@@ -7,7 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.asset_views import AccountableAssetViewSet, AssetFieldFileMixin
+from core.asset_views import AccountableAssetViewSet, AssetFieldFileMixin, TypeFileMixin
 from core.eav import count_missing_for_field
 from core.eav_filters import csv_ids, eav_field_value_suggestions, eav_req_conditions
 from core.permissions import IsAdminOrAccountant, IsAdminOrAccountantOrReadOnlyObserver
@@ -19,6 +19,7 @@ from .models import (
     LicenseFieldValue,
     LicenseType,
     LicenseTypeField,
+    LicenseTypeFile,
 )
 from .serializers import (
     LicenseFieldValueOutSerializer,
@@ -29,10 +30,13 @@ from .serializers import (
 )
 
 
-class LicenseTypeViewSet(viewsets.ModelViewSet):
-    queryset = LicenseType.objects.all().order_by("name").prefetch_related("fields__options")
+class LicenseTypeViewSet(TypeFileMixin, viewsets.ModelViewSet):
+    queryset = LicenseType.objects.all().order_by("name").prefetch_related("fields__options", "type_files__stored_file")
     serializer_class = LicenseTypeSerializer
     permission_classes = [IsAdminOrAccountant]
+    type_file_model = LicenseTypeFile
+    type_owner_field = "license_type"
+    type_file_storage_dir = "licenses/type-files"
 
     def destroy(self, request, *args, **kwargs):
         # ProtectedError покрывает и is_locked (модельный delete()), и
@@ -155,7 +159,8 @@ class LicenseViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
         # (архивной) Лицензии отдавала бы 404 и висла бы на лоадере (как было
         # с архивным Оборудованием).
         if self.action != "list":
-            return qs
+            # B67: выбранные файлы Вида — только на карточке (список их не отдаёт).
+            return qs.prefetch_related("type_files__stored_file")
 
         tab = self.request.query_params.get("tab", "active")
         qs = qs.filter(is_retired=(tab == "archive"))

@@ -8,7 +8,7 @@ from core.maintenance_serializers import (
     BaseMaintenanceRegulationSerializer,
     BasePerformMaintenanceSerializer,
 )
-from core.serializers import EmployeeHolderSerializerMixin
+from core.serializers import EmployeeHolderSerializerMixin, serialize_type_files
 from storage.serializers import StoredFileSerializer
 
 from .models import (
@@ -19,6 +19,7 @@ from .models import (
     EquipmentType,
     EquipmentTypeField,
     EquipmentTypeFieldOption,
+    EquipmentTypeFile,
     MaintenanceKind,
     MaintenanceRegulation,
     MaintenanceRegulationItem,
@@ -84,10 +85,16 @@ class EquipmentTypeFieldSerializer(serializers.ModelSerializer):
 class EquipmentTypeSerializer(serializers.ModelSerializer):
     fields = EquipmentTypeFieldSerializer(many=True, read_only=True)
     objects_count = serializers.IntegerField(source="equipment.count", read_only=True)
+    # B67: библиотека общих файлов Вида — [{id, file}]. Управляется отдельными
+    # экшенами (files/), здесь только для чтения (редактор Вида + форма экземпляра).
+    type_files = serializers.SerializerMethodField()
 
     class Meta:
         model = EquipmentType
-        fields = ["id", "name", "is_archived", "allows_sim", "allows_license", "maintenance_enabled", "fields", "objects_count"]
+        fields = ["id", "name", "is_archived", "allows_sim", "allows_license", "maintenance_enabled", "fields", "objects_count", "type_files"]
+
+    def get_type_files(self, obj):
+        return serialize_type_files(obj.type_files.all())
 
 
 class EquipmentFieldValueInputSerializer(serializers.Serializer):
@@ -166,6 +173,12 @@ class EquipmentSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerial
     field_values_input = EquipmentFieldValueInputSerializer(many=True, required=False, write_only=True)
     licenses = serializers.SerializerMethodField()
     sim_cards = serializers.SerializerMethodField()
+    # B67: выбранные для экземпляра файлы из библиотеки Вида. Чтение — [{id, file}]
+    # (показываются в разделе «Файлы» карточки); запись — список id файлов Вида.
+    type_files = serializers.SerializerMethodField()
+    type_file_ids = serializers.PrimaryKeyRelatedField(
+        queryset=EquipmentTypeFile.objects.all(), many=True, required=False, write_only=True
+    )
 
     class Meta:
         model = Equipment
@@ -195,9 +208,14 @@ class EquipmentSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerial
             "custom_fields",
             "licenses",
             "sim_cards",
+            "type_files",
+            "type_file_ids",
             "created_at",
         ]
         read_only_fields = ["is_written_off", "written_off_at", "created_at"]
+
+    def get_type_files(self, obj):
+        return serialize_type_files(obj.type_files.all())
 
     def get_type_and_model(self, obj):
         # «{Тип} {Модель}», без Модели — просто «{Тип}».
@@ -308,13 +326,24 @@ class EquipmentSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerial
                     raise serializers.ValidationError(
                         {"field_values": [f"Реквизит «{item['field'].name}» не относится к выбранному Типу."]}
                     )
+        # B67: выбранные файлы Вида должны принадлежать выбранному Виду.
+        type_file_ids = attrs.get("type_file_ids")
+        if type_file_ids:
+            for tf in type_file_ids:
+                if tf.equipment_type_id != equipment_type.pk:
+                    raise serializers.ValidationError(
+                        {"type_file_ids": ["Файл не относится к выбранному Виду оборудования."]}
+                    )
         return attrs
 
     @transaction.atomic
     def create(self, validated_data):
         field_values_input = validated_data.pop("field_values_input", [])
         custom_fields_data = validated_data.pop("custom_fields", [])
+        type_files = validated_data.pop("type_file_ids", None)
         instance = Equipment.objects.create(**validated_data)
+        if type_files is not None:
+            instance.type_files.set(type_files)
         # B13+: экземпляр наследует планы всех активных регламентов своего типа.
         create_plans_for_equipment(instance)
         if field_values_input:
@@ -335,9 +364,12 @@ class EquipmentSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerial
     def update(self, instance, validated_data):
         field_values_input = validated_data.pop("field_values_input", None)
         custom_fields_data = validated_data.pop("custom_fields", None)
+        type_files = validated_data.pop("type_file_ids", None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+        if type_files is not None:
+            instance.type_files.set(type_files)
         if field_values_input is not None:
             apply_field_values(instance, "equipment", EquipmentFieldValue, field_values_input, instance.equipment_type.fields.all())
         if custom_fields_data is not None:

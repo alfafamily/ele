@@ -1,6 +1,8 @@
 from django.db import models
 from simple_history.models import HistoricalRecords
 
+from core.models import TypeFileBase
+
 # Наименования базовых залоченных реквизитов типа транспорта.
 BASE_FIELD_MODEL = "Модель"
 BASE_FIELD_PLATE = "Гос.номер"
@@ -115,6 +117,16 @@ class TransportTypeFieldOption(models.Model):
         return f"{self.field.name} / {self.value}"
 
 
+class TransportTypeFile(TypeFileBase):
+    """Общий файл Вида транспорта (B67) — библиотека Вида."""
+
+    transport_type = models.ForeignKey(TransportType, on_delete=models.CASCADE, related_name="type_files")
+
+    class Meta(TypeFileBase.Meta):
+        verbose_name = "Общий файл вида транспорта"
+        verbose_name_plural = "Общие файлы вида транспорта"
+
+
 class Transport(models.Model):
     """Единица транспорта компании (B3).
 
@@ -137,6 +149,9 @@ class Transport(models.Model):
     transport_type = models.ForeignKey(
         TransportType, verbose_name="Вид транспорта", on_delete=models.PROTECT, related_name="transport",
     )
+    # B67: выбранные для этой единицы файлы из библиотеки Вида (подмножество
+    # TransportType.type_files). Показываются в разделе «Файлы» карточки.
+    type_files = models.ManyToManyField(TransportTypeFile, blank=True, related_name="transport")
     # B38: индекс под курсорную пагинацию по created_at (см. Equipment).
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     history = HistoricalRecords()

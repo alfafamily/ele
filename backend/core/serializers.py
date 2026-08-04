@@ -5,6 +5,19 @@ from rest_framework import serializers
 from storage.serializers import StoredFileSerializer
 
 
+def serialize_type_files(type_files):
+    """B67. Единый формат ``[{id, file}]`` для файлов Вида имущества
+    (наследников core.models.TypeFileBase). Используется и для библиотеки Вида
+    (в ``*TypeSerializer``), и для выбранных на экземпляре файлов (в
+    сериализаторе имущества). ``type_files`` — уже прогретый итерируемый набор
+    (prefetch), файлы без бинарника (stored_file=NULL) отбрасываются."""
+    return [
+        {"id": tf.id, "file": StoredFileSerializer(tf.stored_file).data}
+        for tf in type_files
+        if tf.stored_file_id
+    ]
+
+
 def validate_storage_place(place, field="storage_place"):
     """Общий валидатор размещения (B53-R4): свободный объект лежит на складе.
 
