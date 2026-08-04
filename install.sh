@@ -174,6 +174,9 @@ else
     ask S3_ACCESS_KEY "S3 access key" ""
     ask_secret S3_SECRET_KEY "S3 secret key"
   fi
+  # B56-R1 (#8): тайм-ауты клиента S3 для media (сек). Тонкая настройка — не
+  # спрашиваем интерактивно, пишем дефолты; при необходимости админ правит .env.
+  : "${S3_CONNECT_TIMEOUT:=5}"; : "${S3_READ_TIMEOUT:=60}"
 
   BACKUP_S3_ENDPOINT=""; BACKUP_S3_BUCKET=""; BACKUP_S3_REGION=""
   BACKUP_S3_ACCESS_KEY=""; BACKUP_S3_SECRET_KEY=""; BACKUP_PASSPHRASE=""
@@ -227,6 +230,8 @@ S3_BUCKET=${S3_BUCKET}
 S3_REGION=${S3_REGION}
 S3_ACCESS_KEY=${S3_ACCESS_KEY}
 S3_SECRET_KEY=${S3_SECRET_KEY}
+S3_CONNECT_TIMEOUT=${S3_CONNECT_TIMEOUT}
+S3_READ_TIMEOUT=${S3_READ_TIMEOUT}
 
 BACKUP_S3_ENDPOINT=${BACKUP_S3_ENDPOINT}
 BACKUP_S3_BUCKET=${BACKUP_S3_BUCKET}
