@@ -63,7 +63,7 @@ function avatarNode(row) {
 const CONSENT_META = {
   self: { color: 'var(--color-success)', text: 'Получено от сотрудника', title: 'Сотрудник выразил согласие на сбор и обработку ПДн' },
   operator: { color: 'var(--color-warning)', text: 'Подтверждено оператором', title: 'Ответственный сотрудник отметил, что согласие сотрудника на сбор и обработку ПДн получено' },
-  none: { color: 'var(--color-error)', text: 'Не получено', title: 'Согласие не получено от сотрудника или не указано' },
+  none: { color: 'var(--color-error)', text: 'Не зафиксировано', title: 'Согласие не получено от сотрудника или не указано' },
 }
 
 function consentCell(row) {
