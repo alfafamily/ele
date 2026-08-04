@@ -6,7 +6,7 @@ import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
-import { PLACEMENT } from '../../shared/placement.js'
+import { PLACEMENT, PLACEMENT_FREE_ICON } from '../../shared/placement.js'
 import { TypeFilesPicker } from '../../shared/TypeFilesPicker.jsx'
 import { BackButton, Banner, Card, FormActions, Icon, Input, Spinner, TypeSelect } from '../../shared/ui'
 import { splitApiError } from '../../shared/formErrors.js'
@@ -310,7 +310,7 @@ export function TransportFormPage() {
                   mode={placementMode}
                   options={[
                     { value: 'mobile', ...PLACEMENT.employee },
-                    { value: 'free', label: 'Свободный' },
+                    { value: 'free', icon: PLACEMENT_FREE_ICON, label: 'Свободный' },
                   ]}
                   onChange={(v) => { setPlacementMode(v); setPlaceError(null) }}
                 />

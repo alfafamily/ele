@@ -209,10 +209,11 @@ export function EmployeePropertyBlock({ emp }) {
 }
 
 // Тело места в отчётах по местам: единый стиль CategoryRow — сотрудники (только
-// для рабочих мест) + оборудование (с вложенными SIM/лицензиями) + инструменты.
-export function PlaceBody({ employees = [], equipment, tools, withEmployees }) {
+// для рабочих мест) + оборудование (с вложенными SIM/лицензиями) + инструменты +
+// (для мест хранения, B71) свободные SIM и лицензии, лежащие на складе.
+export function PlaceBody({ employees = [], equipment, tools, sim = [], licenses = [], withEmployees }) {
   const hasEmployees = withEmployees && employees.length > 0
-  if (!hasEmployees && !equipment.length && !tools.length) {
+  if (!hasEmployees && !equipment.length && !tools.length && !sim.length && !licenses.length) {
     return <div style={{ fontSize: 13, ...MUTED, padding: '4px 0' }}>Ничего не закреплено.</div>
   }
   return (
@@ -232,6 +233,16 @@ export function PlaceBody({ employees = [], equipment, tools, withEmployees }) {
       {tools.length ? (
         <CategoryRow label="Инструменты">
           {tools.map((t) => <Line key={t.id} icon="hammer">{t.name} <span style={MUTED}>× {t.quantity}</span></Line>)}
+        </CategoryRow>
+      ) : null}
+      {sim.length ? (
+        <CategoryRow label="SIM">
+          {sim.map((s) => <Line key={s.id} icon="radio-tower">{s.phone_number} <span style={MUTED}>· {s.sim_type}{s.operator ? ` · ${s.operator}` : ''}</span></Line>)}
+        </CategoryRow>
+      ) : null}
+      {licenses.length ? (
+        <CategoryRow label="Лицензии">
+          {licenses.map((l) => <Line key={l.id} icon="scroll-text">{l.license_type_name}</Line>)}
         </CategoryRow>
       ) : null}
     </div>

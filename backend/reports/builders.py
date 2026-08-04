@@ -9,6 +9,7 @@
 
 from employees.models import AccessPass, SimCard
 from equipment.models import Equipment
+from licenses.models import License
 from locations.models import Place
 from tools.models import Tool, ToolAllocation
 from transport.models import Transport
@@ -107,6 +108,31 @@ def _tools_at_places(place_ids):
     return out
 
 
+def _free_sim_at_places(place_ids):
+    """{place_id: [sim_item, ...]} — свободные (не в оборудовании, не за
+    сотрудником) физ. SIM, лежащие на складе. B71: раньше в отчёт по местам
+    хранения не попадали — видны были только SIM внутри оборудования."""
+    qs = SimCard.objects.filter(storage_place_id__in=place_ids, is_utilized=False)
+    out = {}
+    for s in qs:
+        out.setdefault(s.storage_place_id, []).append(_sim_item(s))
+    return out
+
+
+def _free_licenses_at_places(place_ids):
+    """{place_id: [license_item, ...]} — свободные лицензии, чей физический ключ
+    лежит на складе (аппаратные лицензии в режиме «Свободна»). B71: раньше в
+    отчёт не попадали. У программных лицензий склада нет — их здесь не будет."""
+    qs = (
+        License.objects.filter(storage_place_id__in=place_ids, is_retired=False)
+        .select_related("license_type")
+    )
+    out = {}
+    for lic in qs:
+        out.setdefault(lic.storage_place_id, []).append(_license_item(lic))
+    return out
+
+
 # --- Отчёт по местам (рабочие / МОП / хранение) ----------------------------
 
 def build_places_report(kind, *, building_id=None, room_id=None, place_id=None):
@@ -133,10 +159,20 @@ def build_places_report(kind, *, building_id=None, room_id=None, place_id=None):
         for p in Place.objects.filter(id__in=place_ids).prefetch_related("employees"):
             emp_map[p.id] = [_employee_item(e) for e in p.employees.all()]
 
-    return _group_by_building(place_list, eq_map, tool_map, emp_map, kind == Place.PlaceType.WORKPLACE)
+    # B71: свободные SIM/лицензии, лежащие на складе (не в оборудовании) — только
+    # в отчёте по местам хранения; на рабочих местах/МОП их не бывает.
+    sim_map, lic_map = {}, {}
+    if kind == Place.PlaceType.STORAGE:
+        sim_map = _free_sim_at_places(place_ids)
+        lic_map = _free_licenses_at_places(place_ids)
+
+    return _group_by_building(
+        place_list, eq_map, tool_map, emp_map, sim_map, lic_map,
+        kind == Place.PlaceType.WORKPLACE,
+    )
 
 
-def _group_by_building(place_list, eq_map, tool_map, emp_map, with_employees):
+def _group_by_building(place_list, eq_map, tool_map, emp_map, sim_map, lic_map, with_employees):
     """Группировка плоского списка мест в дерево здание → помещение → место."""
     buildings = {}
     for p in sorted(place_list, key=lambda x: (x.name or "").lower()):
@@ -152,6 +188,8 @@ def _group_by_building(place_list, eq_map, tool_map, emp_map, with_employees):
             "name": p.name,
             "equipment": eq_map.get(p.id, []),
             "tools": tool_map.get(p.id, []),
+            "sim": sim_map.get(p.id, []),
+            "licenses": lic_map.get(p.id, []),
         }
         if with_employees:
             place_data["employees"] = emp_map.get(p.id, [])

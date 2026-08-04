@@ -47,7 +47,7 @@ export function PlacesReportPage({ kind }) {
           <div key={r.id}>
             <RoomHead name={r.name} floor={r.floor} />
             {r.places.map((p) => {
-              const propCount = p.equipment.length + p.tools.length
+              const propCount = p.equipment.length + p.tools.length + (p.sim?.length || 0) + (p.licenses?.length || 0)
               const empty = propCount === 0 && !(meta.withEmployees && p.employees?.length)
               return (
                 <ExpandCard
@@ -62,6 +62,8 @@ export function PlacesReportPage({ kind }) {
                     employees={p.employees || []}
                     equipment={p.equipment}
                     tools={p.tools}
+                    sim={p.sim || []}
+                    licenses={p.licenses || []}
                     withEmployees={meta.withEmployees}
                   />
                 </ExpandCard>

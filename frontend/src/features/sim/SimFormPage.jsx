@@ -5,7 +5,7 @@ import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { EquipmentPicker } from '../../shared/EquipmentPicker.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
-import { PLACEMENT } from '../../shared/placement.js'
+import { PLACEMENT, PLACEMENT_FREE_ICON } from '../../shared/placement.js'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Segmented, Spinner } from '../../shared/ui'
 import { splitApiError } from '../../shared/formErrors.js'
@@ -230,7 +230,7 @@ export function SimFormPage() {
                       { value: 'employee', ...PLACEMENT.employee },
                       { value: 'equipment', icon: 'cpu', label: 'В оборудовании' },
                       simType === 'esim'
-                        ? { value: 'free', label: 'Свободна' }
+                        ? { value: 'free', icon: PLACEMENT_FREE_ICON, label: 'Свободна' }
                         : { value: 'storage', ...PLACEMENT.storage },
                     ]}
                   />

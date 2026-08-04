@@ -166,6 +166,22 @@ class ReportsContentTests(APITestCase, ReportsDataMixin):
         self.assertIn("Склад", places)
         self.assertEqual(len(places["Склад"]["equipment"]), 1)
 
+    def test_storage_report_includes_free_sim_and_license(self):
+        """B71: свободные физ. SIM и аппаратные лицензии, лежащие на складе,
+        попадают в отчёт по местам хранения (раньше их не было). Свободные без
+        склада (E-SIM «у оператора», программная лицензия) — не попадают."""
+        hw = LicenseType.objects.create(name="Токен", kind="hardware")
+        SimCard.objects.create(phone_number="+70000000003", storage_place=self.storage)
+        License.objects.create(license_type=hw, storage_place=self.storage)
+        # Свободные без склада — в отчёт по складу попасть не должны.
+        SimCard.objects.create(phone_number="+70000000004", sim_type="esim")  # E-SIM у оператора
+        License.objects.create(license_type=self.lt)                          # программная свободная
+
+        resp = self.client.get("/api/reports/places/?kind=storage")
+        places = self._places(resp.data["buildings"])
+        self.assertEqual([s["phone_number"] for s in places["Склад"]["sim"]], ["+70000000003"])
+        self.assertEqual([l["license_type_name"] for l in places["Склад"]["licenses"]], ["Токен"])
+
     def test_building_filter(self):
         b2 = Building.objects.create(name="Здание Б")
         r2 = Room.objects.create(building=b2, name="Каб. 201")
