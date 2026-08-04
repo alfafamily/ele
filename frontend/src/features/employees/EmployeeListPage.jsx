@@ -25,7 +25,7 @@ const DESKTOP_COLUMNS = [
   { key: 'last_name', label: 'ФИО', sortable: true, width: '1fr' },
   { key: 'position', label: 'Должность', width: '180px' },
   { key: 'department', label: 'Отдел', width: '150px' },
-  { key: 'consent', label: 'Согласие ПДн', sortable: true, width: '190px' },
+  { key: 'consent', label: 'Согласие ПДн', sortable: true, width: '220px' },
   { key: 'chevron', label: '', width: '30px' },
 ]
 const MOBILE_COLUMNS = [
