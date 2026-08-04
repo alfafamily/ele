@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { useCompany } from '../../app/CompanyContext'
+import { useDragSort, reorder } from '../../shared/hooks/useDragSort.js'
 import { FilePreviewModal } from '../../shared/eav/FilePreviewModal.jsx'
+import { Icon } from '../../shared/ui'
 import '../../shared/eav/FileFieldSlot.css'
 
 // B67. Управление библиотекой общих файлов Вида в редакторе Вида: загрузка
-// (несколько файлов за раз), список с просмотром и удалением. api — makeTypesApi
-// (домен уже зашит), typeId — выбранный Вид, files — текущий список [{id, file}]
-// (из type_files Вида), onChanged(list) — обновлённый список после загрузки/удаления.
+// (несколько файлов за раз), список с просмотром, удалением и перетаскиванием
+// для смены очерёдности (как у реквизитов вида). Порядок задаёт вывод файлов
+// на форме объекта и на карточке объекта. api — makeTypesApi (домен зашит),
+// typeId — выбранный Вид, files — текущий список [{id, file}], onChanged(list) —
+// обновлённый список после загрузки/удаления/перестановки.
 export function TypeFilesLibrary({ api, typeId, files, onChanged }) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
@@ -50,18 +54,54 @@ export function TypeFilesLibrary({ api, typeId, files, onChanged }) {
     }
   }
 
+  // Перестановка файлов перетаскиванием: оптимистично применяем порядок, затем
+  // сохраняем на бэк (order = индекс). Ошибка — откат к прежнему списку.
+  const handleReorder = async (from, to) => {
+    const next = reorder(files, from, to)
+    onChanged(next)
+    try {
+      const list = await api.reorderTypeFiles(typeId, next.map((f) => f.id))
+      onChanged(list)
+    } catch (err) {
+      onChanged(files)
+      setError(err.detail || 'Не удалось изменить порядок.')
+    }
+  }
+  const drag = useDragSort(handleReorder)
+
   return (
     <div>
       {files.length ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
           {files.map((f, i) => (
-            <div key={f.id} className="ele-file-slot__current">
+            <div
+              key={f.id}
+              {...drag.rowProps(i)}
+              className="ele-file-slot__current"
+              style={{
+                opacity: drag.dragIndex === i ? 0.4 : 1,
+                outline:
+                  drag.overIndex === i && drag.dragIndex !== null && drag.dragIndex !== i
+                    ? '2px solid var(--color-text-placeholder)'
+                    : 'none',
+                outlineOffset: '-1px',
+              }}
+            >
+              {files.length > 1 ? (
+                <span
+                  data-drag-handle
+                  aria-label="Перетащить для изменения порядка"
+                  style={{ flex: 'none', display: 'flex', color: 'var(--color-text-placeholder)', cursor: 'grab', touchAction: 'none' }}
+                >
+                  <Icon name="grip-vertical" size={18} strokeWidth={2} />
+                </span>
+              ) : null}
               <button
                 type="button"
                 onClick={() => setPreviewIndex(i)}
                 className="ele-file-slot__name"
                 title={f.file.original_filename}
-                style={{ border: 'none', background: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', padding: 0 }}
+                style={{ flex: 1, minWidth: 0, border: 'none', background: 'none', color: 'var(--color-primary)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', padding: 0 }}
               >
                 {f.file.original_filename}
               </button>

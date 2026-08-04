@@ -61,8 +61,11 @@ class TypeFileBase(models.Model):
     stored_file = models.ForeignKey(
         "storage.StoredFile", on_delete=models.SET_NULL, null=True, related_name="+"
     )
+    # Порядок вывода (перетаскивание в редакторе Вида) — задаёт очерёдность и на
+    # форме объекта (выбор файлов), и в разделе «Файлы» карточки объекта.
+    order = models.IntegerField("Порядок", default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         abstract = True
-        ordering = ["id"]
+        ordering = ["order", "id"]
