@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import ProtectedError, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
@@ -319,7 +319,16 @@ class EmployeeViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Нельзя удалить сотрудника — за ним закреплено оборудование."}, status=409)
         if instance.tool_allocations.exists():
             return Response({"detail": "Нельзя удалить сотрудника — за ним закреплены инструменты."}, status=409)
-        return super().destroy(request, *args, **kwargs)
+        # B41-фикс: у сотрудника с историей закрепления (EmployeeAssignment,
+        # on_delete=PROTECT) и прочими защищёнными связями удаление роняло 500 —
+        # отдаём аккуратный 409 вместо необработанного ProtectedError.
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            return Response(
+                {"detail": "Нельзя удалить сотрудника — с ним связана история операций закрепления."},
+                status=409,
+            )
 
     @action(detail=True, methods=["post"])
     def terminate(self, request, pk=None):

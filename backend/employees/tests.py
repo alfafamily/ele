@@ -48,6 +48,30 @@ class EmployeeDeleteGuardTests(APITestCase):
         self.assertEqual(resp.status_code, 204)
         self.assertFalse(Employee.objects.filter(pk=employee.id).exists())
 
+    def test_delete_with_assignment_history_returns_409_not_500(self):
+        """B41-фикс: сотрудник без текущего имущества, но с историей закрепления
+        (EmployeeAssignment, on_delete=PROTECT) — удаление отдаёт 409, а не роняет
+        500 необработанным ProtectedError."""
+        from django.contrib.contenttypes.models import ContentType
+        from django.utils import timezone
+
+        from .models import EmployeeAssignment
+
+        employee = Employee.objects.create(first_name="Пётр", last_name="Петров")
+        eq_type = EquipmentType.objects.create(name="ПК")
+        # Оборудование уже списано/откреплено — за сотрудником сейчас ничего нет,
+        # но остался закрытый эпизод акцепта (история).
+        eq = Equipment.objects.create(inventory_number="PC-9", equipment_type=eq_type, is_written_off=True)
+        EmployeeAssignment.objects.create(
+            content_type=ContentType.objects.get_for_model(Equipment), object_id=eq.id,
+            object_kind=EmployeeAssignment.ObjectKind.EQUIPMENT, employee=employee,
+            status=EmployeeAssignment.Status.ACCEPTED, closed_at=timezone.now(),
+        )
+
+        resp = self.client.delete(f"/api/employees/{employee.id}/")
+        self.assertEqual(resp.status_code, 409)
+        self.assertTrue(Employee.objects.filter(pk=employee.id).exists())
+
 
 class EmployeeTerminateTests(APITestCase):
     def setUp(self):

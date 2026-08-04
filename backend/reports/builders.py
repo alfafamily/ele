@@ -133,6 +133,23 @@ def _free_licenses_at_places(place_ids):
     return out
 
 
+def build_unplaced_storage():
+    """B71: свободные объекты БЕЗ места хранения — E-SIM «у оператора» и
+    программные лицензии (физического места не имеют). Отдельным блоком в отчёте
+    по местам хранения, т.к. в дерево здание→помещение→место они не встают.
+    Сюда же попадают legacy-записи без склада (storage_place пуст)."""
+    sim = SimCard.objects.filter(
+        is_utilized=False, employee__isnull=True, equipment__isnull=True, storage_place__isnull=True,
+    )
+    lic = License.objects.filter(
+        is_retired=False, equipment__isnull=True, storage_place__isnull=True,
+    ).select_related("license_type")
+    return {
+        "sim": [_sim_item(s) for s in sim],
+        "licenses": [_license_item(lic_obj) for lic_obj in lic],
+    }
+
+
 # --- Отчёт по местам (рабочие / МОП / хранение) ----------------------------
 
 def build_places_report(kind, *, building_id=None, room_id=None, place_id=None):

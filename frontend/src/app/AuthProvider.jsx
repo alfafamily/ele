@@ -38,6 +38,31 @@ export function AuthProvider({ children }) {
     refresh()
   }, [refresh])
 
+  // B41-фикс: любой запрос, вернувший 401/403 (кроме auth-эндпоинтов), шлёт
+  // событие ele:auth-check. Если мы считаем себя авторизованными — перепроверяем
+  // сессию свежим /api/auth/me/: 401/403 → сессия истекла, сбрасываем user
+  // (guard роутера сам перекинет на /login). Успех → это был обычный «доступ
+  // запрещён» при живой сессии, ничего не делаем. Одновременные проверки гасим.
+  useEffect(() => {
+    if (!user) return undefined
+    let checking = false
+    const onAuthCheck = async () => {
+      if (checking) return
+      checking = true
+      try {
+        await apiGet('/api/auth/me/')
+      } catch (err) {
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          setUser(null)
+        }
+      } finally {
+        checking = false
+      }
+    }
+    window.addEventListener('ele:auth-check', onAuthCheck)
+    return () => window.removeEventListener('ele:auth-check', onAuthCheck)
+  }, [user])
+
   // Перечитать только текущего пользователя (напр. после смены ФИО/аватара
   // связанного Сотрудника) — без переключения глобального loading, чтобы не
   // мигал экран-загрузчик роутера.

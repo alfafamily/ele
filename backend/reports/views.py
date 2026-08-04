@@ -10,7 +10,12 @@ from rest_framework.views import APIView
 from core.permissions import IsAdminOrAccountant
 from locations.models import Place
 
-from .builders import build_employees_report, build_parking_report, build_places_report
+from .builders import (
+    build_employees_report,
+    build_parking_report,
+    build_places_report,
+    build_unplaced_storage,
+)
 
 
 def _int(request, key):
@@ -35,13 +40,18 @@ class PlacesReportView(APIView):
         kind = request.query_params.get("kind") or Place.PlaceType.WORKPLACE
         if kind not in (Place.PlaceType.WORKPLACE, Place.PlaceType.COMMON, Place.PlaceType.STORAGE):
             return Response({"detail": "Неизвестный тип отчёта."}, status=400)
-        data = build_places_report(
-            kind,
-            building_id=_int(request, "building"),
-            room_id=_int(request, "room"),
-            place_id=_int(request, "place"),
-        )
-        return Response({"kind": kind, "buildings": data})
+        building_id = _int(request, "building")
+        room_id = _int(request, "room")
+        place_id = _int(request, "place")
+        data = build_places_report(kind, building_id=building_id, room_id=room_id, place_id=place_id)
+        resp = {"kind": kind, "buildings": data}
+        # B71: свободные объекты без места хранения (E-SIM «у оператора»,
+        # программные лицензии) — отдельным блоком, только в отчёте по складу и
+        # только в режиме «все» (фильтр по зданию/помещению/месту их не касается —
+        # они ни к какому месту не привязаны).
+        if kind == Place.PlaceType.STORAGE and not (building_id or room_id or place_id):
+            resp["unplaced"] = build_unplaced_storage()
+        return Response(resp)
 
 
 class ParkingReportView(APIView):

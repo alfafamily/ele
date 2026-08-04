@@ -169,11 +169,11 @@ class ReportsContentTests(APITestCase, ReportsDataMixin):
     def test_storage_report_includes_free_sim_and_license(self):
         """B71: свободные физ. SIM и аппаратные лицензии, лежащие на складе,
         попадают в отчёт по местам хранения (раньше их не было). Свободные без
-        склада (E-SIM «у оператора», программная лицензия) — не попадают."""
+        склада (E-SIM «у оператора», программная лицензия) — в блок «unplaced»."""
         hw = LicenseType.objects.create(name="Токен", kind="hardware")
         SimCard.objects.create(phone_number="+70000000003", storage_place=self.storage)
         License.objects.create(license_type=hw, storage_place=self.storage)
-        # Свободные без склада — в отчёт по складу попасть не должны.
+        # Свободные без склада — не на месте, а в отдельном блоке unplaced.
         SimCard.objects.create(phone_number="+70000000004", sim_type="esim")  # E-SIM у оператора
         License.objects.create(license_type=self.lt)                          # программная свободная
 
@@ -181,6 +181,18 @@ class ReportsContentTests(APITestCase, ReportsDataMixin):
         places = self._places(resp.data["buildings"])
         self.assertEqual([s["phone_number"] for s in places["Склад"]["sim"]], ["+70000000003"])
         self.assertEqual([l["license_type_name"] for l in places["Склад"]["licenses"]], ["Токен"])
+        # Блок «без места хранения»: E-SIM и программная лицензия.
+        self.assertEqual([s["phone_number"] for s in resp.data["unplaced"]["sim"]], ["+70000000004"])
+        self.assertEqual([l["license_type_name"] for l in resp.data["unplaced"]["licenses"]], ["Windows"])
+
+    def test_unplaced_only_without_place_filter(self):
+        """unplaced отдаётся только в режиме «все» и только для склада: при
+        фильтре по зданию его нет (объекты без места к зданию не привязаны), и в
+        отчётах по рабочим местам/МОП его нет вовсе."""
+        SimCard.objects.create(phone_number="+70000000005", sim_type="esim")
+        self.assertIn("unplaced", self.client.get("/api/reports/places/?kind=storage").data)
+        self.assertNotIn("unplaced", self.client.get(f"/api/reports/places/?kind=storage&building={self.b.id}").data)
+        self.assertNotIn("unplaced", self.client.get("/api/reports/places/?kind=workplace").data)
 
     def test_building_filter(self):
         b2 = Building.objects.create(name="Здание Б")

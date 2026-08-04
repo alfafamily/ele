@@ -41,6 +41,20 @@ async function ensureCsrfCookie() {
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
+// B41-фикс: истёкшая сессия (сервер отвечает 401/403) не должна оставлять SPA
+// висеть на защищённом маршруте (оболочка отдаётся из кэша service worker, а
+// user в контексте — устаревший). Централизованно сигналим приложению
+// перепроверить сессию. Сами auth-эндпоинты исключаем: их 401/403 — штатная
+// часть логина/бутстрапа, иначе получим цикл. 403 бывает и «доступ запрещён»
+// при живой сессии — поэтому это лишь СИГНАЛ; решение (разлогинить или нет)
+// принимает AuthProvider по свежему /api/auth/me/.
+function notifyPossibleAuthLoss(path, status) {
+  if (typeof window === 'undefined') return
+  if (status !== 401 && status !== 403) return
+  if (path.startsWith('/api/auth/')) return
+  window.dispatchEvent(new Event('ele:auth-check'))
+}
+
 // `timeout`: миллисекунды до обрыва запроса. По умолчанию DEFAULT_TIMEOUT_MS
 // для обычных запросов и НЕ применяется к загрузкам (FormData). `null`/`0`
 // отключают таймаут явно (долгие операции — бэкап, отчёты).
@@ -113,6 +127,7 @@ export async function apiRequest(path, { method = 'GET', body, signal, timeout }
   }
 
   if (!response.ok) {
+    notifyPossibleAuthLoss(path, response.status)
     throw new ApiError(response.status, data)
   }
   return data
