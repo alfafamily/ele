@@ -7,7 +7,7 @@ from employees.models import Employee
 from rest_framework.test import APITestCase
 from storage import backends as storage_backends
 
-from .models import Equipment, EquipmentFieldValue, EquipmentType, EquipmentTypeField
+from .models import Equipment, EquipmentFieldValue, EquipmentType, EquipmentTypeField, EquipmentTypeFile
 
 _TEST_MEDIA_ROOT = tempfile.mkdtemp(prefix="ele-equipment-tests-")
 
@@ -1340,3 +1340,89 @@ class EquipmentFieldOrderTests(APITestCase):
         self.assertEqual(resp.status_code, 200, resp.data)
         data = self.client.get(f"/api/equipment/{eq_id}/").data
         self.assertEqual([c["name"] for c in data["custom_fields"]], ["A", "B"])
+
+
+@override_settings(MEDIA_ROOT=_TEST_MEDIA_ROOT)
+class EquipmentTypeFilesTests(APITestCase):
+    """B67. Библиотека общих файлов Вида + выбор файлов на экземпляре."""
+
+    def setUp(self):
+        _reset_local_backend()
+        self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")
+        self.worker = User.objects.create_user(email="worker@example.com", password="Str0ng!Pass1", role="employee")
+        self.client.force_authenticate(user=self.admin)
+        self.eq_type = EquipmentType.objects.create(name="Ноутбук")
+
+    def _upload(self, type_id, name="manual.pdf"):
+        return self.client.post(
+            f"/api/equipment-types/{type_id}/files/",
+            {"file": SimpleUploadedFile(name, b"%PDF-1.4 fake", content_type="application/pdf")},
+        )
+
+    def test_upload_lists_and_appears_in_type(self):
+        resp = self._upload(self.eq_type.id)
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(len(resp.data), 1)
+        self.assertEqual(resp.data[0]["file"]["original_filename"], "manual.pdf")
+        # Список файлов Вида приходит в самом Виде (type_files).
+        types = self.client.get("/api/equipment-types/").data
+        row = next(t for t in types if t["id"] == self.eq_type.id)
+        self.assertEqual(len(row["type_files"]), 1)
+
+    def test_upload_oversized_rejected(self):
+        big = SimpleUploadedFile("big.pdf", b"0" * (20 * 1024 * 1024 + 1), content_type="application/pdf")
+        resp = self.client.post(f"/api/equipment-types/{self.eq_type.id}/files/", {"file": big})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_non_manager_cannot_upload(self):
+        self.client.force_authenticate(user=self.worker)
+        resp = self._upload(self.eq_type.id)
+        self.assertIn(resp.status_code, (403, 404))
+        self.assertEqual(EquipmentTypeFile.objects.count(), 0)
+
+    def test_delete_type_file(self):
+        file_id = self._upload(self.eq_type.id).data[0]["id"]
+        resp = self.client.delete(f"/api/equipment-types/{self.eq_type.id}/files/{file_id}/")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data, [])
+        self.assertEqual(EquipmentTypeFile.objects.count(), 0)
+
+    def test_create_equipment_selects_type_files(self):
+        f1 = self._upload(self.eq_type.id, "a.pdf").data[0]["id"]
+        self._upload(self.eq_type.id, "b.pdf")
+        resp = self.client.post(
+            "/api/equipment/",
+            {"inventory_number": "INV-1", "equipment_type": self.eq_type.id, "type_file_ids": [f1]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 201, resp.data)
+        card = self.client.get(f"/api/equipment/{resp.data['id']}/").data
+        self.assertEqual([tf["id"] for tf in card["type_files"]], [f1])
+
+    def test_select_file_from_other_type_rejected(self):
+        other = EquipmentType.objects.create(name="Монитор")
+        foreign = self._upload(other.id, "x.pdf").data[0]["id"]
+        resp = self.client.post(
+            "/api/equipment/",
+            {"inventory_number": "INV-2", "equipment_type": self.eq_type.id, "type_file_ids": [foreign]},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("type_file_ids", resp.data.get("errors", resp.data))
+
+    def test_update_equipment_changes_selection(self):
+        f1 = self._upload(self.eq_type.id, "a.pdf").data[0]["id"]
+        f2 = self._upload(self.eq_type.id, "b.pdf").data[0]["id"]
+        eq_id = self.client.post(
+            "/api/equipment/",
+            {"inventory_number": "INV-3", "equipment_type": self.eq_type.id, "type_file_ids": [f1]},
+            format="json",
+        ).data["id"]
+        resp = self.client.patch(f"/api/equipment/{eq_id}/", {"type_file_ids": [f2]}, format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        card = self.client.get(f"/api/equipment/{eq_id}/").data
+        self.assertEqual([tf["id"] for tf in card["type_files"]], [f2])
+        # Пустой список очищает выбор.
+        self.client.patch(f"/api/equipment/{eq_id}/", {"type_file_ids": []}, format="json")
+        card = self.client.get(f"/api/equipment/{eq_id}/").data
+        self.assertEqual(card["type_files"], [])

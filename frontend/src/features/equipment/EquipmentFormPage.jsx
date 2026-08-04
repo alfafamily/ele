@@ -7,6 +7,7 @@ import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { PLACEMENT } from '../../shared/placement.js'
+import { TypeFilesPicker } from '../../shared/TypeFilesPicker.jsx'
 import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Spinner, TypeSelect } from '../../shared/ui'
 import { splitApiError } from '../../shared/formErrors.js'
 import { requiredValueErrors } from '../../shared/eav'
@@ -42,6 +43,7 @@ export function EquipmentFormPage() {
   const [inventoryNumber, setInventoryNumber] = useState('')
   const [values, setValues] = useState({})
   const [fileValues, setFileValues] = useState({}) // fieldId -> {field values entry}
+  const [typeFileIds, setTypeFileIds] = useState([]) // B67: выбранные файлы Вида (id)
   const [customFields, setCustomFields] = useState([])
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -97,6 +99,7 @@ export function EquipmentFormPage() {
       const fMap = {}
       for (const fv of data.field_values) if (fv.value_type === 'file') fMap[fv.field] = fv
       setFileValues(fMap)
+      setTypeFileIds((data.type_files || []).map((f) => f.id))
       setCustomFields(data.custom_fields)
     })
   }, [id, isEdit])
@@ -116,6 +119,7 @@ export function EquipmentFormPage() {
     setTypeId(newTypeId)
     setValues({})
     setFileValues({})
+    setTypeFileIds([]) // B67: другой Вид — своя библиотека файлов
     setFieldErrors((prev) => ({ ...prev, equipment_type: undefined }))
     setValueErrors({})
   }
@@ -156,6 +160,7 @@ export function EquipmentFormPage() {
       equipment_type: Number(typeId),
       field_values_input: typeFields.filter((f) => f.value_type !== 'file').map((f) => ({ field: f.id, value: values[f.id] ?? null })),
       custom_fields: customFields.filter((f) => f.name.trim()),
+      type_file_ids: typeFileIds,
     }
     if (!isEdit && comment.trim()) payload.comment = comment.trim()
     // Размещение задаём прямо в payload создания (employee XOR place).
@@ -304,6 +309,20 @@ export function EquipmentFormPage() {
                     />
                   ))}
               </div>
+            </Card>
+          ) : null}
+
+          {selectedType && (selectedType.type_files?.length ?? 0) > 0 ? (
+            <Card>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Общие файлы вида</div>
+              <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
+                Отметьте файлы вида, которые нужно показать на карточке этого объекта.
+              </div>
+              <TypeFilesPicker
+                available={selectedType.type_files}
+                selectedIds={typeFileIds}
+                onChange={setTypeFileIds}
+              />
             </Card>
           ) : null}
 

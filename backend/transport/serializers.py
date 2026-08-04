@@ -8,7 +8,7 @@ from core.maintenance_serializers import (
     BaseMaintenanceRegulationSerializer,
     BasePerformMaintenanceSerializer,
 )
-from core.serializers import EmployeeHolderSerializerMixin
+from core.serializers import EmployeeHolderSerializerMixin, serialize_type_files
 from storage.serializers import StoredFileSerializer
 
 from .maintenance import create_plans_for_transport, transport_maintenance_summary
@@ -25,6 +25,7 @@ from .models import (
     TransportType,
     TransportTypeField,
     TransportTypeFieldOption,
+    TransportTypeFile,
 )
 
 
@@ -80,13 +81,18 @@ class TransportTypeFieldSerializer(serializers.ModelSerializer):
 class TransportTypeSerializer(serializers.ModelSerializer):
     fields = TransportTypeFieldSerializer(many=True, read_only=True)
     objects_count = serializers.IntegerField(source="transport.count", read_only=True)
+    # B67: библиотека общих файлов Вида (read-only, см. serialize_type_files).
+    type_files = serializers.SerializerMethodField()
 
     class Meta:
         model = TransportType
-        fields = ["id", "name", "is_archived", "mileage_unit", "gibdd_registration", "fields", "objects_count"]
+        fields = ["id", "name", "is_archived", "mileage_unit", "gibdd_registration", "fields", "objects_count", "type_files"]
         # gibdd_registration определяет состав базовых реквизитов и задаётся только
         # при создании (как вид лицензии) — после создания неизменяем.
         read_only_fields = []
+
+    def get_type_files(self, obj):
+        return serialize_type_files(obj.type_files.all())
 
     def update(self, instance, validated_data):
         # Запрет смены признака регистрации в ГИБДД после создания.
@@ -192,6 +198,11 @@ class TransportSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerial
     field_values = TransportFieldValueOutSerializer(many=True, read_only=True)
     custom_fields = TransportCustomFieldSerializer(many=True, required=False)
     field_values_input = TransportFieldValueInputSerializer(many=True, required=False, write_only=True)
+    # B67: выбранные для единицы файлы из библиотеки Вида (чтение/запись).
+    type_files = serializers.SerializerMethodField()
+    type_file_ids = serializers.PrimaryKeyRelatedField(
+        queryset=TransportTypeFile.objects.all(), many=True, required=False, write_only=True
+    )
 
     class Meta:
         model = Transport
@@ -221,9 +232,14 @@ class TransportSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerial
             "field_values",
             "field_values_input",
             "custom_fields",
+            "type_files",
+            "type_file_ids",
             "created_at",
         ]
         read_only_fields = ["is_written_off", "written_off_at", "created_at", "parks_at_driver_address"]
+
+    def get_type_files(self, obj):
+        return serialize_type_files(obj.type_files.all())
 
     def get_parking(self, obj):
         return transport_parking(obj)
@@ -286,6 +302,14 @@ class TransportSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerial
 
     def validate(self, attrs):
         transport_type = attrs.get("transport_type") or getattr(self.instance, "transport_type", None)
+        # B67: выбранные файлы Вида должны принадлежать выбранному Виду.
+        type_file_ids = attrs.get("type_file_ids")
+        if type_file_ids:
+            for tf in type_file_ids:
+                if tf.transport_type_id != transport_type.pk:
+                    raise serializers.ValidationError(
+                        {"type_file_ids": ["Файл не относится к выбранному Виду транспорта."]}
+                    )
         field_values_input = attrs.get("field_values_input")
         if field_values_input:
             for item in field_values_input:
@@ -319,7 +343,10 @@ class TransportSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerial
     def create(self, validated_data):
         field_values_input = validated_data.pop("field_values_input", [])
         custom_fields_data = validated_data.pop("custom_fields", [])
+        type_files = validated_data.pop("type_file_ids", None)
         instance = Transport.objects.create(**validated_data)
+        if type_files is not None:
+            instance.type_files.set(type_files)
         # Экземпляр наследует планы всех активных регламентов своего типа.
         create_plans_for_transport(instance)
         if field_values_input:
@@ -332,9 +359,12 @@ class TransportSerializer(EmployeeHolderSerializerMixin, serializers.ModelSerial
     def update(self, instance, validated_data):
         field_values_input = validated_data.pop("field_values_input", None)
         custom_fields_data = validated_data.pop("custom_fields", None)
+        type_files = validated_data.pop("type_file_ids", None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+        if type_files is not None:
+            instance.type_files.set(type_files)
         if field_values_input is not None:
             apply_field_values(instance, "transport", TransportFieldValue, field_values_input, instance.transport_type.fields.all())
         if custom_fields_data is not None:

@@ -46,3 +46,23 @@ class BackgroundJobRun(models.Model):
 
     def __str__(self):
         return f"{self.get_job_display()} — {self.get_status_display()} ({self.created_at:%d.%m.%Y %H:%M})"
+
+
+class TypeFileBase(models.Model):
+    """B67. Общий файл, привязанный к Виду имущества (не к экземпляру): инструкции,
+    драйверы, сертификаты, шаблоны — «библиотека Вида». Абстрактная база; каждый
+    домен (оборудование/лицензии/транспорт) наследует её и добавляет FK на свой
+    Тип. Бинарник живёт в StoredFile (единый слой хранилища).
+
+    Файл добавляется в библиотеку в редакторе Вида; на форме экземпляра из этой
+    библиотеки выбираются нужные файлы, и на карточке экземпляра показываются
+    только выбранные (выбор — M2M на стороне экземпляра, см. `type_files`)."""
+
+    stored_file = models.ForeignKey(
+        "storage.StoredFile", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        abstract = True
+        ordering = ["id"]

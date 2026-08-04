@@ -8,6 +8,7 @@ import { DeleteTypeModal } from './DeleteTypeModal.jsx'
 import { FieldFormModal } from './FieldFormModal.jsx'
 import { NewTypeModal } from './NewTypeModal.jsx'
 import { RenameTypeModal } from './RenameTypeModal.jsx'
+import { TypeFilesLibrary } from './TypeFilesLibrary.jsx'
 import { regulationPeriodLabel } from './regulationPeriodLabel.js'
 import { makeTypesApi } from './typesApi.js'
 
@@ -376,6 +377,25 @@ export function TypesEditorPage({ domain, title }) {
                   </>
                 )
               })()}
+            </div>
+
+            {/* B67: библиотека общих файлов Вида — инструкции/драйверы/сертификаты/
+                шаблоны, общие для всего имущества Вида. На форме объекта из неё
+                выбираются файлы, показываемые на карточке. */}
+            <div style={{ marginTop: 28 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Общие файлы вида</div>
+              <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginBottom: 12 }}>
+                Общие файлы для всего имущества этого вида — инструкции, драйверы, сертификаты, шаблоны.
+                На форме объекта можно выбрать, какие из них показывать на его карточке.
+              </div>
+              <TypeFilesLibrary
+                api={api}
+                typeId={selected.id}
+                files={selected.type_files || []}
+                onChanged={(list) =>
+                  setTypes((prev) => prev.map((t) => (t.id === selected.id ? { ...t, type_files: list } : t)))
+                }
+              />
             </div>
 
             {/* B13+/B22: регламенты ТО — оборудование с включённым ТО и транспорт

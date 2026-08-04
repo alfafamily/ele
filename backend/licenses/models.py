@@ -2,6 +2,8 @@ from django.db import models
 from django.db.models import ProtectedError
 from simple_history.models import HistoricalRecords
 
+from core.models import TypeFileBase
+
 
 class LicenseType(models.Model):
     """Вид лицензии — классификатор реквизитов, не используется как имя объекта.
@@ -107,6 +109,16 @@ class LicenseTypeFieldOption(models.Model):
         return f"{self.field.name} / {self.value}"
 
 
+class LicenseTypeFile(TypeFileBase):
+    """Общий файл Вида лицензии (B67) — библиотека Вида."""
+
+    license_type = models.ForeignKey(LicenseType, on_delete=models.CASCADE, related_name="type_files")
+
+    class Meta(TypeFileBase.Meta):
+        verbose_name = "Общий файл вида лицензии"
+        verbose_name_plural = "Общие файлы вида лицензии"
+
+
 class License(models.Model):
     """Лицензия — идентифицируется своим Типом (B18: собственного Наименования
     больше нет). Колонка name оставлена nullable ради истории: прежние значения
@@ -134,6 +146,9 @@ class License(models.Model):
     license_type = models.ForeignKey(
         LicenseType, verbose_name="Вид лицензии", on_delete=models.PROTECT, related_name="licenses",
     )
+    # B67: выбранные для этой лицензии файлы из библиотеки Вида (подмножество
+    # LicenseType.type_files). Показываются в разделе «Файлы» карточки.
+    type_files = models.ManyToManyField(LicenseTypeFile, blank=True, related_name="licenses")
     # B38: индекс под курсорную пагинацию по created_at (см. Equipment).
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     history = HistoricalRecords()

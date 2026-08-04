@@ -23,13 +23,13 @@ const SECTIONS = [
   },
   { value: 'numbering', label: 'Префиксы', desc: 'Префиксы учётных номеров для автогенерации', Component: NumberingTab },
   { value: 'system', label: 'Системные', desc: 'Хранилище, доступ и проверка интеграций', Component: SystemTab },
+  { value: 'backup', label: 'Резервное копирование', desc: 'Настройки резервного копирования', Component: BackupTab },
   {
     value: 'journal',
     label: 'Журнал фоновых задач',
     desc: 'Последние запуски и ошибки фоновых процессов',
     Component: BackgroundJournalTab,
   },
-  { value: 'backup', label: 'Резервное копирование', desc: 'Настройки резервного копирования', Component: BackupTab },
   { value: 'update', label: 'Обновление', desc: 'Версия и обновление системы', Component: UpdateTab },
 ]
 
