@@ -40,7 +40,22 @@ class S3StorageBackend(StorageBackend):
     name = "s3"
 
     def __init__(self):
+        from botocore.config import Config
         from storages.backends.s3 import S3Storage
+
+        # B56-R1 (#8): без явного config botocore держит воркер до дефолтных
+        # 60/60 c при зависшем/недоступном S3. Значения задаются в .env
+        # (S3_CONNECT_TIMEOUT/S3_READ_TIMEOUT), дефолты 5/60 c — см. settings.
+        # connect_timeout режем агрессивно (установка соединения быстрая).
+        # read_timeout — это лимит НА ОДНУ socket-операцию (ожидание ответа/чтение
+        # чанка), а не на весь перенос, поэтому легитимную большую загрузку
+        # (вплоть до Company.max_upload_mb) он не обрывает: multipart-запись идёт
+        # частями. Retries оставляем дефолтными (в отличие от разовой проверки
+        # соединения в backup/company, где стоит max_attempts=1).
+        client_config = Config(
+            connect_timeout=settings.S3_CONNECT_TIMEOUT,
+            read_timeout=settings.S3_READ_TIMEOUT,
+        )
 
         self._storage = S3Storage(
             bucket_name=settings.S3_BUCKET,
@@ -48,6 +63,7 @@ class S3StorageBackend(StorageBackend):
             region_name=settings.S3_REGION or None,
             access_key=settings.S3_ACCESS_KEY,
             secret_key=settings.S3_SECRET_KEY,
+            client_config=client_config,
         )
 
 

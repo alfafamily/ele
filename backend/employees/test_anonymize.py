@@ -54,7 +54,11 @@ class AnonymizeServiceTests(APITestCase):
         PushSubscription.objects.create(user=user, endpoint="https://push/x", p256dh="k", auth="a")
         a = self._snapshot_assignment(emp)
 
-        anonymize_employee(emp)
+        # B56-R1 (#9): удаление бинарника аватара отложено на transaction.on_commit
+        # (чтобы откат @atomic не оставил висячую ссылку). В тесте фиксируем и
+        # исполняем after-commit-колбэки, иначе файл не удалится внутри TestCase.
+        with self.captureOnCommitCallbacks(execute=True):
+            anonymize_employee(emp)
 
         emp.refresh_from_db()
         # ФИО стёрто → «Удалён»; должность/отдел сохранены (не ПДн).

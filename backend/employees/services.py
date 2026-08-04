@@ -210,10 +210,16 @@ def anonymize_employee(employee, *, actor=None):
         raise AnonymizeError("Обезличить можно только уволенного сотрудника.")
 
     # Аватар — удалить бинарник из хранилища и запись StoredFile.
+    # B56-R1 (#9): физическое удаление файла из S3 нельзя делать внутри @atomic —
+    # при откате транзакции строка StoredFile восстановится, а бинарник в S3 уже
+    # стёрт (висячая ссылка на несуществующий файл). Откладываем на after-commit:
+    # если обезличивание откатится, файл останется нетронутым; если пройдёт —
+    # чистится после фиксации (в худшем случае безобидный orphan в S3, но не
+    # битая ссылка из БД).
     if employee.avatar_id:
         avatar = employee.avatar
         employee.avatar = None
-        delete_stored_file(avatar)
+        transaction.on_commit(lambda a=avatar: delete_stored_file(a))
 
     employee.first_name = ""
     employee.last_name = ANONYMIZED_NAME

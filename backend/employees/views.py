@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, viewsets
@@ -554,13 +555,17 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     ordering = ["-created_at"]
 
     def perform_create(self, serializer):
-        super().perform_create(serializer)
-        # B32: SIM создана сразу за сотрудником — эпизод акцепта.
-        sim = serializer.instance
-        if sim.employee_id:
-            from core.assignments import create_assignment
+        # B56-R1 (#10): создание записи и открытие эпизода акцепта — одной
+        # транзакцией (BD-сбой между записями не должен оставить SIM за
+        # сотрудником без эпизода акцепта).
+        with transaction.atomic():
+            super().perform_create(serializer)
+            # B32: SIM создана сразу за сотрудником — эпизод акцепта.
+            sim = serializer.instance
+            if sim.employee_id:
+                from core.assignments import create_assignment
 
-            create_assignment(sim, sim.employee, self.request.user, return_place=None)
+                create_assignment(sim, sim.employee, self.request.user, return_place=None)
 
     def get_queryset(self):
         from core.assignments import annotate_acceptance
@@ -670,10 +675,12 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         comment = (request.data.get("comment") or "").strip()
         if comment:
             sim._change_reason = comment
-        sim.save(update_fields=["employee", "equipment", "storage_place"])
         from core.assignments import close_open_assignment
 
-        close_open_assignment(sim)  # B32
+        # B56-R1 (#10): размещение и закрытие эпизода акцепта — одной транзакцией.
+        with transaction.atomic():
+            sim.save(update_fields=["employee", "equipment", "storage_place"])
+            close_open_assignment(sim)  # B32
         return Response(SimCardSerializer(sim).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
@@ -705,12 +712,14 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         comment = (request.data.get("comment") or "").strip()
         if comment:
             sim._change_reason = comment
-        sim.save(update_fields=["employee", "equipment", "storage_place"])
-        # B32: за сотрудником — эпизод акцепта; в оборудование — закрыть эпизод.
-        if employee is not None:
-            create_assignment(sim, employee, request.user, return_place=prev_storage)
-        else:
-            close_open_assignment(sim)
+        # B56-R1 (#10): размещение и эпизод акцепта — одной транзакцией.
+        with transaction.atomic():
+            sim.save(update_fields=["employee", "equipment", "storage_place"])
+            # B32: за сотрудником — эпизод акцепта; в оборудование — закрыть эпизод.
+            if employee is not None:
+                create_assignment(sim, employee, request.user, return_place=prev_storage)
+            else:
+                close_open_assignment(sim)
         return Response(SimCardSerializer(sim).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
@@ -730,10 +739,12 @@ class SimCardViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             comment = (request.data.get("comment") or "").strip()
             if comment:
                 sim._change_reason = comment
-            sim.save(update_fields=["employee", "equipment", "storage_place", "is_utilized", "utilized_at"])
             from core.assignments import close_open_assignment
 
-            close_open_assignment(sim)  # B32
+            # B56-R1 (#10): утилизация и закрытие эпизода акцепта — одной транзакцией.
+            with transaction.atomic():
+                sim.save(update_fields=["employee", "equipment", "storage_place", "is_utilized", "utilized_at"])
+                close_open_assignment(sim)  # B32
         return Response(SimCardSerializer(sim).data)
 
     @action(detail=True, methods=["get"], url_path="history")
@@ -848,13 +859,17 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
     ordering = ["-created_at"]
 
     def perform_create(self, serializer):
-        super().perform_create(serializer)
-        # B32: пропуск/ключ создан сразу за сотрудником — эпизод акцепта.
-        ap = serializer.instance
-        if ap.employee_id:
-            from core.assignments import create_assignment
+        # B56-R1 (#10): создание записи и открытие эпизода акцепта — одной
+        # транзакцией (BD-сбой между записями не должен оставить пропуск/ключ за
+        # сотрудником без эпизода акцепта).
+        with transaction.atomic():
+            super().perform_create(serializer)
+            # B32: пропуск/ключ создан сразу за сотрудником — эпизод акцепта.
+            ap = serializer.instance
+            if ap.employee_id:
+                from core.assignments import create_assignment
 
-            create_assignment(ap, ap.employee, self.request.user, return_place=None)
+                create_assignment(ap, ap.employee, self.request.user, return_place=None)
 
     def get_queryset(self):
         from core.assignments import annotate_acceptance
@@ -980,10 +995,12 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         comment = (request.data.get("comment") or "").strip()
         if comment:
             access_pass._change_reason = comment
-        access_pass.save(update_fields=["employee", "transport", "storage_place"])
         from core.assignments import close_open_assignment
 
-        close_open_assignment(access_pass)  # B32
+        # B56-R1 (#10): размещение и закрытие эпизода акцепта — одной транзакцией.
+        with transaction.atomic():
+            access_pass.save(update_fields=["employee", "transport", "storage_place"])
+            close_open_assignment(access_pass)  # B32
         return Response(AccessPassSerializer(access_pass).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
@@ -1019,12 +1036,14 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
         comment = (request.data.get("comment") or "").strip()
         if comment:
             access_pass._change_reason = comment
-        access_pass.save(update_fields=["employee", "transport", "storage_place"])
-        # B32: за сотрудником — эпизод акцепта; за транспортом — без.
-        if employee is not None:
-            create_assignment(access_pass, employee, request.user, return_place=prev_storage)
-        else:
-            close_open_assignment(access_pass)
+        # B56-R1 (#10): размещение и эпизод акцепта — одной транзакцией.
+        with transaction.atomic():
+            access_pass.save(update_fields=["employee", "transport", "storage_place"])
+            # B32: за сотрудником — эпизод акцепта; за транспортом — без.
+            if employee is not None:
+                create_assignment(access_pass, employee, request.user, return_place=prev_storage)
+            else:
+                close_open_assignment(access_pass)
         return Response(AccessPassSerializer(access_pass).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrAccountant])
@@ -1050,10 +1069,12 @@ class AccessPassViewSet(CreationCommentMixin, viewsets.ModelViewSet):
             comment = (request.data.get("comment") or "").strip()
             if comment:
                 access_pass._change_reason = comment
-            access_pass.save(update_fields=["employee", "transport", "storage_place", "is_utilized", "utilized_at", "utilization_reason"])
             from core.assignments import close_open_assignment
 
-            close_open_assignment(access_pass)  # B32
+            # B56-R1 (#10): утилизация и закрытие эпизода акцепта — одной транзакцией.
+            with transaction.atomic():
+                access_pass.save(update_fields=["employee", "transport", "storage_place", "is_utilized", "utilized_at", "utilization_reason"])
+                close_open_assignment(access_pass)  # B32
         return Response(AccessPassSerializer(access_pass).data)
 
     @action(detail=True, methods=["get"], url_path="history")
