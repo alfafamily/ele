@@ -5,8 +5,12 @@
 живёт здесь. Поведение идентично прежнему коду во вью.
 """
 
+import logging
+
 from django.db import transaction
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 
 @transaction.atomic
@@ -263,6 +267,12 @@ def anonymize_due_employees(now=None):
     )
     count = 0
     for employee in due:
-        anonymize_employee(employee)
-        count += 1
+        # Каждая запись обезличивается в своей транзакции (@transaction.atomic).
+        # Сбой по одной (напр. аватар в недоступном S3) не должен прерывать
+        # обработку остальных на этом тике cron — логируем и идём дальше.
+        try:
+            anonymize_employee(employee)
+            count += 1
+        except Exception:  # noqa: BLE001 — изоляция одной записи от батча
+            logger.exception("Не удалось обезличить запись сотрудника id=%s", employee.id)
     return count

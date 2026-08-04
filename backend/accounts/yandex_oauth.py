@@ -33,34 +33,42 @@ def build_authorize_url(state: str) -> str:
 
 
 def exchange_code_for_token(code: str) -> str | None:
-    response = requests.post(
-        _TOKEN_URL,
-        data={
-            "grant_type": "authorization_code",
-            "code": code,
-            "client_id": settings.YANDEX_ID_CLIENT_ID,
-            "client_secret": settings.YANDEX_ID_CLIENT_SECRET,
-        },
-        timeout=5,
-    )
-    if not response.ok:
+    # Недоступность/таймаут Яндекса или битый JSON не должны падать 500 в callback:
+    # возвращаем None → вью делает чистый redirect на /login?yandex_error=token.
+    try:
+        response = requests.post(
+            _TOKEN_URL,
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "client_id": settings.YANDEX_ID_CLIENT_ID,
+                "client_secret": settings.YANDEX_ID_CLIENT_SECRET,
+            },
+            timeout=5,
+        )
+        if not response.ok:
+            return None
+        return response.json().get("access_token")
+    except (requests.RequestException, ValueError):
         return None
-    return response.json().get("access_token")
 
 
 def fetch_user_info(access_token: str) -> dict | None:
     """Профиль пользователя Яндекса: email (обязателен) + имя/фамилия для
     создания связанного Сотрудника при первом входе. Возвращает None,
-    если email получить не удалось."""
-    response = requests.get(
-        _USERINFO_URL,
-        params={"format": "json"},
-        headers={"Authorization": f"OAuth {access_token}"},
-        timeout=5,
-    )
-    if not response.ok:
+    если email получить не удалось (в т.ч. при недоступности Яндекса)."""
+    try:
+        response = requests.get(
+            _USERINFO_URL,
+            params={"format": "json"},
+            headers={"Authorization": f"OAuth {access_token}"},
+            timeout=5,
+        )
+        if not response.ok:
+            return None
+        data = response.json()
+    except (requests.RequestException, ValueError):
         return None
-    data = response.json()
     email = data.get("default_email") or next(iter(data.get("emails", [])), None)
     if not email:
         return None

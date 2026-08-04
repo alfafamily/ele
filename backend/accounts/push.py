@@ -12,6 +12,11 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
+# Таймаут HTTP-запроса к push-сервису (connect, read) в секундах. Без него зависший
+# push-сервис заблокировал бы вызывающую операцию: в cron — весь тик рассылки ТО,
+# в веб-запросе — воркер gunicorn (закрепление имущества, проведение ТО).
+_PUSH_TIMEOUT = (5, 10)
+
 
 def push_configured() -> bool:
     """Push доступен, только когда заданы обе половины VAPID-ключа."""
@@ -33,6 +38,7 @@ def send_to_subscription(sub, payload: dict) -> bool:
             vapid_private_key=settings.VAPID_PRIVATE_KEY,
             vapid_claims={"sub": settings.VAPID_SUBJECT},
             ttl=60 * 60 * 24,
+            timeout=_PUSH_TIMEOUT,
         )
         return True
     except WebPushException as exc:

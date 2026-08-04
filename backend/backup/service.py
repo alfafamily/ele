@@ -1,6 +1,7 @@
 """Оркестрация создания полной резервной копии (B29): собрать архив
 (БД + файлы, опц. шифрование) → выгрузить в назначения (своё хранилище и/или
 резервный S3) → зафиксировать запись со статусом по каждому назначению."""
+import logging
 import os
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -8,6 +9,8 @@ from django.conf import settings
 from django.utils import timezone
 
 from storage.service import delete_stored_file
+
+logger = logging.getLogger(__name__)
 
 from .archive import build_archive
 from .destinations import (
@@ -108,6 +111,11 @@ def run_scheduled_backup_if_due() -> BackupRecord | None:
         return None
 
     record = create_backup(BackupRecord.BackupType.AUTO)
+    # Авто-копия headless: у cron нет UI, чтобы показать провал. Молчащий сбой
+    # выгрузки опасен (кажется, что копии есть) — сигнализируем в лог.
+    if backup_fully_failed(record):
+        errors = "; ".join(d.error for d in record.destinations.all() if d.error)
+        logger.error("Авто-бэкап %s не выгружен ни в одно назначение: %s", record.filename, errors)
     _trim_auto_backups(company)
     return record
 
