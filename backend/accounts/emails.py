@@ -3,6 +3,8 @@
 Ссылки в письмах ведут на роуты SPA (Фаза 7 их реализует), backend только
 формирует токены и URL. Домены/пути ниже — контракт с фронтендом.
 """
+import logging
+
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
@@ -11,6 +13,8 @@ from django.utils import timezone
 from core.utils.email import attach_ele_logo, html_to_plain_text
 
 from .tokens import make_email_change_token, make_email_confirmation_token, make_set_password_link
+
+logger = logging.getLogger(__name__)
 
 # Тема письма задаётся явно (не парсится из HTML <title>);
 # шаблоны писем — backend/templates/email/*.html.
@@ -83,8 +87,8 @@ def send_assignment_pending(user, assignment):
     try:
         _send("assignment_pending", "assignment_pending.html", [user.email],
               {"cta_url": cta_url, "object_label": label})
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Не отправлено письмо о закреплении: %s", type(exc).__name__)
 
 
 def send_assignment_rejected(user, assignment, *, label: str, employee_name: str, reason: str = ""):
@@ -94,8 +98,8 @@ def send_assignment_rejected(user, assignment, *, label: str, employee_name: str
     try:
         _send("assignment_rejected", "assignment_rejected.html", [user.email],
               {"cta_url": cta_url, "object_label": label, "employee_name": employee_name, "reason": reason})
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Не отправлено письмо об отказе от закрепления: %s", type(exc).__name__)
 
 
 def send_maintenance_email(user, *, kind: str, template: str, object_label: str, date_str: str, cta_url: str, regulation_name: str = ""):
@@ -105,8 +109,8 @@ def send_maintenance_email(user, *, kind: str, template: str, object_label: str,
         _send(kind, template, [user.email],
               {"cta_url": cta_url, "object_label": object_label, "date_str": date_str,
                "regulation_name": regulation_name})
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Не отправлено письмо о ТО (%s): %s", kind, type(exc).__name__)
 
 
 def send_email_change_confirm(user, new_email: str):

@@ -6,12 +6,16 @@
 проведено, дата ушла в будущее) — отметка сбрасывается, и следующий вход снова
 оповестит.
 """
+import logging
+
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from accounts.models import MaintenanceReminderState, NotificationKind
 from accounts.notifications import notify_maintenance
 from core.maintenance import DUE_SOON, OVERDUE, plan_status
+
+logger = logging.getLogger(__name__)
 
 _STATUS_KIND = {
     DUE_SOON: NotificationKind.MAINTENANCE_DUE,
@@ -24,7 +28,14 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         today = timezone.localdate()
-        total = self._run("equipment", today) + self._run("transport", today)
+        # Домены изолированы: сбой рассылки по оборудованию не должен помешать
+        # напоминаниям по транспорту (и наоборот).
+        total = 0
+        for domain in ("equipment", "transport"):
+            try:
+                total += self._run(domain, today)
+            except Exception:  # noqa: BLE001 — изоляция домена от тика cron
+                logger.exception("Сбой рассылки напоминаний о ТО (%s)", domain)
         self.stdout.write(f"Отправлено напоминаний: {total}")
 
     def _run(self, domain, today) -> int:
@@ -56,22 +67,31 @@ class Command(BaseCommand):
 
         sent = 0
         for plan in plans:
-            status = plan_status(plan.next_planned_date, today)
-            state, _ = MaintenanceReminderState.objects.get_or_create(
-                plan_kind=domain, plan_id=plan.id,
-            )
-            if status in _STATUS_KIND:
-                if state.notified_status != status:
-                    notify_maintenance(
-                        getattr(plan, obj_attr), _STATUS_KIND[status],
-                        date=plan.next_planned_date,
-                        regulation_name=plan.regulation.name,
-                    )
-                    state.notified_status = status
-                    state.save(update_fields=["notified_status", "updated_at"])
-                    sent += 1
-            elif state.notified_status:
-                # Вышли из «подходит/просрочено» — сброс, чтобы вход снова уведомил.
-                state.notified_status = ""
-                state.save(update_fields=["notified_status", "updated_at"])
+            # Сбой по одному плану (напр. потеря соединения при записи отметки
+            # дедупа) не должен обрывать обработку остальных планов на этом тике.
+            try:
+                sent += self._process_plan(plan, domain, obj_attr, today)
+            except Exception:  # noqa: BLE001 — изоляция плана от батча
+                logger.exception("Сбой напоминания о ТО (%s, план id=%s)", domain, plan.id)
         return sent
+
+    def _process_plan(self, plan, domain, obj_attr, today) -> int:
+        status = plan_status(plan.next_planned_date, today)
+        state, _ = MaintenanceReminderState.objects.get_or_create(
+            plan_kind=domain, plan_id=plan.id,
+        )
+        if status in _STATUS_KIND:
+            if state.notified_status != status:
+                notify_maintenance(
+                    getattr(plan, obj_attr), _STATUS_KIND[status],
+                    date=plan.next_planned_date,
+                    regulation_name=plan.regulation.name,
+                )
+                state.notified_status = status
+                state.save(update_fields=["notified_status", "updated_at"])
+                return 1
+        elif state.notified_status:
+            # Вышли из «подходит/просрочено» — сброс, чтобы вход снова уведомил.
+            state.notified_status = ""
+            state.save(update_fields=["notified_status", "updated_at"])
+        return 0
