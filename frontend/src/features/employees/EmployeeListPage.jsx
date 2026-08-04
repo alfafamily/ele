@@ -8,6 +8,7 @@ import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
 import { nameInitials } from '../../shared/employeeName.js'
+import { Tooltip } from '../../shared/Tooltip.jsx'
 import { ReportsMenu } from '../reports/ReportsMenu.jsx'
 import { Button, EmptyState, Icon, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
 
@@ -50,6 +51,26 @@ function avatarNode(row) {
     >
       {row.avatar ? <img src={row.avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : nameInitials(row.full_name)}
     </span>
+  )
+}
+
+// B65. Иконка статуса согласия на обработку ПДн между аватаром и ФИО в списке.
+// self — согласие выразил сам сотрудник (зелёная); operator — отметил
+// ответственный (жёлтая); none — не получено/не указано (красная). У обезличенных
+// не показываем (их ПДн удалены, как и блок «Согласие» на карточке).
+const CONSENT_ICON = {
+  self: { color: 'var(--color-success)', title: 'Сотрудник выразил согласие на обработку ПДн' },
+  operator: { color: 'var(--color-warning)', title: 'Ответственный отметил, что согласие от сотрудника на обработку ПДн получено' },
+  none: { color: 'var(--color-error)', title: 'Согласие не получено от сотрудника или не указано' },
+}
+
+function consentIconNode(row) {
+  if (row.is_anonymized) return null
+  const meta = CONSENT_ICON[row.consent_status] || CONSENT_ICON.none
+  return (
+    <Tooltip label={meta.title} role="img" aria-label={meta.title} style={{ flex: 'none', color: meta.color }}>
+      <Icon name="clipboard-pen-line" size={18} strokeWidth={2} />
+    </Tooltip>
   )
 }
 
@@ -155,6 +176,7 @@ export function EmployeeListPage() {
                   // «Сотрудник»: ФИО в 2 строки · должность/отдел · статус
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11, minWidth: 0 }}>
                     {avatarNode(row)}
+                    {consentIconNode(row)}
                     <div style={{ minWidth: 0 }}>
                       <div className="ele-clamp-2" style={{ fontWeight: 600 }}>{row.full_name}</div>
                       <div style={{ color: 'var(--color-text-muted)', fontSize: 12, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -166,6 +188,7 @@ export function EmployeeListPage() {
                   <>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
                       {avatarNode(row)}
+                      {consentIconNode(row)}
                       <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.full_name}</span>
                     </div>
                     <div className="ele-clamp-2">{row.position || '—'}</div>

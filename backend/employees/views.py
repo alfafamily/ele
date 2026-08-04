@@ -113,7 +113,9 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         # набор прогреваем только для карточки и служебных экшенов.
         qs = Employee.objects.select_related("avatar")
         if self.action == "list":
-            qs = qs.prefetch_related("equipment")
+            # B65: consents — для иконки статуса согласия ПДн в списке (≤2 строки
+            # на сотрудника, один доп. запрос на страницу, без N+1).
+            qs = qs.prefetch_related("equipment", "consents")
         else:
             qs = qs.prefetch_related(
                 "equipment__equipment_type",

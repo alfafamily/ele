@@ -115,6 +115,41 @@ class OperatorConsentTests(APITestCase):
         self.assertTrue(emp.consents.filter(source=EmployeeConsent.Source.OPERATOR).exists())
 
 
+class EmployeeListConsentStatusTests(APITestCase):
+    """B65. Иконка статуса согласия ПДн в списке сотрудников: список отдаёт
+    consent_status = self / operator / none (self приоритетнее operator)."""
+
+    def setUp(self):
+        admin_emp = Employee.objects.create(last_name="Иванов", first_name="Иван")
+        admin = User.objects.create_user(
+            email="admin@e.ru", password="Str0ng!Pass1", role=User.Role.ADMIN, employee=admin_emp
+        )
+        self.client.force_authenticate(admin)
+
+    def _statuses(self):
+        resp = self.client.get("/api/employees/")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        return {r["id"]: r["consent_status"] for r in resp.data["results"]}
+
+    def test_list_reports_consent_status_by_source(self):
+        e_self = Employee.objects.create(last_name="Селф", first_name="С")
+        EmployeeConsent.objects.create(employee=e_self, source=EmployeeConsent.Source.SELF)
+        e_op = Employee.objects.create(last_name="Оператор", first_name="О")
+        EmployeeConsent.objects.create(employee=e_op, source=EmployeeConsent.Source.OPERATOR)
+        e_none = Employee.objects.create(last_name="Нет", first_name="Н")
+
+        st = self._statuses()
+        self.assertEqual(st[e_self.id], "self")
+        self.assertEqual(st[e_op.id], "operator")
+        self.assertEqual(st[e_none.id], "none")
+
+    def test_self_consent_wins_over_operator(self):
+        e = Employee.objects.create(last_name="Оба", first_name="О")
+        EmployeeConsent.objects.create(employee=e, source=EmployeeConsent.Source.OPERATOR)
+        EmployeeConsent.objects.create(employee=e, source=EmployeeConsent.Source.SELF)
+        self.assertEqual(self._statuses()[e.id], "self")
+
+
 class SelfConsentAndReminderTests(APITestCase):
     def setUp(self):
         self.emp = Employee.objects.create(last_name="Петров", first_name="Пётр")

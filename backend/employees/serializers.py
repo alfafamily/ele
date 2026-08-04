@@ -428,6 +428,9 @@ def _tool_entries(employee):
 class EmployeeListSerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
     equipment_count = serializers.SerializerMethodField()
+    # B65: статус согласия на обработку ПДн для иконки в списке — self / operator /
+    # none (self приоритетнее, как и на карточке в ConsentCard).
+    consent_status = serializers.SerializerMethodField()
     # Аватар — только чтение здесь: загрузка/замена через отдельный
     # EmployeeAvatarUploadView (multipart), как и Company.logo .
     avatar = StoredFileSerializer(read_only=True)
@@ -443,6 +446,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
             "department",
             "avatar",
             "equipment_count",
+            "consent_status",
             "is_employed",
             "is_anonymized",
         ]
@@ -452,6 +456,15 @@ class EmployeeListSerializer(serializers.ModelSerializer):
 
     def get_equipment_count(self, obj):
         return len(_active_equipment(obj))
+
+    def get_consent_status(self, obj):
+        # obj.consents прогрет prefetch'ем в EmployeeViewSet.get_queryset (list).
+        sources = {c.source for c in obj.consents.all()}
+        if EmployeeConsent.Source.SELF in sources:
+            return "self"
+        if EmployeeConsent.Source.OPERATOR in sources:
+            return "operator"
+        return "none"
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
