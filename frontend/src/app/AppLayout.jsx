@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
-import { useCompany, useDuplicatesCount, useRefreshDuplicates, useStorageLow } from './CompanyContext.jsx'
+import { useCompany, useDuplicatesCount, useJobsAlert, useRefreshDuplicates, useStorageLow } from './CompanyContext.jsx'
 import { navSectionsForRole } from './navSections.js'
 import { HelpIcon, MenuIcon, SettingsIcon } from './navIcons.jsx'
 import { roleLabel } from '../shared/roles.js'
@@ -45,10 +45,12 @@ export function AppLayout() {
   const company = useCompany()
   const duplicatesCount = useDuplicatesCount()
   const storageLow = useStorageLow()
+  const jobsAlert = useJobsAlert()
   // Причины предупреждения на иконке «Настройки» (пусто — треугольника нет).
   const settingsWarnings = [
     ...(duplicatesCount > 0 ? ['Обнаружены возможные дубли сотрудников'] : []),
     ...(storageLow ? ['Заканчивается место в хранилище'] : []),
+    ...(jobsAlert ? ['Ошибки в журнале фоновых задач'] : []),
   ]
   const sections = navSectionsForRole(user.role, user.is_observer)
   const employeeName = user.employee ? user.employee.full_name : null

@@ -35,6 +35,21 @@ urlpatterns = [
     path("company/system-status/", views.SystemStatusView.as_view(), name="company-system-status"),
     path("company/update-info/", views.UpdateInfoView.as_view(), name="company-update-info"),
     path("company/storage-space/", views.StorageSpaceView.as_view(), name="company-storage-space"),
+    path(
+        "company/background-journal/summary/",
+        views.BackgroundJournalSummaryView.as_view(),
+        name="company-background-journal-summary",
+    ),
+    path(
+        "company/background-journal/events/",
+        views.BackgroundJournalEventsView.as_view(),
+        name="company-background-journal-events",
+    ),
+    path(
+        "company/background-journal/alert/",
+        views.BackgroundJournalAlertView.as_view(),
+        name="company-background-journal-alert",
+    ),
     path("company/storage-test/", views.CompanyStorageTestView.as_view(), name="company-storage-test"),
     path("company/yandex-id-check/", views.CompanyYandexIDCheckView.as_view(), name="company-yandex-id-check"),
     path("company/captcha-check/", views.CompanyCaptchaCheckView.as_view(), name="company-captcha-check"),

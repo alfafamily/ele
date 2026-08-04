@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model, login
 from django.db import transaction
 from django.utils import timezone
+from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,6 +13,8 @@ from rest_framework.views import APIView
 from accounts.captcha import is_captcha_enabled, verify_captcha
 from accounts.push import push_configured, send_to_user
 from accounts.yandex_oauth import is_yandex_id_enabled
+from core.models import BackgroundJobRun
+from core.pagination import ELECursorPagination
 from core.permissions import IsAdmin, IsAdminOrAccountant
 from core.utils.client_ip import get_client_ip
 from core.version import _RELEASES_PAGE, get_current_version, get_latest_release, is_newer
@@ -22,9 +25,11 @@ from storage.serializers import StoredFileErrorSerializer, StoredFileSerializer
 from storage.service import delete_stored_file, store_uploaded_file
 from storage.validators import validate_image_max_dimensions
 
+from .background_journal import journal_alert
 from .integration_checks import check_smartcaptcha_reachable, check_yandex_oauth_reachable
 from .models import Company
 from .serializers import (
+    BackgroundJobRunSerializer,
     BackupSettingsSerializer,
     CompanyBriefSerializer,
     CompanySettingsSerializer,
@@ -366,6 +371,59 @@ class StorageSpaceView(APIView):
         from storage.space import storage_space_report
 
         return Response(storage_space_report())
+
+
+class BackgroundJournalSummaryView(APIView):
+    """B66. Настройки → Журнал фоновых задач: плитки «последний запуск» по 4
+    задачам расписания. Открытие журнала фиксируем меткой просмотра — свежие
+    сбои отправки уведомлений после этого гаснут в треугольнике-предупреждении."""
+
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        company = Company.load()
+        company.background_journal_seen_at = timezone.now()
+        company.save(update_fields=["background_journal_seen_at"])
+
+        jobs = []
+        for job in BackgroundJobRun.SCHEDULED_JOBS:
+            last = BackgroundJobRun.objects.filter(job=job).order_by("-created_at").first()
+            jobs.append(
+                {
+                    "job": job,
+                    "label": BackgroundJobRun.Job(job).label,
+                    "status": last.status if last else None,  # null → «Нет данных»
+                    "last_run_at": last.created_at if last else None,
+                    "detail": last.detail if last else "",
+                    "affected": last.affected if last else 0,
+                }
+            )
+        return Response({"jobs": jobs})
+
+
+class BackgroundJournalEventsView(generics.ListAPIView):
+    """B66. Лента событий журнала (все результативные прогоны и ошибки, новые
+    сверху) с курсорной пагинацией. `?errors_only=1` — только ошибки."""
+
+    serializer_class = BackgroundJobRunSerializer
+    permission_classes = [IsAdmin]
+    pagination_class = ELECursorPagination
+
+    def get_queryset(self):
+        qs = BackgroundJobRun.objects.all()
+        if self.request.query_params.get("errors_only") in ("1", "true"):
+            qs = qs.filter(status=BackgroundJobRun.Status.ERROR)
+        return qs
+
+
+class BackgroundJournalAlertView(APIView):
+    """B66. Признак треугольника-предупреждения у пункта меню «Журнал фоновых
+    задач» и у иконки «Настройки». НЕ отмечает журнал как просмотренный."""
+
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        return Response({"alert": journal_alert(Company.load())})
 
 
 class CompanyStorageTestView(APIView):

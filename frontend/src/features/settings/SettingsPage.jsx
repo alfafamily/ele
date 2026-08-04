@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { useDuplicatesCount, useStorageLow } from '../../app/CompanyContext.jsx'
+import { useDuplicatesCount, useJobsAlert, useStorageLow } from '../../app/CompanyContext.jsx'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { Icon } from '../../shared/ui'
+import { BackgroundJournalTab } from './BackgroundJournalTab.jsx'
 import { BackupTab } from './BackupTab.jsx'
 import { CompanyTab } from './CompanyTab.jsx'
 import { EmployeeDuplicatesTab } from './EmployeeDuplicatesTab.jsx'
@@ -22,6 +23,12 @@ const SECTIONS = [
   },
   { value: 'numbering', label: 'Префиксы', desc: 'Префиксы учётных номеров для автогенерации', Component: NumberingTab },
   { value: 'system', label: 'Системные', desc: 'Хранилище, доступ и проверка интеграций', Component: SystemTab },
+  {
+    value: 'journal',
+    label: 'Журнал фоновых задач',
+    desc: 'Последние запуски и ошибки фоновых процессов',
+    Component: BackgroundJournalTab,
+  },
   { value: 'backup', label: 'Резервное копирование', desc: 'Настройки резервного копирования', Component: BackupTab },
   { value: 'update', label: 'Обновление', desc: 'Версия и обновление системы', Component: UpdateTab },
 ]
@@ -90,6 +97,7 @@ export function SettingsPage() {
   const isMobile = useMediaQuery('(max-width: 768px)')
   const duplicatesCount = useDuplicatesCount()
   const storageLow = useStorageLow()
+  const jobsAlert = useJobsAlert()
   const Active = SECTIONS.find((s) => s.value === section)?.Component ?? CompanyTab
 
   return (
@@ -118,7 +126,9 @@ export function SettingsPage() {
                 {/* Иконка-предупреждение инлайново в начале текста (как индикаторы
                     ТО в списках) — при переносе названия остаётся на первой строке. */}
                 <span className="ele-settings__nav-label">
-                  {(s.value === 'duplicates' && duplicatesCount > 0) || (s.value === 'system' && storageLow) ? (
+                  {(s.value === 'duplicates' && duplicatesCount > 0) ||
+                  (s.value === 'system' && storageLow) ||
+                  (s.value === 'journal' && jobsAlert) ? (
                     <span style={{ display: 'inline-flex', verticalAlign: '-0.15em', marginRight: 4, color: 'var(--color-warning)' }}>
                       <Icon name="triangle-alert" size={15} strokeWidth={2.2} />
                     </span>

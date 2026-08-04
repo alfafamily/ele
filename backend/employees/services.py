@@ -271,7 +271,11 @@ def anonymize_due_employees(now=None):
         is_employed=False, is_anonymized=False, terminated_at__isnull=False,
         terminated_at__lte=cutoff,
     )
+    from core.background_jobs import record_error, record_run
+    from core.models import BackgroundJobRun
+
     count = 0
+    failures = 0
     for employee in due:
         # Каждая запись обезличивается в своей транзакции (@transaction.atomic).
         # Сбой по одной (напр. аватар в недоступном S3) не должен прерывать
@@ -280,5 +284,20 @@ def anonymize_due_employees(now=None):
             anonymize_employee(employee)
             count += 1
         except Exception:  # noqa: BLE001 — изоляция одной записи от батча
+            failures += 1
             logger.exception("Не удалось обезличить запись сотрудника id=%s", employee.id)
+
+    # B66: в журнал пишем только результативный прогон и ошибки (пустой тик — нет).
+    if failures:
+        record_error(
+            BackgroundJobRun.Job.ANONYMIZE,
+            f"Не удалось обезличить записей: {failures}" + (f"; обезличено: {count}" if count else ""),
+        )
+    elif count:
+        record_run(
+            BackgroundJobRun.Job.ANONYMIZE,
+            BackgroundJobRun.Status.OK,
+            affected=count,
+            detail=f"Обезличено записей: {count}",
+        )
     return count

@@ -23,3 +23,13 @@ export function useRefreshDuplicates() {
 export function useStorageLow() {
   return useContext(CompanyContext)?.storageLow ?? false
 }
+
+// B66: есть ли ошибки в журнале фоновых задач — для треугольника у пункта меню
+// «Журнал фоновых задач» и у иконки «Настройки».
+export function useJobsAlert() {
+  return useContext(CompanyContext)?.jobsAlert ?? false
+}
+
+export function useRefreshJobsAlert() {
+  return useContext(CompanyContext)?.refreshJobsAlert
+}

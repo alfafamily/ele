@@ -112,10 +112,22 @@ def run_scheduled_backup_if_due() -> BackupRecord | None:
 
     record = create_backup(BackupRecord.BackupType.AUTO)
     # Авто-копия headless: у cron нет UI, чтобы показать провал. Молчащий сбой
-    # выгрузки опасен (кажется, что копии есть) — сигнализируем в лог.
+    # выгрузки опасен (кажется, что копии есть) — сигнализируем в лог и в журнал
+    # фоновых задач (B66).
+    from core.background_jobs import record_error, record_run
+    from core.models import BackgroundJobRun
+
     if backup_fully_failed(record):
         errors = "; ".join(d.error for d in record.destinations.all() if d.error)
         logger.error("Авто-бэкап %s не выгружен ни в одно назначение: %s", record.filename, errors)
+        record_error(BackgroundJobRun.Job.BACKUP, f"Копия не выгружена ни в одно назначение: {errors}"[:500])
+    else:
+        record_run(
+            BackgroundJobRun.Job.BACKUP,
+            BackgroundJobRun.Status.OK,
+            affected=1,
+            detail=f"Создана авто-копия: {record.filename}",
+        )
     _trim_auto_backups(company)
     return record
 

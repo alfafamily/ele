@@ -147,3 +147,151 @@
 .ele-settings__select-item .ele-settings__select-title {
   color: var(--color-text-primary);
 }
+
+/* B66. Журнал фоновых задач: плашка вводного текста + подложка с данными
+   (плитки последнего запуска + лента событий, строки через hairline). */
+.bgj-intro {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.bgj-data {
+  padding: 6px;
+}
+
+.bgj-jobs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 768px) {
+  .bgj-jobs {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bgj-job {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-top: 1px solid var(--color-border-hairline);
+}
+.bgj-jobs .bgj-job:nth-child(1),
+.bgj-jobs .bgj-job:nth-child(2) {
+  border-top: 0;
+}
+@media (max-width: 768px) {
+  .bgj-jobs .bgj-job:nth-child(2) {
+    border-top: 1px solid var(--color-border-hairline);
+  }
+}
+
+.bgj-jico {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: var(--color-fill-input);
+  color: var(--color-text-secondary);
+}
+
+.bgj-jrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.bgj-jname {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.bgj-jmeta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.bgj-status {
+  flex: none;
+  display: inline-flex;
+}
+
+.bgj-events-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 14px 9px;
+  border-top: 1px solid var(--color-border);
+  margin-top: 2px;
+}
+.bgj-events-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+.bgj-filter {
+  flex: none;
+  font-size: 12px;
+  border: none;
+  background: transparent;
+  color: var(--color-info);
+  cursor: pointer;
+  font-family: inherit;
+  padding: 4px 6px;
+  border-radius: 8px;
+}
+.bgj-filter--active {
+  background: var(--color-info-bg);
+  font-weight: 600;
+}
+
+.bgj-ev {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 11px 14px;
+  border-top: 1px solid var(--color-border-hairline);
+}
+.bgj-dot {
+  flex: none;
+  margin-top: 1px;
+  display: inline-flex;
+}
+.bgj-evrow {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.bgj-ejob {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.bgj-etime {
+  font-size: 12px;
+  color: var(--color-text-placeholder);
+  font-variant-numeric: tabular-nums;
+}
+.bgj-emsg {
+  font-size: 12.5px;
+  color: var(--color-text-secondary);
+  margin-top: 1px;
+}
+.bgj-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--color-text-placeholder);
+  font-size: 13.5px;
+}
