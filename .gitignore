@@ -39,3 +39,11 @@ backups/
 
 # Артефакт bind-mount VERSION в контейнер (docker создаёт пустышку)
 /backend/VERSION
+
+# E2E (Playwright, B41) — артефакты прогона и сохранённая сессия
+/node_modules/
+/playwright-report/
+/test-results/
+/blob-report/
+/tests/e2e/.auth/
+.last-run.json

@@ -1,0 +1,84 @@
+# Изолированный стек для E2E-набора B41 (локально и в CI).
+# Отличия от docker-compose.yml:
+#   - без SITE_ADDRESS → Caddy слушает :80 (plain HTTP), публикуем на host :8080,
+#     чтобы не конфликтовать с основным стеком (тот держит :80);
+#   - вся конфигурация env — инлайново (не требует файла .env);
+#   - backend после миграций сидит детерминированные учётки (seed_e2e);
+#   - свои named-volume'ы (чистая БД на каждый `-p ele-b41 up`).
+#
+# Запуск:
+#   docker compose -p ele-b41 -f docker-compose.e2e.yml up -d --build
+#   # дождаться healthy backend, затем гонять Playwright с E2E_BASE_URL=http://localhost:8080
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+    environment:
+      POSTGRES_USER: ele
+      POSTGRES_PASSWORD: ele
+      POSTGRES_DB: ele
+    volumes:
+      - e2e_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ele"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+      args:
+        REQUIREMENTS_FILE: requirements/dev.txt
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DATABASE_URL: postgres://ele:ele@postgres:5432/ele
+      DJANGO_SECRET_KEY: e2e-not-a-secret
+      DJANGO_ALLOWED_HOSTS: "*"
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: "1025"
+      E2E_SEED_PASSWORD: changeme
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # migrate — в entrypoint; здесь сидим учётки и поднимаем dev-сервер.
+    command: sh -c "python manage.py seed_e2e && python manage.py runserver 0.0.0.0:8000"
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/')"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+  frontend:
+    image: node:26-slim@sha256:deae974a69e140f44f434ab29cb519fb5f8fe250fd364b8ca446bd0761acdc6a
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - e2e_frontend_node_modules:/app/node_modules
+    command: sh -c "npm install && npm run dev -- --host"
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8000
+    expose:
+      - "5173"
+
+  mailpit:
+    image: axllent/mailpit:latest@sha256:7f33095f80e901f6ad08028f06ca284aa58fe84942be5496008d041d3b9f4d4d
+    expose:
+      - "1025"
+
+  caddy:
+    image: caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+    volumes:
+      - ./infra/Caddyfile.dev:/etc/caddy/Caddyfile
+    # SITE_ADDRESS не задан → Caddyfile.dev слушает :80; публикуем на 8080.
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  e2e_postgres_data:
+  e2e_frontend_node_modules:
