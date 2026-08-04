@@ -54,7 +54,10 @@ export const updateNumberingSettings = (payload) => apiPatch('/api/company/numbe
 export const generateNextNumber = (kind) => apiPost('/api/company/next-number/', { kind })
 // B29: ручная копия — опц. шифрование паролем и явный выбор выгрузки на
 // резервный S3 (по умолчанию берётся из настроек Компании).
-export const createBackup = (payload) => apiPost('/api/backup/create/', payload || {})
+// Синхронный полный дамп БД + файлы + выгрузка на S3 — может идти минутами;
+// таймаут не применяем, чтобы не оборвать легитимно долгую операцию (B56-R2).
+export const createBackup = (payload) =>
+  apiPost('/api/backup/create/', payload || {}, { timeout: null })
 export const backupDownloadUrl = (id) => `/api/backup/${id}/download/`
 export const deleteBackup = (id) => apiDelete(`/api/backup/${id}/`)
 export const testSecondaryS3 = () => apiPost('/api/backup/secondary-s3/test/')

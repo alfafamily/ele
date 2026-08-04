@@ -16,6 +16,16 @@ export class ApiError extends Error {
   }
 }
 
+// B56-R2 (#7): таймаут запроса — зависший бэкенд не должен оставлять вечный
+// спиннер. Ограничиваем ТОЛЬКО обычные JSON-чтения/записи; загрузки файлов
+// (FormData) и осознанно долгие операции (создание бэкапа, тяжёлые отчёты)
+// вызывают apiRequest с `timeout: null` и не обрываются на полпути.
+const DEFAULT_TIMEOUT_MS = 30000
+// Синтетический код таймаута (реального HTTP-ответа нет). Отличим от сетевой
+// ошибки, чтобы показать понятное сообщение вместо «Ошибка запроса».
+const TIMEOUT_STATUS = 0
+const TIMEOUT_MESSAGE = 'Превышено время ожидания ответа сервера. Попробуйте повторить.'
+
 let csrfReady = null
 
 // CSRF-cookie появляется только после первого GET — гарантируем это перед
@@ -31,7 +41,10 @@ async function ensureCsrfCookie() {
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
-export async function apiRequest(path, { method = 'GET', body, signal } = {}) {
+// `timeout`: миллисекунды до обрыва запроса. По умолчанию DEFAULT_TIMEOUT_MS
+// для обычных запросов и НЕ применяется к загрузкам (FormData). `null`/`0`
+// отключают таймаут явно (долгие операции — бэкап, отчёты).
+export async function apiRequest(path, { method = 'GET', body, signal, timeout } = {}) {
   const upperMethod = method.toUpperCase()
   if (!SAFE_METHODS.has(upperMethod)) {
     await ensureCsrfCookie()
@@ -47,13 +60,45 @@ export async function apiRequest(path, { method = 'GET', body, signal } = {}) {
     headers['X-CSRFToken'] = csrftoken
   }
 
-  const response = await fetch(path, {
-    method: upperMethod,
-    headers,
-    credentials: 'include',
-    body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
-    signal,
-  })
+  // Загрузки файлов по умолчанию без таймаута (медленная выгрузка большого файла
+  // не должна рваться); всё остальное — DEFAULT_TIMEOUT_MS, если не задано явно.
+  const effectiveTimeout =
+    timeout !== undefined ? timeout : isFormData ? null : DEFAULT_TIMEOUT_MS
+
+  // Внутренний контроллер обрывает запрос по таймауту и «подхватывает» внешний
+  // signal вызывающего, чтобы работали оба (отмена компонентом И таймаут).
+  const controller = new AbortController()
+  let timedOut = false
+  const timer =
+    effectiveTimeout != null
+      ? setTimeout(() => {
+          timedOut = true
+          controller.abort()
+        }, effectiveTimeout)
+      : null
+  const onExternalAbort = () => controller.abort()
+  if (signal) {
+    if (signal.aborted) controller.abort()
+    else signal.addEventListener('abort', onExternalAbort, { once: true })
+  }
+
+  let response
+  try {
+    response = await fetch(path, {
+      method: upperMethod,
+      headers,
+      credentials: 'include',
+      body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
+      signal: controller.signal,
+    })
+  } catch (err) {
+    // Наш таймаут → понятная ошибка; аборт вызывающего/сетевой сбой → как есть.
+    if (timedOut) throw new ApiError(TIMEOUT_STATUS, { detail: TIMEOUT_MESSAGE })
+    throw err
+  } finally {
+    if (timer) clearTimeout(timer)
+    if (signal) signal.removeEventListener('abort', onExternalAbort)
+  }
 
   if (response.status === 204) return null
 
