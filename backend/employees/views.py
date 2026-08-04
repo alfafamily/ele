@@ -99,7 +99,9 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrAccountantOrReadOnlyObserver]
     pagination_class = ELECursorPagination
     filter_backends = [filters.OrderingFilter]
-    ordering_fields = ["last_name"]
+    # B65: consent_rank — аннотация ранга согласия ПДн для сортировки колонки
+    # «Согласие ПДн» (0 — не получено, 1 — отмечено оператором, 2 — от сотрудника).
+    ordering_fields = ["last_name", "consent_rank"]
     ordering = ["last_name", "first_name"]  # по умолчанию — по ФИО, А→Я
 
     def get_serializer_class(self):
@@ -114,8 +116,26 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         qs = Employee.objects.select_related("avatar")
         if self.action == "list":
             # B65: consents — для иконки статуса согласия ПДн в списке (≤2 строки
-            # на сотрудника, один доп. запрос на страницу, без N+1).
-            qs = qs.prefetch_related("equipment", "consents")
+            # на сотрудника, один доп. запрос на страницу, без N+1); consent_rank —
+            # аннотация для сортировки колонки (self > operator > none).
+            from django.db.models import Case, Exists, IntegerField, OuterRef, Value, When
+
+            from .models import EmployeeConsent
+
+            self_consent = EmployeeConsent.objects.filter(
+                employee=OuterRef("pk"), source=EmployeeConsent.Source.SELF
+            )
+            operator_consent = EmployeeConsent.objects.filter(
+                employee=OuterRef("pk"), source=EmployeeConsent.Source.OPERATOR
+            )
+            qs = qs.prefetch_related("equipment", "consents").annotate(
+                consent_rank=Case(
+                    When(Exists(self_consent), then=Value(2)),
+                    When(Exists(operator_consent), then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                )
+            )
         else:
             qs = qs.prefetch_related(
                 "equipment__equipment_type",

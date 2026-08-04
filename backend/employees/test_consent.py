@@ -149,6 +149,22 @@ class EmployeeListConsentStatusTests(APITestCase):
         EmployeeConsent.objects.create(employee=e, source=EmployeeConsent.Source.SELF)
         self.assertEqual(self._statuses()[e.id], "self")
 
+    def test_list_orders_by_consent_rank(self):
+        Employee.objects.create(last_name="Аня", first_name="А")  # none
+        e_op = Employee.objects.create(last_name="Боря", first_name="Б")
+        EmployeeConsent.objects.create(employee=e_op, source=EmployeeConsent.Source.OPERATOR)
+        e_self = Employee.objects.create(last_name="Вера", first_name="В")
+        EmployeeConsent.objects.create(employee=e_self, source=EmployeeConsent.Source.SELF)
+        rank = {"none": 0, "operator": 1, "self": 2}
+
+        asc = self.client.get("/api/employees/?ordering=consent_rank,last_name")
+        asc_ranks = [rank[r["consent_status"]] for r in asc.data["results"]]
+        self.assertEqual(asc_ranks, sorted(asc_ranks))  # Не получено → … → от сотрудника
+
+        desc = self.client.get("/api/employees/?ordering=-consent_rank,last_name")
+        desc_ranks = [rank[r["consent_status"]] for r in desc.data["results"]]
+        self.assertEqual(desc_ranks, sorted(desc_ranks, reverse=True))
+
 
 class SelfConsentAndReminderTests(APITestCase):
     def setUp(self):

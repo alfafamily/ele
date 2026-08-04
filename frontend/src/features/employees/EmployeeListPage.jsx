@@ -25,7 +25,7 @@ const DESKTOP_COLUMNS = [
   { key: 'last_name', label: 'ФИО', sortable: true, width: '1fr' },
   { key: 'position', label: 'Должность', width: '180px' },
   { key: 'department', label: 'Отдел', width: '150px' },
-  { key: 'consent', label: 'Согласие ПДн', width: '190px' },
+  { key: 'consent', label: 'Согласие ПДн', sortable: true, width: '190px' },
   { key: 'chevron', label: '', width: '30px' },
 ]
 const MOBILE_COLUMNS = [
@@ -62,7 +62,7 @@ function avatarNode(row) {
 // как и блок «Согласие» на карточке).
 const CONSENT_META = {
   self: { color: 'var(--color-success)', text: 'Получено от сотрудника', title: 'Сотрудник выразил согласие на обработку ПДн' },
-  operator: { color: 'var(--color-warning)', text: 'Отмечено ответственным', title: 'Ответственный отметил, что согласие от сотрудника на обработку ПДн получено' },
+  operator: { color: 'var(--color-warning)', text: 'Отмечено ответственным', title: 'Ответственный сотрудник отметил, что согласие сотрудника на сбор и обработку ПДн получено' },
   none: { color: 'var(--color-error)', text: 'Не получено', title: 'Согласие не получено от сотрудника или не указано' },
 }
 
@@ -77,7 +77,8 @@ function consentCell(row) {
       style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0, maxWidth: '100%', color: meta.color }}
     >
       <Icon name="clipboard-pen-line" size={16} strokeWidth={2} style={{ flex: 'none' }} />
-      <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      {/* Текст — в едином стиле с колонкой «Должность» (цвет только у иконки). */}
+      <span style={{ color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {meta.text}
       </span>
     </Tooltip>
@@ -93,15 +94,24 @@ export function EmployeeListPage() {
   const [tab, setTab] = useState(() => savedUi?.tab ?? 'working')
   const [search, setSearch] = useState(() => savedUi?.search ?? '')
   const debouncedSearch = useDebouncedValue(search)
-  const [sortDir, setSortDir] = useState(() => savedUi?.sortDir ?? 'asc')
+  // key: 'last_name' | 'consent'. Согласие ПДн — по возрастанию «Не получено →
+  // Отмечено ответственным → Получено от сотрудника» (consent_rank 0→2 на бэке).
+  const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'last_name', dir: 'asc' })
   const isMobile = useMediaQuery('(max-width: 768px)')
   const columns = isMobile ? MOBILE_COLUMNS : DESKTOP_COLUMNS
 
-  useEffect(() => {
-    writeListCache(CACHE_KEY, { ui: { tab, search, sortDir } })
-  }, [tab, search, sortDir])
+  const handleSort = (key) => {
+    setSort((prev) => (prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
+  }
 
-  const ordering = sortDir === 'desc' ? '-last_name' : 'last_name'
+  useEffect(() => {
+    writeListCache(CACHE_KEY, { ui: { tab, search, sort } })
+  }, [tab, search, sort])
+
+  // Для «Согласия» добавляем last_name вторичным ключом — стабильный порядок
+  // внутри одного статуса (и корректная курсорная пагинация).
+  const dirPrefix = sort.dir === 'desc' ? '-' : ''
+  const ordering = sort.key === 'consent' ? `${dirPrefix}consent_rank,last_name` : `${dirPrefix}last_name`
   const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList(
     '/api/employees/',
     {
@@ -178,7 +188,7 @@ export function EmployeeListPage() {
           }
         />
       ) : (
-        <Table columns={columns} sortKey="last_name" sortDir={sortDir} onSort={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}>
+        <Table columns={columns} sortKey={sort.key} sortDir={sort.dir} onSort={handleSort}>
           {items.map((row) => (
             <Link key={row.id} to={`/employees/${row.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
               <TableRow columns={columns}>
