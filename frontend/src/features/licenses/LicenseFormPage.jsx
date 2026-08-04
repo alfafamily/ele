@@ -254,10 +254,7 @@ export function LicenseFormPage() {
 
           {selectedType && (selectedType.type_files?.length ?? 0) > 0 ? (
             <Card>
-              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Общие файлы вида</div>
-              <div style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 14 }}>
-                Отметьте файлы вида, которые нужно показать на карточке этой лицензии.
-              </div>
+              <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 14 }}>Общие файлы вида</div>
               <TypeFilesPicker
                 available={selectedType.type_files}
                 selectedIds={typeFileIds}

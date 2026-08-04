@@ -383,11 +383,7 @@ export function TypesEditorPage({ domain, title }) {
                 шаблоны, общие для всего имущества Вида. На форме объекта из неё
                 выбираются файлы, показываемые на карточке. */}
             <div style={{ marginTop: 28 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Общие файлы вида</div>
-              <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginBottom: 12 }}>
-                Общие файлы для всего имущества этого вида — инструкции, драйверы, сертификаты, шаблоны.
-                На форме объекта можно выбрать, какие из них показывать на его карточке.
-              </div>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Общие файлы вида</div>
               <TypeFilesLibrary
                 api={api}
                 typeId={selected.id}
