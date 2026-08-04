@@ -24,6 +24,9 @@ export function makeTypesApi(domain) {
     // [{id, file}]. Список приходит и в самом Виде (type_files), отдельного GET нет.
     uploadTypeFile: (typeId, formData) => apiPost(`${base}${typeId}/files/`, formData),
     deleteTypeFile: (typeId, fileId) => apiDelete(`${base}${typeId}/files/${fileId}/`),
+    // B67: сохранить порядок общих файлов Вида. orderedIds — полный список id в
+    // желаемом порядке; возвращает обновлённый список [{id, file}].
+    reorderTypeFiles: (typeId, orderedIds) => apiPost(`${base}${typeId}/files/reorder/`, { order: orderedIds }),
     // B13+: регламенты ТО типа (только оборудование).
     listRegulations: (typeId) => apiGet(`${base}${typeId}/regulations/`),
     createRegulation: (typeId, payload) => apiPost(`${base}${typeId}/regulations/`, payload),

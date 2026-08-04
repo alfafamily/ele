@@ -210,10 +210,28 @@ class TypeFileMixin:
                 self.type_file_model.objects.create(stored_file=stored, **{self.type_owner_field: type_obj})
         return self._type_files_response(type_obj)
 
+    @action(detail=True, methods=["post"], url_path="files/reorder", permission_classes=[IsAdminOrAccountant])
+    def reorder_type_files(self, request, pk=None):
+        """Порядок общих файлов Вида (перетаскивание в редакторе). Принимает
+        {"order": [id, ...]} — полный список id файлов Вида в желаемом порядке;
+        order = индекс. Задаёт очерёдность и на форме объекта, и на карточке."""
+        type_obj = self.get_object()
+        ids = request.data.get("order", [])
+        files = {f.id: f for f in self.type_file_model.objects.filter(**{self.type_owner_field: type_obj})}
+        if not isinstance(ids, list) or set(ids) != set(files.keys()):
+            return Response({"detail": "Список файлов не совпадает с файлами Вида."}, status=400)
+        with transaction.atomic():
+            for i, fid in enumerate(ids):
+                f = files[fid]
+                if f.order != i:
+                    f.order = i
+                    f.save(update_fields=["order"])
+        return self._type_files_response(type_obj)
+
     @action(
         detail=True,
         methods=["delete"],
-        url_path=r"files/(?P<file_pk>[^/.]+)",
+        url_path=r"files/(?P<file_pk>\d+)",
         permission_classes=[IsAdminOrAccountant],
     )
     def delete_type_file(self, request, pk=None, file_pk=None):

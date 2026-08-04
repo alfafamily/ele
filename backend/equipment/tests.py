@@ -1388,7 +1388,7 @@ class EquipmentTypeFilesTests(APITestCase):
         self.assertEqual(EquipmentTypeFile.objects.count(), 0)
 
     def test_create_equipment_selects_type_files(self):
-        f1 = self._upload(self.eq_type.id, "a.pdf").data[0]["id"]
+        f1 = self._upload(self.eq_type.id, "a.pdf").data[-1]["id"]
         self._upload(self.eq_type.id, "b.pdf")
         resp = self.client.post(
             "/api/equipment/",
@@ -1401,7 +1401,7 @@ class EquipmentTypeFilesTests(APITestCase):
 
     def test_select_file_from_other_type_rejected(self):
         other = EquipmentType.objects.create(name="Монитор")
-        foreign = self._upload(other.id, "x.pdf").data[0]["id"]
+        foreign = self._upload(other.id, "x.pdf").data[-1]["id"]
         resp = self.client.post(
             "/api/equipment/",
             {"inventory_number": "INV-2", "equipment_type": self.eq_type.id, "type_file_ids": [foreign]},
@@ -1410,9 +1410,29 @@ class EquipmentTypeFilesTests(APITestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertIn("type_file_ids", resp.data.get("errors", resp.data))
 
+    def test_reorder_type_files(self):
+        a = self._upload(self.eq_type.id, "a.pdf").data[-1]["id"]
+        b = self._upload(self.eq_type.id, "b.pdf").data[-1]["id"]
+        resp = self.client.post(
+            f"/api/equipment-types/{self.eq_type.id}/files/reorder/", {"order": [b, a]}, format="json"
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual([tf["id"] for tf in resp.data], [b, a])
+        # Вид отдаёт файлы в новом порядке (order = индекс).
+        types = self.client.get("/api/equipment-types/").data
+        row = next(t for t in types if t["id"] == self.eq_type.id)
+        self.assertEqual([tf["id"] for tf in row["type_files"]], [b, a])
+
+    def test_reorder_mismatched_ids_rejected(self):
+        a = self._upload(self.eq_type.id, "a.pdf").data[-1]["id"]
+        resp = self.client.post(
+            f"/api/equipment-types/{self.eq_type.id}/files/reorder/", {"order": [a, 999999]}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400)
+
     def test_update_equipment_changes_selection(self):
-        f1 = self._upload(self.eq_type.id, "a.pdf").data[0]["id"]
-        f2 = self._upload(self.eq_type.id, "b.pdf").data[0]["id"]
+        f1 = self._upload(self.eq_type.id, "a.pdf").data[-1]["id"]
+        f2 = self._upload(self.eq_type.id, "b.pdf").data[-1]["id"]
         eq_id = self.client.post(
             "/api/equipment/",
             {"inventory_number": "INV-3", "equipment_type": self.eq_type.id, "type_file_ids": [f1]},
