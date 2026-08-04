@@ -72,7 +72,7 @@ export function EquipmentCardPage() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 60, textAlign: 'center' }}>
         <div style={{ fontSize: 16, fontWeight: 600 }}>Не удалось открыть оборудование</div>
         <div style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>Объект не найден или недоступен.</div>
-        <Link to="/">
+        <Link to="/equipment">
           <Button variant="secondary">К списку оборудования</Button>
         </Link>
       </div>
@@ -97,7 +97,7 @@ export function EquipmentCardPage() {
       {/* Хлебные крошки — только desktop: на мобильных вложенности глубже двух
           уровней нет, назад решает кнопка «Назад». */}
       <div className="ele-only-desktop" style={{ fontSize: 13, color: 'var(--color-text-placeholder)', marginBottom: 10 }}>
-        <Link to="/" style={{ color: 'var(--color-text-muted)' }}>
+        <Link to="/equipment" style={{ color: 'var(--color-text-muted)' }}>
           Оборудование
         </Link>{' '}
         / {equipment.type_and_model}

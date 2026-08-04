@@ -55,10 +55,12 @@ export function RequireViewer({ children }) {
   return children
 }
 
-// Посадочная для ролей с ограниченным доступом: «Механик по оборудованию» — на
-// раздел Оборудование, «Автомеханик» — на раздел Транспорт, прочие — в Профиль.
+// Посадочная для ролей с ограниченным доступом при попытке зайти в НЕДОСТУПНЫЙ
+// им раздел: «Механик по оборудованию» — на раздел Оборудование, «Автомеханик» —
+// на раздел Транспорт, прочие — в Профиль. (Домашняя «/» для всех — Профиль; см.
+// AppRoutes.)
 function landingFor(role) {
-  if (role === 'maintenance') return '/'
+  if (role === 'maintenance') return '/equipment'
   if (role === 'automechanic') return '/transport'
   return '/profile'
 }
@@ -84,7 +86,7 @@ export function RequireMaintainer({ children }) {
     user.role === 'admin' ||
     user.role === 'maintenance' ||
     (user.role === 'accountant' && user.can_maintain)
-  if (!canPerform) return <Navigate to="/" replace />
+  if (!canPerform) return <Navigate to="/equipment" replace />
   return children
 }
 

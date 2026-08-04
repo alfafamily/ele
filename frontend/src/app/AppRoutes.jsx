@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './AppLayout.jsx'
 import { NotFoundPage } from './NotFoundPage.jsx'
 import { RouteFallback } from './RouteFallback.jsx'
@@ -110,8 +110,11 @@ export function AppRoutes() {
           </RequireAuth>
         }
       >
+        {/* Домашняя страница для всех ролей — Профиль (единообразно). Раздел
+            Оборудование получил собственный путь /equipment (как остальные). */}
+        <Route path="/" element={<Navigate to="/profile" replace />} />
         <Route
-          path="/"
+          path="/equipment"
           element={
             <RequireEquipmentViewer>
               <EquipmentListPage />

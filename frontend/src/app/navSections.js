@@ -6,7 +6,7 @@ import { EquipmentIcon, TransportIcon, ToolsIcon, LicensesIcon, PremisesIcon, Em
 // - Обычный «Сотрудник» (без признака) бизнес-разделов не видит вовсе — ему
 //   доступны только Профиль и Руководство (нижний таб-бар / rail).
 const SECTIONS = [
-  { key: 'equipment', to: '/', label: 'Оборудование', icon: EquipmentIcon, roles: ['admin', 'accountant', 'maintenance'], observer: true },
+  { key: 'equipment', to: '/equipment', label: 'Оборудование', icon: EquipmentIcon, roles: ['admin', 'accountant', 'maintenance'], observer: true },
   { key: 'tools', to: '/tools', label: 'Инструменты', icon: ToolsIcon, roles: ['admin', 'accountant'], observer: true },
   { key: 'licenses', to: '/licenses', label: 'Лицензии', icon: LicensesIcon, roles: ['admin', 'accountant'], observer: true },
   { key: 'transport', to: '/transport', label: 'Транспорт', icon: TransportIcon, roles: ['admin', 'accountant', 'automechanic'], observer: true },
