@@ -29,10 +29,33 @@ class Command(BaseCommand):
             return
 
         target_backend = get_backend(target)
+        migrated = 0
+        failed = 0
         for stored_file in pending:
-            self._migrate_one(stored_file, target, target_backend)
+            if self._migrate_one(stored_file, target, target_backend):
+                migrated += 1
+            else:
+                failed += 1
 
-    def _migrate_one(self, stored_file: StoredFile, target: str, target_backend) -> None:
+        # B66: журнал — только результативный прогон и ошибки (пустой тик отсекли
+        # выше через `return`, сюда попадаем только когда была партия к переносу).
+        from core.background_jobs import record_error, record_run
+        from core.models import BackgroundJobRun
+
+        if failed:
+            record_error(
+                BackgroundJobRun.Job.STORAGE_MIGRATION,
+                f"Не удалось перенести файлов: {failed}" + (f"; перенесено: {migrated}" if migrated else ""),
+            )
+        elif migrated:
+            record_run(
+                BackgroundJobRun.Job.STORAGE_MIGRATION,
+                BackgroundJobRun.Status.OK,
+                affected=migrated,
+                detail=f"Перенесено файлов: {migrated}",
+            )
+
+    def _migrate_one(self, stored_file: StoredFile, target: str, target_backend) -> bool:
         source_backend = get_backend(stored_file.backend)
         stored_file.migration_status = StoredFile.MigrationStatus.IN_PROGRESS
         stored_file.save(update_fields=["migration_status"])
@@ -55,8 +78,10 @@ class Command(BaseCommand):
                 stored_file.save(update_fields=["backend", "path", "migration_status", "migration_error"])
             get_backend(old_backend_name).delete(old_path)
             self.stdout.write(f"Перенесён: {stored_file.original_filename or stored_file.path}")
+            return True
         except Exception as exc:  # noqa: BLE001 — любая ошибка переноса одного файла не должна прерывать партию
             stored_file.migration_status = StoredFile.MigrationStatus.ERROR
             stored_file.migration_error = str(exc)
             stored_file.save(update_fields=["migration_status", "migration_error"])
             self.stderr.write(f"Ошибка переноса {stored_file.original_filename or stored_file.path}: {exc}")
+            return False

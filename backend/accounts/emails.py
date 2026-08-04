@@ -89,6 +89,9 @@ def send_assignment_pending(user, assignment):
               {"cta_url": cta_url, "object_label": label})
     except Exception as exc:
         logger.warning("Не отправлено письмо о закреплении: %s", type(exc).__name__)
+        from core.background_jobs import record_notification_failure
+
+        record_notification_failure(f"Не отправлено письмо о закреплении имущества ({type(exc).__name__})")
 
 
 def send_assignment_rejected(user, assignment, *, label: str, employee_name: str, reason: str = ""):
@@ -100,6 +103,9 @@ def send_assignment_rejected(user, assignment, *, label: str, employee_name: str
               {"cta_url": cta_url, "object_label": label, "employee_name": employee_name, "reason": reason})
     except Exception as exc:
         logger.warning("Не отправлено письмо об отказе от закрепления: %s", type(exc).__name__)
+        from core.background_jobs import record_notification_failure
+
+        record_notification_failure(f"Не отправлено письмо об отказе от закрепления ({type(exc).__name__})")
 
 
 def send_maintenance_email(user, *, kind: str, template: str, object_label: str, date_str: str, cta_url: str, regulation_name: str = ""):

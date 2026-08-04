@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from core.models import BackgroundJobRun
 from storage.serializers import StoredFileSerializer
 
 from .models import Company, PdnDocument
@@ -241,3 +242,14 @@ class BackupSettingsSerializer(serializers.ModelSerializer):
                     "Параметры резервного S3 не заданы в .env (BACKUP_S3_*) — выбор S3 для бэкапов недоступен."
                 )
         return value
+
+
+class BackgroundJobRunSerializer(serializers.ModelSerializer):
+    """B66. Событие журнала фоновых задач для ленты. `label` — человекочитаемое
+    название задачи (для группировки/подписи в UI)."""
+
+    label = serializers.CharField(source="get_job_display", read_only=True)
+
+    class Meta:
+        model = BackgroundJobRun
+        fields = ["id", "job", "label", "status", "created_at", "affected", "detail"]

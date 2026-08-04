@@ -41,6 +41,11 @@ export const getUpdateInfo = () => apiGet('/api/company/update-info/')
 export const testStorage = () => apiPost('/api/company/storage-test/')
 // B33 — свободное место по хранилищам приложения и резервному S3 (+ флаг low).
 export const getStorageSpace = () => apiGet('/api/company/storage-space/')
+
+// B66. Журнал фоновых задач: сводка (плитки последнего запуска). Лента событий
+// грузится через useCursorList по пути /api/company/background-journal/events/
+// (курсорная пагинация); признак треугольника — в CompanyProvider (apiGet).
+export const getBackgroundJournalSummary = () => apiGet('/api/company/background-journal/summary/')
 export const checkYandexId = () => apiPost('/api/company/yandex-id-check/')
 export const checkCaptcha = (token) => apiPost('/api/company/captcha-check/', { token })
 

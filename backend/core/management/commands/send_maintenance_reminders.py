@@ -27,16 +27,34 @@ class Command(BaseCommand):
     help = "Разослать напоминания о ТО (подходит/просрочено) с дедупом по плану."
 
     def handle(self, *args, **options):
+        from core.background_jobs import record_error, record_run
+        from core.models import BackgroundJobRun
+
         today = timezone.localdate()
         # Домены изолированы: сбой рассылки по оборудованию не должен помешать
         # напоминаниям по транспорту (и наоборот).
         total = 0
+        failed_domains = []
         for domain in ("equipment", "transport"):
             try:
                 total += self._run(domain, today)
             except Exception:  # noqa: BLE001 — изоляция домена от тика cron
+                failed_domains.append(domain)
                 logger.exception("Сбой рассылки напоминаний о ТО (%s)", domain)
         self.stdout.write(f"Отправлено напоминаний: {total}")
+
+        # B66: журнал — только результативный прогон и ошибки (пустой тик — нет).
+        _DOMAIN_RU = {"equipment": "оборудование", "transport": "транспорт"}
+        if failed_domains:
+            names = ", ".join(_DOMAIN_RU[d] for d in failed_domains)
+            record_error(BackgroundJobRun.Job.MAINTENANCE, f"Сбой рассылки напоминаний ({names})")
+        elif total:
+            record_run(
+                BackgroundJobRun.Job.MAINTENANCE,
+                BackgroundJobRun.Status.OK,
+                affected=total,
+                detail=f"Отправлено напоминаний: {total}",
+            )
 
     def _run(self, domain, today) -> int:
         if domain == "equipment":
