@@ -1,0 +1,105 @@
+PROPRIETARY SOFTWARE LICENSE — ALL RIGHTS RESERVED
+
+Copyright (c) 2026 Prozorov Vladislav Alexandrovich. All rights reserved.
+
+This software and its source code ("the Software"), including this repository
+and all of its contents, are the proprietary property of the copyright holder
+named above ("the Author").
+
+1. NO LICENSE GRANTED BY DEFAULT
+   No rights of any kind are granted to you by the mere availability of this
+   repository. The Software is published in a publicly visible repository for
+   distribution to authorized customers only; public visibility does not place
+   the Software in the public domain and does not grant any license.
+
+2. PROHIBITED WITHOUT PRIOR WRITTEN PERMISSION
+   Except as expressly permitted by a separate written agreement signed by the
+   Author, you may NOT, in whole or in part:
+   - use, run, install, or deploy the Software or any instance of it;
+   - copy, reproduce, mirror, or store the Software;
+   - fork the repository or create derivative works based on the Software;
+   - modify, adapt, translate, or reverse engineer the Software;
+   - distribute, publish, sublicense, sell, rent, or otherwise make the
+     Software available to any third party.
+
+3. AUTHORIZED USE
+   The only lawful use of the Software is by a customer or party who has
+   entered into a separate written license agreement with the Author. That
+   agreement governs the scope of the permitted use; this file does not grant
+   any use by itself. If you have not signed such an agreement, you have no
+   right to use, deploy, copy, or modify the Software.
+
+4. THIRD-PARTY COMPONENTS
+   The Software depends on third-party open-source components that are fetched
+   during build from their respective package registries. Those components
+   remain governed by their own licenses. This license applies only to the
+   original code authored by the Author, not to those third-party components.
+
+5. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN
+   ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN
+   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+6. LICENSING INQUIRIES
+   To obtain permission to use, deploy, or license the Software, contact:
+   Prozorov Vladislav Alexandrovich — vladislav@prozorovs.ru
+
+--------------------------------------------------------------------------------
+
+ПРОПРИЕТАРНАЯ ЛИЦЕНЗИЯ НА ПРОГРАММНОЕ ОБЕСПЕЧЕНИЕ — ВСЕ ПРАВА ЗАЩИЩЕНЫ
+
+Copyright (c) 2026 Prozorov Vladislav Alexandrovich. Все права защищены.
+
+Настоящее программное обеспечение и его исходный код («Программа»), включая
+данный репозиторий и всё его содержимое, являются проприетарной собственностью
+указанного выше правообладателя («Автор»).
+
+1. ПО УМОЛЧАНИЮ ПРАВА НЕ ПРЕДОСТАВЛЯЮТСЯ
+   Сам факт доступности данного репозитория не предоставляет вам никаких прав.
+   Программа размещена в публично видимом репозитории исключительно в целях
+   поставки авторизованным клиентам; публичная видимость не переводит Программу
+   в общественное достояние и не предоставляет какой-либо лицензии.
+
+2. ЗАПРЕЩЕНО БЕЗ ПРЕДВАРИТЕЛЬНОГО ПИСЬМЕННОГО РАЗРЕШЕНИЯ
+   За исключением случаев, прямо разрешённых отдельным письменным соглашением,
+   подписанным Автором, вам ЗАПРЕЩАЕТСЯ, целиком или частично:
+   - использовать, запускать, устанавливать или разворачивать Программу либо
+     любой её экземпляр;
+   - копировать, воспроизводить, зеркалировать или сохранять Программу;
+   - форкать репозиторий или создавать производные произведения на основе
+     Программы;
+   - изменять, адаптировать, переводить или подвергать обратной разработке
+     Программу;
+   - распространять, публиковать, сублицензировать, продавать, сдавать в аренду
+     или иным образом предоставлять Программу третьим лицам.
+
+3. АВТОРИЗОВАННОЕ ИСПОЛЬЗОВАНИЕ
+   Единственным законным использованием Программы является использование
+   клиентом или стороной, заключившей с Автором отдельное письменное лицензионное
+   соглашение. Такое соглашение определяет объём разрешённого использования;
+   настоящий файл сам по себе никакого использования не разрешает. Если вы не
+   подписали подобное соглашение, вы не имеете права использовать, разворачивать,
+   копировать или изменять Программу.
+
+4. СТОРОННИЕ КОМПОНЕНТЫ
+   Программа использует сторонние компоненты с открытым исходным кодом, которые
+   загружаются во время сборки из соответствующих репозиториев пакетов. На такие
+   компоненты распространяются их собственные лицензии. Настоящая лицензия
+   применяется только к оригинальному коду, созданному Автором, и не затрагивает
+   указанные сторонние компоненты.
+
+5. ОТСУТСТВИЕ ГАРАНТИЙ
+   ПРОГРАММА ПРЕДОСТАВЛЯЕТСЯ «КАК ЕСТЬ», БЕЗ КАКИХ-ЛИБО ГАРАНТИЙ, ЯВНЫХ ИЛИ
+   ПОДРАЗУМЕВАЕМЫХ, ВКЛЮЧАЯ, НО НЕ ОГРАНИЧИВАЯСЬ, ГАРАНТИЯМИ ПРИГОДНОСТИ ДЛЯ
+   ПРОДАЖИ, ПРИГОДНОСТИ ДЛЯ ОПРЕДЕЛЁННОЙ ЦЕЛИ И НЕНАРУШЕНИЯ ПРАВ. НИ ПРИ КАКИХ
+   ОБСТОЯТЕЛЬСТВАХ АВТОР НЕ НЕСЁТ ОТВЕТСТВЕННОСТИ ПО КАКИМ-ЛИБО ПРЕТЕНЗИЯМ,
+   УБЫТКАМ ИЛИ ИНОЙ ОТВЕТСТВЕННОСТИ, ВОЗНИКАЮЩИМ ИЗ ПРОГРАММЫ ИЛИ В СВЯЗИ С НЕЙ
+   ЛИБО С ЕЁ ИСПОЛЬЗОВАНИЕМ.
+
+6. ЗАПРОСЫ НА ЛИЦЕНЗИРОВАНИЕ
+   Для получения разрешения на использование, развёртывание или лицензирование
+   Программы обращайтесь:
+   Prozorov Vladislav Alexandrovich — vladislav@prozorovs.ru

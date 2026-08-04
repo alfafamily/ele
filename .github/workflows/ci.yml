@@ -26,6 +26,11 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - name: License gate (copyleft)
+        # B52 — падаем, если среди npm-зависимостей появился copyleft
+        # (GPL/AGPL/LGPL/SSPL) или prod-пакет без лицензии. Разбор package-lock
+        # напрямую, без внешних инструментов. Обоснование — reports/B52-licenses.md.
+        run: node ../scripts/check-licenses.mjs
       - name: Lint (oxlint)
         run: npm run lint
       - name: Dead code (knip)
@@ -68,6 +73,11 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements/dev.txt
       - run: pip install -r requirements/dev.txt
+      - name: License gate (copyleft)
+        # B52 — падаем на strong-copyleft (GPL/AGPL/SSPL) среди установленных
+        # дистрибутивов. LGPL (psycopg) разрешён намеренно (динамическое
+        # связывание). Только importlib.metadata. Обоснование — reports/B52-licenses.md.
+        run: python ../scripts/check_licenses.py
       - name: Dead code (ruff)
         run: ruff check .
       - name: Layer contract (import-linter)
