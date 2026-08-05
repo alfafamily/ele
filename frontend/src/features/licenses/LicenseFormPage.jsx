@@ -5,7 +5,7 @@ import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { EquipmentPicker } from '../../shared/EquipmentPicker.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
-import { PLACEMENT_FREE_ICON } from '../../shared/placement.js'
+import { PLACEMENT } from '../../shared/placement.js'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
 import { TypeFilesPicker } from '../../shared/TypeFilesPicker.jsx'
 import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Spinner, TypeSelect } from '../../shared/ui'
@@ -280,13 +280,13 @@ export function LicenseFormPage() {
                   ? 'Лицензия будет привязана к выбранному оборудованию.'
                   : selectedType.kind === 'hardware'
                     ? 'Свободна. Укажите место хранения физического ключа аппаратной лицензии.'
-                    : 'Свободна — не привязана к оборудованию.'}
+                    : 'Свободна — не хранится на складе, так как объект виртуальный.'}
               </div>
               <ModeToggle
                 mode={placementMode}
                 onChange={(m) => { setPlacementMode(m); setPlacementEquipment(null); setStoragePlaceId(''); setPlaceError(null) }}
                 options={[
-                  { value: 'free', icon: PLACEMENT_FREE_ICON, label: 'Свободна' },
+                  { value: 'free', ...PLACEMENT.storage },
                   { value: 'equipment', icon: 'cpu', label: 'В оборудовании' },
                 ]}
               />
