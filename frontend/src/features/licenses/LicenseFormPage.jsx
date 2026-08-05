@@ -5,7 +5,7 @@ import { CustomFieldsEditor } from '../../shared/CustomFieldsEditor.jsx'
 import { EquipmentPicker } from '../../shared/EquipmentPicker.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
-import { PLACEMENT } from '../../shared/placement.js'
+import { PLACEMENT, PLACEMENT_FREE_ICON } from '../../shared/placement.js'
 import { FieldValueInput, FileFieldSlot } from '../../shared/eav'
 import { TypeFilesPicker } from '../../shared/TypeFilesPicker.jsx'
 import { BackButton, Banner, Card, FormActions, Icon, Input, PlaceSelect, Spinner, TypeSelect } from '../../shared/ui'
@@ -286,7 +286,11 @@ export function LicenseFormPage() {
                 mode={placementMode}
                 onChange={(m) => { setPlacementMode(m); setPlacementEquipment(null); setStoragePlaceId(''); setPlaceError(null) }}
                 options={[
-                  { value: 'free', ...PLACEMENT.storage },
+                  // Как у SIM/E-SIM: аппаратная (физический ключ) → «Склад» с выбором
+                  // места; программная (виртуальная) → «Свободна» без склада.
+                  selectedType.kind === 'hardware'
+                    ? { value: 'free', ...PLACEMENT.storage }
+                    : { value: 'free', icon: PLACEMENT_FREE_ICON, label: 'Свободна' },
                   { value: 'equipment', icon: 'cpu', label: 'В оборудовании' },
                 ]}
               />
