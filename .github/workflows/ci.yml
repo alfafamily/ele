@@ -154,13 +154,11 @@ jobs:
   e2e:
     name: E2E (Playwright, B41)
     runs-on: ubuntu-latest
+    # Зависание (напр. докачки браузера) должно падать быстро, а не жечь дефолтные
+    # 6 часов Actions. Полный прогон укладывается в ~10 мин + запас на сборку стека.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 26
-          cache: npm
-          cache-dependency-path: package-lock.json
 
       # Чистый изолированный стек: свежая БД + детерминированный сид (seed_e2e).
       # Caddy на :8080 (без SITE_ADDRESS → plain HTTP), чтобы не зависеть от TLS.
@@ -181,15 +179,17 @@ jobs:
           done
           curl -fsS http://localhost:8080/api/auth/bootstrap/
 
-      - name: Установить Playwright и браузер
+      # Гоняем в официальном образе Playwright — браузеры уже внутри, поэтому НЕ
+      # запускаем `playwright install` (его докачка Chromium/FFMPEG на раннере
+      # однажды зависла на 6 ч). Тот же способ, что локальный scripts/e2e-local.sh;
+      # версия образа синхронна @playwright/test в package.json.
+      - name: Прогон E2E (образ Playwright, браузеры внутри)
         run: |
-          npm ci
-          npx playwright install --with-deps chromium
-
-      - name: Прогон E2E
-        env:
-          E2E_BASE_URL: http://localhost:8080
-        run: npx playwright test
+          docker run --rm --network host --ipc=host \
+            -e E2E_BASE_URL=http://localhost:8080 -e CI=1 \
+            -v "$PWD":/work -w /work \
+            mcr.microsoft.com/playwright:v1.49.1-jammy \
+            npx playwright test
 
       - name: Логи стека при падении
         if: failure()
