@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Input, Modal } from '../../shared/ui'
+import { Banner, Button, Input, Modal, ModalActions } from '../../shared/ui'
 import { writeOffEquipment } from './equipmentApi.js'
 
 // D3 — списание: блокируется при непогашенных лицензиях, система
@@ -47,14 +47,14 @@ export function WriteOffModal({ equipment, onClose, onDone }) {
           <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 18 }}>
             Отвязать все лицензии и продолжить списание? Лицензии станут «свободными».
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <ModalActions>
             <Button fullWidth loading={submitting} onClick={() => attempt(true)}>
               Отвязать и списать
             </Button>
             <Button variant="secondary" fullWidth onClick={onClose}>
               Отмена
             </Button>
-          </div>
+          </ModalActions>
         </>
       ) : (
         <>
@@ -71,14 +71,14 @@ export function WriteOffModal({ equipment, onClose, onDone }) {
               placeholder="Например: списано по акту №… (причина списания)"
             />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}>
+          <ModalActions style={{ marginTop: 18 }}>
             <Button variant="danger-solid" fullWidth loading={submitting} onClick={() => attempt(false)}>
               Списать
             </Button>
             <Button variant="secondary" fullWidth onClick={onClose}>
               Отмена
             </Button>
-          </div>
+          </ModalActions>
         </>
       )}
     </Modal>

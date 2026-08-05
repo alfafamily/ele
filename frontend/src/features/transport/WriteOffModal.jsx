@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Input, Modal } from '../../shared/ui'
+import { Banner, Button, Input, Modal, ModalActions } from '../../shared/ui'
 import { writeOffTransport } from './transportApi.js'
 
 // B3. Списание транспорта в архив с необязательным комментарием (причина).
@@ -36,14 +36,14 @@ export function WriteOffModal({ transport, onClose, onDone }) {
           placeholder="Например: списано по акту №… (причина списания)"
         />
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 18 }}>
+      <ModalActions style={{ marginTop: 18 }}>
         <Button variant="danger-solid" fullWidth loading={submitting} onClick={submit}>
           Списать
         </Button>
         <Button variant="secondary" fullWidth onClick={onClose}>
           Отмена
         </Button>
-      </div>
+      </ModalActions>
     </Modal>
   )
 }

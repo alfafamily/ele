@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Modal } from '../../shared/ui'
+import { Banner, Button, Modal, ModalActions } from '../../shared/ui'
 
 // T2 — удаление Вида без привязанных объектов; вместе с Видом удаляются
 // все его реквизиты.
@@ -25,14 +25,14 @@ export function DeleteTypeModal({ type, onClose, onConfirm }) {
         К виду не привязано ни одного объекта. Вместе с видом будут удалены все его реквизиты (
         <b style={{ color: 'var(--color-text-primary)' }}>{type.fields.length}</b>). Действие необратимо.
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
+      <ModalActions style={{ marginTop: 20 }}>
         <Button variant="danger-solid" fullWidth loading={submitting} onClick={submit}>
           Удалить вид и реквизиты
         </Button>
         <Button variant="secondary" fullWidth onClick={onClose}>
           Отмена
         </Button>
-      </div>
+      </ModalActions>
     </Modal>
   )
 }

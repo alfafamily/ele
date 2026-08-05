@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../shared/api/client'
-import { Banner, Button, Checkbox, Input, Modal, Select } from '../../shared/ui'
+import { Banner, Button, Checkbox, Input, Modal, ModalActions, Select } from '../../shared/ui'
 import { terminateEmployee } from './employeesApi.js'
 
 // Отображаемое имя средства доступа в списке увольнения.
@@ -273,14 +273,14 @@ export function TerminateModal({ employee, onClose, onDone }) {
       ) : (
         <div style={{ height: 16 }} />
       )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <ModalActions>
         <Button variant="danger-solid" fullWidth loading={submitting} onClick={submit}>
           Уволить
         </Button>
         <Button variant="secondary" fullWidth onClick={onClose}>
           Отмена
         </Button>
-      </div>
+      </ModalActions>
     </Modal>
   )
 }

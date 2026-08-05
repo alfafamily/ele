@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
-import { Banner, Button, Checkbox, Icon, Input, Modal, RadioPills, Select } from '../../shared/ui'
+import { Banner, Button, Checkbox, Icon, Input, Modal, ModalActions, RadioPills, Select } from '../../shared/ui'
 import { splitApiError } from '../../shared/formErrors.js'
 import { TransportPicker } from './TransportPicker.jsx'
 import { createPlace, updatePlace } from './premisesApi.js'
@@ -113,14 +113,14 @@ export function PlaceModal({ room, place, onClose, onDone }) {
 
         <Checkbox label="Требуется ключ/пропуск" checked={requiresPass} onChange={setRequiresPass} />
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <ModalActions>
         <Button fullWidth loading={submitting} onClick={submit}>
           {isEdit ? 'Сохранить' : 'Создать'}
         </Button>
         <Button variant="secondary" fullWidth onClick={onClose}>
           Отмена
         </Button>
-      </div>
+      </ModalActions>
     </Modal>
   )
 }

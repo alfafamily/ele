@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Checkbox, Input, Modal } from '../../shared/ui'
+import { Banner, Button, Checkbox, Input, Modal, ModalActions } from '../../shared/ui'
 import { splitApiError } from '../../shared/formErrors.js'
 import { createBuilding, updateBuilding } from './premisesApi.js'
 
@@ -66,14 +66,14 @@ export function BuildingModal({ building, onClose, onDone }) {
         />
         <Checkbox label="Требуется ключ/пропуск" checked={requiresPass} onChange={setRequiresPass} />
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <ModalActions>
         <Button fullWidth loading={submitting} onClick={submit}>
           {isEdit ? 'Сохранить' : 'Создать'}
         </Button>
         <Button variant="secondary" fullWidth onClick={onClose}>
           Отмена
         </Button>
-      </div>
+      </ModalActions>
     </Modal>
   )
 }

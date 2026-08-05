@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRefreshDuplicates } from '../../app/CompanyContext.jsx'
-import { Badge, Banner, Button, Card, EmptyState, Icon, Modal, Select, Spinner } from '../../shared/ui'
+import { Badge, Banner, Button, Card, EmptyState, Icon, Modal, ModalActions, Select, Spinner } from '../../shared/ui'
 import {
   dismissEmployeeDuplicate,
   getEmployeeDuplicates,
@@ -136,14 +136,14 @@ function ResolveModal({ group, onClose, onResolved }) {
 
         {error ? <Banner variant="error">{error}</Banner> : null}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <ModalActions>
           <Button variant="danger" fullWidth loading={loading} onClick={submit}>
             Объединить
           </Button>
           <Button variant="secondary" fullWidth onClick={onClose} disabled={loading}>
             Отмена
           </Button>
-        </div>
+        </ModalActions>
       </div>
     </Modal>
   )

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Input, Modal } from '../../shared/ui'
+import { Banner, Button, Input, Modal, ModalActions } from '../../shared/ui'
 import { utilizePass } from './employeesApi.js'
 
 // Утилизация средства доступа (пропуск или ключ) — терминальное действие: либо
@@ -59,12 +59,12 @@ export function PassDisposeModal({ pass, onClose, onDone }) {
         />
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <ModalActions>
         <Button variant="danger-solid" fullWidth loading={submitting} onClick={submit}>
           Утилизировать
         </Button>
         <Button variant="secondary" fullWidth onClick={onClose}>Отмена</Button>
-      </div>
+      </ModalActions>
     </Modal>
   )
 }

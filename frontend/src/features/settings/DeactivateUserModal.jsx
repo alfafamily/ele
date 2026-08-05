@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Modal } from '../../shared/ui'
+import { Banner, Button, Modal, ModalActions } from '../../shared/ui'
 import { deactivateUser } from './settingsApi.js'
 
 // — если у Пользователя есть привязанный Сотрудник, уточняем: уволить
@@ -28,14 +28,14 @@ export function DeactivateUserModal({ user, onClose, onDone }) {
         <p style={{ fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
           Пользователь <b style={{ color: 'var(--color-text-primary)' }}>{user.email}</b> потеряет доступ к системе, все его сессии будут завершены.
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
+        <ModalActions style={{ marginTop: 20 }}>
           <Button variant="danger-solid" fullWidth loading={submitting} onClick={() => submit(false)}>
             Деактивировать
           </Button>
           <Button variant="secondary" fullWidth onClick={onClose}>
             Отмена
           </Button>
-        </div>
+        </ModalActions>
       </Modal>
     )
   }
@@ -47,7 +47,7 @@ export function DeactivateUserModal({ user, onClose, onDone }) {
         Пользователь <b style={{ color: 'var(--color-text-primary)' }}>{user.email}</b> связан с сотрудником{' '}
         <b style={{ color: 'var(--color-text-primary)' }}>{user.employee_name}</b>. Уволить также связанного сотрудника?
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
+      <ModalActions style={{ marginTop: 20 }}>
         <Button variant="danger-solid" fullWidth loading={submitting} onClick={() => submit(true)}>
           Да, уволить сотрудника
         </Button>
@@ -57,7 +57,7 @@ export function DeactivateUserModal({ user, onClose, onDone }) {
         <Button variant="secondary" fullWidth onClick={onClose}>
           Отмена
         </Button>
-      </div>
+      </ModalActions>
     </Modal>
   )
 }

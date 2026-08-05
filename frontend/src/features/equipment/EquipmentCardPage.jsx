@@ -10,7 +10,7 @@ import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { Tooltip } from '../../shared/Tooltip.jsx'
 import { PlacementRow } from '../../shared/PlacementRow.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
+import { ActionMenu, Badge, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
 import { AttachLicenseModal } from './AttachLicenseModal.jsx'
 import { AttachSimModal } from './AttachSimModal.jsx'
 import { DetachToStorageModal } from '../employees/DetachToStorageModal.jsx'
@@ -341,9 +341,7 @@ export function EquipmentCardPage() {
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Установленные лицензии</div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
-              {equipment.licenses?.length ?? 0}
-            </span>
+            <Badge>{equipment.licenses?.length ?? 0}</Badge>
           </div>
           {(equipment.licenses || []).map((lic) => (
             <div key={lic.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -399,9 +397,7 @@ export function EquipmentCardPage() {
           <div style={{ borderTop: '1px solid var(--color-border-hairline)', margin: '20px 0 16px' }} />
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>SIM-карты</div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
-              {equipment.sim_cards?.length ?? 0}
-            </span>
+            <Badge>{equipment.sim_cards?.length ?? 0}</Badge>
           </div>
           {(equipment.sim_cards || []).map((sim) => (
             <div key={sim.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>

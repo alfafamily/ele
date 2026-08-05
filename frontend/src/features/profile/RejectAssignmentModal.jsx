@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Input, Modal } from '../../shared/ui'
+import { Button, Input, Modal, ModalActions } from '../../shared/ui'
 
 // B32. Отказ сотрудника от закрепления — с обязательной причиной (уходит в
 // историю). Подтверждение «Отклонить» (красная) / «Отмена».
@@ -35,10 +35,10 @@ export function RejectAssignmentModal({ assignment, onConfirm, onClose }) {
           autoFocus
         />
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <ModalActions>
         <Button variant="danger" fullWidth loading={loading} disabled={!comment.trim()} onClick={confirm}>Отклонить</Button>
         <Button variant="secondary" fullWidth onClick={onClose}>Отмена</Button>
-      </div>
+      </ModalActions>
     </Modal>
   )
 }

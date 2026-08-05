@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Input, Modal } from '../../shared/ui'
+import { Banner, Button, Input, Modal, ModalActions } from '../../shared/ui'
 import { utilizeLicense } from './licensesApi.js'
 
 // L4 — утилизация: отвязывает от оборудования и переводит в архив,
@@ -38,14 +38,14 @@ export function UtilizeModal({ license, onClose, onDone }) {
           placeholder="Например: утилизировано по акту №…"
         />
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
+      <ModalActions style={{ marginTop: 20 }}>
         <Button variant="danger-solid" fullWidth loading={submitting} onClick={submit}>
           Утилизировать
         </Button>
         <Button variant="secondary" fullWidth onClick={onClose}>
           Отмена
         </Button>
-      </div>
+      </ModalActions>
     </Modal>
   )
 }

@@ -6,7 +6,7 @@ import { AcceptanceOverlay } from '../../shared/AcceptanceIcon.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { TruncatedText } from '../../shared/TruncatedText.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
+import { ActionMenu, Badge, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
 import { QuantityMoveModal } from './QuantityMoveModal.jsx'
 import { ToolTransferModal } from './ToolTransferModal.jsx'
 import { ToolWriteOffModal } from './ToolWriteOffModal.jsx'
@@ -321,9 +321,7 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ fontSize: 16, fontWeight: 600 }}>Размещение</div>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
-          {tool.allocated} / {tool.quantity}
-        </span>
+        <Badge>{tool.allocated} / {tool.quantity}</Badge>
       </div>
 
       {allocations.length === 0 ? (

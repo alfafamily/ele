@@ -24,7 +24,6 @@ import { SimDetachModal } from './SimDetachModal.jsx'
 import { TerminateModal } from './TerminateModal.jsx'
 
 // Стили строк/счётчика/квадратной кнопки в блоках карточки.
-const CNT = { fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }
 const ROW = { display: 'flex', alignItems: 'center', gap: 8, padding: '11px 13px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8 }
 const SQ = { width: 30, height: 30, flex: 'none', borderRadius: 8, background: '#fff', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
 const PEND_ICON = { equipment: 'tag', sim: 'radio-tower', pass: 'key-square', tool: 'hammer', transport: 'car' }
@@ -264,7 +263,7 @@ export function EmployeeCardPage() {
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
               <div style={{ fontSize: 16, fontWeight: 600 }}>Ожидает решения сотрудника</div>
-              <span style={CNT}>{pendingAssignments.length}</span>
+              <Badge>{pendingAssignments.length}</Badge>
             </div>
             <div style={{ fontSize: 12, color: 'var(--color-text-placeholder)', marginBottom: 12 }}>
               Сотрудник ещё не подтвердил и не отклонил получение этих объектов
@@ -305,9 +304,7 @@ export function EmployeeCardPage() {
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <div style={{ fontSize: 16, fontWeight: 600 }}>Рабочие места</div>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', background: 'var(--color-fill-active-tint)', padding: '2px 9px', borderRadius: 20 }}>
-                {employee.workplaces.length}
-              </span>
+              <Badge>{employee.workplaces.length}</Badge>
             </div>
             {employee.workplaces.map((wp) => (
               <div key={wp.id} style={{ padding: '11px 13px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8 }}>
@@ -346,7 +343,7 @@ export function EmployeeCardPage() {
           <Card>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <div style={{ fontSize: 16, fontWeight: 600 }}>Парковочные места</div>
-              <span style={CNT}>{employee.parking_spots.length}</span>
+              <Badge>{employee.parking_spots.length}</Badge>
             </div>
             {employee.parking_spots.map((sp) => (
               <ParkingSpotRow key={sp.id} spot={sp} />
@@ -357,7 +354,7 @@ export function EmployeeCardPage() {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Оборудование</div>
-            <span style={CNT}>{heldEquipment.length}</span>
+            <Badge>{heldEquipment.length}</Badge>
           </div>
           {employee.is_employed ? (
             <Can perm="canManageEquipment">
@@ -392,7 +389,7 @@ export function EmployeeCardPage() {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Транспорт</div>
-            <span style={CNT}>{heldTransport.length}</span>
+            <Badge>{heldTransport.length}</Badge>
           </div>
           {employee.is_employed ? (
             <Can perm="canManageTransport">
@@ -444,7 +441,7 @@ export function EmployeeCardPage() {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Инструменты</div>
-            <span style={CNT}>{heldTools.length}</span>
+            <Badge>{heldTools.length}</Badge>
           </div>
           {employee.is_employed ? (
             <Can perm="canManageEquipment">
@@ -481,7 +478,7 @@ export function EmployeeCardPage() {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Корпоративная связь</div>
-            <span style={CNT}>{heldSims.length}</span>
+            <Badge>{heldSims.length}</Badge>
           </div>
           {employee.is_employed ? (
             <Can perm="canManageEmployees">
@@ -512,7 +509,7 @@ export function EmployeeCardPage() {
         <Card>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
             <div style={{ fontSize: 16, fontWeight: 600 }}>Средства доступа</div>
-            <span style={CNT}>{heldPasses.length}</span>
+            <Badge>{heldPasses.length}</Badge>
           </div>
           {employee.is_employed ? (
             <Can perm="canManageEmployees">
