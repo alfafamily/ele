@@ -184,12 +184,16 @@ jobs:
       # однажды зависла на 6 ч). Тот же способ, что локальный scripts/e2e-local.sh;
       # версия образа синхронна @playwright/test в package.json.
       - name: Прогон E2E (образ Playwright, браузеры внутри)
+        # npm ci ставит только @playwright/test (без докачки браузеров — они уже в
+        # образе), затем прогон. Установка внутри контейнера: на раннере (чистый
+        # checkout) node_modules нет, а `import '@playwright/test'` резолвится
+        # относительно /work.
         run: |
           docker run --rm --network host --ipc=host \
             -e E2E_BASE_URL=http://localhost:8080 -e CI=1 \
             -v "$PWD":/work -w /work \
             mcr.microsoft.com/playwright:v1.49.1-jammy \
-            npx playwright test
+            sh -c "npm ci && npx playwright test"
 
       - name: Логи стека при падении
         if: failure()
