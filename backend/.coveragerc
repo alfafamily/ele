@@ -1,0 +1,29 @@
+# Конфигурация покрытия бэкенда (B42).
+# Ветвевое покрытие (branch=true) по Django-приложениям.
+[run]
+branch = true
+source = .
+omit =
+    */migrations/*
+    */tests.py
+    */test_*.py
+    config/*
+    manage.py
+    */apps.py
+    */admin.py
+    */__init__.py
+    */wsgi.py
+    */asgi.py
+
+[report]
+# Тривиальные/защитные строки не считаем непокрытыми ветками.
+exclude_lines =
+    pragma: no cover
+    def __str__
+    def __repr__
+    raise NotImplementedError
+    if TYPE_CHECKING:
+    if __name__ == .__main__.:
+    @(abc\.)?abstractmethod
+show_missing = true
+skip_covered = false

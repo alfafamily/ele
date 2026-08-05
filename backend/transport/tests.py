@@ -327,6 +327,108 @@ class TransportMaintenanceTests(APITestCase):
         self.assertTrue(any(row["scope"] == "individual" for row in r.data))
 
 
+class TransportHistoryAndRegulationTests(APITestCase):
+    """B42. История карточки транспорта (движение + реквизиты + ТО + списание)
+    и per-transport действия над индивидуальным регламентом/планом."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="thist@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post(
+            "/api/transport-types/", {"name": "Легковой", "mileage_unit": "km", "gibdd_registration": True}, format="json"
+        )
+        self.type_id = resp.data["id"]
+        self.base = _base_fields(resp.data)
+        self.transport_id = self.client.post(
+            "/api/transport/",
+            {
+                "inventory_number": "TS-H1",
+                "transport_type": self.type_id,
+                "field_values_input": [
+                    {"field": self.base["Модель"], "value": "Camry"},
+                    {"field": self.base["Гос.номер"], "value": "А111АА777"},
+                ],
+            },
+            format="json",
+        ).data["id"]
+
+    def test_history_covers_movement_requisites_maintenance_and_writeoff(self):
+        emp = Employee.objects.create(last_name="Иванов", first_name="Иван")
+        self.client.post(f"/api/transport/{self.transport_id}/assign/", {"employee": emp.id}, format="json")
+        self.client.post(f"/api/transport/{self.transport_id}/unassign/", {}, format="json")
+        # Правка реквизита — отдельная строка истории реквизитов.
+        self.client.patch(
+            f"/api/transport/{self.transport_id}/",
+            {"field_values_input": [{"field": self.base["Модель"], "value": "Corolla"}]},
+            format="json",
+        )
+        # Проведённое ТО — категория maintenance.
+        self.client.post(
+            f"/api/transport/{self.transport_id}/maintenance/",
+            {"items": [{"kind": "work", "name": "Мойка", "quantity": "1"}]},
+            format="json",
+        )
+        self.client.post(f"/api/transport/{self.transport_id}/write-off/", {"comment": "утиль"}, format="json")
+
+        rows = self.client.get(f"/api/transport/{self.transport_id}/history/").data
+        self.assertTrue(rows)
+        categories = {r.get("category") for r in rows}
+        self.assertIn("movement", categories)
+        self.assertIn("maintenance", categories)
+        labels = [r.get("label") for r in rows]
+        self.assertTrue(any("Списано" in (ln or "") for ln in labels), labels)
+
+    def test_individual_regulation_edit_archive_and_plan_date(self):
+        reg = self.client.post(
+            f"/api/transport/{self.transport_id}/regulations/",
+            {"name": "Инд-ТО", "period_months": 6, "items": [{"kind": "work", "name": "Проверка", "quantity": "1"}]},
+            format="json",
+        ).data
+        reg_id = next(r["id"] for r in reg)
+        # Правка регламента (PATCH).
+        r = self.client.patch(
+            f"/api/transport/{self.transport_id}/regulations/{reg_id}/",
+            {"name": "Инд-ТО (обновлён)"}, format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.data)
+        # Установка плановой даты.
+        next_date = (timezone.localdate() + timedelta(days=30)).isoformat()
+        r = self.client.patch(
+            f"/api/transport/{self.transport_id}/regulations/{reg_id}/plan/",
+            {"next_planned_date": next_date}, format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.data)
+        # Дата в прошлом — отказ.
+        past = (timezone.localdate() - timedelta(days=1)).isoformat()
+        r = self.client.patch(
+            f"/api/transport/{self.transport_id}/regulations/{reg_id}/plan/",
+            {"next_planned_date": past}, format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.data)
+        # Отмена плана для экземпляра, затем архив регламента (DELETE).
+        r = self.client.patch(
+            f"/api/transport/{self.transport_id}/regulations/{reg_id}/plan/",
+            {"is_cancelled": True}, format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.data)
+        r = self.client.delete(f"/api/transport/{self.transport_id}/regulations/{reg_id}/")
+        self.assertEqual(r.status_code, 200, r.data)
+
+    def test_plan_date_rejected_for_archived_regulation(self):
+        reg = self.client.post(
+            f"/api/transport/{self.transport_id}/regulations/",
+            {"name": "Арх", "period_months": 3, "items": [{"kind": "work", "name": "X", "quantity": "1"}]},
+            format="json",
+        ).data
+        reg_id = next(r["id"] for r in reg)
+        self.client.delete(f"/api/transport/{self.transport_id}/regulations/{reg_id}/")  # архив
+        r = self.client.patch(
+            f"/api/transport/{self.transport_id}/regulations/{reg_id}/plan/",
+            {"next_planned_date": timezone.localdate().isoformat()}, format="json",
+        )
+        self.assertEqual(r.status_code, 409, r.data)
+
+
 class TransportPermissionTests(APITestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser(email="admin@example.com", password="Str0ng!Pass1")

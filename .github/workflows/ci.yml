@@ -37,6 +37,10 @@ jobs:
         # KNIP_DISABLE_RAW_TRANSFER — oxc-parser в raw-режиме резервирует ~6 ГБ
         # ArrayBuffer на файл; отключаем ради детерминизма на CI-раннерах.
         run: KNIP_DISABLE_RAW_TRANSFER=1 npx knip
+      # B42 — точечные юнит-тесты чистой логики фронта (права/форматирование/
+      # разбор ошибок/статусы ТО). Не дублируют E2E; конфиг — frontend/vitest.config.js.
+      - name: Unit tests (vitest)
+        run: npm run test:unit
       - name: Build
         run: npm run build
 
@@ -86,8 +90,13 @@ jobs:
         run: python manage.py check
       - name: Missing migrations guard
         run: python manage.py makemigrations --check --dry-run
-      - name: Tests
-        run: python manage.py test -v2
+      # B42 — тесты под ветвевым покрытием (конфиг backend/.coveragerc:
+      # branch=true, omit миграций/тестов/конфига). Порог fail-under держит
+      # покрытие от регрессии: фактический уровень ~84%, порог 83% с запасом.
+      - name: Tests (branch coverage)
+        run: coverage run --branch manage.py test -v2
+      - name: Coverage gate (fail-under)
+        run: coverage report --fail-under=83
 
   security:
     name: Security (trivy + install.sh integrity)

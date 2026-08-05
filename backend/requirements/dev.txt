@@ -7,3 +7,8 @@ ruff==0.16.1
 # Гейт слоёв (B53, ось 2): контракт зависимостей между приложениями.
 # Конфиг — backend/.importlinter, запуск — `lint-imports`.
 import-linter==2.13
+
+# Гейт покрытия (B42): ветвевое покрытие бэкенда. Конфиг — backend/.coveragerc,
+# запуск в CI — `coverage run --branch manage.py test` + `coverage report
+# --fail-under=<N>` (порог не даёт покрытию просесть).
+coverage==7.15.3

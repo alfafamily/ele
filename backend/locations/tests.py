@@ -1,4 +1,8 @@
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from rest_framework.test import APITestCase
+
+from accounts.models import User
 
 from .models import Building, Place, Room
 from .serializers import PlaceSerializer, RoomSerializer
@@ -127,6 +131,105 @@ class ParkingSpotSerializerTests(TestCase):
         })
         self.assertFalse(s.is_valid())
         self.assertIn("transport", s.errors)
+
+
+class LocationViewSetTests(APITestCase):
+    """B42. HTTP-слой справочника помещений: архивирование/возврат с проверкой
+    иерархии (нельзя вернуть ребёнка при архивном родителе), загрузка/удаление
+    плана парковки, плоский список мест с фильтрами по типу и размещению."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="loc-admin@e.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.building = Building.objects.create(name="БЦ")
+        self.room = Room.objects.create(building=self.building, name="Каб 1")
+        self.parking = Room.objects.create(building=self.building, name="Паркинг", parking_type="adjacent")
+        self.store = Place.objects.create(room=self.room, name="Склад", place_type=Place.PlaceType.STORAGE)
+        self.wp = Place.objects.create(room=self.room, name="РМ", place_type=Place.PlaceType.WORKPLACE)
+        self.spot = Place.objects.create(room=self.parking, name="М1", place_type=Place.PlaceType.PARKING_SPOT)
+
+    # --- архив/возврат по иерархии -----------------------------------------
+    def test_building_archive_and_unarchive_roundtrip(self):
+        self.assertEqual(self.client.post(f"/api/buildings/{self.building.id}/archive/").status_code, 200)
+        self.building.refresh_from_db()
+        self.assertTrue(self.building.is_archived)
+        # Список по умолчанию скрывает архивные; ?include_archived=1 — показывает.
+        active = [b["id"] for b in self.client.get("/api/buildings/").data]
+        self.assertNotIn(self.building.id, active)
+        with_arch = [b["id"] for b in self.client.get("/api/buildings/?include_archived=1").data]
+        self.assertIn(self.building.id, with_arch)
+        self.assertEqual(self.client.post(f"/api/buildings/{self.building.id}/unarchive/").status_code, 200)
+        self.building.refresh_from_db()
+        self.assertFalse(self.building.is_archived)
+
+    def test_room_unarchive_blocked_while_building_archived(self):
+        self.client.post(f"/api/buildings/{self.building.id}/archive/")  # каскад вниз
+        r = self.client.post(f"/api/rooms/{self.room.id}/unarchive/")
+        self.assertEqual(r.status_code, 409, r.data)
+
+    def test_place_unarchive_blocked_while_room_archived(self):
+        self.client.post(f"/api/rooms/{self.room.id}/archive/")
+        r = self.client.post(f"/api/places/{self.store.id}/unarchive/")
+        self.assertEqual(r.status_code, 409, r.data)
+
+    def test_place_archive_unarchive_when_parents_active(self):
+        self.assertEqual(self.client.post(f"/api/places/{self.store.id}/archive/").status_code, 200)
+        self.assertEqual(self.client.post(f"/api/places/{self.store.id}/unarchive/").status_code, 200)
+
+    def test_destroy_forbidden(self):
+        self.assertEqual(self.client.delete(f"/api/buildings/{self.building.id}/").status_code, 405)
+        self.assertEqual(self.client.delete(f"/api/rooms/{self.room.id}/").status_code, 405)
+        self.assertEqual(self.client.delete(f"/api/places/{self.store.id}/").status_code, 405)
+
+    # --- план парковки ------------------------------------------------------
+    def test_plan_upload_delete_on_parking(self):
+        img = SimpleUploadedFile("plan.png", b"img-bytes", content_type="image/png")
+        r = self.client.post(f"/api/rooms/{self.parking.id}/plan/", {"file": img}, format="multipart")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.parking.refresh_from_db()
+        self.assertIsNotNone(self.parking.plan_file_id)
+        # Повторная загрузка заменяет прежний файл.
+        img2 = SimpleUploadedFile("plan2.pdf", b"%PDF-1.4", content_type="application/pdf")
+        self.assertEqual(
+            self.client.post(f"/api/rooms/{self.parking.id}/plan/", {"file": img2}, format="multipart").status_code, 200
+        )
+        # Удаление плана.
+        self.assertEqual(self.client.delete(f"/api/rooms/{self.parking.id}/plan/").status_code, 200)
+        self.parking.refresh_from_db()
+        self.assertIsNone(self.parking.plan_file_id)
+
+    def test_plan_rejected_on_non_parking_room(self):
+        img = SimpleUploadedFile("plan.png", b"img", content_type="image/png")
+        r = self.client.post(f"/api/rooms/{self.room.id}/plan/", {"file": img}, format="multipart")
+        self.assertEqual(r.status_code, 400, r.data)
+
+    def test_plan_requires_file_and_valid_content_type(self):
+        self.assertEqual(self.client.post(f"/api/rooms/{self.parking.id}/plan/", {}, format="multipart").status_code, 400)
+        bad = SimpleUploadedFile("x.txt", b"text", content_type="text/plain")
+        r = self.client.post(f"/api/rooms/{self.parking.id}/plan/", {"file": bad}, format="multipart")
+        self.assertEqual(r.status_code, 400, r.data)
+
+    def test_plan_delete_when_absent_is_noop(self):
+        # DELETE без ранее загруженного плана не падает.
+        self.assertEqual(self.client.delete(f"/api/rooms/{self.parking.id}/plan/").status_code, 200)
+
+    # --- плоский список мест + фильтры --------------------------------------
+    def test_place_list_filter_by_type_and_active(self):
+        Place.objects.create(room=self.room, name="АрхСклад", place_type=Place.PlaceType.STORAGE, is_archived=True)
+        storages = self.client.get("/api/places/?place_type=storage").data
+        names = {p["name"] for p in storages}
+        self.assertIn("Склад", names)
+        self.assertNotIn("РМ", names)
+        active = {p["name"] for p in self.client.get("/api/places/?place_type=storage&active=1").data}
+        self.assertNotIn("АрхСклад", active)
+
+    def test_place_list_filter_has_equipment_type(self):
+        from equipment.models import Equipment, EquipmentType
+        etype = EquipmentType.objects.create(name="ПК")
+        Equipment.objects.create(inventory_number="EQ-1", equipment_type=etype, place=self.store)
+        ids = [p["id"] for p in self.client.get(f"/api/places/?has_equipment_type={etype.id}").data]
+        self.assertIn(self.store.id, ids)
+        self.assertNotIn(self.wp.id, ids)
 
 
 class ArchiveCascadeTests(TestCase):

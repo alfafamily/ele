@@ -271,6 +271,142 @@ class ToolTests(APITestCase):
         self.assertNotIn(store_id, by_emp)
 
 
+class ToolBranchTests(APITestCase):
+    """B42. Граничные и защитные ветки количественного учёта: некорректное
+    количество, операции над списанной карточкой, уход в минус остатка,
+    ярлыки истории для списания/перемещения."""
+
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="tbranch@example.com", password="Str0ng!Pass1")
+        self.client.force_authenticate(user=self.admin)
+        self.emp = Employee.objects.create(first_name="Иван", last_name="Иванов")
+        b = Building.objects.create(name="Главное")
+        r = Room.objects.create(building=b, name="101")
+        self.store1 = Place.objects.create(room=r, name="Склад-1", place_type=Place.PlaceType.STORAGE)
+        self.store2 = Place.objects.create(room=r, name="Склад-2", place_type=Place.PlaceType.STORAGE)
+        self.wp = Place.objects.create(room=r, name="РМ-1", place_type=Place.PlaceType.WORKPLACE)
+
+    def _make(self, quantity=10, place="store1"):
+        payload = {"name": "Инстр", "quantity": quantity}
+        if quantity and place is not None:
+            payload["place"] = getattr(self, place).id
+        resp = self.client.post("/api/tools/", payload, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        return resp.data["id"]
+
+    def _post(self, tid, action, **body):
+        return self.client.post(f"/api/tools/{tid}/{action}/", body, format="json")
+
+    def test_non_numeric_quantity_rejected_on_every_action(self):
+        # _parse_positive_qty: TypeError/ValueError → 400 в каждом unit-экшене.
+        tid = self._make(quantity=10)
+        for action, extra in [
+            ("add-units", {}),
+            ("write-off-units", {}),
+            ("assign-units", {"employee": self.emp.id}),
+            ("unassign-units", {"employee": self.emp.id}),
+            ("transfer-units", {"to_place": self.store2.id}),
+        ]:
+            r = self._post(tid, action, quantity="abc", **extra)
+            self.assertEqual(r.status_code, 400, (action, r.data))
+
+    def test_missing_quantity_rejected(self):
+        tid = self._make(quantity=5)
+        r = self.client.post(f"/api/tools/{tid}/add-units/", {"place": self.store1.id}, format="json")
+        self.assertEqual(r.status_code, 400, r.data)
+
+    def test_zero_and_negative_quantity_rejected(self):
+        tid = self._make(quantity=5)
+        for q in (0, -3):
+            r = self._post(tid, "add-units", quantity=q, place=self.store1.id)
+            self.assertEqual(r.status_code, 400, r.data)
+
+    def test_operations_blocked_after_write_off(self):
+        # _guard: любая unit-операция над списанной карточкой → 409.
+        tid = self._make(quantity=10)
+        self.assertEqual(self._post(tid, "write-off", comment="акт").status_code, 200)
+        self.assertEqual(self._post(tid, "add-units", quantity=1, place=self.store1.id).status_code, 409)
+        self.assertEqual(self._post(tid, "write-off-units", quantity=1, place=self.store1.id).status_code, 409)
+        self.assertEqual(self._post(tid, "assign-units", employee=self.emp.id, quantity=1).status_code, 409)
+        self.assertEqual(self._post(tid, "unassign-units", employee=self.emp.id, quantity=1).status_code, 409)
+        self.assertEqual(self._post(tid, "transfer-units", to_place=self.store2.id, quantity=1).status_code, 409)
+
+    def test_double_write_off_rejected(self):
+        tid = self._make(quantity=3)
+        self.assertEqual(self._post(tid, "write-off").status_code, 200)
+        self.assertEqual(self._post(tid, "write-off").status_code, 409)
+
+    def test_assign_more_than_unplaced_free_rejected(self):
+        # Без from_place списываем из свободного остатка «без склада».
+        tid = Tool.objects.create(name="Без склада", quantity=2).id
+        r = self._post(tid, "assign-units", employee=self.emp.id, quantity=5)
+        self.assertEqual(r.status_code, 409, r.data)
+
+    def test_unassign_more_than_on_workplace_rejected(self):
+        tid = self._make(quantity=10)
+        self._post(tid, "assign-units", mode="stationary", place=self.wp.id, from_place=self.store1.id, quantity=2)
+        r = self._post(tid, "unassign-units", mode="stationary", place=self.wp.id, quantity=5)
+        self.assertEqual(r.status_code, 409, r.data)
+
+    def test_unassign_without_allocation_rejected(self):
+        tid = self._make(quantity=5)
+        r = self._post(tid, "unassign-units", employee=self.emp.id, quantity=1)
+        self.assertEqual(r.status_code, 409, r.data)
+
+    def test_history_labels_for_write_off_and_transfer(self):
+        tid = self._make(quantity=10)  # весь остаток на store1
+        self.assertEqual(self._post(tid, "write-off-units", quantity=2, place=self.store1.id).status_code, 200)
+        self.assertEqual(
+            self._post(tid, "transfer-units", from_place=self.store1.id, to_place=self.store2.id, quantity=3).status_code,
+            200,
+        )
+        labels = [r["label"] for r in self.client.get(f"/api/tools/{tid}/history/").data]
+        self.assertTrue(any("Списание · 2 шт." in ln for ln in labels), labels)
+        self.assertTrue(any("Перемещение · 3 шт." in ln for ln in labels), labels)
+
+    def test_create_employee_without_quantity_rejected(self):
+        r = self.client.post(
+            "/api/tools/",
+            {"name": "X", "quantity": 5, "place": self.store1.id, "employee": self.emp.id, "employee_quantity": 0},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.data)
+
+    def test_create_quantity_without_employee_rejected(self):
+        r = self.client.post(
+            "/api/tools/",
+            {"name": "X", "quantity": 5, "place": self.store1.id, "employee_quantity": 2},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 400, r.data)
+
+    def test_update_name_and_custom_fields(self):
+        tid = self._make(quantity=5)
+        r = self.client.patch(
+            f"/api/tools/{tid}/",
+            {"name": "Новое имя", "custom_fields": [{"name": "Артикул", "value": "A-9"}]},
+            format="json",
+        )
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual(r.data["name"], "Новое имя")
+        self.assertEqual(r.data["custom_fields"][0]["value"], "A-9")
+        # Остаток форма не меняет (только unit-операции).
+        self.assertEqual(r.data["quantity"], 5)
+
+    def test_plain_employee_sees_only_assigned_tool(self):
+        # ToolAccessPermission._owns: сотрудник открывает только свой инструмент.
+        tid = self._make(quantity=10)
+        self._post(tid, "assign-units", employee=self.emp.id, from_place=self.store1.id, quantity=2)
+        other_tid = self._make(quantity=5)
+        user = User.objects.create_user(email="worker-tool@e.com", password="Str0ng!Pass1", employee=self.emp)
+        self.client.force_authenticate(user=user)
+        self.assertEqual(self.client.get(f"/api/tools/{tid}/").status_code, 200)
+        # Чужой инструмент отфильтрован из выборки — 404.
+        self.assertEqual(self.client.get(f"/api/tools/{other_tid}/").status_code, 404)
+        # На запись сотруднику доступа нет.
+        self.assertEqual(self._post(tid, "add-units", quantity=1, place=self.store1.id).status_code, 403)
+
+
 class ToolPlacementFilterTests(APITestCase):
     """B27. Фильтр «Размещение» инструментов: сотрудник / рабочее место / склад."""
 
