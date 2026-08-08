@@ -6,8 +6,15 @@
   /* Цвета — текст */
   --color-text-primary: #1C1C21;
   --color-text-secondary: #363642;
-  --color-text-muted: #757784;
-  --color-text-placeholder: #9FA2B2;
+  /* B54 (a11y): затемнены до контраста ≥4.5:1 (WCAG AA) на рабочих подложках;
+     тон сохранён, снижена только светлота. text-placeholder используется как
+     цвет второстепенного текста (307 мест) — его тоже доводим до AA; настоящие
+     подсказки полей ушли в отдельный --color-input-placeholder (ниже). */
+  --color-text-muted: #676874;
+  --color-text-placeholder: #696E83;
+  /* Только для placeholder-подсказок пустых полей: намеренно светлее, чтобы
+     подсказка не читалась как введённое значение (текст исчезает при вводе). */
+  --color-input-placeholder: #9FA2B2;
 
   /* Цвета — фон/поверхности */
   --color-bg-app: #E6E9F2;
@@ -25,16 +32,21 @@
   --color-primary: #1C1C21;
   --color-primary-text: #FFFFFF;
   --color-brand-accent: #FF6A00;
+  /* B54 (a11y): фирменный оранжевый (#FF6A00) даёт лишь 2.87:1 на белом и не
+     годится как цвет ТЕКСТА. Для текстовых акцентов — затемнённый вариант (AA
+     4.5:1); декоративные полосы/заливки продолжают использовать brand-accent. */
+  --color-brand-accent-text: #C75300;
 
-  /* Статусы */
-  --color-error: #E53E3E;
+  /* Статусы — B54 (a11y): цвета текста доведены до ≥4.5:1 на своих *-bg
+     подложках (и остаются AA на белом); тон сохранён. */
+  --color-error: #DA1D1D;
   --color-error-bg: #FFEFEB;
   --color-error-border: #F3D2CE;
-  --color-success: #1E9E57;
+  --color-success: #188047;
   --color-success-bg: #EAF7EF;
-  --color-info: #2F6BE6;
+  --color-info: #2765E5;
   --color-info-bg: #E8F1FF;
-  --color-warning: #B7791F;
+  --color-warning: #97641A;
   --color-warning-bg: #FFF7ED;
   --color-warning-bg-alt: #FBF1DF;
 

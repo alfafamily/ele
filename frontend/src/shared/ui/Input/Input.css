@@ -68,7 +68,7 @@
 }
 
 .ele-field__input::placeholder {
-  color: var(--color-text-placeholder);
+  color: var(--color-input-placeholder);
 }
 
 /* Нативные поля времени/даты (мобильный WebKit) центрируют значение и добавляют

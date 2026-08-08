@@ -44,7 +44,7 @@ const scopeBtnStyle = {
   padding: 0,
   border: 'none',
   background: 'none',
-  color: 'var(--color-brand-accent)',
+  color: 'var(--color-brand-accent-text)',
   fontSize: 13,
   fontWeight: 600,
   fontFamily: 'inherit',

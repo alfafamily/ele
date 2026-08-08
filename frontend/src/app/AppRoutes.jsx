@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './AppLayout.jsx'
 import { NotFoundPage } from './NotFoundPage.jsx'
 import { RouteFallback } from './RouteFallback.jsx'
+import { RouteTitle } from './RouteTitle.jsx'
 import { RequireAdmin, RequireAuth, RequireEquipmentViewer, RequireGuest, RequireMaintainer, RequireSetupPending, RequireStaff, RequireTransportMaintainer, RequireTransportViewer, RequireViewer } from './guards.jsx'
 
 // B38: страницы-маршруты грузятся лениво (React.lazy) — каждый раздел уходит в
@@ -63,6 +64,7 @@ const StyleguidePage = import.meta.env.DEV
 export function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
+    <RouteTitle />
     <Routes>
       <Route
         path="/setup"
