@@ -19,10 +19,14 @@ export function Input({
 }) {
   const autoId = useId()
   const inputId = id || autoId
+  const descId = `${inputId}-desc`
   const [focused, setFocused] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const errorText = Array.isArray(error) ? error[0] : error
   const resolvedType = showToggle ? (revealed ? 'text' : 'password') : type
+  // Связываем поле с текстом ошибки/подсказки под ним, чтобы скринридер
+  // объявлял их вместе с полем (не только цветом).
+  const describedBy = errorText || helperText ? descId : undefined
 
   // Плавающий лейбл: в пустом поле лейбл стоит как плейсхолдер, при фокусе/вводе
   // уезжает наверх. Механика опирается на :placeholder-shown, поэтому включаем её
@@ -56,6 +60,7 @@ export function Input({
               className="ele-field__input ele-field__input--multiline"
               rows={rows}
               aria-invalid={Boolean(errorText)}
+              aria-describedby={describedBy}
               {...rest}
               placeholder={placeholder}
               onFocus={(e) => {
@@ -73,6 +78,7 @@ export function Input({
               className="ele-field__input"
               type={resolvedType}
               aria-invalid={Boolean(errorText)}
+              aria-describedby={describedBy}
               {...rest}
               placeholder={placeholder}
               onFocus={(e) => {
@@ -100,9 +106,9 @@ export function Input({
         ) : null}
       </div>
       {errorText ? (
-        <div className="ele-field__error-text">{errorText}</div>
+        <div className="ele-field__error-text" id={descId}>{errorText}</div>
       ) : helperText ? (
-        <div className="ele-field__helper">{helperText}</div>
+        <div className="ele-field__helper" id={descId}>{helperText}</div>
       ) : null}
     </div>
   )

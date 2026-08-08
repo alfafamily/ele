@@ -9,6 +9,7 @@ export function Select({ label, required = false, error, value, onChange, childr
   const autoId = useId()
   const selectId = id || autoId
   const errorText = Array.isArray(error) ? error[0] : error
+  const errorId = `${selectId}-error`
 
   const boxClasses = ['ele-field__box', errorText ? 'ele-field__box--error' : ''].filter(Boolean).join(' ')
 
@@ -27,6 +28,8 @@ export function Select({ label, required = false, error, value, onChange, childr
             style={{ cursor: 'pointer' }}
             value={value ?? ''}
             onChange={(e) => onChange?.(e.target.value)}
+            aria-invalid={Boolean(errorText)}
+            aria-describedby={errorText ? errorId : undefined}
             {...rest}
           >
             {placeholder ? <option value="">{placeholder}</option> : null}
@@ -34,7 +37,7 @@ export function Select({ label, required = false, error, value, onChange, childr
           </select>
         </div>
       </div>
-      {errorText ? <div className="ele-field__error-text">{errorText}</div> : null}
+      {errorText ? <div className="ele-field__error-text" id={errorId}>{errorText}</div> : null}
     </div>
   )
 }

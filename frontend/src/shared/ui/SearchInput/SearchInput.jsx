@@ -17,9 +17,11 @@ export function SearchInput({ value, onChange, placeholder = 'Поиск' }) {
     >
       <Icon name="search" size={18} style={{ color: '#9FA2B2' }} />
       <input
+        type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        aria-label={placeholder}
         style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', fontSize: 14, fontFamily: 'inherit' }}
       />
     </div>

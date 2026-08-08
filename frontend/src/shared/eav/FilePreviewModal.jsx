@@ -77,7 +77,13 @@ export function FilePreviewModal({ files, file, startIndex = 0, onClose }) {
 
   return createPortal(
     <div className="ele-filepreview-overlay" onClick={onClose}>
-      <div className="ele-filepreview" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="ele-filepreview"
+        role="dialog"
+        aria-modal="true"
+        aria-label={current.original_filename}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="ele-filepreview__head">
           <div className="ele-filepreview__title">
             <div className="ele-filepreview__name">{current.original_filename}</div>

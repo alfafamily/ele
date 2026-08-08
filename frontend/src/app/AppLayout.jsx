@@ -85,6 +85,17 @@ export function AppLayout() {
     setDrawerOpen(false)
   }, [location.pathname])
 
+  // Закрытие выезжающего меню по Esc (клавиатурная доступность наравне с
+  // кликом по подложке).
+  useEffect(() => {
+    if (!drawerOpen) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') setDrawerOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [drawerOpen])
+
   // B12: держим бейдж возможных дублей актуальным — счётчик в CompanyContext
   // берётся при входе, но дубли могут появиться позже (создание сотрудника,
   // регистрация). Перечитываем на каждом переходе между разделами (лёгкий
@@ -297,7 +308,7 @@ export function AppLayout() {
 
       {/* Выезжающее справа меню (поверх страницы) со всеми разделами. */}
       {drawerOpen ? <div className="ele-drawer__backdrop" onClick={() => setDrawerOpen(false)} /> : null}
-      <nav className={`ele-drawer${drawerOpen ? ' ele-drawer--open' : ''}`} aria-hidden={!drawerOpen}>
+      <nav className={`ele-drawer${drawerOpen ? ' ele-drawer--open' : ''}`} aria-hidden={!drawerOpen} inert={!drawerOpen}>
         {/* Логотип наверху меню — по логике десктопа (компания + ELE / только ELE). */}
         <div className="ele-drawer__brand">{brand}</div>
         <div className="ele-drawer__items">
