@@ -47,3 +47,44 @@
 `FilterButton/` — только общие CSS-стили для `FilterModal`/`MultiSelectList`, JSX-компонента нет.
 
 Каждый компонент несёт JSDoc-шапку в своём файле — там нюансы поведения и когда применять.
+
+## Блоки вне `shared/ui` (в `src/shared/*`)
+
+Переиспользуемые блоки, не входящие в базовый UI-kit (завязаны на домен/данные ELE). Живая
+витрина — секция «shared/*» в `/styleguide`. Тянущие бэк помечены (◇).
+
+| Блок | Назначение | Ключевые пропсы | Данные |
+|---|---|---|---|
+| `EmployeePicker` | Подбор сотрудника с поиском | `onSelect`, `excludeIds`, `extraParams`, `withPlus`, `error` | ◇ `/api/employees/` |
+| `EquipmentPicker` | Подбор оборудования с поиском | `onSelect`, `simOnly`, `licenseOnly`, `excludeIds`, `error` | ◇ `/api/equipment/` |
+| `EmployeeMultiPicker` | Мультивыбор сотрудников (чипы) | `value` `[{id,label}]`, `onChange`, `extraParams` | ◇ (через пикер) |
+| `EquipmentMultiPicker` | Мультивыбор оборудования (чипы) | `value` `[{id,label}]`, `onChange`, `licenseTypeIds` | ◇ (через пикер) |
+| `SelectedEmployee` | Свёрнутый вид выбранного сотрудника | `employee`, `onClear` | чистый |
+| `SelectedTransport` | Свёрнутый вид выбранного транспорта | `transport`, `onClear` | чистый |
+| `AttachSelectModal` | Модалка «привязать свободный объект» | `title`, `fetchPath`, `match`, `renderRow`, `attach`, `empty`, `submitLabel` | ◇ `fetchPath` |
+| `AvatarCircle` | Аватар сотрудника (фото/инициалы) | `avatar`, `name`, `size`, `status`, `tinted` | чистый |
+| `LeadIconCircle` | Кружок-подложка ведущей иконки | `name`, `size`, `color`, `tinted`, `status` | чистый |
+| `ModeToggle` | Переключатель режима размещения | `mode`, `onChange`, `options` `[{value,label,icon}]` | чистый |
+| `PlacementRow` | Строка «Размещение/Закреплено за» | `circle`, `label`, `title`, `sub` | чистый |
+| `PlacementIcon` | Иконка типа места с тултипом | `placeType`, `size` | чистый |
+| `AcceptanceIcon` | Иконка статуса акцепта | `status`, `size`, `inline` | чистый |
+| `Tooltip` | Кастомная всплывающая подсказка | `label`, `children`, `inline` | чистый |
+| `TruncatedText` | Обрезка «…» + тултип полного текста | `text`, `singleLine`, `as`, `className` | чистый |
+| `EmployeeNameCell` | Ячейка «сотрудник» в списках | `name`, `position`, `department`, `status` | чистый |
+| `KeyTarget` | Объект доступа ключа (место+здание) | `pass` | чистый |
+| `TransportParkingLine` | Строка состояния парковки транспорта | `parking` | чистый |
+| `PlanLink` | Ссылка «План парковки» → просмотрщик | `file` `{url}` | чистый |
+| `TypeFilesView` | Read-only список общих файлов Вида (B67) | `files` `[{id,file}]` | чистый |
+| `TypeFilesPicker` | Мультивыбор общих файлов Вида (B67) | `available`, `selectedIds`, `onChange` | чистый |
+| `DeviceSnapshotChip` | Плашка «Слепок устройства» (B32, ПДн) | `snapshot` | чистый (только staff) |
+| `CustomFieldsEditor` | «Доп. поля» имя/значение + DnD-порядок | `items`, `onChange` | чистый |
+| `RemoteMultiSelect` | Загрузка списка + мультивыбор (фильтры) | `endpoint`, `mapOption`, `selected`, `onChange`, `extraOptions` | ◇ `endpoint` |
+| `TypeRequisiteFilter` | Фильтр «Вид + реквизиты» | `endpoint`, `valuesBase`, `types`, `onTypesChange`, `req`, `onReqChange` | ◇ виды/значения |
+| `PassAccessFilter` | Фильтр «Доступ в помещения» | `buildings`, `rooms`, `places`, `onChange`, `objectType` | ◇ `/api/buildings/` |
+| `RequisiteAutocompleteChips` | Чипсы + автоподсказка значений реквизита | `value`, `onChange`, `valuesUrl`, `numeric` | ◇ подсказки по вводу |
+| `HistoryList` | Лента истории объекта | `path`, `reloadKey`, `maintenanceOnly` | ◇ `path` |
+| `InfiniteScrollSentinel` | Наблюдатель нижнего края (догрузка) | `hasMore`, `loading`, `onLoadMore` | утилита |
+
+Прочие модули `src/shared/*` — не компоненты (утилиты/хуки): `employeeName.js`, `format.js`,
+`permissions.js`, `roles.js`, `placement.js`, `filterParams.js`, `formErrors.js`, `listCache.js`,
+`keyboardViewport.js`, каталоги `api/`, `hooks/`, `eav/`, `consent/`, `maintenance/`.

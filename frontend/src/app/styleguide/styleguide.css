@@ -123,6 +123,39 @@
   max-width: 420px;
 }
 
+/* Белая поверхность сцены — для блоков, что в проде живут внутри Card/модалки
+   (белый фон + тонкая граница). По умолчанию сцена серая (фон списков/тулбаров). */
+.sg-demo__stage--surface {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+/* Контейнер под реальную ширину поповера/модалки (пикеры, календарь). */
+.sg-demo__pane {
+  width: 320px;
+  max-width: 100%;
+}
+
+.sg-note {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-bg-alt);
+  border-radius: var(--radius-chip);
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  line-height: 1.45;
+}
+
+.sg-fallback {
+  font-size: 13px;
+  color: var(--color-error);
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius-chip);
+  padding: 10px 12px;
+}
+
 .sg-demo__label {
   font-size: 11px;
   font-weight: 600;
