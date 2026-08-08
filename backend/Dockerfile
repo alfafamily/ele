@@ -22,8 +22,15 @@ RUN set -eux; \
 WORKDIR /app
 
 COPY requirements/ requirements/
-ARG REQUIREMENTS_FILE=requirements/prod.txt
-RUN pip install --no-cache-dir -r ${REQUIREMENTS_FILE}
+# По умолчанию прод-образ ставит полностью залоченный requirements/prod.lock в
+# режиме --require-hashes (B74): pip сверяет sha256-хеш КАЖДОГО скачанного
+# артефакта — защита цепочки поставки от подмены пакета (аналог integrity у
+# package-lock.json). Dev/e2e-сборки переопределяют REQUIREMENTS_FILE на dev.txt
+# и передают PIP_INSTALL_FLAGS="" (dev-зависимости без хешей — внутренние,
+# ставятся не в поставляемый образ).
+ARG REQUIREMENTS_FILE=requirements/prod.lock
+ARG PIP_INSTALL_FLAGS=--require-hashes
+RUN pip install --no-cache-dir ${PIP_INSTALL_FLAGS} -r ${REQUIREMENTS_FILE}
 
 COPY . .
 

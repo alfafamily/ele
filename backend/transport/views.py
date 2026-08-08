@@ -606,8 +606,7 @@ class TransportViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
 
     @action(detail=True, methods=["get"], url_path="history")
     def history_list(self, request, pk=None):
-        from core.history import build_history_rows, build_related_history_rows
-        from storage.models import StoredFile
+        from core.history import build_eav_history_rows, build_history_rows
 
         obj = self.get_object()
 
@@ -628,71 +627,15 @@ class TransportViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
             "transport_type": {"label": "Тип транспорта", "format": fmt_type},
         }
 
-        type_fields = {}
-
-        def field_of(rec):
-            if rec.field_id not in type_fields:
-                type_fields[rec.field_id] = TransportTypeField.objects.filter(pk=rec.field_id).first()
-            return type_fields[rec.field_id]
-
-        def fv_value(rec):
-            f = field_of(rec)
-            vt = f.value_type if f else "text"
-            if vt == "bool":
-                return None if rec.value_bool is None else ("Да" if rec.value_bool else "Нет")
-            if vt == "int":
-                return rec.value_int
-            if vt == "float":
-                return rec.value_float
-            if vt == "file":
-                if not rec.value_file_id:
-                    return None
-                return StoredFile.objects.filter(pk=rec.value_file_id).values_list("original_filename", flat=True).first() or "файл"
-            return rec.value_text
-
-        related_rows = []
-        created_extra = []
-
-        req_rows, req_created = build_related_history_rows(
-            TransportFieldValue.history.filter(transport_id=obj.id),
-            label_fn=lambda rec: (field_of(rec).name if field_of(rec) else "Реквизит"),
-            value_fn=fv_value,
-            created_at=obj.created_at,
+        # Реквизиты Типа + файлы реквизитов + доп.поля (общий EAV-блок — B74).
+        related_rows, created_extra = build_eav_history_rows(
+            obj,
+            owner_field="transport",
+            type_field_model=TransportTypeField,
+            field_value_model=TransportFieldValue,
+            field_file_model=TransportFieldFile,
+            custom_field_model=TransportCustomField,
         )
-        related_rows += req_rows
-        created_extra += req_created
-
-        fv_field_name = dict(
-            TransportFieldValue.objects.filter(transport_id=obj.id).values_list("id", "field__name")
-        )
-        if fv_field_name:
-            def file_value(rec):
-                if not rec.stored_file_id:
-                    return None
-                return (
-                    StoredFile.objects.filter(pk=rec.stored_file_id)
-                    .values_list("original_filename", flat=True)
-                    .first()
-                    or "файл"
-                )
-
-            file_rows, file_created = build_related_history_rows(
-                TransportFieldFile.history.filter(field_value_id__in=list(fv_field_name)),
-                label_fn=lambda rec: fv_field_name.get(rec.field_value_id, "Файл реквизита"),
-                value_fn=file_value,
-                created_at=obj.created_at,
-            )
-            related_rows += file_rows
-            created_extra += file_created
-
-        cf_rows, cf_created = build_related_history_rows(
-            TransportCustomField.history.filter(transport_id=obj.id),
-            label_fn=lambda rec: rec.name,
-            value_fn=lambda rec: rec.value,
-            created_at=obj.created_at,
-        )
-        related_rows += cf_rows
-        created_extra += cf_created
 
         # Проведённые ТО — отдельная категория «maintenance».
         related_rows += _maintenance_history_rows(obj)
