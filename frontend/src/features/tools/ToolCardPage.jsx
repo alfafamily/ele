@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useDocumentTitle } from '../../app/useDocumentTitle.js'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { usePermissions } from '../../app/usePermissions.js'
 import { nameInitials } from '../../shared/employeeName.js'
@@ -24,6 +25,7 @@ export function ToolCardPage() {
   const navigate = useNavigate()
   const perms = usePermissions()
   const [tool, setTool] = useState(null)
+  useDocumentTitle(tool?.name)
   const [loadError, setLoadError] = useState(false)
   const [showWriteOff, setShowWriteOff] = useState(false)
   const [showTransfer, setShowTransfer] = useState(false)

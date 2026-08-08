@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useDocumentTitle } from '../../app/useDocumentTitle.js'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { canMaintainTransportType, historyMode } from '../../shared/permissions.js'
@@ -38,6 +39,7 @@ export function TransportCardPage() {
   const perms = usePermissions()
   const hMode = historyMode(perms, 'transport')
   const [transport, setTransport] = useState(null)
+  useDocumentTitle(transport?.type_and_model)
   const [regulations, setRegulations] = useState(null)
   const [loadError, setLoadError] = useState(false)
   const [showWriteOff, setShowWriteOff] = useState(false)

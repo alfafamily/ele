@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useDocumentTitle } from '../../app/useDocumentTitle.js'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { apiPatch } from '../../shared/api/client'
 import { Can, usePermissions } from '../../app/usePermissions.js'
@@ -37,6 +38,7 @@ export function EquipmentCardPage() {
   const perms = usePermissions()
   const hMode = historyMode(perms, 'equipment')
   const [equipment, setEquipment] = useState(null)
+  useDocumentTitle(equipment?.type_and_model)
   const [regulations, setRegulations] = useState(null)
   const [loadError, setLoadError] = useState(false)
   const [showWriteOff, setShowWriteOff] = useState(false)

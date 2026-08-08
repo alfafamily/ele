@@ -140,6 +140,9 @@ export function AppLayout() {
 
   return (
     <div className={`ele-shell${railPinned ? ' ele-shell--rail-pinned' : ''}`}>
+      {/* B54 (a11y): skip-link — первый по фокусу элемент, скрыт до фокуса.
+          Позволяет клавиатурой перепрыгнуть навигацию сразу к содержимому. */}
+      <a className="ele-skip-link" href="#ele-main">Перейти к содержимому</a>
       <aside className={`ele-rail${railPinned ? ' ele-rail--pinned' : ''}`}>
         <div className="ele-rail__brand">
           {/* Свёрнутый rail: лого компании, иначе краткий знак ELE (одна иконка) */}
@@ -255,7 +258,7 @@ export function AppLayout() {
         </NavLink>
       </aside>
 
-      <main className="ele-content ele-content--with-bottomnav">
+      <main id="ele-main" tabIndex={-1} className="ele-content ele-content--with-bottomnav">
         <div className="ele-content__inner">
           <Outlet />
         </div>

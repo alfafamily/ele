@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useDocumentTitle } from '../../app/useDocumentTitle.js'
 import { Link, useNavigate, useNavigationType, useParams } from 'react-router-dom'
 import { unassignEquipment } from '../equipment/equipmentApi.js'
 import { unassignTransport } from '../transport/transportApi.js'
@@ -38,6 +39,7 @@ export function EmployeeCardPage() {
   const cacheKey = `employee-card-${id}`
   const savedUi = isPop ? readListCache(cacheKey)?.ui : undefined
   const [employee, setEmployee] = useState(null)
+  useDocumentTitle(employee?.full_name)
   const [assignments, setAssignments] = useState([]) // B32: открытые эпизоды акцепта
   // Вкладки карточки: «Выдано» (текущие блоки) / «Архив» (завершённые эпизоды).
   const [tab, setTab] = useState(() => savedUi?.tab ?? 'issued')

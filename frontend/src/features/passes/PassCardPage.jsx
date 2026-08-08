@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useDocumentTitle } from '../../app/useDocumentTitle.js'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { AvatarCircle } from '../../shared/AvatarCircle.jsx'
@@ -17,6 +18,13 @@ export function PassCardPage() {
   const navigate = useNavigate()
   const perms = usePermissions()
   const [pass, setPass] = useState(null)
+  useDocumentTitle(
+    pass
+      ? pass.object_type === 'key'
+        ? 'Ключ'
+        : `Пропуск${pass.account_number?.trim() ? ` № ${pass.account_number}` : ''}`
+      : null,
+  )
   const [loadError, setLoadError] = useState(false)
   const [showAttach, setShowAttach] = useState(false)
   const [disposeModal, setDisposeModal] = useState(false)

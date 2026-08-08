@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useDocumentTitle } from '../../app/useDocumentTitle.js'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { AvatarCircle } from '../../shared/AvatarCircle.jsx'
@@ -16,6 +17,7 @@ export function SimCardPage() {
   const navigate = useNavigate()
   const perms = usePermissions()
   const [sim, setSim] = useState(null)
+  useDocumentTitle(sim?.phone_number)
   const [loadError, setLoadError] = useState(false)
   const [attachMode, setAttachMode] = useState(null) // 'employee' | 'equipment' | null → открывает модалку
   const [disposeModal, setDisposeModal] = useState(false)

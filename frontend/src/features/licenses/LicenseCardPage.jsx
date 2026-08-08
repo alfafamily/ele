@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useDocumentTitle } from '../../app/useDocumentTitle.js'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { FieldValueDisplay } from '../../shared/eav'
@@ -21,6 +22,7 @@ export function LicenseCardPage() {
   const navigate = useNavigate()
   const perms = usePermissions()
   const [license, setLicense] = useState(null)
+  useDocumentTitle(license?.license_type_name)
   const [loadError, setLoadError] = useState(false)
   const [showUtilize, setShowUtilize] = useState(false)
   const [showAttach, setShowAttach] = useState(false)

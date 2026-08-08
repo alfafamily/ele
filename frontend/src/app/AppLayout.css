@@ -3,6 +3,35 @@
   background: var(--color-bg-app);
 }
 
+/* B54 (a11y): skip-link. Убран за пределы экрана, пока не получит фокус с
+   клавиатуры; тогда выезжает в левый верхний угол поверх всего. Мышью и
+   визуально в обычном состоянии не проявляется. */
+.ele-skip-link {
+  position: fixed;
+  top: 12px;
+  left: -9999px;
+  z-index: 1000;
+  padding: 10px 16px;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--shadow-block);
+}
+.ele-skip-link:focus {
+  left: 12px;
+  outline: 3px solid var(--color-info);
+  outline-offset: 2px;
+}
+/* Убираем стандартный контур фокуса у программно сфокусированного <main>
+   (tabIndex=-1) — рамка на всём содержимом не нужна, фокус нужен лишь как
+   точка старта для клавиатуры/скринридера. */
+.ele-content:focus {
+  outline: none;
+}
+
 /* Icon-rail: свёрнут 76px по умолчанию, разворачивается по hover до 236px
    («Навигация»). Overlay поверх контента — контент не переезжает. */
 .ele-rail {
