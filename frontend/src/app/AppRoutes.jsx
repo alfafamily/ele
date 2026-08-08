@@ -53,6 +53,13 @@ const ProfilePage = named(() => import('../features/profile/ProfilePage.jsx'), '
 const NotificationsPage = named(() => import('../features/notifications/NotificationsPage.jsx'), 'NotificationsPage')
 const GuidePage = named(() => import('../features/guide/GuidePage.jsx'), 'GuidePage')
 
+// B10: dev-only styleguide (живая витрина дизайн-системы). Импорт спрятан за
+// import.meta.env.DEV — в прод-сборке Vite подставляет false, ветка становится
+// мёртвым кодом, и Rollup выкидывает и роут, и чанк styleguide из бандла.
+const StyleguidePage = import.meta.env.DEV
+  ? named(() => import('./styleguide/StyleguidePage.jsx'), 'StyleguidePage')
+  : null
+
 export function AppRoutes() {
   return (
     <Suspense fallback={<RouteFallback />}>
@@ -415,6 +422,11 @@ export function AppRoutes() {
       {/* Ссылка из письма «Подтверждение смены email» — сама себя
           аутентифицирует токеном, не требует активной сессии. */}
       <Route path="/change-email/:token" element={<ConfirmEmailChangePage />} />
+
+      {/* B10: styleguide без авторизации и вне общего лейаута — только в dev. */}
+      {import.meta.env.DEV && StyleguidePage ? (
+        <Route path="/styleguide" element={<StyleguidePage />} />
+      ) : null}
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

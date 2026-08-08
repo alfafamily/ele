@@ -1,0 +1,245 @@
+/*
+  Стили dev-only styleguide (B10). Никогда не попадают в прод-бандл: страница и
+  её импорты подключаются только под `import.meta.env.DEV` в AppRoutes.
+*/
+.sg {
+  min-height: 100%;
+  background: var(--color-bg-workspace);
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+}
+
+.sg__bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 24px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sg__brand {
+  font-size: 18px;
+  font-weight: 700;
+  margin-right: 12px;
+}
+
+.sg__brand small {
+  font-weight: 500;
+  color: var(--color-text-muted);
+  margin-left: 8px;
+}
+
+.sg__nav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.sg__nav a {
+  padding: 6px 12px;
+  border-radius: var(--radius-chip);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-fill-input);
+}
+
+.sg__nav a:hover {
+  background: var(--color-fill-active-tint);
+}
+
+.sg__body {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.sg__section {
+  scroll-margin-top: 80px;
+  margin-bottom: 48px;
+}
+
+.sg__h2 {
+  font-size: var(--font-size-section-title);
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.sg__lead {
+  color: var(--color-text-muted);
+  font-size: 14px;
+  margin: 0 0 20px;
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.sg__h3 {
+  font-size: var(--font-size-block-title);
+  font-weight: 700;
+  margin: 28px 0 12px;
+}
+
+/* Демо-блок компонента: карточка с заголовком, описанием и «сценой» */
+.sg-demo {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.sg-demo__title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 2px;
+}
+
+.sg-demo__desc {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin: 0 0 14px;
+}
+
+.sg-demo__stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  border-radius: var(--radius-control);
+  background: var(--color-bg-workspace);
+}
+
+.sg-demo__stage--col {
+  flex-direction: column;
+  align-items: stretch;
+  max-width: 420px;
+}
+
+.sg-demo__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--color-text-placeholder);
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* Токены — сетки */
+.sg-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.sg-swatch {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-chip);
+  overflow: hidden;
+}
+
+.sg-swatch__chip {
+  height: 56px;
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+
+.sg-swatch__meta {
+  padding: 8px 10px;
+}
+
+.sg-swatch__name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.sg-swatch__val {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.sg-scale {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sg-scale__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sg-scale__bar {
+  height: 16px;
+  background: var(--color-brand-accent);
+  border-radius: 4px;
+  flex: none;
+}
+
+.sg-scale__name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  min-width: 220px;
+}
+
+.sg-scale__val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.sg-icons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.sg-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-chip);
+  text-align: center;
+}
+
+.sg-icon__name {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-muted);
+  word-break: break-all;
+}
+
+.sg-radii {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.sg-radii__box {
+  height: 72px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+}
+
+.sg-shadow {
+  height: 72px;
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+}
