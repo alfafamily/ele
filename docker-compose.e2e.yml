@@ -29,6 +29,7 @@ services:
       context: ./backend
       args:
         REQUIREMENTS_FILE: requirements/dev.txt
+        PIP_INSTALL_FLAGS: ""
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
       DATABASE_URL: postgres://ele:ele@postgres:5432/ele

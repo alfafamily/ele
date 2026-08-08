@@ -619,9 +619,8 @@ class EquipmentViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
 
     @action(detail=True, methods=["get"], url_path="history")
     def history_list(self, request, pk=None):
-        from core.history import build_history_rows, build_related_history_rows
+        from core.history import build_eav_history_rows, build_history_rows
         from employees.models import Employee
-        from storage.models import StoredFile
 
         eq = self.get_object()
 
@@ -653,75 +652,16 @@ class EquipmentViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
             "equipment_type": {"label": "Тип оборудования", "format": fmt_type},
         }
 
-        # Реквизиты Типа (Параметры оборудования)
-        type_fields = {}
-
-        def field_of(rec):
-            if rec.field_id not in type_fields:
-                type_fields[rec.field_id] = EquipmentTypeField.objects.filter(pk=rec.field_id).first()
-            return type_fields[rec.field_id]
-
-        def fv_value(rec):
-            f = field_of(rec)
-            vt = f.value_type if f else "text"
-            if vt == "bool":
-                return None if rec.value_bool is None else ("Да" if rec.value_bool else "Нет")
-            if vt == "int":
-                return rec.value_int
-            if vt == "float":
-                return rec.value_float
-            if vt == "file":
-                if not rec.value_file_id:
-                    return None
-                return StoredFile.objects.filter(pk=rec.value_file_id).values_list("original_filename", flat=True).first() or "файл"
-            return rec.value_text
-
-        related_rows = []
-        created_extra = []
-
-        req_rows, req_created = build_related_history_rows(
-            EquipmentFieldValue.history.filter(equipment_id=eq.id),
-            label_fn=lambda rec: (field_of(rec).name if field_of(rec) else "Реквизит"),
-            value_fn=fv_value,
-            created_at=eq.created_at,
+        # Реквизиты Типа (Параметры оборудования) + файлы реквизитов + доп.поля
+        # (общий EAV-блок, идентичный для equipment/transport/licenses — B74).
+        related_rows, created_extra = build_eav_history_rows(
+            eq,
+            owner_field="equipment",
+            type_field_model=EquipmentTypeField,
+            field_value_model=EquipmentFieldValue,
+            field_file_model=EquipmentFieldFile,
+            custom_field_model=EquipmentCustomField,
         )
-        related_rows += req_rows
-        created_extra += req_created
-
-        # Файлы реквизитов «Несколько файлов» — добавление/удаление отдельных
-        # файлов (хранятся в EquipmentFieldFile, не в value_file).
-        fv_field_name = dict(
-            EquipmentFieldValue.objects.filter(equipment_id=eq.id).values_list("id", "field__name")
-        )
-        if fv_field_name:
-            def file_value(rec):
-                if not rec.stored_file_id:
-                    return None
-                return (
-                    StoredFile.objects.filter(pk=rec.stored_file_id)
-                    .values_list("original_filename", flat=True)
-                    .first()
-                    or "файл"
-                )
-
-            file_rows, file_created = build_related_history_rows(
-                EquipmentFieldFile.history.filter(field_value_id__in=list(fv_field_name)),
-                label_fn=lambda rec: fv_field_name.get(rec.field_value_id, "Файл реквизита"),
-                value_fn=file_value,
-                created_at=eq.created_at,
-            )
-            related_rows += file_rows
-            created_extra += file_created
-
-        # Дополнительные поля
-        cf_rows, cf_created = build_related_history_rows(
-            EquipmentCustomField.history.filter(equipment_id=eq.id),
-            label_fn=lambda rec: rec.name,
-            value_fn=lambda rec: rec.value,
-            created_at=eq.created_at,
-        )
-        related_rows += cf_rows
-        created_extra += cf_created
 
         # Привязка/снятие лицензий — движения оборудования (лицензии привязывают
         # с карточки оборудования). Связь хранится на стороне License

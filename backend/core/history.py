@@ -367,6 +367,124 @@ def build_history_rows(instance, field_specs, *, movement_fields=(), movement_ev
     return rows
 
 
+def build_eav_history_rows(
+    obj,
+    *,
+    owner_field,
+    type_field_model,
+    field_value_model,
+    field_file_model=None,
+    custom_field_model=None,
+    restrict_to_existing_fields=False,
+    mark_locked_secret=False,
+):
+    """История EAV-реквизитов учётного объекта: реквизиты Типа + файлы реквизитов
+    «Несколько файлов» + доп.поля. Возвращает ``(related_rows, created_extra)``.
+
+    Логика идентична для ``equipment`` / ``transport`` / ``licenses`` — раньше
+    каждое приложение держало у себя ~50 строк копии этого блока (B53 finding#1,
+    хвост B74). Различаются лишь модели, имя FK-владельца (``owner_field``:
+    ``"equipment"`` / ``"transport"`` / ``"license"``) и два флага для лицензий:
+
+    * ``restrict_to_existing_fields`` — показывать реквизиты только существующих
+      Типов (у удалённого Типа поле-реквизит удалено → название и секретность не
+      определяются, иначе бывший «Номер/ключ» показался бы открытым текстом);
+    * ``mark_locked_secret`` — реквизиты-ключи (``field.is_locked``) маскируются и
+      в истории.
+
+    Приложения без файловых реквизитов передают ``field_file_model=None``; без
+    доп.полей — ``custom_field_model=None``.
+    """
+    from storage.models import StoredFile
+
+    owner_filter = {f"{owner_field}_id": obj.id}
+
+    type_fields = {}
+
+    def field_of(rec):
+        if rec.field_id not in type_fields:
+            type_fields[rec.field_id] = type_field_model.objects.filter(pk=rec.field_id).first()
+        return type_fields[rec.field_id]
+
+    def fv_value(rec):
+        f = field_of(rec)
+        vt = f.value_type if f else "text"
+        if vt == "bool":
+            return None if rec.value_bool is None else ("Да" if rec.value_bool else "Нет")
+        if vt == "int":
+            return rec.value_int
+        if vt == "float":
+            return rec.value_float
+        if vt == "file":
+            if not rec.value_file_id:
+                return None
+            return StoredFile.objects.filter(pk=rec.value_file_id).values_list("original_filename", flat=True).first() or "файл"
+        return rec.value_text
+
+    related_rows = []
+    created_extra = []
+
+    fv_history = field_value_model.history.filter(**owner_filter)
+    if restrict_to_existing_fields:
+        existing_field_ids = set(type_field_model.objects.values_list("id", flat=True))
+        fv_history = fv_history.filter(field_id__in=existing_field_ids)
+
+    secret_fn = None
+    if mark_locked_secret:
+        def secret_fn(rec):
+            f = field_of(rec)
+            return bool(f and f.is_locked)
+
+    req_rows, req_created = build_related_history_rows(
+        fv_history,
+        label_fn=lambda rec: (field_of(rec).name if field_of(rec) else "Реквизит"),
+        value_fn=fv_value,
+        secret_fn=secret_fn,
+        created_at=obj.created_at,
+    )
+    related_rows += req_rows
+    created_extra += req_created
+
+    # Файлы реквизитов «Несколько файлов» — добавление/удаление отдельных файлов
+    # (хранятся в *FieldFile, не в value_file).
+    if field_file_model is not None:
+        fv_field_name = dict(
+            field_value_model.objects.filter(**owner_filter).values_list("id", "field__name")
+        )
+        if fv_field_name:
+            def file_value(rec):
+                if not rec.stored_file_id:
+                    return None
+                return (
+                    StoredFile.objects.filter(pk=rec.stored_file_id)
+                    .values_list("original_filename", flat=True)
+                    .first()
+                    or "файл"
+                )
+
+            file_rows, file_created = build_related_history_rows(
+                field_file_model.history.filter(field_value_id__in=list(fv_field_name)),
+                label_fn=lambda rec: fv_field_name.get(rec.field_value_id, "Файл реквизита"),
+                value_fn=file_value,
+                created_at=obj.created_at,
+            )
+            related_rows += file_rows
+            created_extra += file_created
+
+    # Дополнительные поля
+    if custom_field_model is not None:
+        cf_rows, cf_created = build_related_history_rows(
+            custom_field_model.history.filter(**owner_filter),
+            label_fn=lambda rec: rec.name,
+            value_fn=lambda rec: rec.value,
+            created_at=obj.created_at,
+        )
+        related_rows += cf_rows
+        created_extra += cf_created
+
+    return related_rows, created_extra
+
+
 def build_related_history_rows(
     records, label_fn, value_fn, secret_fn=None, id_attr="id", *, created_at=None
 ):

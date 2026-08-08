@@ -273,9 +273,8 @@ class LicenseViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
 
     @action(detail=True, methods=["get"], url_path="history")
     def history_list(self, request, pk=None):
-        from core.history import build_history_rows, build_related_history_rows
+        from core.history import build_eav_history_rows, build_history_rows
         from equipment.models import Equipment
-        from storage.models import StoredFile
 
         lic = self.get_object()
 
@@ -306,87 +305,23 @@ class LicenseViewSet(AssetFieldFileMixin, AccountableAssetViewSet):
             "license_type": {"label": "Тип лицензии", "format": fmt_type},
         }
 
-        # Реквизиты Типа (Параметры лицензии), включая маскируемый «Номер/ключ»
-        type_fields = {}
-
-        def field_of(rec):
-            if rec.field_id not in type_fields:
-                type_fields[rec.field_id] = LicenseTypeField.objects.filter(pk=rec.field_id).first()
-            return type_fields[rec.field_id]
-
-        def fv_value(rec):
-            f = field_of(rec)
-            vt = f.value_type if f else "text"
-            if vt == "bool":
-                return None if rec.value_bool is None else ("Да" if rec.value_bool else "Нет")
-            if vt == "int":
-                return rec.value_int
-            if vt == "float":
-                return rec.value_float
-            if vt == "file":
-                if not rec.value_file_id:
-                    return None
-                return StoredFile.objects.filter(pk=rec.value_file_id).values_list("original_filename", flat=True).first() or "файл"
-            return rec.value_text
-
-        def fv_secret(rec):
-            # Зафиксированные реквизиты-ключи («Номер/ключ», «Номер/ID/Serial
-            # токена») маскируются и в истории.
-            f = field_of(rec)
-            return bool(f and f.is_locked)
-
-        related_rows = []
-        created_extra = []
-
-        # Реквизиты уже удалённых Типов (в т.ч. прежних базовых «Программная»/
-        # «Аппаратная», которые пользователь удаляет после перевода лицензий на
-        # свои Типы) в историю не выводим: их поле-реквизит удалено, поэтому
-        # название и секретность не определяются — иначе бывший «Номер/ключ»
-        # показался бы как «Реквизит» открытым текстом.
-        existing_field_ids = set(LicenseTypeField.objects.values_list("id", flat=True))
-
-        req_rows, req_created = build_related_history_rows(
-            LicenseFieldValue.history.filter(license_id=lic.id, field_id__in=existing_field_ids),
-            label_fn=lambda rec: (field_of(rec).name if field_of(rec) else "Реквизит"),
-            value_fn=fv_value,
-            secret_fn=fv_secret,
-            created_at=lic.created_at,
+        # Реквизиты Типа (Параметры лицензии, включая маскируемый «Номер/ключ») +
+        # файлы реквизитов + доп.поля (общий EAV-блок — B74). Для лицензий:
+        # * restrict_to_existing_fields — реквизиты уже удалённых Типов (в т.ч.
+        #   прежних базовых «Программная»/«Аппаратная») в историю не выводим: их
+        #   поле-реквизит удалено, название и секретность не определяются — иначе
+        #   бывший «Номер/ключ» показался бы как «Реквизит» открытым текстом;
+        # * mark_locked_secret — зафиксированные реквизиты-ключи маскируются.
+        related_rows, created_extra = build_eav_history_rows(
+            lic,
+            owner_field="license",
+            type_field_model=LicenseTypeField,
+            field_value_model=LicenseFieldValue,
+            field_file_model=LicenseFieldFile,
+            custom_field_model=LicenseCustomField,
+            restrict_to_existing_fields=True,
+            mark_locked_secret=True,
         )
-        related_rows += req_rows
-        created_extra += req_created
-
-        # Файлы реквизитов «Несколько файлов» — добавление/удаление отдельных файлов.
-        fv_field_name = dict(
-            LicenseFieldValue.objects.filter(license_id=lic.id).values_list("id", "field__name")
-        )
-        if fv_field_name:
-            def file_value(rec):
-                if not rec.stored_file_id:
-                    return None
-                return (
-                    StoredFile.objects.filter(pk=rec.stored_file_id)
-                    .values_list("original_filename", flat=True)
-                    .first()
-                    or "файл"
-                )
-
-            file_rows, file_created = build_related_history_rows(
-                LicenseFieldFile.history.filter(field_value_id__in=list(fv_field_name)),
-                label_fn=lambda rec: fv_field_name.get(rec.field_value_id, "Файл реквизита"),
-                value_fn=file_value,
-                created_at=lic.created_at,
-            )
-            related_rows += file_rows
-            created_extra += file_created
-
-        cf_rows, cf_created = build_related_history_rows(
-            LicenseCustomField.history.filter(license_id=lic.id),
-            label_fn=lambda rec: rec.name,
-            value_fn=lambda rec: rec.value,
-            created_at=lic.created_at,
-        )
-        related_rows += cf_rows
-        created_extra += cf_created
 
         rows = build_history_rows(
             lic, field_specs,
