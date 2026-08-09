@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { useCompany, useRefreshCompany } from '../../app/CompanyContext.jsx'
-import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { Banner, Card, Checkbox, Icon, Spinner } from '../../shared/ui'
 import { InlineField } from './inlineFields.jsx'
 import { PdnDocumentsCard } from './PdnDocumentsCard.jsx'
@@ -25,7 +24,9 @@ function readImageSize(file) {
   })
 }
 
-const TILE = 96
+// Сторона квадратной плитки логотипа = высоте правой колонки с полями
+// (Название + ИНН): две строки по высоте кнопки-иконки (36) + разрыв (16) = 88.
+const TILE = 88
 const menuItem = { border: 'none', background: 'none', textAlign: 'left', padding: '10px 12px', borderRadius: 8, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', color: 'var(--color-text-primary)', whiteSpace: 'nowrap' }
 // Заголовок блока — как в «Системные».
 const sectionTitle = { fontSize: 15, fontWeight: 600, marginBottom: 14 }
@@ -35,7 +36,6 @@ const sectionTitle = { fontSize: 15, fontWeight: 600, marginBottom: 14 }
 export function CompanyTab() {
   const company = useCompany()
   const refreshCompany = useRefreshCompany()
-  const isMobile = useMediaQuery('(max-width: 768px)')
   const [name, setName] = useState(null) // null — ещё грузится
   const [inn, setInn] = useState('')
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -149,13 +149,13 @@ export function CompanyTab() {
     }
   }
 
-  // На десктопе плитка лого растягивается по высоте до полей (Название + ИНН);
-  // на мобильных остаётся квадратом.
-  const tileH = isMobile ? TILE : '100%'
+  // Логотип слева, поля справа — одинаково на десктопе и мобильных. Плитка —
+  // квадрат TILE×TILE, по высоте совпадает с правой колонкой (Название + ИНН).
+  const tileFill = { width: '100%', height: '100%', borderRadius: 16 }
   const logoBlock = (
-    <div style={{ flex: 'none', position: 'relative', alignSelf: isMobile ? undefined : 'stretch' }}>
+    <div style={{ flex: 'none', position: 'relative', width: TILE, height: TILE }}>
       {uploadingLogo ? (
-        <span style={{ width: TILE, height: tileH, borderRadius: 16, background: 'var(--color-fill-active-tint)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ ...tileFill, background: 'var(--color-fill-active-tint)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Spinner size={24} />
         </span>
       ) : company?.logo ? (
@@ -166,9 +166,9 @@ export function CompanyTab() {
             onClick={() => setLogoMenu((v) => !v)}
             aria-haspopup="menu"
             aria-expanded={logoMenu}
-            style={{ width: TILE, height: tileH, borderRadius: 16, overflow: 'hidden', background: 'var(--color-fill-active-tint)', border: 'none', padding: 0, cursor: 'pointer', display: 'block' }}
+            style={{ ...tileFill, overflow: 'hidden', background: 'var(--color-fill-active-tint)', border: 'none', padding: 0, cursor: 'pointer', display: 'block' }}
           >
-            <img src={company.logo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src={company.logo.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </button>
           {logoMenu ? (
             <>
@@ -192,7 +192,7 @@ export function CompanyTab() {
         <button
           type="button"
           onClick={pickLogo}
-          style={{ width: TILE, height: tileH, borderRadius: 16, border: '1.5px dashed var(--color-border-strong)', background: 'var(--color-fill-active-tint)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'var(--color-text-muted)', fontFamily: 'inherit' }}
+          style={{ ...tileFill, border: '1.5px dashed var(--color-border-strong)', background: 'var(--color-fill-active-tint)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, color: 'var(--color-text-muted)', fontFamily: 'inherit' }}
         >
           <Icon name="plus" size={22} strokeWidth={1.8} />
           <span style={{ fontSize: 11 }}>Логотип</span>
@@ -212,7 +212,7 @@ export function CompanyTab() {
 
       <Card style={{ marginBottom: 16 }}>
         <div style={sectionTitle}>Данные компании</div>
-        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'center' : 'stretch', gap: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: 20 }}>
           {logoBlock}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
             <InlineField label="Название компании" value={name} onSave={saveName} />
