@@ -3,17 +3,6 @@
 Формат — [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/),
 версионирование — [SemVer](https://semver.org/lang/ru/).
 
-**Как выпускать релиз:** обновить `VERSION` и раздел в этом файле → закоммитить
-→ поставить тег и запушить его:
-
-```sh
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-Пуш тега запускает workflow `.github/workflows/release.yml`, который создаёт
-GitHub Release. Обновление инстансов — по `docs/INSTALL.md` («Обновление версии»).
-
 ## [Unreleased]
 
 **Обновление с ранних версий (важно при большом «джампе»):**
