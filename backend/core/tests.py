@@ -267,3 +267,110 @@ class MaintenancePermissionMatrixTests(APITestCase):
         acc.maintenance_transport_types.add(tt1)
         self.assertTrue(can_maintain_transport_type(self._req(acc), tt1.id))
         self.assertFalse(can_maintain_transport_type(self._req(acc), tt2.id))
+
+
+# --- B69: защитные data-миграции --------------------------------------------
+import os  # noqa: E402
+import tempfile  # noqa: E402
+from types import SimpleNamespace  # noqa: E402
+
+from django.test import SimpleTestCase  # noqa: E402
+
+from core import migration_safety as ms  # noqa: E402
+from core.models import BackgroundJobRun  # noqa: E402
+
+
+class MigrationSafetyPureTests(SimpleTestCase):
+    """Пометка/подтверждение — чистая логика без БД."""
+
+    def test_confirmation_parsing(self):
+        for val in ("1", "true", "TRUE", "yes", "on"):
+            self.assertTrue(ms.confirmation_given({ms.CONFIRM_ENV: val}))
+        for val in ("", "0", "false", "no", "nope"):
+            self.assertFalse(ms.confirmation_given({ms.CONFIRM_ENV: val}))
+        self.assertFalse(ms.confirmation_given({}))
+
+    def test_is_and_find_destructive(self):
+        marked = SimpleNamespace(app_label="x", name="0002", ele_destructive=True,
+                                 ele_destructive_note="удаляет строки")
+        plain = SimpleNamespace(app_label="x", name="0001")
+        self.assertTrue(ms.is_destructive(marked))
+        self.assertFalse(ms.is_destructive(plain))
+        self.assertEqual(ms.destructive_note(marked), "удаляет строки")
+        # backwards-миграции игнорируются, обычные — тоже.
+        plan = [(marked, False), (plain, False), (marked, True)]
+        self.assertEqual(ms.find_destructive(plan), [marked])
+
+    def test_abort_if(self):
+        with self.assertRaises(ms.DestructiveMigrationAbort):
+            ms.abort_if(True, "стоп")
+        ms.abort_if(False, "не должно бросить")  # без исключения
+
+
+class AbortIfDuplicatesTests(APITestCase):
+    def _row(self, detail):
+        return BackgroundJobRun.objects.create(job="backup", status="ok", detail=detail)
+
+    def test_raises_on_duplicates(self):
+        self._row("dup")
+        self._row("dup")
+        self._row("unique")
+        with self.assertRaises(ms.DestructiveMigrationAbort) as ctx:
+            ms.abort_if_duplicates(BackgroundJobRun, "detail")
+        self.assertIn("dup", str(ctx.exception))
+
+    def test_no_raise_when_unique(self):
+        self._row("a")
+        self._row("b")
+        ms.abort_if_duplicates(BackgroundJobRun, "detail")  # без исключения
+
+    def test_skip_empty_ignores_blank_duplicates(self):
+        self._row("")
+        self._row("")
+        ms.abort_if_duplicates(BackgroundJobRun, "detail", skip_empty=True)
+        with self.assertRaises(ms.DestructiveMigrationAbort):
+            ms.abort_if_duplicates(BackgroundJobRun, "detail", skip_empty=False)
+
+
+class ArchiveRowsTests(APITestCase):
+    def test_archives_before_delete_and_keeps_rows(self):
+        BackgroundJobRun.objects.create(job="backup", status="ok", detail="keep-me")
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, {"ELE_MIGRATION_ARCHIVE_DIR": tmp}):
+                path = ms.archive_rows(BackgroundJobRun.objects.all(), label="core.Job")
+            self.assertTrue(path and os.path.exists(path))
+            with open(path, encoding="utf-8") as fh:
+                self.assertIn("keep-me", fh.read())
+        # archive_rows НЕ удаляет — строка на месте.
+        self.assertEqual(BackgroundJobRun.objects.count(), 1)
+
+    def test_returns_none_on_empty(self):
+        self.assertIsNone(ms.archive_rows(BackgroundJobRun.objects.none(), label="empty"))
+
+
+class CheckDestructiveMigrationsCommandTests(APITestCase):
+    """Пре-migrate гейт. В тестовой БД все миграции применены и ни одна не
+    помечена деструктивной → штатно no-op; деструктивный накат эмулируем."""
+
+    def test_noop_when_nothing_destructive(self):
+        call_command("check_destructive_migrations")  # без исключения
+
+    def test_halts_on_unconfirmed_destructive(self):
+        fake = SimpleNamespace(app_label="employees", name="0006_x",
+                               ele_destructive=True, ele_destructive_note="удаляет дубли")
+        with mock.patch(
+            "core.management.commands.check_destructive_migrations.find_destructive",
+            return_value=[fake],
+        ), mock.patch.dict(os.environ, {ms.CONFIRM_ENV: ""}, clear=False):
+            os.environ.pop(ms.CONFIRM_ENV, None)
+            with self.assertRaises(SystemExit):
+                call_command("check_destructive_migrations")
+
+    def test_passes_when_confirmed(self):
+        fake = SimpleNamespace(app_label="employees", name="0006_x",
+                               ele_destructive=True, ele_destructive_note="удаляет дубли")
+        with mock.patch(
+            "core.management.commands.check_destructive_migrations.find_destructive",
+            return_value=[fake],
+        ), mock.patch.dict(os.environ, {ms.CONFIRM_ENV: "1"}):
+            call_command("check_destructive_migrations")  # без исключения

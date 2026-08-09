@@ -12,6 +12,11 @@ if [ "$(id -u)" = "0" ]; then
     chown -R app:app /app/staticfiles /app/media 2>/dev/null || true
 fi
 
+# Страховка B69: если в накате есть миграции, помеченные деструктивными
+# (ele_destructive), обновление останавливается до явного подтверждения
+# оператором (ELE_CONFIRM_DESTRUCTIVE=1). На чистой установке — no-op.
+python manage.py check_destructive_migrations
+
 python manage.py migrate --noinput
 
 if [ "${DJANGO_COLLECTSTATIC:-0}" = "1" ]; then
