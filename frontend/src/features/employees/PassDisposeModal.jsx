@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Input, Modal, ModalActions } from '../../shared/ui'
+import { TerminalActionModal } from '../../shared/ui'
 import { utilizePass } from './employeesApi.js'
 
 // Утилизация средства доступа (пропуск или ключ) — терминальное действие: либо
@@ -14,26 +14,17 @@ const OPTIONS = [
 export function PassDisposeModal({ pass, onClose, onDone }) {
   const kind = pass.object_type === 'key' ? 'ключ' : 'пропуск'
   const [choice, setChoice] = useState(OPTIONS[0].value)
-  const [comment, setComment] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState(null)
-
-  const submit = async () => {
-    setSubmitting(true)
-    setError(null)
-    try {
-      const saved = await utilizePass(pass.id, choice, comment.trim() || undefined)
-      onDone(saved)
-    } catch (err) {
-      setError(err.detail || 'Не удалось выполнить действие.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   return (
-    <Modal open onClose={onClose} title={`Утилизировать ${kind}?`}>
-      {error ? <Banner variant="error">{error}</Banner> : null}
+    <TerminalActionModal
+      title={`Утилизировать ${kind}?`}
+      submitLabel="Утилизировать"
+      onConfirm={(comment) => utilizePass(pass.id, choice, comment)}
+      onClose={onClose}
+      onDone={onDone}
+      commentStyle={{ marginBottom: 18 }}
+      actionsStyle={{}}
+    >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '4px 0 16px' }}>
         {OPTIONS.map((opt) => (
           <label
@@ -48,23 +39,6 @@ export function PassDisposeModal({ pass, onClose, onDone }) {
           </label>
         ))}
       </div>
-
-      <div style={{ marginBottom: 18 }}>
-        <Input
-          label="Комментарий (необязательно)"
-          multiline
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="Например: утилизировано по акту №…"
-        />
-      </div>
-
-      <ModalActions>
-        <Button variant="danger-solid" fullWidth loading={submitting} onClick={submit}>
-          Утилизировать
-        </Button>
-        <Button variant="secondary" fullWidth onClick={onClose}>Отмена</Button>
-      </ModalActions>
-    </Modal>
+    </TerminalActionModal>
   )
 }

@@ -1,15 +1,9 @@
-import { useEffect, useState } from 'react'
-import { Link, useNavigationType } from 'react-router-dom'
-import { Can } from '../../app/usePermissions.js'
-import { InfiniteScrollSentinel } from '../../shared/InfiniteScrollSentinel.jsx'
-import { useCursorList } from '../../shared/hooks/useCursorList.js'
-import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
-import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
-import { readListCache, writeListCache } from '../../shared/listCache.js'
-import { Button, EmptyState, FilterModal, Icon, RadioPills, SearchInput, Skeleton, Table, TabBar, TableRow } from '../../shared/ui'
+import { Link } from 'react-router-dom'
+import { csvParam } from '../../shared/filterParams.js'
+import { ListPage } from '../../shared/ListPage.jsx'
+import { Button, Icon, RadioPills } from '../../shared/ui'
 import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
 import { RemoteMultiSelect } from '../../shared/RemoteMultiSelect.jsx'
-import { csvParam } from '../../shared/filterParams.js'
 
 const CACHE_KEY = 'tools-list'
 
@@ -55,171 +49,101 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('ru-RU')
 }
 
-export function ToolListPage() {
-  const isPop = useNavigationType() === 'POP'
-  const savedUi = isPop ? readListCache(CACHE_KEY)?.ui : undefined
-  const [tab, setTab] = useState(() => savedUi?.tab ?? 'active')
-  const [filters, setFilters] = useState(() => ({ ...EMPTY_FILTERS, ...(savedUi?.filters ?? {}) }))
-  const [search, setSearch] = useState(() => savedUi?.search ?? '')
-  const debouncedSearch = useDebouncedValue(search)
-  const [sort, setSort] = useState(() => savedUi?.sort ?? { key: 'created_at', dir: 'desc' })
-
-  useEffect(() => {
-    writeListCache(CACHE_KEY, { ui: { tab, filters, search, sort } })
-  }, [tab, filters, search, sort])
-
-  const isActive = tab === 'active'
-  const ordering = sort.dir === 'desc' ? `-${sort.key}` : sort.key
-  const { items, loading, loadingMore, hasMore, loadMore, error } = useCursorList(
-    '/api/tools/',
-    {
-      tab,
-      assigned: isActive && filters.assignedMode !== 'none' ? filters.assignedMode : undefined,
-      employee: isActive && filters.assignedMode === 'employee' ? csvParam(filters.employees.map((e) => e.id)) : undefined,
-      place_storage: isActive && filters.assignedMode === 'storage' ? csvParam(filters.storagePlaces) : undefined,
-      place_workplace: isActive && filters.assignedMode === 'workplace' ? csvParam(filters.workplaces) : undefined,
-      search: debouncedSearch || undefined,
-      ordering,
-    },
-    { cacheKey: CACHE_KEY, restore: isPop },
-  )
-  useScrollRestoration(CACHE_KEY, isPop && !loading)
-
-  const columns = tab === 'active' ? ACTIVE_COLUMNS : ARCHIVE_COLUMNS
-
-  const handleSort = (key) => {
-    setSort((prev) => (prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
-  }
-
+function toolFilter(draft, setDraft) {
+  const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div className="ele-page-head">
-        <h1 style={{ fontSize: 'var(--font-size-h1)', fontWeight: 600, letterSpacing: 'var(--font-h1-letter-spacing)' }}>
-          Инструменты
-        </h1>
-        <Can perm="canManageEquipment">
-          <div className="ele-page-head__actions">
-            <Link to="/tools/new">
-              <Button title="Добавить инструмент" aria-label="Добавить инструмент">
-                <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />
-                <span className="ele-only-desktop">Добавить инструмент</span>
-                <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
-              </Button>
-            </Link>
-          </div>
-        </Can>
-      </div>
-
-      <div className="ele-list-controls">
-        <div className="ele-list-controls__tabs">
-          <TabBar options={TABS} value={tab} onChange={setTab} />
+    <div>
+      <div className="ele-filter-section__title">Размещение</div>
+      <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
+      {draft.assignedMode === 'employee' ? (
+        <div style={{ marginTop: 10 }}>
+          <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} />
         </div>
-        <div className="ele-list-controls__search">
-          <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
+      ) : null}
+      {draft.assignedMode === 'storage' ? (
+        <div style={{ marginTop: 10 }}>
+          <RemoteMultiSelect
+            endpoint="/api/places/?place_type=storage&active=1"
+            mapOption={placeOption}
+            selected={draft.storagePlaces}
+            onChange={(p) => set({ storagePlaces: p })}
+          />
         </div>
-        {isActive ? (
-          <div className="ele-list-controls__filter">
-            <FilterModal
-              value={filters}
-              count={countActive(filters)}
-              onApply={setFilters}
-              onClear={() => setFilters(EMPTY_FILTERS)}
-              isDraftActive={(d) => countActive(d) > 0}
-            >
-              {(draft, setDraft) => {
-                const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
-                return (
-                  <div>
-                    <div className="ele-filter-section__title">Размещение</div>
-                    <RadioPills options={ASSIGNED_OPTIONS} value={draft.assignedMode} onChange={(v) => set({ assignedMode: v })} />
-                    {draft.assignedMode === 'employee' ? (
-                      <div style={{ marginTop: 10 }}>
-                        <EmployeeMultiPicker value={draft.employees} onChange={(e) => set({ employees: e })} />
-                      </div>
-                    ) : null}
-                    {draft.assignedMode === 'storage' ? (
-                      <div style={{ marginTop: 10 }}>
-                        <RemoteMultiSelect
-                          endpoint="/api/places/?place_type=storage&active=1"
-                          mapOption={placeOption}
-                          selected={draft.storagePlaces}
-                          onChange={(p) => set({ storagePlaces: p })}
-                        />
-                      </div>
-                    ) : null}
-                    {draft.assignedMode === 'workplace' ? (
-                      <div style={{ marginTop: 10 }}>
-                        <RemoteMultiSelect
-                          endpoint="/api/places/?place_type=workplace&active=1"
-                          mapOption={placeOption}
-                          selected={draft.workplaces}
-                          onChange={(p) => set({ workplaces: p })}
-                        />
-                      </div>
-                    ) : null}
-                  </div>
-                )
-              }}
-            </FilterModal>
-          </div>
-        ) : null}
-      </div>
-
-      {error ? (
-        <div style={{ color: 'var(--color-error)', fontSize: 14 }}>Не удалось загрузить список.</div>
-      ) : loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Skeleton height={52} />
-          <Skeleton height={52} />
-          <Skeleton height={52} />
+      ) : null}
+      {draft.assignedMode === 'workplace' ? (
+        <div style={{ marginTop: 10 }}>
+          <RemoteMultiSelect
+            endpoint="/api/places/?place_type=workplace&active=1"
+            mapOption={placeOption}
+            selected={draft.workplaces}
+            onChange={(p) => set({ workplaces: p })}
+          />
         </div>
-      ) : items.length === 0 ? (
-        <EmptyState
-          title={search ? 'Ничего не найдено' : tab === 'archive' ? 'Списанного нет' : 'Пока пусто'}
-          description={
-            search
-              ? `По запросу «${search}» инструменты не найдены. Попробуйте изменить запрос.`
-              : tab === 'archive'
-                ? 'Списанные инструменты будут отображаться здесь.'
-                : 'Когда вы добавите инструмент, он будет отображаться здесь.'
-          }
-          action={
-            search ? (
-              <Button variant="secondary" onClick={() => setSearch('')}>
-                Сбросить поиск
-              </Button>
-            ) : undefined
-          }
-        />
-      ) : (
-        <Table columns={columns} sortKey={sort.key} sortDir={sort.dir} onSort={handleSort}>
-          {items.map((row) => (
-            <Link key={row.id} to={`/tools/${row.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-              <TableRow columns={columns}>
-                <div style={{ minWidth: 0 }}>
-                  <div className="ele-clamp-2" style={{ fontWeight: 500 }}>{row.name}</div>
-                </div>
-                {tab === 'active' ? (
-                  <div style={{ minWidth: 0 }}>
-                    <div>Всего/свободно: {row.quantity}/{row.free}</div>
-                    <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>
-                      Закреплено: {row.allocated}
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ color: 'var(--color-text-placeholder)', font: '500 13px var(--font-mono)' }}>
-                    {formatDate(row.written_off_at)}
-                  </div>
-                )}
-                <div style={{ textAlign: 'right', color: 'var(--color-border-strong)' }}>
-                  <Icon name="chevron-right" size={18} strokeWidth={2} />
-                </div>
-              </TableRow>
-            </Link>
-          ))}
-          <InfiniteScrollSentinel hasMore={hasMore} loading={loadingMore} onLoadMore={loadMore} />
-        </Table>
-      )}
+      ) : null}
     </div>
+  )
+}
+
+export function ToolListPage() {
+  return (
+    <ListPage
+      title="Инструменты"
+      headerPerm="canManageEquipment"
+      headerActions={
+        <Link to="/tools/new">
+          <Button title="Добавить инструмент" aria-label="Добавить инструмент">
+            <Icon className="ele-only-desktop" name="plus" size={18} strokeWidth={2.2} />
+            <span className="ele-only-desktop">Добавить инструмент</span>
+            <Icon className="ele-only-mobile" name="plus" size={22} strokeWidth={2.4} />
+          </Button>
+        </Link>
+      }
+      cacheKey={CACHE_KEY}
+      endpoint="/api/tools/"
+      tabs={TABS}
+      emptyFilters={EMPTY_FILTERS}
+      filterCount={countActive}
+      renderFilter={({ draft, setDraft }) => toolFilter(draft, setDraft)}
+      buildParams={({ tab, isActive, filters, search, ordering }) => ({
+        tab,
+        assigned: isActive && filters.assignedMode !== 'none' ? filters.assignedMode : undefined,
+        employee: isActive && filters.assignedMode === 'employee' ? csvParam(filters.employees.map((e) => e.id)) : undefined,
+        place_storage: isActive && filters.assignedMode === 'storage' ? csvParam(filters.storagePlaces) : undefined,
+        place_workplace: isActive && filters.assignedMode === 'workplace' ? csvParam(filters.workplaces) : undefined,
+        search: search || undefined,
+        ordering,
+      })}
+      activeColumns={ACTIVE_COLUMNS}
+      archiveColumns={ARCHIVE_COLUMNS}
+      renderRow={(row, { tab }) => (
+        <>
+          <div style={{ minWidth: 0 }}>
+            <div className="ele-clamp-2" style={{ fontWeight: 500 }}>{row.name}</div>
+          </div>
+          {tab === 'active' ? (
+            <div style={{ minWidth: 0 }}>
+              <div>Всего/свободно: {row.quantity}/{row.free}</div>
+              <div style={{ color: 'var(--color-text-placeholder)', fontSize: 12.5, marginTop: 2 }}>
+                Закреплено: {row.allocated}
+              </div>
+            </div>
+          ) : (
+            <div style={{ color: 'var(--color-text-placeholder)', font: '500 13px var(--font-mono)' }}>
+              {formatDate(row.written_off_at)}
+            </div>
+          )}
+        </>
+      )}
+      rowLink={(row) => `/tools/${row.id}`}
+      emptyText={({ search, tab }) => ({
+        title: search ? 'Ничего не найдено' : tab === 'archive' ? 'Списанного нет' : 'Пока пусто',
+        description: search
+          ? `По запросу «${search}» инструменты не найдены. Попробуйте изменить запрос.`
+          : tab === 'archive'
+            ? 'Списанные инструменты будут отображаться здесь.'
+            : 'Когда вы добавите инструмент, он будет отображаться здесь.',
+        resetLabel: 'Сбросить поиск',
+      })}
+    />
   )
 }
