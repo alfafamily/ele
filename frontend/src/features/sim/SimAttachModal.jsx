@@ -5,7 +5,7 @@ import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { PLACEMENT } from '../../shared/placement.js'
-import { Banner, Button, Icon, Modal } from '../../shared/ui'
+import { Banner, FormActions, Icon, Modal } from '../../shared/ui'
 import { attachSimCard, attachSimToEquipment } from '../employees/employeesApi.js'
 
 // Размещение SIM через модалку: за сотрудником или в оборудовании. После выбора
@@ -68,14 +68,13 @@ export function SimAttachModal({ sim, initialMode = 'employee', onClose, onDone 
         <EquipmentPicker autoFocus simOnly onSelect={setSelected} />
       )}
 
-      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          Отмена
-        </Button>
-        <Button fullWidth disabled={!selected} loading={submitting} onClick={submit}>
-          Закрепить
-        </Button>
-      </div>
+      <FormActions
+        onCancel={onClose}
+        onSubmit={submit}
+        submitting={submitting}
+        submitDisabled={!selected}
+        submitLabel="Закрепить"
+      />
     </Modal>
   )
 }

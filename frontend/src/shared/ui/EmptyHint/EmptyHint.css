@@ -1,0 +1,12 @@
+.ele-empty-hint {
+  font-size: 13.5px;
+  color: var(--color-text-muted);
+}
+
+/* Вариант для пикеров: центрированное «Ничего не найдено» с отступами. */
+.ele-empty-hint--center {
+  font-size: 13px;
+  color: var(--color-text-placeholder);
+  text-align: center;
+  padding: 14px;
+}

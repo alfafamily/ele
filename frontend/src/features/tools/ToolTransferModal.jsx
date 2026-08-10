@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Banner, Button, Input, Modal } from '../../shared/ui'
+import { Banner, FormActions, Input, Modal } from '../../shared/ui'
 import { StoragePicker } from './StoragePicker.jsx'
 import { transferUnits } from './toolsApi.js'
 
@@ -92,14 +92,13 @@ export function ToolTransferModal({ tool, storages, unplacedFree = 0, onClose, o
           />
         </div>
       )}
-      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          Отмена
-        </Button>
-        <Button fullWidth loading={submitting} disabled={empty} onClick={submit}>
-          Переместить
-        </Button>
-      </div>
+      <FormActions
+        onCancel={onClose}
+        onSubmit={submit}
+        submitting={submitting}
+        submitDisabled={empty}
+        submitLabel="Переместить"
+      />
     </Modal>
   )
 }

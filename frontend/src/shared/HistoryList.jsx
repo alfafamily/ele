@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { apiGet } from './api/client'
-import { Skeleton, TabBar } from './ui'
+import { EmptyHint, Skeleton, TabBar } from './ui'
 import { Icon } from './ui/Icon/Icon.jsx'
 import { AcceptanceIcon } from './AcceptanceIcon.jsx'
 import { DeviceSnapshotChip } from './DeviceSnapshot.jsx'
@@ -191,7 +191,7 @@ export function HistoryList({ path, reloadKey, maintenanceOnly = false }) {
             <Skeleton height={14} />
           </div>
         ) : items.length === 0 ? (
-          <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginTop: 12 }}>Изменений пока нет.</div>
+          <EmptyHint style={{ marginTop: 12 }}>Изменений пока нет.</EmptyHint>
         ) : (
           <>
             {maintenanceOnly ? null : (
@@ -200,13 +200,13 @@ export function HistoryList({ path, reloadKey, maintenanceOnly = false }) {
               </div>
             )}
             {filtered.length === 0 ? (
-              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginTop: 12 }}>
+              <EmptyHint style={{ marginTop: 12 }}>
                 {filter === 'movement'
                   ? 'Движений пока нет.'
                   : filter === 'maintenance'
                     ? 'Выполненных ТО пока нет.'
                     : 'Изменений реквизитов пока нет.'}
-              </div>
+              </EmptyHint>
             ) : (
               <div className="ele-history">
                 {filtered.map((h, i) =>

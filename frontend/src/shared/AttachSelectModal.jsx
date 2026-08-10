@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchAllPages } from './api/fetchAll'
-import { Button, EmptyState, Icon, Modal, SearchInput } from './ui'
+import { EmptyHint, EmptyState, FormActions, Icon, Modal, SearchInput } from './ui'
 
 // Общий каркас модалки «привязать/установить/закрепить свободный объект»:
 // один раз забираем все свободные записи, ищем на клиенте, множественный выбор
@@ -71,7 +71,7 @@ export function AttachSelectModal({
             <SearchInput value={query} onChange={setQuery} placeholder={searchPlaceholder} />
           </div>
           {filtered.length === 0 ? (
-            <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)', marginBottom: 16 }}>Ничего не найдено</div>
+            <EmptyHint center style={{ marginBottom: 16 }}>Ничего не найдено</EmptyHint>
           ) : (
             <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden', maxHeight: 216, overflowY: 'auto', marginBottom: 16 }}>
               {/* Строка — div, а не button: внутри могут быть вложенные интерактивные
@@ -125,14 +125,14 @@ export function AttachSelectModal({
               })}
             </div>
           )}
-          <div style={{ display: 'flex', gap: 10 }}>
-            <Button variant="secondary" fullWidth onClick={onClose}>
-              Отмена
-            </Button>
-            <Button fullWidth disabled={selectedIds.length === 0} loading={submitting} onClick={submit}>
-              {submitLabel}{selectedIds.length > 1 ? ` (${selectedIds.length})` : ''}
-            </Button>
-          </div>
+          <FormActions
+            style={{ marginTop: 0 }}
+            onCancel={onClose}
+            onSubmit={submit}
+            submitting={submitting}
+            submitDisabled={selectedIds.length === 0}
+            submitLabel={`${submitLabel}${selectedIds.length > 1 ? ` (${selectedIds.length})` : ''}`}
+          />
           {footerExtra}
         </>
       )}

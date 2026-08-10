@@ -6,7 +6,7 @@ import { roleLabel } from '../../shared/roles.js'
 import { nameInitials } from '../../shared/employeeName.js'
 import { PlanLink } from '../../shared/PlanLink.jsx'
 import { TransportParkingLine } from '../../shared/TransportParkingLine.jsx'
-import { Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
+import { Button, Card, ConfirmModal, EmptyHint, Icon, Spinner } from '../../shared/ui'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { ConsentReminderBanner } from './ConsentReminder.jsx'
 import { RejectAssignmentModal } from './RejectAssignmentModal.jsx'
@@ -393,7 +393,7 @@ export function ProfilePage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданное мне оборудование</div>
             {shownEquipment.length === 0 ? (
-              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено оборудования.</div>
+              <EmptyHint>За вами не закреплено оборудования.</EmptyHint>
             ) : (
               shownEquipment.map((eq) => (
                 <div key={eq.id} style={P_ROW}>
@@ -412,7 +412,7 @@ export function ProfilePage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданный мне транспорт</div>
             {shownTransport.length === 0 ? (
-              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплён транспорт.</div>
+              <EmptyHint>За вами не закреплён транспорт.</EmptyHint>
             ) : (
               shownTransport.map((t) => (
                 <div key={t.id} style={{ background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8, padding: '11px 13px' }}>
@@ -436,7 +436,7 @@ export function ProfilePage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданный мне инструмент</div>
             {shownTools.length === 0 ? (
-              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено инструментов.</div>
+              <EmptyHint>За вами не закреплено инструментов.</EmptyHint>
             ) : (
               shownTools.map((t) => (
                 <div key={t.id} style={P_ROW}>
@@ -455,7 +455,7 @@ export function ProfilePage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданные мне SIM</div>
             {shownSims.length === 0 ? (
-              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено SIM-карт.</div>
+              <EmptyHint>За вами не закреплено SIM-карт.</EmptyHint>
             ) : (
               shownSims.map((sim) => (
                 <div key={sim.id} style={P_ROW}>
@@ -471,7 +471,7 @@ export function ProfilePage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Выданные мне средства доступа</div>
             {shownPasses.length === 0 ? (
-              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За вами не закреплено средств доступа.</div>
+              <EmptyHint>За вами не закреплено средств доступа.</EmptyHint>
             ) : (
               shownPasses.map((pass) => (
                 <div key={pass.id} style={P_ROW}>

@@ -11,7 +11,7 @@ import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { Tooltip } from '../../shared/Tooltip.jsx'
 import { PlacementRow } from '../../shared/PlacementRow.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, Badge, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
+import { ActionMenu, Badge, BackButton, Button, Card, ConfirmModal, EmptyHint, Icon, Spinner } from '../../shared/ui'
 import { AttachLicenseModal } from './AttachLicenseModal.jsx'
 import { AttachSimModal } from './AttachSimModal.jsx'
 import { DetachToStorageModal } from '../employees/DetachToStorageModal.jsx'
@@ -153,7 +153,7 @@ export function EquipmentCardPage() {
                 <Card>
                   <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Параметры оборудования</div>
                   {paramValues.length === 0 ? (
-                    <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>У этого Вида нет реквизитов.</div>
+                    <EmptyHint>У этого Вида нет реквизитов.</EmptyHint>
                   ) : (
                     <div className="ele-field-grid">
                       {paramValues.map((fv) => (

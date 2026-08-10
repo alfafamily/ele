@@ -9,7 +9,7 @@ import { DetachToStorageModal } from './DetachToStorageModal.jsx'
 import { Can } from '../../app/usePermissions.js'
 import { PlanLink } from '../../shared/PlanLink.jsx'
 import { TransportParkingLine } from '../../shared/TransportParkingLine.jsx'
-import { ActionMenu, Badge, BackButton, Button, Card, ConfirmModal, Icon, Spinner, StatusPill, Table, TabBar, TableRow } from '../../shared/ui'
+import { ActionMenu, Badge, BackButton, Button, Card, ConfirmModal, EmptyHint, Icon, Spinner, StatusPill, Table, TabBar, TableRow } from '../../shared/ui'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { useScrollRestoration } from '../../shared/hooks/useScrollRestoration.js'
 import { readListCache, writeListCache } from '../../shared/listCache.js'
@@ -365,7 +365,7 @@ export function EmployeeCardPage() {
               </Button>
             </Can>
           ) : heldEquipment.length === 0 ? (
-            <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено оборудование.</div>
+            <EmptyHint>За сотрудником не закреплено оборудование.</EmptyHint>
           ) : null}
           {heldEquipment.map((eq) => (
             <div key={eq.id} style={ROW}>
@@ -400,7 +400,7 @@ export function EmployeeCardPage() {
               </Button>
             </Can>
           ) : heldTransport.length === 0 ? (
-            <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплён транспорт.</div>
+            <EmptyHint>За сотрудником не закреплён транспорт.</EmptyHint>
           ) : null}
           {heldTransport.map((t) => (
             <div key={t.id} style={{ background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, marginBottom: 8, padding: '11px 13px' }}>
@@ -452,7 +452,7 @@ export function EmployeeCardPage() {
               </Button>
             </Can>
           ) : heldTools.length === 0 ? (
-            <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплены инструменты.</div>
+            <EmptyHint>За сотрудником не закреплены инструменты.</EmptyHint>
           ) : null}
           {heldTools.map((tool) => (
             <div key={tool.id} style={ROW}>
@@ -489,7 +489,7 @@ export function EmployeeCardPage() {
               </Button>
             </Can>
           ) : heldSims.length === 0 ? (
-            <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено SIM-карт.</div>
+            <EmptyHint>За сотрудником не закреплено SIM-карт.</EmptyHint>
           ) : null}
           {heldSims.map((sim) => (
             <div key={sim.id} style={ROW}>
@@ -520,7 +520,7 @@ export function EmployeeCardPage() {
               </Button>
             </Can>
           ) : heldPasses.length === 0 ? (
-            <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>За сотрудником не закреплено средств доступа.</div>
+            <EmptyHint>За сотрудником не закреплено средств доступа.</EmptyHint>
           ) : null}
           {heldPasses.map((pass) => (
             <div key={pass.id} style={ROW}>

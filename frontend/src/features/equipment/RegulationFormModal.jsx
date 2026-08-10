@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Icon, InlineCalendar, Input, Modal, Select } from '../../shared/ui'
+import { Banner, EmptyHint, FormActions, Icon, InlineCalendar, Input, Modal, Select } from '../../shared/ui'
 // Раскладка строки «работа/материал» (desktop — в ряд, мобилка — построчно).
 import '../../shared/maintenance/MaintenanceFormPage.css'
 
@@ -110,7 +110,7 @@ export function RegulationFormModal({ regulation, onClose, onSave, title, showFi
 
       <div style={{ fontSize: 14, fontWeight: 600, margin: '20px 0 10px' }}>Работы и материалы</div>
       {items.length === 0 ? (
-        <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginBottom: 12 }}>Позиции не добавлены.</div>
+        <EmptyHint style={{ marginBottom: 12 }}>Позиции не добавлены.</EmptyHint>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
           {items.map((row) => (
@@ -138,14 +138,14 @@ export function RegulationFormModal({ regulation, onClose, onSave, title, showFi
         Добавить работу/материал
       </button>
 
-      <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          Отмена
-        </Button>
-        <Button fullWidth loading={submitting} disabled={!canSubmit} onClick={submit}>
-          {editing ? 'Сохранить' : 'Создать'}
-        </Button>
-      </div>
+      <FormActions
+        style={{ marginTop: 22 }}
+        onCancel={onClose}
+        onSubmit={submit}
+        submitting={submitting}
+        submitDisabled={!canSubmit}
+        submitLabel={editing ? 'Сохранить' : 'Создать'}
+      />
     </Modal>
   )
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Can, usePermissions } from '../../app/usePermissions.js'
 import { PlanLink } from '../../shared/PlanLink.jsx'
-import { ActionMenu, Badge, Banner, Button, Icon, Modal, SearchInput, Spinner } from '../../shared/ui'
+import { ActionMenu, Badge, Banner, Button, EmptyHint, Icon, Modal, SearchInput, Spinner } from '../../shared/ui'
 import { Tooltip } from '../../shared/Tooltip.jsx'
 import { ReportsMenu } from '../reports/ReportsMenu.jsx'
 import { BuildingModal } from './BuildingModal.jsx'
@@ -194,9 +194,9 @@ export function PremisesPage() {
           ) : null}
 
           {buildings.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', padding: '8px 10px' }}>
+            <EmptyHint style={{ padding: '8px 10px' }}>
               {bq ? 'Ничего не найдено' : 'Здания пока не созданы'}
-            </div>
+            </EmptyHint>
           ) : (
             buildings.map((b) => (
               <div
@@ -281,9 +281,9 @@ export function PremisesPage() {
             ) : null}
 
             {visibleRooms.length === 0 ? (
-              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', padding: '2px 0 14px' }}>
+              <EmptyHint style={{ padding: '2px 0 14px' }}>
                 {roomSearch.trim() ? 'Ничего не найдено.' : 'В здании пока нет помещений.'}
-              </div>
+              </EmptyHint>
             ) : (
               visibleRooms.map((room) => (
                 <RoomRow

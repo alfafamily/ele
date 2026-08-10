@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Checkbox, Modal, RadioPills } from '../../shared/ui'
+import { Button, Checkbox, EmptyHint, Modal, RadioPills } from '../../shared/ui'
 
 // B44. Модалка «Получать уведомления по типам» для одного вида ТО-уведомления.
 // Два независимых блока — «Оборудование» и «Транспорт» (показываются по
@@ -21,9 +21,9 @@ function ScopeBlock({ title, all, onAll, types, selected, onToggle }) {
       />
       {!all ? (
         types.length === 0 ? (
-          <div style={{ fontSize: 13.5, color: 'var(--color-text-placeholder)' }}>
+          <EmptyHint style={{ color: 'var(--color-text-placeholder)' }}>
             Виды пока не созданы.
-          </div>
+          </EmptyHint>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {types.map((t) => (

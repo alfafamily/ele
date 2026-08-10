@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { usePermissions } from '../../app/usePermissions.js'
 import { useDragSort, reorder } from '../../shared/hooks/useDragSort.js'
 import { VALUE_TYPE_LABELS } from '../../shared/eav'
-import { ActionMenu, Badge, Banner, BackButton, Button, Card, ConfirmModal, Icon, SearchInput, Spinner } from '../../shared/ui'
+import { ActionMenu, Badge, Banner, BackButton, Button, Card, ConfirmModal, EmptyHint, Icon, SearchInput, Spinner } from '../../shared/ui'
 import { RegulationFormModal } from '../equipment/RegulationFormModal.jsx'
 import { DeleteTypeModal } from './DeleteTypeModal.jsx'
 import { FieldFormModal } from './FieldFormModal.jsx'
@@ -223,9 +223,9 @@ export function TypesEditorPage({ domain, title }) {
             <SearchInput value={search} onChange={setSearch} placeholder="Поиск" />
           </div>
           {visibleTypes.length === 0 ? (
-            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', padding: '8px 10px' }}>
+            <EmptyHint style={{ padding: '8px 10px' }}>
               {q ? 'Ничего не найдено' : 'Виды пока не созданы'}
-            </div>
+            </EmptyHint>
           ) : null}
           {visibleTypes.map((t) => (
             <div
@@ -406,9 +406,9 @@ export function TypesEditorPage({ domain, title }) {
                 {regulations === null ? (
                   <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Загрузка…</div>
                 ) : regulations.length === 0 ? (
-                  <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>
+                  <EmptyHint>
                     Регламенты пока не созданы.
-                  </div>
+                  </EmptyHint>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {regulations.map((reg) => (

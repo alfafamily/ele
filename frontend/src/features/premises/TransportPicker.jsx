@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Icon } from '../../shared/ui'
+import { EmptyHint, Icon } from '../../shared/ui'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue'
 import { getTransportPicker } from './premisesApi.js'
 
@@ -50,9 +50,9 @@ export function TransportPicker({ onSelect, excludeIds, purpose, error }) {
       {loading && results.length === 0 ? (
         <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Загрузка…</div>
       ) : visible.length === 0 ? (
-        <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>
+        <EmptyHint center style={{ marginTop: 8 }}>
           Транспорт не найден
-        </div>
+        </EmptyHint>
       ) : (
         <div style={{ marginTop: 8, border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', maxHeight: 216, overflowY: 'auto' }}>
           {visible.map((t, i) => (

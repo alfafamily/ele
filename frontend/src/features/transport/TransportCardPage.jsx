@@ -11,7 +11,7 @@ import { Tooltip } from '../../shared/Tooltip.jsx'
 import { PlacementRow } from '../../shared/PlacementRow.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
 import { PlanLink } from '../../shared/PlanLink.jsx'
-import { ActionMenu, BackButton, Button, Card, ConfirmModal, Icon, Spinner } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, ConfirmModal, EmptyHint, Icon, Spinner } from '../../shared/ui'
 import { AssignEmployeeModal } from './AssignEmployeeModal.jsx'
 import { ParkingAssignModal } from './ParkingAssignModal.jsx'
 import { TransportPassAttachModal } from './TransportPassAttachModal.jsx'
@@ -163,7 +163,7 @@ export function TransportCardPage() {
                 <Card>
                   <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Параметры транспорта</div>
                   {paramValues.length === 0 ? (
-                    <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>У этого Вида нет реквизитов.</div>
+                    <EmptyHint>У этого Вида нет реквизитов.</EmptyHint>
                   ) : (
                     <div className="ele-field-grid">
                       {paramValues.map((fv) => (

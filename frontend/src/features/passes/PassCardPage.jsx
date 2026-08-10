@@ -6,7 +6,7 @@ import { AvatarCircle } from '../../shared/AvatarCircle.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { PlacementRow } from '../../shared/PlacementRow.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
-import { ActionMenu, BackButton, Button, Card, Icon, Spinner } from '../../shared/ui'
+import { ActionMenu, BackButton, Button, Card, EmptyHint, Icon, Spinner } from '../../shared/ui'
 import { getPass, getPassHistoryPath } from '../employees/employeesApi.js'
 import { KeyTarget } from '../../shared/keyTarget.jsx'
 import { PassDisposeModal } from '../employees/PassDisposeModal.jsx'
@@ -112,7 +112,7 @@ export function PassCardPage() {
           <Card>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Доступ в</div>
             {(pass.buildings || []).length === 0 ? (
-              <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>Здания не указаны.</div>
+              <EmptyHint>Здания не указаны.</EmptyHint>
             ) : isKey ? (
               <div style={{ fontSize: 13.5, fontWeight: 600 }}><KeyTarget pass={pass} /></div>
             ) : (

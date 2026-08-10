@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
-import { Banner, Button, Input, Modal } from '../../shared/ui'
+import { Banner, FormActions, Input, Modal } from '../../shared/ui'
 import { assignTransport } from './transportApi.js'
 
 // B3. Закрепление транспорта за сотрудником (открепление — отдельным действием
@@ -42,14 +42,13 @@ export function AssignEmployeeModal({ transport, onClose, onDone }) {
           placeholder="Необязательный комментарий движения"
         />
       </div>
-      <div style={{ display: 'flex', gap: 10 }}>
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          Отмена
-        </Button>
-        <Button fullWidth loading={submitting} onClick={submit}>
-          Закрепить
-        </Button>
-      </div>
+      <FormActions
+        style={{ marginTop: 0 }}
+        onCancel={onClose}
+        onSubmit={submit}
+        submitting={submitting}
+        submitLabel="Закрепить"
+      />
     </Modal>
   )
 }

@@ -5,7 +5,7 @@ import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { roleLabel } from '../../shared/roles.js'
 import { nameInitials } from '../../shared/employeeName.js'
-import { Banner, Button, Icon, SearchInput, Skeleton, StatusPill, Table, TableRow } from '../../shared/ui'
+import { Banner, Button, EmptyHint, Icon, SearchInput, Skeleton, StatusPill, Table, TableRow } from '../../shared/ui'
 import { DeactivateUserModal } from './DeactivateUserModal.jsx'
 import { EditUserModal } from './EditUserModal.jsx'
 import { InviteModal } from './InviteModal.jsx'
@@ -158,9 +158,9 @@ export function UsersTab() {
           <Skeleton height={52} />
         </div>
       ) : items.length === 0 ? (
-        <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', padding: '20px 4px' }}>
+        <EmptyHint style={{ padding: '20px 4px' }}>
           {search ? 'Пользователи не найдены.' : 'Пользователей пока нет.'}
-        </div>
+        </EmptyHint>
       ) : (
         <Table columns={columns} fit={isMobile}>
           {items.map((u) => (

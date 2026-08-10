@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Modal, PlaceSelect } from '../../shared/ui'
+import { Banner, FormActions, Modal, PlaceSelect } from '../../shared/ui'
 
 // Открепление объекта (от сотрудника/места) на склад — место хранения
 // обязательно (B8). onConfirm(storagePlaceId) — асинхронный.
@@ -33,14 +33,13 @@ export function DetachToStorageModal({ title = 'Открепить на скла
           onChange={setPlaceId}
         />
       </div>
-      <div style={{ display: 'flex', gap: 10 }}>
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          Отмена
-        </Button>
-        <Button fullWidth loading={submitting} onClick={submit}>
-          {confirmLabel}
-        </Button>
-      </div>
+      <FormActions
+        style={{ marginTop: 0 }}
+        onCancel={onClose}
+        onSubmit={submit}
+        submitting={submitting}
+        submitLabel={confirmLabel}
+      />
     </Modal>
   )
 }

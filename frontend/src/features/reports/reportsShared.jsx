@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AcceptanceIcon } from '../../shared/AcceptanceIcon.jsx'
-import { BackButton, Button, Card, Icon, MultiSelectList } from '../../shared/ui'
+import { BackButton, Button, Card, EmptyHint, Icon, MultiSelectList } from '../../shared/ui'
 import { Tooltip } from '../../shared/Tooltip.jsx'
 import './reports.css'
 
@@ -176,7 +176,7 @@ function EquipmentLine({ eq, acceptance }) {
 // транспорт. У каждого объекта — иконка статуса акцепта (B32).
 export function EmployeePropertyBlock({ emp }) {
   const empty = !emp.equipment.length && !emp.tools.length && !emp.sim.length && !emp.passes.length && !emp.transport.length
-  if (empty) return <div style={{ fontSize: 13, ...MUTED, padding: '4px 0' }}>Имущество не закреплено.</div>
+  if (empty) return <EmptyHint style={{ color: 'var(--color-text-placeholder)', padding: '4px 0' }}>Имущество не закреплено.</EmptyHint>
   return (
     <div>
       {emp.equipment.length ? (
@@ -214,7 +214,7 @@ export function EmployeePropertyBlock({ emp }) {
 export function PlaceBody({ employees = [], equipment, tools, sim = [], licenses = [], withEmployees }) {
   const hasEmployees = withEmployees && employees.length > 0
   if (!hasEmployees && !equipment.length && !tools.length && !sim.length && !licenses.length) {
-    return <div style={{ fontSize: 13, ...MUTED, padding: '4px 0' }}>Ничего не закреплено.</div>
+    return <EmptyHint style={{ color: 'var(--color-text-placeholder)', padding: '4px 0' }}>Ничего не закреплено.</EmptyHint>
   }
   return (
     <div>

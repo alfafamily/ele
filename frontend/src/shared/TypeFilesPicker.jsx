@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { FilePreviewModal } from './eav/FilePreviewModal.jsx'
+import { EmptyHint } from './ui'
 import { Icon } from './ui/Icon/Icon.jsx'
 
 // B67. Мультивыбор общих файлов Вида на форме создания/редактирования имущества.
@@ -10,9 +11,9 @@ export function TypeFilesPicker({ available, selectedIds, onChange }) {
   const [previewIndex, setPreviewIndex] = useState(null)
   if (!available || available.length === 0) {
     return (
-      <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)' }}>
+      <EmptyHint>
         У этого Вида пока нет общих файлов.
-      </div>
+      </EmptyHint>
     )
   }
   const toggle = (id) => {

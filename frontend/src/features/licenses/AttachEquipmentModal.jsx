@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from '../../shared/api/client'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue'
-import { Button, Icon, Modal } from '../../shared/ui'
+import { EmptyHint, FormActions, Icon, Modal } from '../../shared/ui'
 import { attachLicenseToEquipment } from './licensesApi.js'
 
 // L2c «Привязать к оборудованию» — со стороны Лицензии подбирается
@@ -79,7 +79,7 @@ export function AttachEquipmentModal({ license, onClose, onAttached }) {
           {loading && results.length === 0 ? (
             <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)', marginBottom: 16 }}>Загрузка…</div>
           ) : results.length === 0 ? (
-            <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)', marginBottom: 16 }}>Ничего не найдено</div>
+            <EmptyHint center style={{ marginBottom: 16 }}>Ничего не найдено</EmptyHint>
           ) : (
             <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden', maxHeight: 216, overflowY: 'auto', marginBottom: 16 }}>
               {results.map((eq, i) => (
@@ -111,14 +111,14 @@ export function AttachEquipmentModal({ license, onClose, onAttached }) {
           )}
         </>
       )}
-      <div style={{ display: 'flex', gap: 10 }}>
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          Отмена
-        </Button>
-        <Button fullWidth disabled={!selected} loading={submitting} onClick={attach}>
-          Привязать
-        </Button>
-      </div>
+      <FormActions
+        style={{ marginTop: 0 }}
+        onCancel={onClose}
+        onSubmit={attach}
+        submitting={submitting}
+        submitDisabled={!selected}
+        submitLabel="Привязать"
+      />
     </Modal>
   )
 }

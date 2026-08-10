@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { apiGet } from './api/client'
 import { nameInitials } from './employeeName'
 import { useDebouncedValue } from './hooks/useDebouncedValue'
+import { EmptyHint } from './ui'
 import { Icon } from './ui/Icon/Icon.jsx'
 
 // Подбор Сотрудника с поиском (C2 «Закрепить сотрудника», форма Оборудования,
@@ -66,7 +67,7 @@ export function EmployeePicker({ onSelect, autoFocus, inputHeight = 40, excludeI
       {loading && results.length === 0 ? (
         <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Загрузка…</div>
       ) : results.filter((e) => !excludeSet.has(e.id)).length === 0 ? (
-        <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Никого не найдено</div>
+        <EmptyHint center style={{ marginTop: 8 }}>Никого не найдено</EmptyHint>
       ) : (
         <div style={{ marginTop: 8, border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', maxHeight: listMaxHeight, overflowY: 'auto' }}>
           {results.filter((e) => !excludeSet.has(e.id)).map((emp, i) => (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Banner, Button, Icon, Modal } from '../../shared/ui'
+import { Banner, EmptyHint, FormActions, Icon, Modal } from '../../shared/ui'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { getParkingSpots, setTransportParking } from './transportApi.js'
 
@@ -64,14 +64,14 @@ export function ParkingAssignModal({ transport, onClose, onDone }) {
           />
         )}
       </div>
-      <div style={{ display: 'flex', gap: 10 }}>
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          Отмена
-        </Button>
-        <Button fullWidth loading={submitting} disabled={!selected} onClick={submit}>
-          Сохранить
-        </Button>
-      </div>
+      <FormActions
+        style={{ marginTop: 0 }}
+        onCancel={onClose}
+        onSubmit={submit}
+        submitting={submitting}
+        submitDisabled={!selected}
+        submitLabel="Сохранить"
+      />
     </Modal>
   )
 }
@@ -117,9 +117,9 @@ function SpotPicker({ spots, loading, allowDriver, onSelect }) {
         {loading ? (
           <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)', borderTop: allowDriver ? '1px solid var(--color-border-hairline)' : 'none' }}>Загрузка…</div>
         ) : visible.length === 0 ? (
-          <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)', borderTop: allowDriver ? '1px solid var(--color-border-hairline)' : 'none' }}>
+          <EmptyHint center style={{ borderTop: allowDriver ? '1px solid var(--color-border-hairline)' : 'none' }}>
             {q ? 'Мест не найдено' : 'Парковочных мест нет'}
-          </div>
+          </EmptyHint>
         ) : (
           visible.map((s, i) => (
             <PickerRow

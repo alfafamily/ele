@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiGet } from './api/client'
 import { useDebouncedValue } from './hooks/useDebouncedValue'
+import { EmptyHint } from './ui'
 import { Icon } from './ui/Icon/Icon.jsx'
 
 // Подбор Оборудования с поиском (например, для установки SIM в модем). Ищет
@@ -63,7 +64,7 @@ export function EquipmentPicker({ onSelect, autoFocus, simOnly = false, licenseO
       {loading && results.length === 0 ? (
         <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Загрузка…</div>
       ) : results.filter((eq) => !excludeSet.has(eq.id)).length === 0 ? (
-        <div style={{ marginTop: 8, padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Ничего не найдено</div>
+        <EmptyHint center style={{ marginTop: 8 }}>Ничего не найдено</EmptyHint>
       ) : (
         <div style={{ marginTop: 8, border: '1px solid var(--color-border)', borderRadius: 10, overflow: 'hidden', maxHeight: 216, overflowY: 'auto' }}>
           {results.filter((eq) => !excludeSet.has(eq.id)).map((eq) => (

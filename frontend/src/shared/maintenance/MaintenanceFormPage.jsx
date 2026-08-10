@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Banner, BackButton, Button, Card, DatePicker, FormActions, Icon, Input, SearchInput, Select, Spinner } from '../ui'
+import { Banner, BackButton, Button, Card, DatePicker, EmptyHint, FormActions, Icon, Input, SearchInput, Select, Spinner } from '../ui'
 import { LeadIconCircle } from '../LeadIconCircle.jsx'
 import { Tooltip } from '../Tooltip.jsx'
 import { regulationPeriodLabel } from '../../features/types/regulationPeriodLabel.js'
@@ -228,7 +228,7 @@ export function MaintenanceFormPage({
 
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10 }}>Работы и материалы</div>
               {items.length === 0 ? (
-                <div style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginBottom: 12 }}>Позиции не добавлены.</div>
+                <EmptyHint style={{ marginBottom: 12 }}>Позиции не добавлены.</EmptyHint>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
                   {items.map((row) =>

@@ -3,7 +3,7 @@ import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { PLACEMENT } from '../../shared/placement.js'
-import { Banner, Button, Input, Modal, PlaceSelect } from '../../shared/ui'
+import { Banner, FormActions, Input, Modal, PlaceSelect } from '../../shared/ui'
 import { assignEquipment, unassignEquipment } from './equipmentApi.js'
 
 // Размещение единицы оборудования (B8): за сотрудником (мобильно), на рабочем
@@ -89,14 +89,13 @@ export function EquipmentPlacementModal({ equipment, onClose, onDone }) {
           placeholder="Необязательный комментарий движения"
         />
       </div>
-      <div style={{ display: 'flex', gap: 10 }}>
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          Отмена
-        </Button>
-        <Button fullWidth loading={submitting} onClick={submit}>
-          Сохранить
-        </Button>
-      </div>
+      <FormActions
+        style={{ marginTop: 0 }}
+        onCancel={onClose}
+        onSubmit={submit}
+        submitting={submitting}
+        submitLabel="Сохранить"
+      />
     </Modal>
   )
 }

@@ -3,7 +3,7 @@ import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { SelectedTransport } from '../../shared/SelectedTransport.jsx'
 import { TransportPicker } from '../premises/TransportPicker.jsx'
-import { Banner, Button, Modal } from '../../shared/ui'
+import { Banner, FormActions, Modal } from '../../shared/ui'
 import { attachPass, attachPassToTransport } from '../employees/employeesApi.js'
 
 // Привязка средства доступа к владельцу. Персональный пропуск/ключ — к
@@ -43,14 +43,13 @@ export function PassAttachModal({ pass, onClose, onDone }) {
       ) : (
         <EmployeePicker autoFocus onSelect={setSelected} />
       )}
-      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          Отмена
-        </Button>
-        <Button fullWidth disabled={!selected} loading={submitting} onClick={submit}>
-          Закрепить
-        </Button>
-      </div>
+      <FormActions
+        onCancel={onClose}
+        onSubmit={submit}
+        submitting={submitting}
+        submitDisabled={!selected}
+        submitLabel="Закрепить"
+      />
     </Modal>
   )
 }

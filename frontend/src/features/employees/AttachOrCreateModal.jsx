@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchAllPages } from '../../shared/api/fetchAll'
-import { Button, EmptyState, Icon, Modal } from '../../shared/ui'
+import { Button, EmptyHint, EmptyState, FormActions, Icon, Modal } from '../../shared/ui'
 import { KeyTarget } from '../../shared/keyTarget.jsx'
 import { assignEquipment } from '../equipment/equipmentApi.js'
 import { assignTransport } from '../transport/transportApi.js'
@@ -167,7 +167,7 @@ export function AttachOrCreateModal({ kind, employeeId, onClose, onAttached, onC
             style={{ width: '100%', height: 42, boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10, border: 'none', padding: '0 13px', fontSize: 13.5, fontFamily: 'inherit', marginBottom: 12 }}
           />
           {filtered.length === 0 ? (
-            <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)', marginBottom: 16 }}>Ничего не найдено</div>
+            <EmptyHint center style={{ marginBottom: 16 }}>Ничего не найдено</EmptyHint>
           ) : (
             <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden', maxHeight: 216, overflowY: 'auto', marginBottom: 16 }}>
               {filtered.map((item, i) => {
@@ -218,12 +218,14 @@ export function AttachOrCreateModal({ kind, employeeId, onClose, onAttached, onC
               })}
             </div>
           )}
-          <div style={{ display: 'flex', gap: 10 }}>
-            <Button variant="secondary" fullWidth onClick={onClose}>Отмена</Button>
-            <Button fullWidth disabled={selectedIds.length === 0} loading={submitting} onClick={attach}>
-              Закрепить{selectedIds.length > 1 ? ` (${selectedIds.length})` : ''}
-            </Button>
-          </div>
+          <FormActions
+            style={{ marginTop: 0 }}
+            onCancel={onClose}
+            onSubmit={attach}
+            submitting={submitting}
+            submitDisabled={selectedIds.length === 0}
+            submitLabel={`Закрепить${selectedIds.length > 1 ? ` (${selectedIds.length})` : ''}`}
+          />
           <Button variant="secondary" fullWidth style={{ marginTop: 10 }} onClick={onCreateNew}><Icon name="plus" size={18} strokeWidth={2.2} />{cfg.createLabel}</Button>
         </>
       )}

@@ -3,7 +3,7 @@ import { useDocumentTitle } from '../../app/useDocumentTitle.js'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { usePermissions } from '../../app/usePermissions.js'
 import { nameInitials } from '../../shared/employeeName.js'
-import { AcceptanceOverlay } from '../../shared/AcceptanceIcon.jsx'
+import { AvatarCircle } from '../../shared/AvatarCircle.jsx'
 import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { TruncatedText } from '../../shared/TruncatedText.jsx'
 import { HistoryList } from '../../shared/HistoryList.jsx'
@@ -333,18 +333,11 @@ function QuantityAssignments({ tool, canManage, setMoveModal, closeMove }) {
           {visibleAllocations.map((a) => (
             <div key={a.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px', background: 'var(--color-surface)', boxShadow: 'inset 0 0 0 1px var(--color-border)', borderRadius: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ position: 'relative', flex: 'none' }}>
-                <span style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--color-fill-active-tint)', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 600, overflow: 'hidden' }}>
-                  {a.kind === 'workplace' ? (
-                    <Icon name={a.place_type === 'common' ? 'coffee' : 'monitor'} size={20} strokeWidth={2} style={{ color: 'var(--color-text-secondary)' }} />
-                  ) : a.employee_avatar ? (
-                    <img src={a.employee_avatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    nameInitials(a.employee_name)
-                  )}
-                </span>
-                <AcceptanceOverlay status={a.acceptance_status} size={18} />
-              </div>
+              {a.kind === 'workplace' ? (
+                <LeadIconCircle name={a.place_type === 'common' ? 'coffee' : 'monitor'} size={46} iconSize={20} status={a.acceptance_status} overlaySize={18} />
+              ) : (
+                <AvatarCircle avatar={a.employee_avatar} name={a.employee_name} size={46} status={a.acceptance_status} overlaySize={18} />
+              )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <TruncatedText style={{ fontSize: 12, color: 'var(--color-text-placeholder)' }}>
                   {a.quantity} шт. {a.kind === 'workplace' ? (a.place_type === 'common' ? 'в МОП' : 'на рабочем месте') : 'за сотрудником'}

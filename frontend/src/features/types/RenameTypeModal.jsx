@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Checkbox, Input, Modal } from '../../shared/ui'
+import { Banner, Checkbox, FormActions, Input, Modal } from '../../shared/ui'
 
 // Редактирование Вида. Для лицензий меняется только наименование
 // (заголовок «Переименовать вид»). Для оборудования дополнительно
@@ -101,14 +101,13 @@ export function RenameTypeModal({ type, domain, onClose, onSave }) {
         </div>
       ) : null}
 
-      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          Отмена
-        </Button>
-        <Button fullWidth loading={submitting} disabled={!trimmed || !dirty} onClick={submit}>
-          Сохранить
-        </Button>
-      </div>
+      <FormActions
+        onCancel={onClose}
+        onSubmit={submit}
+        submitting={submitting}
+        submitDisabled={!trimmed || !dirty}
+        submitLabel="Сохранить"
+      />
     </Modal>
   )
 }

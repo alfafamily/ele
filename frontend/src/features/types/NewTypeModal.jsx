@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Banner, Button, Checkbox, Input, Modal } from '../../shared/ui'
+import { Banner, Checkbox, FormActions, Input, Modal } from '../../shared/ui'
 
 // Модалка создания Вида имущества. Доменные поля:
 //  · equipment — чекбокс «Установка SIM/E-SIM» (B17);
@@ -112,14 +112,13 @@ export function NewTypeModal({ domain, onClose, onCreate }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          Отмена
-        </Button>
-        <Button fullWidth loading={submitting} disabled={!name.trim()} onClick={submit}>
-          Создать
-        </Button>
-      </div>
+      <FormActions
+        onCancel={onClose}
+        onSubmit={submit}
+        submitting={submitting}
+        submitDisabled={!name.trim()}
+        submitLabel="Создать"
+      />
     </Modal>
   )
 }

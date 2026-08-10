@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiGet } from '../../shared/api/client'
-import { Banner, Button, EmptyState, Icon, Input, Modal, Spinner } from '../../shared/ui'
+import { Banner, Button, EmptyHint, EmptyState, FormActions, Icon, Input, Modal, Spinner } from '../../shared/ui'
 import { StoragePicker } from './StoragePicker.jsx'
 import { assignUnits } from './toolsApi.js'
 
@@ -129,7 +129,7 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
                 />
                 <div style={{ marginTop: 8, border: '1px solid var(--color-border)', borderRadius: 10, overflowY: 'auto', maxHeight: 216, padding: 4 }}>
                   {filtered.length === 0 ? (
-                    <div style={{ padding: 12, fontSize: 13, color: 'var(--color-text-placeholder)', textAlign: 'center' }}>{query ? 'Ничего не найдено' : 'Нет инструментов'}</div>
+                    <EmptyHint center style={{ padding: 12 }}>{query ? 'Ничего не найдено' : 'Нет инструментов'}</EmptyHint>
                   ) : (
                     filtered.map((t) => (
                       <button key={t.id} type="button" onClick={() => pickTool(t)} style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '9px 11px', border: 'none', borderRadius: 8, background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
@@ -182,14 +182,7 @@ export function AssignToolModal({ employeeId, onClose, onDone }) {
       )}
       {tools && tools.length > 0 ? (
         <>
-          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-            <Button variant="secondary" fullWidth onClick={onClose}>
-              Отмена
-            </Button>
-            <Button fullWidth loading={submitting} onClick={submit}>
-              Закрепить
-            </Button>
-          </div>
+          <FormActions onCancel={onClose} onSubmit={submit} submitting={submitting} submitLabel="Закрепить" />
           <Button variant="secondary" fullWidth style={{ marginTop: 10 }} onClick={() => navigate(`/tools/new?employee=${employeeId}`)}>
             <Icon name="plus" size={18} strokeWidth={2.2} />Создать инструмент
           </Button>

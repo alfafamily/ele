@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getEquipmentTypes } from '../equipment/equipmentApi.js'
 import { getTransportTypes } from '../transport/transportApi.js'
-import { Icon } from '../../shared/ui'
+import { EmptyHint, Icon } from '../../shared/ui'
 
 // B23. Блок «Право выполнять ТО по типам оборудования» — общий для модалок
 // приглашения и редактирования пользователя. Радио «Все / Некоторые типы»; при
@@ -59,7 +59,7 @@ export function MaintenanceTypeScope({ allTypes, typeIds, onChange, domain = 'eq
         types === null ? (
           <div style={{ padding: 20, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Загрузка…</div>
         ) : types.length === 0 ? (
-          <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>{isTransport ? 'Виды транспорта пока не созданы.' : 'Нет видов с включённым ТО.'}</div>
+          <EmptyHint center>{isTransport ? 'Виды транспорта пока не созданы.' : 'Нет видов с включённым ТО.'}</EmptyHint>
         ) : (
           <>
             <input
@@ -78,7 +78,7 @@ export function MaintenanceTypeScope({ allTypes, typeIds, onChange, domain = 'eq
               }}
             />
             {filtered.length === 0 ? (
-              <div style={{ padding: 14, fontSize: 13, textAlign: 'center', color: 'var(--color-text-placeholder)' }}>Ничего не найдено</div>
+              <EmptyHint center>Ничего не найдено</EmptyHint>
             ) : (
               <div style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden', maxHeight: 216, overflowY: 'auto' }}>
                 {filtered.map((t, i) => {

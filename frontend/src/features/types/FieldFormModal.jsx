@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { VALUE_TYPE_OPTIONS } from '../../shared/eav'
-import { Banner, Button, Checkbox, Icon, Input, Modal, Select } from '../../shared/ui'
+import { Banner, Button, Checkbox, FormActions, Icon, Input, Modal, Select } from '../../shared/ui'
 
 // Добавление/редактирование реквизита Типа . Смена value_type
 // у существующего реквизита не предусмотрена спекой — при редактировании
@@ -82,14 +82,12 @@ export function FieldFormModal({ field, checkImpact, onClose, onSave }) {
             'У всех существующих объектов этого Вида значение уже заполнено.'
           )}
         </p>
-        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <Button variant="secondary" fullWidth onClick={onClose}>
-            Отмена
-          </Button>
-          <Button fullWidth loading={submitting} onClick={doSave}>
-            Сделать обязательным
-          </Button>
-        </div>
+        <FormActions
+          onCancel={onClose}
+          onSubmit={doSave}
+          submitting={submitting}
+          submitLabel="Сделать обязательным"
+        />
       </Modal>
     )
   }
@@ -147,14 +145,13 @@ export function FieldFormModal({ field, checkImpact, onClose, onSave }) {
 
         <Checkbox label="Обязательное поле" checked={isRequired} onChange={setIsRequired} />
       </div>
-      <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          Отмена
-        </Button>
-        <Button fullWidth loading={submitting} disabled={!name.trim()} onClick={submit}>
-          Сохранить
-        </Button>
-      </div>
+      <FormActions
+        onCancel={onClose}
+        onSubmit={submit}
+        submitting={submitting}
+        submitDisabled={!name.trim()}
+        submitLabel="Сохранить"
+      />
     </Modal>
   )
 }

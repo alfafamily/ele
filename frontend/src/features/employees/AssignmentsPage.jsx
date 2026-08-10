@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BackButton, FilterModal, Icon, MultiSelectList, SearchInput, Skeleton } from '../../shared/ui'
+import { BackButton, EmptyHint, FilterModal, Icon, MultiSelectList, SearchInput, Skeleton } from '../../shared/ui'
 import { InfiniteScrollSentinel } from '../../shared/InfiniteScrollSentinel.jsx'
 import { useCursorList } from '../../shared/hooks/useCursorList.js'
 import { useDebouncedValue } from '../../shared/hooks/useDebouncedValue.js'
 import { csvParam } from '../../shared/filterParams.js'
 import { EmployeeMultiPicker } from '../../shared/EmployeeMultiPicker.jsx'
-import { AcceptanceOverlay } from '../../shared/AcceptanceIcon.jsx'
+import { LeadIconCircle } from '../../shared/LeadIconCircle.jsx'
 import { DeviceSnapshotChip } from '../../shared/DeviceSnapshot.jsx'
 
 // B32. Контрольный подраздел «Операции закрепления» (admin/accountant): все
@@ -98,7 +98,7 @@ export function AssignmentsPage() {
           <Skeleton height={66} /><Skeleton height={66} /><Skeleton height={66} />
         </div>
       ) : items.length === 0 ? (
-        <div style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>Операций закрепления не найдено.</div>
+        <EmptyHint>Операций закрепления не найдено.</EmptyHint>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {items.map((a) => (
@@ -110,12 +110,7 @@ export function AssignmentsPage() {
               </div>
               {/* 2 строка — объект (иконка со статусом в углу) + сотрудник, оба кликабельны */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ position: 'relative', flex: 'none' }}>
-                  <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--color-fill-active-tint)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon name={KIND_ICON[a.object_kind] || 'tag'} size={18} strokeWidth={2} style={{ color: 'var(--color-text-secondary)' }} />
-                  </span>
-                  <AcceptanceOverlay status={a.status} size={16} />
-                </div>
+                <LeadIconCircle name={KIND_ICON[a.object_kind] || 'tag'} status={a.status} overlaySize={16} />
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <Link to={`/${OBJ_ROUTE[a.object_kind]}/${a.object_id}`} style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {a.object_label || a.object_kind_display}

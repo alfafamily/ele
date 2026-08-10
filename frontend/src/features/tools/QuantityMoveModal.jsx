@@ -3,7 +3,7 @@ import { EmployeePicker } from '../../shared/EmployeePicker.jsx'
 import { SelectedEmployee } from '../../shared/SelectedEmployee.jsx'
 import { ModeToggle } from '../../shared/ModeToggle.jsx'
 import { PLACEMENT } from '../../shared/placement.js'
-import { Banner, Button, Input, Modal, PlaceSelect } from '../../shared/ui'
+import { Banner, FormActions, Input, Modal, PlaceSelect } from '../../shared/ui'
 import { StoragePicker } from './StoragePicker.jsx'
 
 // Модалка движения количественной карточки (B8: остаток на складах). Слоты:
@@ -175,14 +175,13 @@ export function QuantityMoveModal({
               onChange={(e) => setComment(e.target.value)}
               placeholder="Необязательный комментарий движения"
             />
-            <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-              <Button variant="secondary" fullWidth onClick={onClose}>
-                Отмена
-              </Button>
-              <Button fullWidth loading={submitting} onClick={submit}>
-                {confirmLabel}
-              </Button>
-            </div>
+            <FormActions
+              style={{ marginTop: 6 }}
+              onCancel={onClose}
+              onSubmit={submit}
+              submitting={submitting}
+              submitLabel={confirmLabel}
+            />
           </>
         ) : null}
       </div>
