@@ -79,8 +79,9 @@ export function NotificationWindowCard({ initialNotify }) {
     <Card style={{ flex: 1, minWidth: 0 }}>
       <div style={sectionTitle}>Время отправки уведомлений</div>
       <div style={sectionHint}>
-        Push-уведомления и письма отправляются только в этом интервале. События вне интервала ставятся
-        в очередь и уходят с началом ближайшего рабочего окна.
+        Push-уведомления и письма отправляются только в указанном временном интервале. События вне
+        интервала ставятся в очередь и уходят с началом ближайшего рабочего окна. Для круглосуточной
+        отправки уведомлений задайте одинаковое время в полях «с» и «до».
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-start' }}>
         <div style={{ width: 150 }}>
@@ -110,9 +111,6 @@ export function NotificationWindowCard({ initialNotify }) {
             ))}
           </Select>
         </div>
-      </div>
-      <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 12 }}>
-        Для круглосуточной отправки уведомлений задайте одинаковое время в полях «с» и «до».
       </div>
       {error ? (
         <div style={{ marginTop: 10 }}>
