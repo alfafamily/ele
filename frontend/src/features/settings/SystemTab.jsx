@@ -85,11 +85,8 @@ export function SystemTab() {
         />
       </div>
 
-      {/* Окно отправки уведомлений (push + письма) — перед проверками каналов. */}
-      <div style={row}>
-        <NotificationWindowCard initialNotify={notify} />
-        <div style={{ flex: 1, minWidth: 0 }} />
-      </div>
+      {/* Окно отправки уведомлений (push + письма) — на всю ширину, перед проверками каналов. */}
+      <NotificationWindowCard initialNotify={notify} />
 
       {/* Проверка почты (SMTP) слева + проверка Push справа. */}
       <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 16 }}>

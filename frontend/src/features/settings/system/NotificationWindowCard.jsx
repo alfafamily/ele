@@ -27,6 +27,8 @@ const hhmm = (t) => (t || '').slice(0, 5)
 // поля времени — по blur (частичное/пустое значение не шлём), зона — сразу по
 // выбору. Одинаковое «с» и «до» = круглосуточно (без ограничения по времени).
 export function NotificationWindowCard({ initialNotify }) {
+  // Блок занимает всю ширину карточки: поля времени фиксированной ширины, селект
+  // зоны тянется на оставшееся место; на узком экране всё переносится по строкам.
   const init = {
     start: hhmm(initialNotify?.notify_window_start) || '09:00',
     end: hhmm(initialNotify?.notify_window_end) || '21:00',
@@ -82,30 +84,34 @@ export function NotificationWindowCard({ initialNotify }) {
         Push-уведомления и письма отправляются только в этом интервале. События вне интервала ставятся
         в очередь и уходят с началом ближайшего рабочего окна.
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Input
-          label="Отправлять с"
-          type="time"
-          value={draft.start}
-          disabled={saving}
-          onChange={(e) => setDraft((d) => ({ ...d, start: e.target.value }))}
-          onBlur={() => onTimeBlur('start', 'notify_window_start')}
-        />
-        <Input
-          label="до"
-          type="time"
-          value={draft.end}
-          disabled={saving}
-          onChange={(e) => setDraft((d) => ({ ...d, end: e.target.value }))}
-          onBlur={() => onTimeBlur('end', 'notify_window_end')}
-        />
-      </div>
-      <div style={{ marginTop: 12 }}>
-        <Select label="Часовой пояс" value={draft.tz} disabled={saving} onChange={onTz}>
-          {TIMEZONES.map((tz) => (
-            <option key={tz} value={tz}>{tz}</option>
-          ))}
-        </Select>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-start' }}>
+        <div style={{ width: 150 }}>
+          <Input
+            label="Отправлять с"
+            type="time"
+            value={draft.start}
+            disabled={saving}
+            onChange={(e) => setDraft((d) => ({ ...d, start: e.target.value }))}
+            onBlur={() => onTimeBlur('start', 'notify_window_start')}
+          />
+        </div>
+        <div style={{ width: 150 }}>
+          <Input
+            label="до"
+            type="time"
+            value={draft.end}
+            disabled={saving}
+            onChange={(e) => setDraft((d) => ({ ...d, end: e.target.value }))}
+            onBlur={() => onTimeBlur('end', 'notify_window_end')}
+          />
+        </div>
+        <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+          <Select label="Часовой пояс" value={draft.tz} disabled={saving} onChange={onTz}>
+            {TIMEZONES.map((tz) => (
+              <option key={tz} value={tz}>{tz}</option>
+            ))}
+          </Select>
+        </div>
       </div>
       {roundTheClock ? (
         <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 12 }}>
