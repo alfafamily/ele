@@ -2645,7 +2645,8 @@ root)**. Только обвязка контейнеров; прикладно�
 - Развёртывание: docker-compose (Caddy + авто-TLS), установка «одной строкой»
   (`install.sh`), CI (oxlint + backend-тесты).
 
-[Unreleased]: https://github.com/alfafamily/ele/compare/v1.38.3...HEAD
+[Unreleased]: https://github.com/alfafamily/ele/compare/v1.39.0...HEAD
+[1.39.0]: https://github.com/alfafamily/ele/compare/v1.38.3...v1.39.0
 [1.38.3]: https://github.com/alfafamily/ele/compare/v1.38.2...v1.38.3
 [1.38.2]: https://github.com/alfafamily/ele/compare/v1.38.1...v1.38.2
 [1.38.1]: https://github.com/alfafamily/ele/compare/v1.38.0...v1.38.1

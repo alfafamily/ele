@@ -31,8 +31,12 @@ const DEVICE_TZ = (() => {
   }
 })()
 const TIMEZONES = (() => {
-  const base = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : ['UTC']
-  return base.includes(DEVICE_TZ) ? base : [DEVICE_TZ, ...base]
+  const base = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []
+  // Гарантируем наличие UTC (дефолт auto_backup_timezone) и зоны устройства: в
+  // некоторых движках supportedValuesOf не возвращает литерал «UTC», и тогда
+  // нативный <select value="UTC"> показал бы первую опцию по алфавиту.
+  const withUtc = base.includes('UTC') ? base : ['UTC', ...base]
+  return withUtc.includes(DEVICE_TZ) ? withUtc : [DEVICE_TZ, ...withUtc]
 })()
 
 function DestinationBadge({ dest }) {
