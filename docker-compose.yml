@@ -77,7 +77,7 @@ services:
     # Непривилегированный app (как в backend): media к старту cron уже принадлежит
     # app (backend healthy → его entrypoint отработал chown), gosu сбрасывает
     # привилегии, свой chown cron не делает.
-    command: gosu app sh -c "while true; do python manage.py migrate_storage_files; python manage.py run_scheduled_backup; python manage.py send_maintenance_reminders; python manage.py anonymize_due_employees; sleep 60; done"
+    command: gosu app sh -c "while true; do python manage.py migrate_storage_files; python manage.py run_scheduled_backup; python manage.py send_maintenance_reminders; python manage.py send_queued_notifications; python manage.py anonymize_due_employees; sleep 60; done"
 
   frontend:
     image: node:26-slim@sha256:deae974a69e140f44f434ab29cb519fb5f8fe250fd364b8ca446bd0761acdc6a

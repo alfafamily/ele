@@ -233,3 +233,38 @@ class MaintenanceReminderState(models.Model):
 
     def __str__(self):
         return f"{self.plan_kind}:{self.plan_id}:{self.notified_status}"
+
+
+class QueuedNotification(models.Model):
+    """Отложенная доставка уведомления, попавшего вне «окна отправки» компании.
+
+    Событие вне рабочего окна (Company.notify_window_*) не шлётся сразу, а
+    кладётся сюда с временем ближайшего открытия окна (`scheduled_for`).
+    Команда `send_queued_notifications` внутри окна сливает очередь и удаляет
+    записи (доставка «выстрелил и забыл», как у синхронной отправки — без
+    повторных попыток). Payload хранится примитивами, поэтому объект-источник к
+    моменту отправки может быть уже изменён/удалён — повторный рендер не нужен.
+    """
+
+    class Channel(models.TextChoices):
+        PUSH = "push", "Push"
+        EMAIL = "email", "Email"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="queued_notifications")
+    channel = models.CharField(max_length=8, choices=Channel.choices)
+    # Вид (NotificationKind) — для журналирования/группировки, не влияет на доставку.
+    kind = models.CharField(max_length=32, blank=True)
+    # Для push — готовый словарь payload (title/body/url/tag).
+    # Для email — {"email_kind": ..., "template": ..., "context": {...}}.
+    payload = models.JSONField(default=dict)
+    # Момент, начиная с которого запись можно отправлять (открытие окна, UTC).
+    scheduled_for = models.DateTimeField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Отложенное уведомление"
+        verbose_name_plural = "Отложенные уведомления"
+        ordering = ["scheduled_for", "id"]
+
+    def __str__(self):
+        return f"{self.user_id}:{self.channel}:{self.kind}"

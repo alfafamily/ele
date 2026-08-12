@@ -33,6 +33,7 @@ from .serializers import (
     BackupSettingsSerializer,
     CompanyBriefSerializer,
     CompanySettingsSerializer,
+    NotificationWindowSerializer,
     NumberingSettingsSerializer,
     SetupCompleteSerializer,
     StorageModeSerializer,
@@ -772,6 +773,24 @@ class BackupSettingsView(APIView):
     def patch(self, request):
         company = Company.load()
         serializer = BackupSettingsSerializer(company, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+class NotificationWindowView(APIView):
+    """Настройки → Системные: окно отправки уведомлений (push + письма) и его
+    часовой пояс. Сама отправка/очередь — в accounts.notify_window и команде
+    send_queued_notifications (cron), не в этом эндпоинте."""
+
+    permission_classes = [IsAdmin]
+
+    def get(self, request):
+        return Response(NotificationWindowSerializer(Company.load()).data)
+
+    def patch(self, request):
+        company = Company.load()
+        serializer = NotificationWindowSerializer(company, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)

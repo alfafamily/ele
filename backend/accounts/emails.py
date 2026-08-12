@@ -74,49 +74,21 @@ def send_password_reset(user):
     _send("password_reset", "password_reset.html", [user.email], {"cta_url": cta_url, "user_email": user.email})
 
 
-def send_assignment_pending(user, assignment):
-    """B32. Уведомление сотруднику-пользователю о новой выдаче, требующей акцепта.
-    Сбои отправки не должны ломать закрепление — гасим исключения."""
-    from core.assignments import object_label
-
+def send_notification_email(email_kind: str, template: str, to: list[str], context: dict) -> None:
+    """Безопасная отправка письма-уведомления (ТО/закрепление/отказ) — единая
+    точка и для немедленной отправки, и для слива отложенной очереди
+    (accounts.QueuedNotification). Сбои гасим: рассылка одного получателя не
+    должна ронять цикл рассылки, бизнес-операцию или слив очереди; провал
+    сигнализируем в журнал фоновых задач (B66). context — только примитивы
+    (cta_url/object_label/date_str/…), чтобы письмо можно было отложить в очередь
+    без хранения объектов-источников."""
     try:
-        label = object_label(assignment.content_object) if assignment.content_object is not None else "имущество"
-    except Exception:
-        label = "имущество"
-    cta_url = f"{settings.SITE_URL}/profile"
-    try:
-        _send("assignment_pending", "assignment_pending.html", [user.email],
-              {"cta_url": cta_url, "object_label": label})
+        _send(email_kind, template, to, context)
     except Exception as exc:
-        logger.warning("Не отправлено письмо о закреплении: %s", type(exc).__name__)
+        logger.warning("Не отправлено письмо-уведомление (%s): %s", email_kind, type(exc).__name__)
         from core.background_jobs import record_notification_failure
 
-        record_notification_failure(f"Не отправлено письмо о закреплении имущества ({type(exc).__name__})")
-
-
-def send_assignment_rejected(user, assignment, *, label: str, employee_name: str, reason: str = ""):
-    """Уведомление тому, кто выполнял закрепление, об отказе сотрудника принять
-    имущество. Сбои отправки не должны ломать операцию отказа — гасим исключения."""
-    cta_url = f"{settings.SITE_URL}/employees/assignments"
-    try:
-        _send("assignment_rejected", "assignment_rejected.html", [user.email],
-              {"cta_url": cta_url, "object_label": label, "employee_name": employee_name, "reason": reason})
-    except Exception as exc:
-        logger.warning("Не отправлено письмо об отказе от закрепления: %s", type(exc).__name__)
-        from core.background_jobs import record_notification_failure
-
-        record_notification_failure(f"Не отправлено письмо об отказе от закрепления ({type(exc).__name__})")
-
-
-def send_maintenance_email(user, *, kind: str, template: str, object_label: str, date_str: str, cta_url: str, regulation_name: str = ""):
-    """B44. Письмо о ТО (подходит/просрочено/проведено). Сбои отправки гасим —
-    рассылка одного получателя не должна ронять цикл/операцию проведения."""
-    try:
-        _send(kind, template, [user.email],
-              {"cta_url": cta_url, "object_label": object_label, "date_str": date_str,
-               "regulation_name": regulation_name})
-    except Exception as exc:
-        logger.warning("Не отправлено письмо о ТО (%s): %s", kind, type(exc).__name__)
+        record_notification_failure(f"Не отправлено письмо-уведомление ({email_kind}: {type(exc).__name__})")
 
 
 def send_email_change_confirm(user, new_email: str):

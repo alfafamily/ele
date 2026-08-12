@@ -1,13 +1,16 @@
 """B44. Тесты уведомлений: доступность видов по ролям, область типов, дедуп
 напоминаний о ТО, gate писем/push по настройкам, подписки Web Push."""
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 from django.core import mail
 from django.core.management import call_command
-from django.test import override_settings
+from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase
+
+from core.testutils import open_notification_window
 
 from equipment.models import (
     Equipment,
@@ -21,6 +24,7 @@ from .models import (
     NotificationKind,
     NotificationPreference,
     PushSubscription,
+    QueuedNotification,
     User,
 )
 from .notifications import (
@@ -31,6 +35,7 @@ from .notifications import (
     recipients_for_maintenance,
     type_in_scope,
 )
+from .notify_window import next_window_start, within_window
 
 K = NotificationKind
 
@@ -161,6 +166,9 @@ class RecipientsTests(APITestCase):
 
 class ReminderCommandTests(APITestCase):
     def setUp(self):
+        from core.testutils import open_notification_window
+
+        open_notification_window()  # рассылка идёт сразу, не в очередь по окну
         self.admin = mk("admin@e.com", User.Role.ADMIN)
         self.type = EquipmentType.objects.create(name="ПК", maintenance_enabled=True)
         self.eq = Equipment.objects.create(inventory_number="INV-1", equipment_type=self.type)
@@ -203,6 +211,9 @@ class ReminderCommandTests(APITestCase):
 
 class AssignmentGatingTests(APITestCase):
     def setUp(self):
+        from core.testutils import open_notification_window
+
+        open_notification_window()  # рассылка идёт сразу, не в очередь по окну
         self.emp = mk("emp@e.com", User.Role.EMPLOYEE)
 
     def test_email_sent_by_default(self):
@@ -236,3 +247,118 @@ class PushApiTests(APITestCase):
         data = self.client.get("/api/notifications/push/vapid-key/").data
         self.assertTrue(data["configured"])
         self.assertEqual(data["public_key"], "pub")
+
+
+# ─── Окно отправки уведомлений (push + письма) ──────────────────────────────
+
+class NotifyWindowLogicTests(SimpleTestCase):
+    """Чистая логика окна (без БД): within_window / next_window_start."""
+
+    def _c(self, start, end, tz="UTC"):
+        return SimpleNamespace(notify_window_start=start, notify_window_end=end, notify_window_timezone=tz)
+
+    def test_normal_window(self):
+        c = self._c(time(9, 0), time(21, 0))
+        base = datetime(2026, 8, 12, tzinfo=ZoneInfo("UTC"))
+        self.assertFalse(within_window(base.replace(hour=8), company=c))
+        self.assertTrue(within_window(base.replace(hour=9), company=c))
+        self.assertTrue(within_window(base.replace(hour=20, minute=59), company=c))
+        self.assertFalse(within_window(base.replace(hour=21), company=c))  # верхняя граница исключена
+
+    def test_cross_midnight_window(self):
+        c = self._c(time(22, 0), time(6, 0))
+        base = datetime(2026, 8, 12, tzinfo=ZoneInfo("UTC"))
+        self.assertTrue(within_window(base.replace(hour=23), company=c))
+        self.assertTrue(within_window(base.replace(hour=5), company=c))
+        self.assertFalse(within_window(base.replace(hour=12), company=c))
+
+    def test_round_the_clock(self):
+        c = self._c(time(0, 0), time(0, 0))  # start == end
+        self.assertTrue(within_window(datetime(2026, 8, 12, 3, tzinfo=ZoneInfo("UTC")), company=c))
+
+    def test_next_window_start_today_then_tomorrow(self):
+        c = self._c(time(9, 0), time(21, 0))
+        base = datetime(2026, 8, 12, tzinfo=ZoneInfo("UTC"))
+        self.assertEqual(next_window_start(base.replace(hour=4), company=c), datetime(2026, 8, 12, 9, tzinfo=ZoneInfo("UTC")))
+        self.assertEqual(next_window_start(base.replace(hour=22), company=c), datetime(2026, 8, 13, 9, tzinfo=ZoneInfo("UTC")))
+
+    def test_next_window_start_respects_timezone(self):
+        c = self._c(time(9, 0), time(21, 0), tz="Europe/Moscow")  # UTC+3
+        base = datetime(2026, 8, 12, 2, tzinfo=ZoneInfo("UTC"))  # 05:00 MSK
+        # 09:00 MSK = 06:00 UTC того же дня
+        self.assertEqual(next_window_start(base, company=c), datetime(2026, 8, 12, 6, tzinfo=ZoneInfo("UTC")))
+
+
+class QueuedDeliveryTests(APITestCase):
+    """Событие вне окна ставится в очередь; команда сливает её только в окне."""
+
+    def setUp(self):
+        self.emp = mk("emp@e.com", User.Role.EMPLOYEE)
+
+    def _close_window(self):
+        # Окно, гарантированно НЕ содержащее «сейчас» (начинается через час).
+        from company.models import Company
+
+        now = timezone.now()
+        c = Company.load()
+        c.notify_window_timezone = "UTC"
+        c.notify_window_start = (now + timedelta(hours=1)).time().replace(microsecond=0)
+        c.notify_window_end = (now + timedelta(hours=2)).time().replace(microsecond=0)
+        c.save()
+        return c
+
+    def test_event_outside_window_is_queued_not_sent(self):
+        self._close_window()
+        notify_assignment_pending(self.emp, SimpleNamespace(content_object=None, id=1))
+        self.assertEqual(len(mail.outbox), 0)  # ничего не ушло сразу
+        q = QueuedNotification.objects.filter(user=self.emp)
+        self.assertEqual(set(q.values_list("channel", flat=True)), {"email", "push"})
+        self.assertTrue(all(row.scheduled_for > timezone.now() for row in q))  # на будущее окно
+
+    def test_within_window_sends_immediately(self):
+        open_notification_window()
+        notify_assignment_pending(self.emp, SimpleNamespace(content_object=None, id=1))
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(QueuedNotification.objects.count(), 0)
+
+    def test_drain_noop_outside_window_then_sends(self):
+        self._close_window()
+        notify_assignment_pending(self.emp, SimpleNamespace(content_object=None, id=1))
+        # Окно закрыто — команда ничего не отправляет и не удаляет.
+        call_command("send_queued_notifications")
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(QueuedNotification.objects.count(), 2)
+        # Окно открыто и запись «созрела» — слив отправляет письмо и чистит очередь.
+        open_notification_window()
+        QueuedNotification.objects.update(scheduled_for=timezone.now() - timedelta(minutes=1))
+        call_command("send_queued_notifications")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(QueuedNotification.objects.count(), 0)
+
+
+class NotificationWindowApiTests(APITestCase):
+    def setUp(self):
+        self.admin = mk("admin@e.com", User.Role.ADMIN)
+        self.emp = mk("emp@e.com", User.Role.EMPLOYEE)
+
+    def test_admin_updates_window(self):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.patch(
+            "/api/company/notification-settings/",
+            {"notify_window_start": "08:30", "notify_window_end": "19:00", "notify_window_timezone": "Europe/Moscow"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data["notify_window_start"], "08:30:00")
+        self.assertEqual(resp.data["notify_window_timezone"], "Europe/Moscow")
+
+    def test_invalid_timezone_rejected(self):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.patch(
+            "/api/company/notification-settings/", {"notify_window_timezone": "Mars/Phobos"}, format="json"
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_non_admin_forbidden(self):
+        self.client.force_authenticate(self.emp)
+        self.assertEqual(self.client.get("/api/company/notification-settings/").status_code, 403)

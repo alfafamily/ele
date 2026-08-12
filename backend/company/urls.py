@@ -26,6 +26,11 @@ urlpatterns = [
     path("company/logo/", views.CompanyLogoUploadView.as_view(), name="company-logo"),
     path("company/pdn-documents/", views.PdnDocumentsView.as_view(), name="company-pdn-documents"),
     path("company/backup-settings/", views.BackupSettingsView.as_view(), name="company-backup-settings"),
+    path(
+        "company/notification-settings/",
+        views.NotificationWindowView.as_view(),
+        name="company-notification-settings",
+    ),
     path("company/numbering-settings/", views.NumberingSettingsView.as_view(), name="company-numbering-settings"),
     path("company/next-number/", views.NextNumberView.as_view(), name="company-next-number"),
     path("company/test-email/", views.CompanyTestEmailView.as_view(), name="company-test-email"),

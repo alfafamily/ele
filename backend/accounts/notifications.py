@@ -7,7 +7,8 @@ type_in_scope) — единый источник правды и для расс
 """
 from django.conf import settings
 
-from .models import NotificationKind, NotificationPreference, User
+from .models import NotificationKind, NotificationPreference, QueuedNotification, User
+from .notify_window import next_window_start, within_window
 from .push import send_to_user
 
 Role = User.Role
@@ -147,6 +148,37 @@ def recipients_for_maintenance(kind, domain, type_id, exclude_user=None):
     return out
 
 
+# ─── доставка (сразу либо в очередь по окну отправки) ───────────────────────
+
+def _deliver_push(user, kind, payload, *, company=None):
+    """Отправить push сразу (в окне отправки) либо отложить в очередь на ближайшее
+    открытие окна. company передаётся вызывающим для одной загрузки на рассылку."""
+    if within_window(company=company):
+        send_to_user(user, payload)
+    else:
+        QueuedNotification.objects.create(
+            user=user, channel=QueuedNotification.Channel.PUSH,
+            kind=str(kind), payload=payload, scheduled_for=next_window_start(company=company),
+        )
+
+
+def _deliver_email(user, kind, email_kind, template, context, *, company=None):
+    """Отправить письмо-уведомление сразу (в окне) либо отложить в очередь.
+    Пустой email получателя — тихо пропускаем (как и прежняя логика)."""
+    if not user.email:
+        return
+    if within_window(company=company):
+        from .emails import send_notification_email
+
+        send_notification_email(email_kind, template, [user.email], context)
+    else:
+        QueuedNotification.objects.create(
+            user=user, channel=QueuedNotification.Channel.EMAIL, kind=str(kind),
+            payload={"email_kind": email_kind, "template": template, "context": context},
+            scheduled_for=next_window_start(company=company),
+        )
+
+
 # ─── доставка ───────────────────────────────────────────────────────────────
 
 _MAINT_EMAIL = {
@@ -199,20 +231,22 @@ def notify_maintenance(obj, kind, *, date=None, exclude_user=None, regulation_na
     push_title = _PUSH_TITLE[kind]
     push_body = _push_body(kind, full_label, date_str, regulation_name)
 
+    from company.models import Company
+
+    company = Company.load()
     for user, email_on, push_on in recipients_for_maintenance(kind, domain, type_id, exclude_user):
         if email_on:
-            from .emails import send_maintenance_email
-
-            send_maintenance_email(
-                user, kind=email_kind, template=template,
-                object_label=full_label, date_str=date_str, cta_url=cta_url,
-                regulation_name=regulation_name,
+            _deliver_email(
+                user, kind, email_kind, template,
+                {"cta_url": cta_url, "object_label": full_label, "date_str": date_str,
+                 "regulation_name": regulation_name},
+                company=company,
             )
         if push_on:
-            send_to_user(user, {
+            _deliver_push(user, kind, {
                 "title": push_title, "body": push_body, "url": path,
                 "tag": f"{kind}:{domain}:{obj.id}",
-            })
+            }, company=company)
 
 
 def notify_assignment_pending(user, assignment):
@@ -228,11 +262,12 @@ def notify_assignment_pending(user, assignment):
 
     email_on, push_on = _channels(_pref(user, Kind.ASSIGNMENT_PENDING))
     if email_on:
-        from .emails import send_assignment_pending
-
-        send_assignment_pending(user, assignment)
+        _deliver_email(
+            user, Kind.ASSIGNMENT_PENDING, "assignment_pending", "assignment_pending.html",
+            {"cta_url": f"{settings.SITE_URL}/profile", "object_label": label},
+        )
     if push_on:
-        send_to_user(user, {
+        _deliver_push(user, Kind.ASSIGNMENT_PENDING, {
             "title": "Требуется подтверждение получения",
             "body": f"За вами закрепили: {label}. Подтвердите получение в профиле.",
             "url": "/profile",
@@ -265,15 +300,17 @@ def notify_assignment_rejected(assignment):
 
     email_on, push_on = _channels(_pref(user, Kind.ASSIGNMENT_REJECTED))
     if email_on and user.email:
-        from .emails import send_assignment_rejected
-
-        send_assignment_rejected(user, assignment, label=label, employee_name=employee_name, reason=reason)
+        _deliver_email(
+            user, Kind.ASSIGNMENT_REJECTED, "assignment_rejected", "assignment_rejected.html",
+            {"cta_url": f"{settings.SITE_URL}/employees/assignments", "object_label": label,
+             "employee_name": employee_name, "reason": reason},
+        )
     if push_on:
         # B51: в теле push минимизируем ПДн — имя + инициал фамилии («Михаил П.»),
         # т.к. тело уходит на сторонние push-сервисы. В письме (авторизованному
         # admin/accountant) остаётся полное ФИО.
         push_name = assignment.employee.masked_name if assignment.employee_id else "Сотрудник"
-        send_to_user(user, {
+        _deliver_push(user, Kind.ASSIGNMENT_REJECTED, {
             "title": "Отказ от закрепления",
             "body": f"{push_name} отказался: {label}",
             "url": "/employees/assignments",

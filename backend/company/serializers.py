@@ -244,6 +244,29 @@ class BackupSettingsSerializer(serializers.ModelSerializer):
         return value
 
 
+class NotificationWindowSerializer(serializers.ModelSerializer):
+    """Настройки → Системные: окно отправки уведомлений (push + письма) и его
+    часовой пояс. Применяется и к рассылке по расписанию (ТО), и к событийным
+    уведомлениям: событие вне окна ставится в очередь на ближайшее открытие окна
+    (см. accounts.notify_window / команду send_queued_notifications)."""
+
+    class Meta:
+        model = Company
+        fields = ["notify_window_start", "notify_window_end", "notify_window_timezone"]
+
+    def validate_notify_window_timezone(self, value):
+        # Принимаем только валидную IANA-зону — иначе cron/веб не смогут её применить.
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        if not value:
+            return "UTC"
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError):
+            raise serializers.ValidationError("Неизвестный часовой пояс.")
+        return value
+
+
 class BackgroundJobRunSerializer(serializers.ModelSerializer):
     """B66. Событие журнала фоновых задач для ленты. `label` — человекочитаемое
     название задачи (для группировки/подписи в UI)."""

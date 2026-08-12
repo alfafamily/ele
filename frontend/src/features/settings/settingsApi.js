@@ -52,6 +52,10 @@ export const checkCaptcha = (token) => apiPost('/api/company/captcha-check/', { 
 export const getBackupSettings = () => apiGet('/api/company/backup-settings/')
 export const updateBackupSettings = (payload) => apiPatch('/api/company/backup-settings/', payload)
 
+// Окно отправки уведомлений (push + письма) и его часовой пояс.
+export const getNotificationSettings = () => apiGet('/api/company/notification-settings/')
+export const updateNotificationSettings = (payload) => apiPatch('/api/company/notification-settings/', payload)
+
 export const getNumberingSettings = () => apiGet('/api/company/numbering-settings/')
 export const updateNumberingSettings = (payload) => apiPatch('/api/company/numbering-settings/', payload)
 // Автонумератор: следующий учётный номер для kind = equipment|key|pass (B2).

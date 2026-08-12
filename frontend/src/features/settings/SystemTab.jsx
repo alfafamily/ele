@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useMediaQuery } from '../../shared/hooks/useMediaQuery.js'
 import { Banner, Spinner } from '../../shared/ui'
-import { getBackupSettings, getCompanySettings, getStorageMigrationStatus, getStorageSpace, getSystemStatus } from './settingsApi.js'
+import { getBackupSettings, getCompanySettings, getNotificationSettings, getStorageMigrationStatus, getStorageSpace, getSystemStatus } from './settingsApi.js'
 import { normalizeIps } from './system/helpers.js'
 import { StorageCard } from './system/StorageCard.jsx'
 import { BackupDestinationCard } from './system/BackupDestinationCard.jsx'
 import { DomainAccessCard } from './system/DomainAccessCard.jsx'
 import { AdminAccessCard } from './system/AdminAccessCard.jsx'
+import { NotificationWindowCard } from './system/NotificationWindowCard.jsx'
 import { EmailCheckCard } from './system/EmailCheckCard.jsx'
 import { PushCheckCard } from './system/PushCheckCard.jsx'
 import { YandexCard } from './system/YandexCard.jsx'
@@ -21,16 +22,18 @@ export function SystemTab() {
   const [company, setCompany] = useState(null)
   const [migration, setMigration] = useState(null) // { status, pending_count, error_count, target_backend }
   const [backup, setBackup] = useState(null) // { backup_destination, backup_secondary_s3:{configured,bucket} }
+  const [notify, setNotify] = useState(null) // { notify_window_start, notify_window_end, notify_window_timezone }
   const [space, setSpace] = useState(null) // B33: { threshold_bytes, app, backup_s3, low }
   const [loadError, setLoadError] = useState(null)
 
   useEffect(() => {
-    Promise.all([getSystemStatus(), getCompanySettings(), getStorageMigrationStatus(), getBackupSettings()])
-      .then(([st, comp, mig, bk]) => {
+    Promise.all([getSystemStatus(), getCompanySettings(), getStorageMigrationStatus(), getBackupSettings(), getNotificationSettings()])
+      .then(([st, comp, mig, bk, nt]) => {
         setStatus(st)
         setCompany(comp)
         setMigration(mig)
         setBackup(bk)
+        setNotify(nt)
       })
       .catch(() => setLoadError('Не удалось загрузить системные настройки.'))
   }, [])
@@ -80,6 +83,12 @@ export function SystemTab() {
           initialEnabled={company.admin_access_enabled === true}
           initialAdminIps={normalizeIps(company.admin_access_ips)}
         />
+      </div>
+
+      {/* Окно отправки уведомлений (push + письма) — перед проверками каналов. */}
+      <div style={row}>
+        <NotificationWindowCard initialNotify={notify} />
+        <div style={{ flex: 1, minWidth: 0 }} />
       </div>
 
       {/* Проверка почты (SMTP) слева + проверка Push справа. */}

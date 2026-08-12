@@ -18,6 +18,9 @@ def _emp(last="Прозоров", first="Иван", **kw):
 
 class AssignmentBaseTests(APITestCase):
     def setUp(self):
+        from core.testutils import open_notification_window
+
+        open_notification_window()  # немедленная доставка уведомлений вне зависимости от времени суток
         self.admin = User.objects.create_user(email="admin@e.ru", password="Str0ng!Pass1", role=User.Role.ADMIN)
         self.b = Building.objects.create(name="Здание")
         self.r = Room.objects.create(building=self.b, name="Комн.")

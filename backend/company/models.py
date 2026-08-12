@@ -66,6 +66,17 @@ class Company(models.Model):
     auto_backup_timezone = models.CharField("Часовой пояс автокопий", max_length=64, default="UTC")
     auto_backup_retention = models.PositiveSmallIntegerField("Хранить последних копий", default=30)
 
+    # Окно отправки уведомлений: push и письма (и по расписанию, и по событиям)
+    # уходят только в интервале [notify_window_start, notify_window_end) в зоне
+    # notify_window_timezone. Событие вне окна ставится в очередь
+    # (accounts.QueuedNotification) и отправляется с началом ближайшего окна.
+    # Окно через полночь (start > end) поддерживается; start == end означает
+    # «круглосуточно» (без ограничения по времени). Дефолт 09:00–21:00, зона
+    # "UTC" — как у auto_backup_timezone, сохраняет прежние UTC-часы сервера.
+    notify_window_start = models.TimeField("Отправлять уведомления с", default=time(9, 0))
+    notify_window_end = models.TimeField("Отправлять уведомления до", default=time(21, 0))
+    notify_window_timezone = models.CharField("Часовой пояс окна уведомлений", max_length=64, default="UTC")
+
     # B29: ЕДИНОЕ назначение копий (и ручных, и авто) — либо хранилище инстанса,
     # либо отдельный резервный S3 (креды в .env BACKUP_S3_*; секреты в Company
     # нельзя — она уходит в бэкап). Настройка вынесена в «Системные» рядом с

@@ -125,6 +125,9 @@ class MaintenanceReminderCronTests(APITestCase):
             EquipmentMaintenancePlan,
         )
 
+        from core.testutils import open_notification_window
+
+        open_notification_window()  # рассылка ТО идёт сразу, не в очередь по окну
         self.today = timezone.localdate()
         etype = EquipmentType.objects.create(name="ПК", maintenance_enabled=True)
         eq = Equipment.objects.create(inventory_number="EQ-M1", equipment_type=etype)
