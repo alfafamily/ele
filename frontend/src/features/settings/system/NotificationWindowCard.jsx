@@ -75,8 +75,6 @@ export function NotificationWindowCard({ initialNotify }) {
     save({ notify_window_timezone: tz })
   }
 
-  const roundTheClock = draft.start === draft.end
-
   return (
     <Card style={{ flex: 1, minWidth: 0 }}>
       <div style={sectionTitle}>Время отправки уведомлений</div>
@@ -113,11 +111,9 @@ export function NotificationWindowCard({ initialNotify }) {
           </Select>
         </div>
       </div>
-      {roundTheClock ? (
-        <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 12 }}>
-          Круглосуточно — без ограничений по времени.
-        </div>
-      ) : null}
+      <div style={{ fontSize: 12.5, color: 'var(--color-text-placeholder)', marginTop: 12 }}>
+        Для круглосуточной отправки уведомлений задайте одинаковое время в полях «с» и «до».
+      </div>
       {error ? (
         <div style={{ marginTop: 10 }}>
           <Banner variant="error">{error}</Banner>
