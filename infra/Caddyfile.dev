@@ -1,60 +1,67 @@
 # По умолчанию слушаем :80 (локальная разработка). Если задан SITE_ADDRESS
 # (домен) — Caddy обслуживает его с автоматическим TLS (Let's Encrypt): нужно
 # для проверки фич, требующих HTTPS (например, Web Push), на dev-стенде.
-{$SITE_ADDRESS::80}
+{$SITE_ADDRESS::80} {
+	encode gzip
 
-encode gzip
+	# Заголовки безопасности для dev-стенда — по образцу infra/Caddyfile (прод), но с
+	# отличием: HSTS БЕЗ includeSubDomains. Стенд живёт на поддомене (test-ele.
+	# dailycompany.cc), а includeSubDomains навязал бы браузеру HTTPS-политику всем
+	# соседним *.dailycompany.cc — на общем домене это опасно. Для клиентского прода
+	# (собственный домен) includeSubDomains уместен. nosniff + X-Frame-Options
+	# защищают SPA-оболочку от Vite (frontend:5173), которая иначе идёт без них.
+	# Остальные пути ведут на backend, где заголовки ставит сам Django.
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		-Server
+	}
 
-# Заголовки безопасности для dev-стенда — по образцу infra/Caddyfile (прод), но с
-# отличием: HSTS БЕЗ includeSubDomains. Стенд живёт на поддомене (test-ele.
-# dailycompany.cc), а includeSubDomains навязал бы браузеру HTTPS-политику всем
-# соседним *.dailycompany.cc — на общем домене это опасно. Для клиентского прода
-# (собственный домен) includeSubDomains уместен. nosniff + X-Frame-Options
-# защищают SPA-оболочку от Vite (frontend:5173), которая иначе идёт без них.
-# Остальные пути ведут на backend, где заголовки ставит сам Django.
-header {
-	Strict-Transport-Security "max-age=31536000"
-	X-Content-Type-Options "nosniff"
-	X-Frame-Options "SAMEORIGIN"
-	-Server
+	# Ограничение доступа по IP — см. подробный комментарий в
+	# infra/Caddyfile (прод). Здесь то же самое, чтобы фичу можно было проверить
+	# в dev через docker compose, не только в проде.
+	forward_auth backend:8000 {
+		uri /api/internal/ip-check/
+	}
+
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# B9: служебная Django-админка (доступ гейтит сам backend). В dev статику
+	# админки (CSS/JS) при DEBUG раздаёт runserver, поэтому /static/* тоже ведём на
+	# backend, а не в SPA-fallback.
+	@django_admin path /django_admin /django_admin/*
+	handle @django_admin {
+		reverse_proxy backend:8000
+	}
+
+	handle /static/* {
+		reverse_proxy backend:8000
+	}
+
+	# Резервные копии содержат хэши паролей и все бизнес-данные —
+	# отдаются только через авторизованный /api/backup/<id>/download/,
+	# не статикой. Блок должен идти раньше общего /media/*.
+	handle /media/backups/* {
+		respond 403
+	}
+
+	# В dev Django сам раздаёт media при DEBUG=True (config/urls.py) — нужно
+	# только доводить запрос до backend, а не отдавать SPA fallback.
+	handle /media/* {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:5173
+	}
 }
 
-# Ограничение доступа по IP — см. подробный комментарий в
-# infra/Caddyfile (прод). Здесь то же самое, чтобы фичу можно было проверить
-# в dev через docker compose, не только в проде.
-forward_auth backend:8000 {
-	uri /api/internal/ip-check/
-}
-
-handle /api/* {
-	reverse_proxy backend:8000
-}
-
-# B9: служебная Django-админка (доступ гейтит сам backend). В dev статику
-# админки (CSS/JS) при DEBUG раздаёт runserver, поэтому /static/* тоже ведём на
-# backend, а не в SPA-fallback.
-@django_admin path /django_admin /django_admin/*
-handle @django_admin {
-	reverse_proxy backend:8000
-}
-
-handle /static/* {
-	reverse_proxy backend:8000
-}
-
-# Резервные копии содержат хэши паролей и все бизнес-данные —
-# отдаются только через авторизованный /api/backup/<id>/download/,
-# не статикой. Блок должен идти раньше общего /media/*.
-handle /media/backups/* {
-	respond 403
-}
-
-# В dev Django сам раздаёт media при DEBUG=True (config/urls.py) — нужно
-# только доводить запрос до backend, а не отдавать SPA fallback.
-handle /media/* {
-	reverse_proxy backend:8000
-}
-
-handle {
-	reverse_proxy frontend:5173
-}
+# Точка расширения для стенда: сюда подключаются дополнительные сайты, которые
+# живут только на конкретной машине и не являются частью продукта (например,
+# соседний проект за тем же Caddy). Каталог монтируется локальным
+# docker-compose.override.yml и в репозиторий не попадает; если файлов нет,
+# Caddy пишет предупреждение и работает как обычно.
+import /etc/caddy/conf.d/*.caddy

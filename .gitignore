@@ -50,3 +50,6 @@ backups/
 /blob-report/
 /tests/e2e/.auth/
 .last-run.json
+
+# Стенд-локальные сайты Caddy (см. import в infra/Caddyfile.dev)
+infra/conf.d/
