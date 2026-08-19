@@ -53,3 +53,6 @@ backups/
 
 # Стенд-локальные сайты Caddy (см. import в infra/Caddyfile.dev)
 infra/conf.d/
+
+# Стенд-локальные директивы для сайта ELE (см. import в infra/Caddyfile.dev)
+infra/site.d/
