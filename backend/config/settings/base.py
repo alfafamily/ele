@@ -173,10 +173,13 @@ VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
 VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", default="")
 VAPID_SUBJECT = env("VAPID_SUBJECT", default=SITE_URL)
 
-# Таймаут бездействия сессии — 24 часа : SAVE_EVERY_REQUEST
-# продлевает cookie при активности, т.е. это именно idle-таймаут, а не
-# абсолютный TTL с момента входа.
-SESSION_COOKIE_AGE = 60 * 60 * 24
+# Таймаут бездействия сессии — SAVE_EVERY_REQUEST продлевает cookie при
+# активности, т.е. это именно idle-таймаут, а не абсолютный TTL с момента входа.
+# 90 дней — по мобильному сценарию PWA: раньше здесь были сутки, и
+# пользователь, не открывавший приложение день-два, оказывался разлогинен —
+# push про подходящее ТО приводил его на экран входа вместо карточки. Клиент
+# может ужесточить срок через ELE_SESSION_DAYS (напр. 7 или 1).
+SESSION_COOKIE_AGE = 60 * 60 * 24 * env.int("ELE_SESSION_DAYS", default=90)
 SESSION_SAVE_EVERY_REQUEST = True
 
 # Срок жизни токенов подтверждения email/приглашения/сброса пароля — 24 часа

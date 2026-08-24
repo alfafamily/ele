@@ -74,7 +74,10 @@ services:
     # Тот же непривилегированный app, что и в backend: media_data к моменту старта
     # cron уже принадлежит app (backend healthy → его entrypoint отработал chown),
     # поэтому cron просто сбрасывает привилегии через gosu, свой chown не нужен.
-    command: gosu app sh -c "while true; do python manage.py migrate_storage_files; python manage.py run_scheduled_backup; python manage.py send_maintenance_reminders; python manage.py send_queued_notifications; python manage.py anonymize_due_employees; sleep 60; done"
+    # clearsessions в этом же цикле: истёкшие сессии сами из django_session не
+    # уходят, а срок сессии — 90 дней (ELE_SESSION_DAYS), поэтому мусор копился
+    # бы заметно. Это DELETE по индексу expire_date, обычно на нуле строк.
+    command: gosu app sh -c "while true; do python manage.py migrate_storage_files; python manage.py run_scheduled_backup; python manage.py send_maintenance_reminders; python manage.py send_queued_notifications; python manage.py anonymize_due_employees; python manage.py clearsessions; sleep 60; done"
 
   frontend:
     build:

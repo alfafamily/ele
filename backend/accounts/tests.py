@@ -1,6 +1,7 @@
 from smtplib import SMTPException
 from unittest import mock
 
+from django.conf import settings
 from django.core import mail
 from django.core.cache import cache
 from django.test import override_settings
@@ -564,6 +565,39 @@ class SessionInvalidationTests(APITestCase):
         user.refresh_from_db()
         self.assertTrue(user.check_password("New!Pass456"))
         self.assertIsNotNone(user.password_changed_at)  # «Пароль» блок в Профиле
+
+
+class SessionLifetimeTests(APITestCase):
+    """Срок сессии — idle-таймаут в 90 дней (ELE_SESSION_DAYS), а не сутки.
+
+    Регрессия: при суточном сроке пользователь PWA, не заходивший день-два,
+    оказывался разлогинен и по push про подходящее ТО попадал на экран входа.
+    """
+
+    def setUp(self):
+        cache.clear()  # IP-троттл логина, как в LoginBruteForceTests
+        self.user = User.objects.create_user(email="worker@example.com", password="Correct!Pass1")
+
+    def test_session_cookie_lives_longer_than_a_day(self):
+        self.assertGreater(settings.SESSION_COOKIE_AGE, 60 * 60 * 24)
+
+        resp = self.client.post(
+            "/api/auth/login/", {"email": "worker@example.com", "password": "Correct!Pass1"}, format="json"
+        )
+        self.assertEqual(resp.status_code, 200, resp.data)
+        cookie = resp.cookies[settings.SESSION_COOKIE_NAME]
+        self.assertEqual(int(cookie["max-age"]), settings.SESSION_COOKIE_AGE)
+
+    def test_activity_extends_session_cookie(self):
+        # SESSION_SAVE_EVERY_REQUEST: любой запрос переустанавливает cookie на
+        # полный срок, т.е. отсчёт идёт от последнего обращения, а не от входа.
+        self.client.post(
+            "/api/auth/login/", {"email": "worker@example.com", "password": "Correct!Pass1"}, format="json"
+        )
+        resp = self.client.get("/api/auth/me/")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        cookie = resp.cookies[settings.SESSION_COOKIE_NAME]
+        self.assertEqual(int(cookie["max-age"]), settings.SESSION_COOKIE_AGE)
 
 
 class WeakPasswordErrorSurfacingTests(APITestCase):
