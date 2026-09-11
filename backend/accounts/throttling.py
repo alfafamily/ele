@@ -13,7 +13,7 @@ class LoginRateThrottle(SimpleRateThrottle):
     закрывает шквал запросов с одного источника независимо от того, какие
     аккаунты он перебирает.
 
-    Ключ — реальный IP за Caddy (последний в X-Forwarded-For, см.
+    Ключ — реальный IP за прокси (hop-aware разбор X-Forwarded-For, см.
     core.utils.client_ip), а не REMOTE_ADDR прокси: иначе все клиенты делили бы
     один общий лимит.
     """

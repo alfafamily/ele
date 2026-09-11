@@ -1,4 +1,5 @@
 from django.core.management import call_command
+from django.test import override_settings
 from rest_framework.test import APITestCase
 
 from company.models import Company
@@ -28,9 +29,9 @@ class IsIPAllowedTests(APITestCase):
 
 
 class IPCheckViewTests(APITestCase):
-    """Эндпоинт для Caddy forward_auth. Реальный IP клиента
-    берётся из ПОСЛЕДНЕГО значения X-Forwarded-For (Caddy сам его дописывает
-    последним; более ранние значения мог подделать клиент)."""
+    """Эндпоинт для Caddy forward_auth. Реальный IP клиента берётся hop-aware из
+    X-Forwarded-For (по умолчанию 1 прокси — последнее значение, дописанное
+    Caddy; более ранние значения мог подделать клиент). См. TRUSTED_PROXY_HOPS."""
 
     def test_no_restriction_by_default(self):
         resp = self.client.get("/api/internal/ip-check/")
@@ -51,13 +52,41 @@ class IPCheckViewTests(APITestCase):
         self.assertEqual(resp.status_code, 200)
 
     def test_trusts_last_xff_entry_not_first(self):
-        # Первое значение — то, что мог подделать клиент; последнее — то, что
-        # реально дописал Caddy. Разрешённый только последний адрес.
+        # По умолчанию (1 прокси, Caddy) первое значение — то, что мог подделать
+        # клиент; последнее — то, что реально дописал Caddy. Доверяем последнему.
         company = Company.load()
         company.ip_allowlist = ["203.0.113.0/24"]
         company.save()
         resp = self.client.get(
             "/api/internal/ip-check/", HTTP_X_FORWARDED_FOR="203.0.113.42, 198.51.100.7"
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    @override_settings(TRUSTED_PROXY_HOPS=2)
+    def test_hop_aware_reads_client_behind_two_proxies(self):
+        # За вторым прокси (Cloudflare/балансировщик + Caddy) реальный клиент —
+        # предпоследний элемент: последний дописал Caddy (IP эджа), эдж дописал
+        # IP посетителя. Спуф слева границу не пробивает.
+        company = Company.load()
+        company.ip_allowlist = ["203.0.113.0/24"]
+        company.save()
+        # spoof(слева) , посетитель , эдж(дописан Caddy справа)
+        resp = self.client.get(
+            "/api/internal/ip-check/",
+            HTTP_X_FORWARDED_FOR="1.2.3.4, 203.0.113.42, 198.51.100.7",
+        )
+        self.assertEqual(resp.status_code, 200)
+
+    @override_settings(TRUSTED_PROXY_HOPS=2)
+    def test_hop_aware_spoof_cannot_pass_allowlist(self):
+        # Клиент вписал разрешённый адрес в начало XFF, но за 2 прокси его
+        # позиция не совпадает с (hops)-м справа → блок.
+        company = Company.load()
+        company.ip_allowlist = ["203.0.113.0/24"]
+        company.save()
+        resp = self.client.get(
+            "/api/internal/ip-check/",
+            HTTP_X_FORWARDED_FOR="203.0.113.42, 198.51.100.7, 198.51.100.9",
         )
         self.assertEqual(resp.status_code, 403)
 
