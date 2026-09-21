@@ -14,7 +14,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+FROM caddy:2-alpine@sha256:de23def33b17fb5d1290b0f6c2add1d70780e52341896c00a4c8a2a2fe9d355e
 # Непривилегированный пользователь для статик-сервера (без root внутри
 # контейнера). Право bind на привилегированный :80 даём точечной файловой
 # capability на бинаре Caddy, а не запуском под root. /data и /config — рабочие
