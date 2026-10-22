@@ -77,7 +77,10 @@ services:
     # clearsessions в этом же цикле: истёкшие сессии сами из django_session не
     # уходят, а срок сессии — 90 дней (ELE_SESSION_DAYS), поэтому мусор копился
     # бы заметно. Это DELETE по индексу expire_date, обычно на нуле строк.
-    command: gosu app sh -c "while true; do python manage.py migrate_storage_files; python manage.py run_scheduled_backup; python manage.py send_maintenance_reminders; python manage.py send_queued_notifications; python manage.py anonymize_due_employees; python manage.py clearsessions; sleep 60; done"
+    # Перед циклом — wait_for_db (B79): при автоподъёме после перезагрузки хоста
+    # cron стартует независимо от backend и postgres (depends_on не действует),
+    # иначе первая итерация уходит в трейсбеки недоступной БД.
+    command: gosu app sh -c "python manage.py wait_for_db; while true; do python manage.py migrate_storage_files; python manage.py run_scheduled_backup; python manage.py send_maintenance_reminders; python manage.py send_queued_notifications; python manage.py anonymize_due_employees; python manage.py clearsessions; sleep 60; done"
 
   frontend:
     build:

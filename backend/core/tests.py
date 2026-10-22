@@ -406,3 +406,41 @@ class CheckDestructiveMigrationsCommandTests(APITestCase):
             return_value=[fake],
         ), mock.patch.dict(os.environ, {ms.CONFIRM_ENV: "1"}):
             call_command("check_destructive_migrations")  # без исключения
+
+
+from django.core.management.base import CommandError  # noqa: E402
+from django.db import OperationalError  # noqa: E402
+
+from core.management.commands import wait_for_db  # noqa: E402
+
+
+class WaitForDbCommandTests(APITestCase):
+    """Ожидание БД перед миграциями (B79): при автоподъёме после перезагрузки
+    хоста postgres может быть ещё не готов. `connections` подменяем — реальное
+    тестовое соединение закрывать нельзя."""
+
+    def _fake_connections(self, conn):
+        return mock.patch.object(wait_for_db, "connections", {"default": conn})
+
+    def test_returns_at_once_when_db_available(self):
+        call_command("wait_for_db")  # без исключения
+
+    def test_retries_until_db_accepts_connections(self):
+        conn = mock.Mock()
+        conn.ensure_connection.side_effect = [OperationalError("нет соединения"), None]
+        with self._fake_connections(conn), mock.patch.object(
+            wait_for_db.time, "sleep"
+        ) as sleep:
+            call_command("wait_for_db")
+        self.assertEqual(conn.ensure_connection.call_count, 2)
+        # Битое соединение закрыли, иначе повтор переиспользовал бы его.
+        conn.close.assert_called_once_with()
+        sleep.assert_called_once_with(wait_for_db.RETRY_DELAY_SECONDS)
+
+    def test_raises_after_timeout(self):
+        conn = mock.Mock()
+        conn.ensure_connection.side_effect = OperationalError("нет соединения")
+        with self._fake_connections(conn), mock.patch.object(wait_for_db.time, "sleep"):
+            with self.assertRaises(CommandError):
+                call_command("wait_for_db", "--timeout", "0")
+        conn.ensure_connection.assert_called_once_with()

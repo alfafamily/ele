@@ -1,10 +1,18 @@
 # Локальная разработка: hot reload backend (runserver) и frontend (Vite dev
 # server), код смонтирован bind-volume'ами. Прод — docker-compose.prod.yml.
+#
+# restart: unless-stopped у всех сервисов — так же, как в прод-стеке: долгоживущий
+# dev-стек (стенд) обязан возвращаться после перезагрузки хоста сам, а не лежать
+# Exited до ручного `up -d` (вместе с ним молчит и cron: автобэкапы, напоминания
+# о ТО, отложенные уведомления, clearsessions). Штатное обновление политика не
+# ломает: `down` удаляет контейнеры — удалённые не воскресают, а остановленные
+# вручную (`stop`) не поднимаются и после перезапуска демона.
 services:
   postgres:
     # Образы запинены по digest (см. docker-compose.prod.yml) — та же гигиена и
     # для локального стека; обновление digest'ов — infra/update-image-digests.sh.
     image: postgres:17-alpine@sha256:1bcc18d81671b02906296aad470ec9778a6b71016ce953092024b680bad007b0
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-ele}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ele}
@@ -23,6 +31,7 @@ services:
       args:
         REQUIREMENTS_FILE: requirements/dev.txt
         PIP_INSTALL_FLAGS: ""
+    restart: unless-stopped
     env_file: .env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
@@ -61,6 +70,7 @@ services:
       args:
         REQUIREMENTS_FILE: requirements/dev.txt
         PIP_INSTALL_FLAGS: ""
+    restart: unless-stopped
     env_file: .env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
@@ -80,10 +90,14 @@ services:
     # clearsessions в этом же цикле: истёкшие сессии сами из django_session не
     # уходят, а срок сессии — 90 дней (ELE_SESSION_DAYS), поэтому мусор копился
     # бы заметно. Это DELETE по индексу expire_date, обычно на нуле строк.
-    command: gosu app sh -c "while true; do python manage.py migrate_storage_files; python manage.py run_scheduled_backup; python manage.py send_maintenance_reminders; python manage.py send_queued_notifications; python manage.py anonymize_due_employees; python manage.py clearsessions; sleep 60; done"
+    # Перед циклом — wait_for_db (B79): при автоподъёме после перезагрузки хоста
+    # cron стартует независимо от backend и postgres (depends_on не действует),
+    # иначе первая итерация уходит в трейсбеки недоступной БД.
+    command: gosu app sh -c "python manage.py wait_for_db; while true; do python manage.py migrate_storage_files; python manage.py run_scheduled_backup; python manage.py send_maintenance_reminders; python manage.py send_queued_notifications; python manage.py anonymize_due_employees; python manage.py clearsessions; sleep 60; done"
 
   frontend:
     image: node:26-slim@sha256:36793bcbb160a6a16cede1e62b93f84e26b78a972a8a4c0b879c1c12f22761ec
+    restart: unless-stopped
     working_dir: /app
     volumes:
       - ./frontend:/app
@@ -97,6 +111,7 @@ services:
   mailpit:
     # dev-only; digest фиксирует конкретный образ вместо плавающего :latest.
     image: axllent/mailpit:latest@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387
+    restart: unless-stopped
     expose:
       - "1025"
     ports:
@@ -104,6 +119,7 @@ services:
 
   caddy:
     image: caddy:2-alpine@sha256:24ec7b05bc532c7bb57f727030c5056e257ff7138b4b50460306819ff79362bd
+    restart: unless-stopped
     volumes:
       - ./infra/Caddyfile.dev:/etc/caddy/Caddyfile
     ports:

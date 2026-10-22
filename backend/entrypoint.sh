@@ -12,6 +12,12 @@ if [ "$(id -u)" = "0" ]; then
     chown -R app:app /app/staticfiles /app/media 2>/dev/null || true
 fi
 
+# Автоподъём после перезагрузки хоста (B79): контейнеры с restart-политикой
+# Docker поднимает независимо, depends_on/healthcheck из compose при этом НЕ
+# действуют — postgres может быть ещё не готов. Ждём БД сами, иначе migrate
+# падает и контейнер крутится в restart-цикле. Таймаут — ELE_DB_WAIT_SECONDS.
+python manage.py wait_for_db --timeout "${ELE_DB_WAIT_SECONDS:-60}"
+
 # Страховка B69: если в накате есть миграции, помеченные деструктивными
 # (ele_destructive), обновление останавливается до явного подтверждения
 # оператором (ELE_CONFIRM_DESTRUCTIVE=1). На чистой установке — no-op.

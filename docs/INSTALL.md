@@ -418,3 +418,17 @@ curl -fsS https://<домен>/api/health/               # health-check API
   docker compose -f docker-compose.prod.yml exec backend \
     python manage.py changepassword АДРЕС@ПОЧТА
   ```
+- **После перезагрузки сервера ELE не отвечает.** Все контейнеры стека помечены
+  `restart: unless-stopped` и поднимаются вместе с Docker сами (с версии
+  1.40.2). Политика задаётся при создании контейнера, поэтому на инстансах,
+  установленных раньше, она применяется после первого обновления с пересборкой
+  (`up -d --build`). Проверить:
+
+  ```sh
+  docker inspect -f '{{.Name}} {{.HostConfig.RestartPolicy.Name}}' \
+    $(docker compose -f docker-compose.prod.yml ps -q)
+  ```
+
+  У каждой строки ожидается `unless-stopped`. Контейнеры, остановленные
+  вручную (`docker compose stop`), после перезагрузки намеренно остаются
+  остановленными — поднять их можно `up -d`.
