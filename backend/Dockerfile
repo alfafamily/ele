@@ -3,7 +3,7 @@
 # сборки и защита от подмены/переноса тега. Тег рядом оставлен для читаемости и
 # автообновления digest'а (Dependabot ecosystem: docker; либо
 # infra/update-image-digests.sh). Обновлять digest вместе с апгрейдом тега.
-FROM python:3.14-slim@sha256:cea0e6040540fb2b965b6e7fb5ffa00871e632eef63719f0ea54bca189ce14a6
+FROM python:3.14-slim@sha256:0b566a9f30a60730df33c26ac62dedb55393d8814645cd03543b67bf8987f3a1
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1

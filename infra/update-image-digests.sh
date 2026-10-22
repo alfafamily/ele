@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Пере-пиннинг базовых Docker-образов по digest во всех файлах проекта.
 #
-# Образы запинены как `name:tag@sha256:…` (см. Dockerfile'ы и docker-compose*.yml):
+# Образы запинены как `name:tag@sha256:…` (см. Dockerfile'ы, docker-compose*.yml
+# и postgres-сервис в .github/workflows/ci.yml):
 # tag читаемый, digest фиксирует неизменяемый образ. При апгрейде тега или для
 # подтягивания свежего образа под тем же тегом (security-патчи базового образа)
 # запусти этот скрипт — он резолвит текущий index-digest каждого тега из реестра
@@ -23,6 +24,7 @@ FILES=(
   frontend/Dockerfile
   docker-compose.yml
   docker-compose.prod.yml
+  .github/workflows/ci.yml
 )
 
 MODE="update"

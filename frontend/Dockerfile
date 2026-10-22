@@ -4,7 +4,7 @@
 # Базовые образы запинены по digest (см. пояснение в backend/Dockerfile):
 # неизменяемая сборка + защита от подмены тега. Тег рядом — для читаемости и
 # автообновления (Dependabot docker / infra/update-image-digests.sh).
-FROM node:26-slim@sha256:deae974a69e140f44f434ab29cb519fb5f8fe250fd364b8ca446bd0761acdc6a AS build
+FROM node:26-slim@sha256:36793bcbb160a6a16cede1e62b93f84e26b78a972a8a4c0b879c1c12f22761ec AS build
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM caddy:2-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
+FROM caddy:2-alpine@sha256:24ec7b05bc532c7bb57f727030c5056e257ff7138b4b50460306819ff79362bd
 # Непривилегированный пользователь для статик-сервера (без root внутри
 # контейнера). Право bind на привилегированный :80 даём точечной файловой
 # capability на бинаре Caddy, а не запуском под root. /data и /config — рабочие

@@ -50,7 +50,7 @@ jobs:
     services:
       postgres:
         # Запинен по digest как и в compose (единый образ во всех окружениях).
-        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        image: postgres:17-alpine@sha256:1bcc18d81671b02906296aad470ec9778a6b71016ce953092024b680bad007b0
         env:
           POSTGRES_USER: ele
           POSTGRES_PASSWORD: ele
